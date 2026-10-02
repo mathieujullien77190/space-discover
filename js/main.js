@@ -149,8 +149,9 @@
   });
   const bStep = document.getElementById('bStep'); bStep.onclick = () => { stepI = (stepI + 1) % STEPS.length; bStep.textContent = STEPS[stepI] + '°'; };
   /* bouton ISS : d'abord on tourne autour de la Terre pour se retrouver au-dessus de la station (vue d'ensemble), puis un zoom pas trop rapide jusqu'à elle */
+  const ISS_HOVER_KM = 3000;   // altitude de la caméra AU-DESSUS de l'ISS avant le zoom (2 000 à 4 000 km : on voit la Terre courbe et la station comme un point)
   let issGo = 0;
-  const goIss = () => { if (!iss) return; if (cam.mode === 'iss' && cam.dist * R_KM < 3000) { issGo = 0; setViewLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist); return; } setMode('earth'); cam.goal.lon = iss.lon; cam.goal.lat = iss.lat; cam.goal.dist = 3.4; issGo = 1; };
+  const goIss = () => { if (!iss) return; if (cam.mode === 'iss' && cam.dist * R_KM < 3000) { issGo = 0; setViewLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist); return; } setMode('earth'); cam.goal.lon = iss.lon; cam.goal.lat = iss.lat; cam.goal.dist = iss.pos.length() + ISS_HOVER_KM / R_KM; issGo = 1; cam.slow = true; cam.tfly = cam.fly = 8; };   /* étape 1 : on tourne autour de la Terre pour se placer à ISS_HOVER_KM au-dessus de la station ; étape 2 (dans la boucle) : descente animée */
   // ---------- lancement d'un satellite (js/launch-3d.js) ----------
   const KM_UA = 149597870.7, KM_AL = 9.4607304725808e12;
   const fmtBig = km => { const fr = (v, d) => v.toLocaleString('fr-FR', { maximumFractionDigits: d }); return km >= 0.1 * KM_AL ? fr(km / KM_AL, 2) + ' al' : km >= 1e7 ? fr(km / KM_UA, km / KM_UA < 10 ? 2 : 1) + ' UA' : null; };   // null : rester en km
@@ -244,9 +245,9 @@
     }
     if (cam.tfly > 0 && !cam.issLock) { cam.tgt.lerp(goalTgt, 1 - Math.exp(-dt * (cam.slow ? 1.4 : 3.2))); cam.tfly -= dt; } else { cam.tgt.copy(goalTgt); if (cam.tfly > 0) cam.tfly -= dt; }
     // zoom : toujours amorti (jamais de saut), en altitude pour la Terre (sinon l'amortissement ne bouge plus près du sol)
-    if (issGo === 1) { cam.goal.lon = iss ? iss.lon : cam.goal.lon; cam.goal.lat = iss ? iss.lat : cam.goal.lat; if (iss && Math.abs(angDiff(cam.lon, iss.lon)) < 2 && Math.abs(cam.lat - iss.lat) < 2 && Math.abs(cam.dist - 3.4) < 0.25) { issGo = 2; const st0 = camera.position.clone(); setViewLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist);
+    if (issGo === 1) { if (iss) { cam.goal.lon = iss.lon; cam.goal.lat = iss.lat; cam.goal.dist = iss.pos.length() + ISS_HOVER_KM / R_KM; } if (iss && Math.abs(angDiff(cam.lon, iss.lon)) < 1.5 && Math.abs(cam.lat - iss.lat) < 1.5 && Math.abs(cam.dist - cam.goal.dist) < 0.06) { issGo = 2; const st0 = camera.position.clone(); setViewLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist);
       /* descente en ligne droite vers l'ISS : la cible colle à la station dès le départ (sinon la caméra traverserait la Terre), on part de la verticale de l'ISS et la direction tourne doucement vers la vue finale */
-      const dv = st0.clone().sub(iss.pos); cam.issLock = true; cam.tgt.copy(iss.pos); cam.dist = dv.length(); dv.normalize(); cam.lat = Math.asin(dv.y) / DEG; cam.lon = Math.atan2(-dv.z, dv.x) / DEG; cam.tfly = cam.fly = 0; cam.slow = false; cam.anim = { t: 0, T: 14, l0: Math.log(cam.dist), l1: Math.log(cam.goal.dist), lon0: cam.lon, lat0: cam.lat, lonG: cam.goal.lon, latG: cam.goal.lat }; } }
+      const dv = st0.clone().sub(iss.pos); cam.issLock = true; cam.tgt.copy(iss.pos); cam.dist = dv.length(); dv.normalize(); cam.lat = Math.asin(dv.y) / DEG; cam.lon = Math.atan2(-dv.z, dv.x) / DEG; cam.tfly = cam.fly = 0; cam.slow = false; cam.anim = { t: 0, T: 16, l0: Math.log(cam.dist), l1: Math.log(cam.goal.dist), lon0: cam.lon, lat0: cam.lat, lonG: cam.goal.lon, latG: cam.goal.lat }; } }
     if (cam.tfly <= 0) cam.slow = false;
     if (cam.anim) {   // descente vers l'ISS : la distance varie à vitesse régulière en échelle logarithmique (lissée au départ et à l'arrivée), la direction tourne vers la vue finale sur la fin
       const A = cam.anim, ease = u => u * u * u * (u * (6 * u - 15) + 10); A.t += dt; const u = Math.min(1, A.t / A.T), e = ease(u), e2 = ease(Math.max(0, Math.min(1, (u - 0.2) / 0.8)));
