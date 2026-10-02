@@ -96,21 +96,21 @@ const Guidance = {
 
 // ---------- orbite képlérienne dans le plan (sans traînée), pour prolonger un état orbital ----------
 // éléments d'un état (x, y, vx, vy) : demi-grand axe a, excentricité e, argument de périgée w (angle du périgée dans le plan), paramètre p, rp, ra, période T ; mouvement direct (h > 0)
-function phElements(x, y, vx, vy) {
-  const mu = PH.MU, r = Math.hypot(x, y), v2 = vx * vx + vy * vy, rv = x * vx + y * vy;
+function phElements(x, y, vx, vy, muArg) {
+  const mu = muArg || PH.MU, r = Math.hypot(x, y), v2 = vx * vx + vy * vy, rv = x * vx + y * vy;
   const ex = ((v2 - mu / r) * x - rv * vx) / mu, ey = ((v2 - mu / r) * y - rv * vy) / mu, e = Math.hypot(ex, ey), a = 1 / (2 / r - v2 / mu), p = a * (1 - e * e);
-  return { a, e, w: e < 1e-10 ? 0 : Math.atan2(ey, ex), p, rp: a * (1 - e), ra: a * (1 + e), T: 2 * Math.PI * Math.sqrt(a * a * a / mu), n: Math.sqrt(mu / (a * a * a)), nu0: Math.atan2(y, x) - (e < 1e-10 ? 0 : Math.atan2(ey, ex)) };
+  return { a, e, w: e < 1e-10 ? 0 : Math.atan2(ey, ex), p, rp: a * (1 - e), ra: a * (1 + e), T: 2 * Math.PI * Math.sqrt(a * a * a / mu), n: Math.sqrt(mu / (a * a * a)), mu, nu0: Math.atan2(y, x) - (e < 1e-10 ? 0 : Math.atan2(ey, ex)) };
 }
 // état après dt secondes sur l'orbite képlérienne
-function phKepler(s, dt) {
-  const el = phElements(s.x, s.y, s.vx, s.vy), e = el.e, E0 = 2 * Math.atan2(Math.sqrt(1 - e) * Math.sin(el.nu0 / 2), Math.sqrt(1 + e) * Math.cos(el.nu0 / 2));
+function phKepler(s, dt, muArg) {   // muArg : constante gravitationnelle du corps central (défaut : la Terre ; Lune : 4,9048695e12)
+  const el = phElements(s.x, s.y, s.vx, s.vy, muArg), e = el.e, E0 = 2 * Math.atan2(Math.sqrt(1 - e) * Math.sin(el.nu0 / 2), Math.sqrt(1 + e) * Math.cos(el.nu0 / 2));
   const M = E0 - e * Math.sin(E0) + el.n * dt; let E = M; for (let i = 0; i < 8; i++) E -= (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
-  const nu = 2 * Math.atan2(Math.sqrt(1 + e) * Math.sin(E / 2), Math.sqrt(1 - e) * Math.cos(E / 2)), r = el.a * (1 - e * Math.cos(E)), th = el.w + nu, k = Math.sqrt(PH.MU / el.p), vr = k * e * Math.sin(nu), vt = k * (1 + e * Math.cos(nu));
+  const nu = 2 * Math.atan2(Math.sqrt(1 + e) * Math.sin(E / 2), Math.sqrt(1 - e) * Math.cos(E / 2)), r = el.a * (1 - e * Math.cos(E)), th = el.w + nu, k = Math.sqrt(el.mu / el.p), vr = k * e * Math.sin(nu), vt = k * (1 + e * Math.cos(nu));
   return { x: r * Math.cos(th), y: r * Math.sin(th), vx: vr * Math.cos(th) - vt * Math.sin(th), vy: vr * Math.sin(th) + vt * Math.cos(th) };
 }
 // n points de l'orbite complète dans le plan
-function phOrbitPoints(s, n) {
-  const el = phElements(s.x, s.y, s.vx, s.vy), out = [];
+function phOrbitPoints(s, n, muArg) {
+  const el = phElements(s.x, s.y, s.vx, s.vy, muArg), out = [];
   for (let k = 0; k <= n; k++) { const nu = 2 * Math.PI * k / n, r = el.p / (1 + el.e * Math.cos(nu)), th = el.w + nu; out.push([r * Math.cos(th), r * Math.sin(th)]); }
   return out;
 }

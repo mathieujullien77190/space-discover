@@ -22,6 +22,7 @@ const SAT_TYPES = [
   { name: 'Navigation Galileo', km: 23222, payload: 2, scale: 1, desc: 'Orbite moyenne : 14 h par tour.' },
   { name: 'Télécom / météo géostationnaire', km: 35786, payload: 3, scale: 1.5, desc: 'Orbite géostationnaire : 24 h par tour, reste au-dessus d\'un point fixe de l\'équateur (si lancé depuis l\'équateur : sinon l\'orbite est inclinée de la latitude du site). Environ 5,6 h de transfert.' },
   { id: 'sputnik', story: 'sputnik', name: '📜 Histoire : Spoutnik 1 (1957)', km: 215, apoKm: 939, payload: 0.0836, scale: 1, site: 'baikonour', rocket: 'r7', az: Math.asin(Math.cos(65.1 * Math.PI / 180) / Math.cos(45.92 * Math.PI / 180)), desc: 'Le premier satellite artificiel (URSS) : fusée R-7 de Tiouratam, orbite elliptique 215 × 939 km inclinée de 65,1° (tir vers le nord-est, azimut ≈ 37°). Récit et photos à gauche.' },
+  { id: 'apollo11', story: 'apollo11', mission: 'apollo11', name: '📜 Histoire : Apollo 11 — premiers pas sur la Lune (1969)', km: 185, payload: 133, scale: 1, site: 'canaveral', rocket: 'saturnv', desc: 'Armstrong, Aldrin et Collins : Saturn V depuis le pas de tir 39A, orbite terrestre, injection translunaire, orbite lunaire, descente du LEM « Eagle » à la Mer de la Tranquillité, séjour, remontée, retour et amerrissage. Trajectoires calculées (Terre et Lune qui tournent). Récit et photos à gauche.' },
 ];
 const fmtPeriod = (km, apo) => { const T = 2 * Math.PI * Math.sqrt(Math.pow(LCH.RE + (apo != null ? (km + apo) / 2 : km) * 1000, 3) / LCH.MU) / 60; return T < 180 ? Math.round(T) + ' min' : (T / 60).toFixed(1).replace('.', ',') + ' h'; };
 const NOZ = { epc: 5.5, eap: 3.5, esc: 2.2 };   // longueur (m) des tuyères sous chaque étage : le feu naît à leur sortie (à régler ici)
@@ -29,7 +30,7 @@ const SLOW_FLOOR = 0.3, SLOW_HOLD = 3, SLOW_K = 2;   // ralenti aux étapes : vi
 const MU_M = 1e-3 / R_KM;   // unités de la scène par mètre
 class Launch {
   constructor(site, targetKm, payloadKg, satScale, opts) {
-    const L = LCH, o = opts || {}, spec = this.rocketSpec = (o.rocketId && ROCKETS[o.rocketId]) || rocketOf(site), az = o.az != null ? o.az : Math.PI / 2;   // az : azimut de tir (π/2 = plein est)
+    const L = LCH, o = opts || {}; this.inertial = !!o.inertial; const spec = this.rocketSpec = (o.rocketId && ROCKETS[o.rocketId]) || rocketOf(site), az = o.az != null ? o.az : Math.PI / 2;   // az : azimut de tir (π/2 = plein est)
     this.payloadUsed = Math.min(payloadKg || 9e3, spec.maxPayload * 0.9);   // charge limitée par la capacité de la fusée
     const sim = this.sim = simulateLaunch(targetKm, { lat: site.lat, payload: this.payloadUsed, az, rocket: spec, apoKm: o.apoKm });
     this.story = o.story || null; this.direct = !!(spec.phys && spec.phys.direct);   // story : mission historique (js/story.js) ; direct : le dernier étage met la charge en orbite
@@ -88,14 +89,14 @@ class Launch {
   zMain(T) { return this.crossV * this.crossTau * (1 - Math.exp(-T / this.crossTau)); }
   // plan inertiel (x vertical du site, y sens du tir) + décalage transversal z (m) -> repère de la Terre à l'instant T ; z : décalage de l'objet (par défaut celui du lanceur)
   toEF(x, y, T, out, z) {
-    const R = LCH.RE; return out.copy(this.s).multiplyScalar(x / R).addScaledVector(this.e, y / R).addScaledVector(this.n, (z != null ? z : this.zMain(T)) / R).applyAxisAngle(this.Y, -LCH.WE * T).multiplyScalar(PATCH_R);   // PATCH_R : le sol est la photo aérienne, posée un souffle au-dessus de la sphère
+    const R = LCH.RE; return out.copy(this.s).multiplyScalar(x / R).addScaledVector(this.e, y / R).addScaledVector(this.n, (z != null ? z : this.zMain(T)) / R).applyAxisAngle(this.Y, this.inertial ? 0 : -LCH.WE * T).multiplyScalar(PATCH_R);   // inertial : repère inertiel (missions lunaires : c'est la Terre qui tourne, pas la scène)   // PATCH_R : le sol est la photo aérienne, posée un souffle au-dessus de la sphère
   }
   // direction de la poussée (angle phi au-dessus de l'horizontale locale) dans le repère de la Terre
   dirEF(x, y, phi, T, out) {
     const r = Math.hypot(x, y), ux = x / r, uy = y / r, c = Math.cos(phi), sn = Math.sin(phi);
     // û = ux·s + uy·e ; ê' = −uy·s + ux·e
     out.copy(this.s).multiplyScalar(ux * sn - uy * c).addScaledVector(this.e, uy * sn + ux * c);
-    return out.applyAxisAngle(this.Y, -LCH.WE * T).normalize();
+    return out.applyAxisAngle(this.Y, this.inertial ? 0 : -LCH.WE * T).normalize();
   }
   // état du plan à T : échantillon interpolé, ou orbite circulaire après la fin
   stateAt(T) {
@@ -199,7 +200,7 @@ class Launch {
 
   // ---------- mise à jour ----------
   // options d'un élément (id d'étiquette) : trajectoire, vitesse, hauteur ; la fusée montre sa hauteur par défaut
-  elOpt(id) { const e = this.opt.el; if (!e[id]) e[id] = { traj: false, speed: true, alt: id === 'rocket' }; return e[id]; }
+  elOpt(id) { const e = this.opt.el; if (!e[id]) e[id] = { traj: !!(this.tagMap && this.tagMap[id] && this.tagMap[id].piece), speed: true, alt: id === 'rocket' }; /* les débris montrent leur trajectoire (on ne les suit plus) */ return e[id]; }
   // trajectoire (trait) et trait de hauteur d'un débris, créés à la demande selon ses options
   pieceExtras(p, pos, flying) {
     const eo = this.elOpt(p.tagKey || p.key), tmp = this._pe || (this._pe = new THREE.Vector3());
@@ -230,7 +231,7 @@ class Launch {
     this.mBoost.forEach(m => m.visible = !past('eap')); this.mFair.visible = !past('fairing'); this.mEpc.visible = !past('epcsep') && !coreGone;
     this.fBoost.forEach(f => f.visible = !!st.eap && !past('eap')); this.fEpc.visible = !!st.epc; this.fEsc.visible = !!st.esc;
     const fk = 0.85 + 0.3 * Math.random(); for (const f of [...this.fBoost, this.fEpc, this.fEsc]) if (f.visible) f.userData.cone.scale.set(1, fk, 1);
-    this.plan.visible = this.opt.plan; this.trail.visible = this.opt.trail; this.markPts.visible = this.markDrops.visible = this.opt.markers; this.ring.visible = !!this.sim.ok && this.opt.plan; this.ring.rotation.y = -LCH.WE * T; this.ring.children.forEach(c => { c.material.transparent = true; c.material.opacity = past('esc2end') ? 0.95 : 0.35; });   // orbite visée : pâle d'avance, vive une fois atteinte
+    this.plan.visible = this.opt.plan; this.trail.visible = this.opt.trail; this.markPts.visible = this.markDrops.visible = this.opt.markers; this.ring.visible = !!this.sim.ok && this.opt.plan; this.ring.rotation.y = this.inertial ? 0 : -LCH.WE * T; this.ring.children.forEach(c => { c.material.transparent = true; c.material.opacity = past('esc2end') ? 0.95 : 0.35; });   // orbite visée : pâle d'avance, vive une fois atteinte
     // sillage
     const n = Math.min(this.trailN, st.idx + 1), tp = this.trailPos; tp.set([this.pos.x, this.pos.y, this.pos.z], 3 * n);
     this.trail.geometry.setDrawRange(0, n + 1); this.trail.geometry.attributes.position.needsUpdate = true;
@@ -244,7 +245,7 @@ class Launch {
     // débris
     const camP = camera ? camera.position : null;
     const px = (len, p) => camP ? (len / 1000 / Math.max(1e-9, camP.distanceTo(p) * R_KM)) / (2 * Math.tan(25 * DEG)) * innerHeightSafe() : 100;
-    const tmpP = new THREE.Vector3(), side = this.n.clone().applyAxisAngle(this.Y, -LCH.WE * T);
+    const tmpP = new THREE.Vector3(), side = this.n.clone().applyAxisAngle(this.Y, this.inertial ? 0 : -LCH.WE * T);
     for (const t of this.tagList) if (t.piece) { t.on = false; t.text = t.base; t.speed = null; t.alt = null; }
     for (const p of this.pieces) {
       const tau = T - p.e.t; p.g.visible = tau >= 0 && tau < p.path.length;
@@ -314,9 +315,9 @@ function buildLaunchPanel(box, hooks) {
   const go = el('button', { textContent: '🚀 Lancer', className: 'go' });
   const msg = el('div', { className: 'lmsg' }), tel = el('pre', { className: 'ltel' }), evs = el('div', { className: 'levs' });
   const speeds = el('div'), spBtns = [];
-  [['⏸', 0], ['×1', 1], ['×5', 5], ['×20', 20], ['×60', 60], ['×200', 200], ['×1000', 1000], ['×5000', 5000]].forEach(([n, v]) => { const b = el('button', { textContent: n, onclick: () => hooks.speed(v) }); spBtns.push([b, v]); speeds.append(b); });
-  const slow = el('button', { textContent: '🐢 Ralenti extrême aux étapes', className: 'on', title: 'Ralentit à fond (×0,25) autour de chaque étape pour voir les boosters partir, et ouvre la bulle en bas', onclick: () => { slow.classList.toggle('on'); hooks.slow(slow.classList.contains('on')); } }), cam = el('button', { textContent: '🎥 Caméra auto', onclick: () => hooks.cam() });
-  const run = el('div', { hidden: true }, tel, speeds, el('div', {}, slow, cam));
+  [['⏸', 0], ['×1', 1], ['×5', 5], ['×20', 20], ['×60', 60], ['×200', 200], ['×1000', 1000], ['×5000', 5000], ['×20000', 20000], ['×100000', 100000]].forEach(([n, v]) => { const b = el('button', { textContent: n, onclick: () => hooks.speed(v) }); spBtns.push([b, v]); speeds.append(b); });
+  const zoomB = el('button', { textContent: '🔍 Zoom fusée', title: 'Zoome pour qu’on voie bien la fusée (ou le vaisseau)', onclick: () => hooks.zoom() }), cam = el('button', { textContent: '🎥 Caméra auto', onclick: () => hooks.cam() });
+  const run = el('div', { hidden: true }, tel, speeds, el('div', {}, cam, zoomB));
   let running = false;   // un vol est en cours (et non un simple aperçu) : le bouton devient « Arrêter »
   const syncGo = () => { go.textContent = running ? '⏹ Arrêter' : '🚀 Lancer'; go.classList.toggle('stop', running); };
   go.onclick = () => { if (running) hooks.stop(); else hooks.start(LAUNCH_SITES[+sel.value], chosen()); };
@@ -385,39 +386,5 @@ function buildTimeline(box, hooks) {
   };
 }
 
-// ---------- options d'affichage de la mission ----------
-// Réglages partagés entre les lancements : affichage général + options par élément (fusée, charge utile, et chaque chose que la mission perd : boosters, coiffe, étage principal) : trajectoire, vitesse, hauteur.
+// ---------- réglages d'affichage de la mission (plus de panneau : valeurs fixes) ----------
 function launchOptDefault() { return { plan: true, markers: true, trail: true, names: true, el: {} }; }
-function buildOptionsPanel(box) {
-  const el = (tag, props, ...kids) => { const e = Object.assign(document.createElement(tag), props || {}); e.append(...kids); return e; };
-  let cur = null, liveCells = [];
-  const fmtLive = t => { if (!t.on) return '—'; const p = []; if (t.speed != null) p.push((t.speed / 1000).toFixed(2).replace('.', ',') + ' km/s'); if (t.alt != null) p.push(t.alt < 10000 ? Math.round(t.alt).toLocaleString('fr-FR') + ' m' : (t.alt / 1000 < 1000 ? (t.alt / 1000).toFixed(1).replace('.', ',') : Math.round(t.alt / 1000).toLocaleString('fr-FR')) + ' km'); return p.join(' · ') || '—'; };
-  const check = (get, set, title) => { const cb = el('input', { type: 'checkbox', checked: !!get(), title: title || '' }); cb.onchange = () => set(cb.checked); return cb; };
-  return {
-    clear() { cur = null; liveCells = []; box.innerHTML = ''; box.append(el('b', { textContent: '🎛 Éléments de la mission' }), el('div', { className: 'ldesc', textContent: 'Choisis un satellite dans « 🚀 Lancement » : les éléments de la mission (fusée, boosters, coiffe…) apparaîtront ici.' })); },
-    show(launch) {
-      cur = launch; liveCells = []; box.innerHTML = '';
-      const o = launch.opt, head = el('div', { className: 'ohead' }, el('b', { textContent: '🎛 Éléments de la mission' }), el('button', { textContent: '✖', title: 'Fermer', onclick: () => { box.hidden = true; document.getElementById('bOpts').classList.remove('on'); } }));
-      const gen = el('div', { className: 'ogen' }, el('div', { className: 'osub', textContent: 'Affichage général' }),
-        el('label', {}, check(() => o.plan, v => { o.plan = v; }), ' trajectoire prévue et orbite visée'), el('label', {}, check(() => o.trail, v => { o.trail = v; }), ' sillage de la fusée'),
-        el('label', {}, check(() => o.markers, v => { o.markers = v; }), ' étapes sur la trajectoire (points, noms, hauteurs)'), el('label', {}, check(() => o.names, v => { o.names = v; }), ' noms des éléments'));
-      const tbl = el('table', { className: 'otbl' }); tbl.append(el('tr', {}, el('th', { textContent: 'Élément' }), el('th', { textContent: 'Trajet', title: 'trait de la trajectoire' }), el('th', { textContent: 'Vitesse' }), el('th', { textContent: 'Haut.', title: 'hauteur : valeur et trait vertical' }), el('th', { textContent: 'En direct' })));
-      const rows = [], addRow = (t, withTraj) => {
-        const eo = launch.elOpt(t.id), cbs = {}; const tr = el('tr', {}, el('td', { textContent: t.base }));
-        for (const k of ['traj', 'speed', 'alt']) { const td = el('td'); if (k !== 'traj' || withTraj) { cbs[k] = check(() => eo[k], v => { eo[k] = v; }); td.append(cbs[k]); } tr.append(td); }
-        const live = el('td', { className: 'olive' }); liveCells.push([t, live]); tr.append(live); tbl.append(tr); rows.push({ t, eo, cbs, withTraj });
-      };
-      launch.tagList.forEach(t => { if (!t.piece) addRow(t, false); });
-      const pieces = launch.tagList.filter(t => t.piece);
-      if (pieces.length) {
-        tbl.append(el('tr', { className: 'osep' }, el('td', { colSpan: 5, textContent: 'Ce que la mission perd en route' })));
-        const all = el('tr', { className: 'oall' }, el('td', { textContent: 'tous' }));
-        for (const k of ['traj', 'speed', 'alt']) { const cb = el('input', { type: 'checkbox' }); cb.onchange = () => rows.forEach(r => { if (r.t.piece && r.cbs[k]) { r.eo[k] = cb.checked; r.cbs[k].checked = cb.checked; } }); all.append(el('td', {}, cb)); }
-        all.append(el('td')); tbl.append(all);
-        pieces.forEach(t => addRow(t, true));
-      }
-      box.append(head, gen, tbl);
-    },
-    update(launch) { if (!cur) return; for (const [t, td] of liveCells) { const s = fmtLive(t); if (td.textContent !== s) td.textContent = s; } },
-  };
-}

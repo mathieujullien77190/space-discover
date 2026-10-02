@@ -6,13 +6,14 @@
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(50, 1, 0.001, 200);
-  const world = new THREE.Group(); scene.add(world);   // tout ce qui est décalé à l'affichage (origine flottante près de l'ISS : précision au mètre)
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(50, 1, 0.001, 4000);
+  const world = new THREE.Group(); scene.add(world);
+  const inertial = new THREE.Group(); scene.add(inertial);   // missions lunaires : repère inertiel (la Terre tourne : world.rotation.y), décalé comme world   // tout ce qui est décalé à l'affichage (origine flottante près de l'ISS : précision au mètre)
   const earth = buildEarth(renderer); world.add(earth);
 
   // fond d'étoiles
   const sp = new Float32Array(3 * 3000), tmp = new THREE.Vector3();
-  for (let i = 0; i < 3000; i++) { tmp.set(Math.random() - .5, Math.random() - .5, Math.random() - .5).normalize().multiplyScalar(90); sp.set([tmp.x, tmp.y, tmp.z], 3 * i); }
+  for (let i = 0; i < 3000; i++) { tmp.set(Math.random() - .5, Math.random() - .5, Math.random() - .5).normalize().multiplyScalar(1500); sp.set([tmp.x, tmp.y, tmp.z], 3 * i); }
   const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3));
   scene.add(new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: 1.3, sizeAttenuation: false, depthWrite: false })));
 
@@ -49,7 +50,7 @@
     cam.mode = m; cam.fly = 2.2; cam.tfly = 2.2;
     document.getElementById('bEarth').classList.toggle('on', m === 'earth');
     document.getElementById('bIss').classList.toggle('on', m === 'iss');
-    if (m === 'launch') cam.userDir = false;   // caméra auto de la fusée (réglée dans la boucle)
+    if (m === 'launch') { cam.userDir = false; }   // caméra auto de la fusée (réglée dans la boucle)
     if (m === 'iss' && iss) {   // on regarde l'ISS d'en haut, un peu de côté (la Terre en fond)
       const side = new THREE.Vector3().crossVectors(iss.up, iss.vel).normalize(), v = iss.up.clone().addScaledVector(side, 0.55).normalize();
       cam.goal.lat = Math.asin(v.y) / DEG; cam.goal.lon = Math.atan2(-v.z, v.x) / DEG; cam.goal.dist = 0.25 / R_KM;   // 250 m : la station (109 m) remplit bien l'écran
@@ -132,35 +133,34 @@
     let ang = Math.atan2(hit[1][1] - hit[0][1], hit[1][0] - hit[0][0]) * 180 / Math.PI; if (ang > 90) ang -= 180; else if (ang < -90) ang += 180;
     el.style.display = 'block'; el.style.transform = `translate(${hit[0][0]}px,${hit[0][1]}px) translate(-50%,-130%) rotate(${ang}deg)`; return true;
   }
+  const Y_AXIS = new THREE.Vector3(0, 1, 0);
   let launch = null, evLabels = [], tagEls = [], slowOn = true, lastSel = null; const lbox = document.getElementById('launchPanel');
   // crée la mission (aperçu : à l'arrêt, vue de la Terre entière centrée sur le site ; sinon vol : caméra de la fusée)
-  const optShared = launchOptDefault(), optUI = buildOptionsPanel(document.getElementById('optPanel')); optUI.clear();
-  document.getElementById('bOpts').onclick = e => { const p = document.getElementById('optPanel'); p.hidden = !p.hidden; e.currentTarget.classList.toggle('on', !p.hidden); };
+  const optShared = launchOptDefault();
   const storyUI = buildStoryPanel(document.getElementById('story')), tl = buildTimeline(document.getElementById('timeline'), { jump: T => { if (launch) launch.jump(T); }, hold: on => { if (!launch) return; if (on) { launch._was = launch.playing; launch.playing = false; } else { if (launch._was) launch.playing = true; launch._was = false; } } });
   function makeLaunch(site, type, preview) {
     evLabels.forEach(e => e.remove()); tagEls.forEach(e => e.remove());
     if (launch) launch.dispose();
-    launch = new Launch(site, type.km, type.payload * 1000, type.scale, { az: type.az, rocketId: type.rocket, apoKm: type.apoKm, story: type.story, opt: optShared }); world.add(launch.group);
-    tagEls = launch.tagList.map(t => { const el = document.createElement('div'); el.className = 'l3d tag'; el.textContent = t.text; el.title = 'Cliquer pour suivre'; el.onclick = () => { if (!launch || launch.preview) return; launch.follow = t.id; cam.userDir = false; cam.launchK = 1; setMode('launch'); }; document.body.appendChild(el); return el; });
+    launch = type.mission === 'apollo11' ? new ApolloMission({ opt: optShared }) : new Launch(site, type.km, type.payload * 1000, type.scale, { az: type.az, rocketId: type.rocket, apoKm: type.apoKm, story: type.story, opt: optShared }); (launch.inertial ? inertial : world).add(launch.group);
+    tagEls = launch.tagList.map(t => { const el = document.createElement('div'); el.className = 'l3d tag'; el.textContent = t.text; if (!t.piece) el.title = 'Cliquer pour suivre'; else el.style.cursor = 'default'; el.onclick = () => { if (!launch || launch.preview || t.piece) return; launch.follow = t.id; cam.userDir = false; cam.launchK = 1; setMode('launch'); }; document.body.appendChild(el); return el; });
     evLabels = launch.markers.map(mk => { const el = document.createElement('div'); el.className = 'l3d evl'; el.textContent = fmtT(mk.t) + ' ' + mk.label + ' · ' + fmtAlt(mk.altKm); document.body.appendChild(el); return el; });
     launch.stepPause = slowOn; launch.preview = !!preview; lastSel = { site, type };
-    if (preview) { launch.playing = false; setMode('earth'); cam.goal.lon = site.lon; cam.goal.lat = site.lat * 0.6; cam.goal.dist = Math.max(3.4, 1 + 1.6 * (1 + type.km / 6378)); }
+    if (preview) { launch.playing = false; setMode('earth'); if (launch.previewDir) { const d = launch.previewDir; cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; cam.goal.dist = launch.previewDist; cam.lon = cam.goal.lon; cam.lat = cam.goal.lat; cam.dist = cam.goal.dist; } else { cam.goal.lon = site.lon; cam.goal.lat = site.lat * 0.6; cam.goal.dist = Math.max(3.4, 1 + 1.6 * (1 + type.km / 6378)); } }
     else { cam.launchK = 1; setMode('launch'); }
     lp.show(launch);
     if (type.story && STORIES[type.story]) storyUI.show(STORIES[type.story]); else storyUI.hide();
-    optUI.show(launch);
     tl.show(launch, type.story && STORIES[type.story]);   // frise du temps en bas de l'écran   // mission historique : récit et photos
   }
   const lp = buildLaunchPanel(lbox, {
     start(site, type) { makeLaunch(site, type, false); },
     preview(site, type) { if (launch && !launch.preview && launch.T > 0) return; makeLaunch(site, type, true); },   // aperçu : trajectoire prévue et étapes dès le choix du satellite (sans casser un vol en cours)
-    slow(on) { slowOn = on; if (launch) launch.stepPause = on; },
     stop() { if (lastSel) makeLaunch(lastSel.site, lastSel.type, true); },   // « Arrêter » : retour à l'aperçu du même choix
     speed(v) { if (!launch) return; if (v === 0) launch.playing = false; else { launch.playing = true; launch.speed = v; if (launch.preview) { launch.preview = false; cam.launchK = 1; setMode('launch'); } } },   // lecture depuis l'aperçu : le vol démarre
     jump(T) { if (launch) launch.jump(T); },
     next() { if (!launch) return; const e = [{ t: 0 }].concat(launch.sim.events).find(x => x.t > launch.T + 1.5); if (e) launch.jump(Math.max(0, e.t - 1)); },
-    cam() { cam.userDir = false; cam.launchK = 1; if (launch) launch.follow = 'rocket'; if (cam.mode !== 'launch' && launch) setMode('launch'); },
-    quit() { evLabels.forEach(e => e.remove()); evLabels = []; tagEls.forEach(e => e.remove()); tagEls = []; hLabel.style.display = 'none'; vLabel.style.display = 'none'; tl.hide(); optUI.clear(); if (launch) { launch.dispose(); launch = null; } lp.hide(); if (cam.mode === 'launch') setMode('earth'); },
+    zoom() { if (!launch) return; cam.userDir = false; cam.zoomFit = true; launch.follow = 'rocket'; if (launch.preview) { launch.preview = false; launch.playing = true; } setMode('launch'); },
+    cam() { cam.zoomFit = false; cam.userDir = false; cam.launchK = 1; if (launch) launch.follow = 'rocket'; if (cam.mode !== 'launch' && launch) setMode('launch'); },
+    quit() { evLabels.forEach(e => e.remove()); evLabels = []; tagEls.forEach(e => e.remove()); tagEls = []; hLabel.style.display = 'none'; vLabel.style.display = 'none'; tl.hide(); if (launch) { launch.dispose(); launch = null; } lp.hide(); if (cam.mode === 'launch') setMode('earth'); },
   });
   const SITE_R = 1 + 1e-5;   // les points des sites sont posés AU SOL (64 m au-dessus de la sphère : pas de scintillement de profondeur)
   // sites de lancement sur la carte : points + noms cliquables (choisit le site dans le panneau)
@@ -171,7 +171,7 @@
   document.getElementById('bLaunch').onclick = e => {
     lbox.hidden = !lbox.hidden; e.currentTarget.classList.toggle('on', !lbox.hidden);
     if (!lbox.hidden) lp.preview();   // ouverture : aperçu du choix courant
-    else if (launch && launch.preview) { evLabels.forEach(x => x.remove()); evLabels = []; tagEls.forEach(x => x.remove()); tagEls = []; launch.dispose(); launch = null; hLabel.style.display = 'none'; vLabel.style.display = 'none'; lp.hide(); storyUI.hide(); tl.hide(); optUI.clear(); }   // fermeture : on retire l'aperçu
+    else if (launch && launch.preview) { evLabels.forEach(x => x.remove()); evLabels = []; tagEls.forEach(x => x.remove()); tagEls = []; launch.dispose(); launch = null; hLabel.style.display = 'none'; vLabel.style.display = 'none'; lp.hide(); storyUI.hide(); tl.hide(); }   // fermeture : on retire l'aperçu
   };
   document.getElementById('bBehind').onclick = () => setViewLocal(VIEW_BEHIND.yaw, VIEW_BEHIND.pitch, VIEW_BEHIND.dist);
   document.getElementById('bCopy').onclick = () => { const t = viewTxt.dataset.json || ''; try { navigator.clipboard.writeText(t); } catch (e) {} const r = document.createRange(); r.selectNodeContents(viewJson); getSelection().removeAllRanges(); getSelection().addRange(r); };
@@ -197,7 +197,7 @@
     const goalTgt = cam.mode === 'iss' && iss ? iss.pos : cam.mode === 'launch' && launch ? launch.focusPos : tmp.set(0, 0, 0);
     if (cam.mode === 'launch' && launch) {   // caméra auto : sur le côté de la trajectoire, de plus en plus loin ; le zoom manuel multiplie la distance
       if (!cam.userDir) { const d = launch.camDir; cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; }
-      const auto = launch.camDistKm / R_KM; cam.launchK = Math.max(0.02 / launch.camDistKm, Math.min(cam.launchK, 41 / auto));   // de 20 m de la fusée (à toute altitude) jusqu'à la Terre entière
+      const auto = launch.camDistKm / R_KM; if (cam.zoomFit) cam.launchK = (launch.zoomLenM || launch.rocketLen) * 1.5 / 1000 / launch.camDistKm; cam.launchK = Math.max(0.02 / launch.camDistKm, Math.min(cam.launchK, (launch.maxDistU || 41) / auto));   // de 20 m de la fusée (à toute altitude) jusqu'à la Terre entière
       cam.goal.dist = auto * cam.launchK;
     }
     if (cam.tfly > 0) { cam.tgt.lerp(goalTgt, 1 - Math.exp(-dt * 3.2)); cam.tfly -= dt; } else cam.tgt.copy(goalTgt);
@@ -213,11 +213,11 @@
     camera.position.copy(cam.tgt).addScaledVector(dirv, cam.dist);
     camera.up.set(0, 1, 0); camera.lookAt(cam.tgt); camera.updateMatrixWorld();
     const closest = Math.max(1e-7, Math.min(cam.dist, camera.position.length() - 1) * 0.05);
-    camera.near = Math.min(0.05, closest); camera.far = 200; camera.updateProjectionMatrix();
+    camera.near = Math.min(0.05, closest); camera.far = 4000; camera.updateProjectionMatrix();
 
     // lumière
     if (realSun) { sun.position.copy(subsolar(date)).multiplyScalar(10); amb.intensity = 0.22; }
-    else { sun.position.copy(camera.position).normalize().add(tmp.set(0.4, 0.5, 0.2)).multiplyScalar(10); amb.intensity = 0.55; }
+    else { sun.position.copy(launch && launch.inertial ? camera.position.clone().sub(cam.tgt).normalize() : camera.position.clone().normalize()).add(tmp.set(0.4, 0.5, 0.2)).multiplyScalar(10); amb.intensity = 0.55; }
 
     // ISS
     issScreen = null; label.style.display = 'none';
@@ -304,10 +304,10 @@
     }
     // photos aériennes : chargées quand la caméra est à moins de 1 500 km, affichées sous 700 km ; traits de côte et frontières masqués dessus (vue de près : ils flotteraient au-dessus de la photo)
     {
-      const camAlt = (camera.position.length() - 1) * R_KM, cl = Math.asin(camera.position.y / camera.position.length()) / DEG, co = Math.atan2(-camera.position.z, camera.position.x) / DEG;
+      const camE = launch && launch.inertial ? camera.position.clone().applyAxisAngle(Y_AXIS, -LCH.WE * launch.T) : camera.position, camAlt = (camE.length() - 1) * R_KM, cl = Math.asin(camE.y / camE.length()) / DEG, co = Math.atan2(-camE.z, camE.x) / DEG;
       let inside = false;
       for (const p of PHOTO_PATCHES) {
-        const [w, e, s, n] = p.bounds, dKm = camera.position.distanceTo(ll((w + e) / 2, (s + n) / 2)) * R_KM;
+        const [w, e, s, n] = p.bounds, dKm = camE.distanceTo(ll((w + e) / 2, (s + n) / 2)) * R_KM;
         if (dKm < (p.loadKm || 1500) && /^https?:/.test(location.protocol)) loadPatch(p, renderer, earth);
         if (p.mesh && dKm > 4000) unloadPatch(p, earth);
         if (p.mesh) { p.mesh.visible = dKm < p.hideKm; if (p.mesh.visible && camAlt < 60 && co > w && co < e && cl > s && cl < n) inside = true; }
@@ -333,7 +333,7 @@
 
     infoT -= dt;
     if (infoT <= 0) {
-      infoT = 0.2; if (launch) { lp.update(launch); storyUI.update(launch); optUI.update(launch); }
+      infoT = 0.2; if (launch) { lp.update(launch); storyUI.update(launch); }
       const altCam = (camera.position.length() - 1) * R_KM, f = v => v >= 1000 ? Math.round(v).toLocaleString('fr-FR') : v.toFixed(v < 10 ? 1 : 0);
       let t = `Caméra : ${f(altCam)} km d'altitude` + (cam.mode === 'iss' ? ` · ${f(cam.dist * R_KM)} km de l'ISS` : '');
       if (iss) t += `\nISS : ${f(iss.alt)} km · ${iss.speed.toFixed(2)} km/s (${Math.round(iss.speed * 3600).toLocaleString('fr-FR')} km/h) · ${Math.abs(iss.lat).toFixed(1)}°${iss.lat < 0 ? 'S' : 'N'} ${Math.abs(iss.lon).toFixed(1)}°${iss.lon < 0 ? 'O' : 'E'}`;
@@ -348,7 +348,9 @@
     }
     // origine flottante : près de l'ISS, on recentre le monde sur elle pour rendre sans perte de précision
     const shift = cam.mode === 'launch' && launch ? launch.focusPos : iss && camera.position.distanceTo(iss.pos) * R_KM < 3000 ? iss.pos : null, saved = camera.position.clone();
+    world.rotation.y = launch && launch.inertial ? LCH.WE * launch.T : 0;   // missions lunaires : la Terre tourne dans l'espace inertiel
     if (shift) { world.position.copy(shift).negate(); camera.position.sub(shift); camera.updateMatrixWorld(); } else world.position.set(0, 0, 0);
+    inertial.position.copy(world.position);
     renderer.render(scene, camera);
     camera.position.copy(saved); camera.updateMatrixWorld();
     requestAnimationFrame(frame);

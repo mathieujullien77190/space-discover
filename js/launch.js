@@ -24,6 +24,8 @@ function lchElements(r, vr, vt) {
 }
 
 const LCH_NAMES = {"eap":"Séparation des boosters à poudre","fairing":"Largage de la coiffe","meco":"Arrêt du moteur principal","epcsep":"Séparation de l’étage principal","esc1":"Allumage de l’étage supérieur","esc1end":"Fin de la 1re poussée","esc2":"Allumage à l’apogée (circularisation)","esc2end":"Extinction : orbite atteinte","sat":"Satellite largué"};
+// interpolation linéaire d'une table [[t, valeur], …]
+const lchInterp = (tab, t) => { if (t <= tab[0][0]) return tab[0][1]; for (let i = 1; i < tab.length; i++) if (t <= tab[i][0]) return tab[i - 1][1] + (tab[i][1] - tab[i - 1][1]) * (t - tab[i - 1][0]) / (tab[i][0] - tab[i - 1][0]); return tab[tab.length - 1][1]; };
 // simulation complète ; target = altitude visée (km). Retourne { samples, events, orbit, ok, ... }
 function simulateLaunch(targetKm, opt) {
   const o = Object.assign({ payload: 9e3 }, opt || {}), L = Object.assign({}, LCH, (o.rocket && o.rocket.phys) || {}), N = Object.assign({}, LCH_NAMES, (o.rocket && o.rocket.names) || {}), dt = L.DT,   // o.rocket : fusée de js/rockets.js (phys remplace les étages, names les libellés)
@@ -56,7 +58,8 @@ function simulateLaunch(targetKm, opt) {
     if (L.direct && tCut !== null && !done && t >= tCut + (L.satDelay || 10)) { done = true; phase = 'en orbite'; ev(N.esc2end, 'esc2end'); }   // insertion directe : pas d'étage supérieur, le satellite se sépare du dernier étage peu après l'arrêt du moteur
     // commande de poussée : angle de la poussée au-dessus de l'horizontale locale (φ)
     let phi = Math.PI / 2;
-    if (t >= L.kickAt && t < L.kickAt + L.kickDur) phi = Math.PI / 2 - L.kick * Math.PI / 180;
+    if (L.pitchProg && t < L.pitchEnd) phi = lchInterp(L.pitchProg, t) * Math.PI / 180;   // programme de tangage imposé (ex. Saturn V : le virage gravitationnel pur ne convient pas à un rapport poussée/poids de 1,1)
+    else if (t >= L.kickAt && t < L.kickAt + L.kickDur) phi = Math.PI / 2 - L.kick * Math.PI / 180;
     else if (t >= L.kickAt + L.kickDur) {
       const gt = Math.atan2(vrx * ux + vry * uy, vrx * ex + vry * ey);   // angle de la vitesse relative à l'air
       if (eapAttached || t < L.sepEap + 20) phi = gt;                       // virage gravitationnel

@@ -3,7 +3,7 @@ function attachControls(canvas, cam, onClick) {
   const ptrs = new Map(); let pinch = 0, moved = 0;
   const tanH = () => Math.tan(cam.fov * DEG / 2);
   const zoom = f => {   // f > 1 = on s'éloigne
-    if (cam.mode === 'launch') cam.launchK = Math.max(1e-7, Math.min(1e7, cam.launchK * f));   // zoom manuel sur la caméra auto de la fusée
+    if (cam.mode === 'launch') { cam.zoomFit = false; cam.launchK = Math.max(1e-7, Math.min(1e7, cam.launchK * f)); }   // zoom manuel sur la caméra auto de la fusée
     else if (cam.mode === 'earth') cam.goal.dist = 1 + Math.min(40, Math.max(2 / R_KM, (cam.goal.dist - 1) * f));   // on zoome sur l'altitude (min 2 km)
     else cam.goal.dist = Math.min(41, Math.max(0.1 / R_KM, cam.goal.dist * f));                                    // autour de l'ISS (min 100 m)
     
