@@ -178,10 +178,10 @@ class Launch {
     // les meshes de débris sont des copies centrées sur leur milieu
     const centered = (src, mid) => { const g = new THREE.Group(), c = src.clone(); c.position.set(0, c.position.y - mid, 0); g.add(c); return g; };
     const bo = mo.boosters, fa = mo.fairing, core = mo.core;
-    if (bo) { const h = bo.h + (bo.nose || 0) + mo.noz.eap; this.mBoost.forEach((m, k) => mkPiece('eap', { name: nm.booster, dry: ph.eap.dry, prop: 0, shape: { type: 'cyl', r: bo.r, h } }, centered(m, (bo.h + (bo.nose || 0)) / 2), this.boostPos[k], bo.R, 0, 'eap' + (k + 1), true)); }
+    if (bo) { const h = bo.h + (bo.nose || 0) + mo.noz.eap; this.mBoost.forEach((m, k) => mkPiece('eap', { name: nm.booster, dry: ph.eap.dry, prop: 0, shape: { type: 'cyl', r: bo.r, h } }, centered(m, (bo.h + (bo.nose || 0)) / 2), this.boostPos[k], bo.R, 0, 'eap' + (k + 1), false)); }
     const fairModel = { name: 'Coiffe (moitié)', dry: ph.fairing / 2, prop: 0, shape: { type: 'shell', r: fa.r, h: fa.cyl + fa.cone / 2 } }, fairMid = core.h + mo.upper.h + (fa.cyl + fa.cone) / 2;
-    mkPiece('fairing', fairModel, centered(this.mFair, fairMid), [0, 1], fa.r * 0.6, 0.4, 'fairA', true);
-    mkPiece('fairing', fairModel, centered(this.mFair, fairMid), [0, -1], fa.r * 0.6, -0.4, 'fairB', true);
+    mkPiece('fairing', fairModel, centered(this.mFair, fairMid), [0, 1], fa.r * 0.6, 0.4, 'fairA', false);
+    mkPiece('fairing', fairModel, centered(this.mFair, fairMid), [0, -1], fa.r * 0.6, -0.4, 'fairB', false);
     mkPiece('epcsep', { name: nm.stage1, dry: ph.epc.dry, prop: ph.epc.prop * 0.02, shape: { type: 'cyl', r: core.r, h: core.h + mo.noz.epc } }, centered(this.mEpc, core.h / 2), [0, 0], 0, 0.05, 'epc', true);
     if (ph.direct) mkPiece('sat', { name: nm.stage1, dry: ph.epc.dry, prop: ph.epc.prop * 0.01, shape: { type: 'cyl', r: core.r, h: core.h + mo.noz.epc } }, centered(this.mEpc, core.h / 2), [0, 0], 0, 0.02, 'epc', false);   // le bloc central reste en orbite derrière le satellite (c'est lui qu'on voyait à l'œil nu)
   }
