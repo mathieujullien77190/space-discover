@@ -15,7 +15,7 @@
   // espace inertiel : Soleil (taille réelle), Lune réelle, orbite de la Terre autour du Soleil, trajectoire de la Lune. Le groupe `solar` est tourné de −GMST dans les vues « Terre fixe » (le Soleil et la Lune font le tour en un jour)
   // et pas tourné dans la vue « Soleil / Lune » (où c'est la Terre qui tourne : world.rotation.y = GMST). Créé peu après le démarrage (texture de la Lune ~0,3 s).
   const solar = new THREE.Group(); scene.add(solar);
-  let moonPast = null, moonFut = null, sunRule = null, moonRule = null, earthRule = null, metric = false, moonMesh = null, sunMesh = null, orbitG = null, moonLoop = null, loopD = -1e9, earthDot = null, moonDot = null, solarTarget = 'earth';
+  let moonPast = null, moonFut = null, metric = false, moonMesh = null, sunMesh = null, orbitG = null, moonLoop = null, loopD = -1e9, earthDot = null, moonDot = null, solarTarget = 'earth';
   const mkLabel = text => { const el = document.createElement('div'); el.className = 'l3d'; el.textContent = text; el.style.display = 'none'; document.body.appendChild(el); return el; };
   const moonLabel = mkLabel('Lune'), sunLabel = mkLabel('Soleil (taille réelle)'), earthLabel = mkLabel('Terre');
   const dotOf = color => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3)); const p = new THREE.Points(g, new THREE.PointsMaterial({ color, size: 7, sizeAttenuation: false, depthWrite: false })); p.frustumCulled = false; solar.add(p); return p; };
@@ -30,9 +30,6 @@
     moonLoop = new THREE.Group(); solar.add(moonLoop);   // trace de la Lune : le passé (un tour complet, s'estompe vers le début) et l'avenir (pâle)
     const mkTrail = (n, op) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); const l = new THREE.Line(g, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: op })); l.frustumCulled = false; moonLoop.add(l); return l; };
     moonPast = mkTrail(121, 1); moonFut = mkTrail(61, 0.45);
-    // règles de mesure (diamètres) du Soleil et de la Lune, tracées dans le repère du groupe solar
-    const mkRule = () => { const l = new THREE.Line(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3)), new THREE.LineBasicMaterial({ color: 0x4fd8ff, depthTest: false, transparent: true })); l.frustumCulled = false; l.renderOrder = 10; solar.add(l); return l; };
-    sunRule = mkRule(); moonRule = mkRule(); earthRule = mkRule();
     earthDot = dotOf(0x5ab0ff); moonDot = dotOf(0xdddddd);
   }
   setTimeout(buildSolar, 400);
@@ -306,10 +303,8 @@
       }
       { const P = moonPast.geometry.attributes.position; P.setXYZ(120, moonV.x, moonV.y, moonV.z); P.needsUpdate = true; const F = moonFut.geometry.attributes.position; F.setXYZ(0, moonV.x, moonV.y, moonV.z); F.needsUpdate = true; }   // la trace colle à la Lune à chaque image
       moonLoop.visible = solarMode || camera.position.length() > 8;
-      // règles de mesure : diamètre vu de face (segment le long de la droite de l'écran), étiquettes avec la valeur
-      { const e = camera.matrixWorld.elements, rt = new THREE.Vector3(e[0], e[1], e[2]).applyAxisAngle(Y_AXIS, -rotS), fr = n => n.toLocaleString('fr-FR', { maximumFractionDigits: 0 });
-        const setRule = (rule, C, R) => { rule.visible = metric; if (!metric) return; const a = rule.geometry.attributes.position; a.setXYZ(0, C.x - rt.x * R, C.y - rt.y * R, C.z - rt.z * R); a.setXYZ(1, C.x + rt.x * R, C.y + rt.y * R, C.z + rt.z * R); a.needsUpdate = true; };
-        setRule(sunRule, sunV, SUN_R_U); setRule(moonRule, moonV, MOON_R); setRule(earthRule, new THREE.Vector3(), 1);
+      // mesures : seulement la taille (diamètre) dans les étiquettes
+      { const fr = n => n.toLocaleString('fr-FR', { maximumFractionDigits: 0 });
         moonLabel.textContent = metric ? 'Lune · Ø ' + fr(2 * 1737.4) + ' km' : 'Lune'; sunLabel.textContent = metric ? 'Soleil · Ø ' + fr(2 * 695700) + ' km (' + fr(2 * 695700 / 12756) + ' Terres)' : 'Soleil (taille réelle)'; earthLabel.textContent = metric ? 'Terre · Ø 12 756 km' : 'Terre'; }
       const proj = (el, P, on) => { const pp = P.clone().project(camera); if (on && pp.z < 1 && Math.abs(pp.x) < 1 && Math.abs(pp.y) < 1) { el.style.display = 'block'; el.style.transform = `translate(${(pp.x + 1) / 2 * innerWidth + 10}px,${(1 - pp.y) / 2 * innerHeight - 8}px)`; return [(pp.x + 1) / 2 * innerWidth, (1 - pp.y) / 2 * innerHeight]; } el.style.display = 'none'; return null; };
       moonScreen = proj(moonLabel, moonAbs, camera.position.distanceTo(moonAbs) > 6); sunScreen = proj(sunLabel, sunAbs, camera.position.distanceTo(sunAbs) > 2 * SUN_R_U); proj(earthLabel, new THREE.Vector3(), solarMode && cam.dist > 300 || (metric && cam.mode === 'earth' && cam.dist > 6));
