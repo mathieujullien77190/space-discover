@@ -118,3 +118,6 @@ button.on { border-color: #ffd54a; color: #ffd54a; }
 
 #err { position: fixed; left: 12px; right: 12px; top: 60px; z-index: 20; padding: 8px 10px; background: rgba(120, 20, 20, .92); color: #fff; font: 12px ui-monospace, Consolas, monospace; white-space: pre-wrap; border-radius: 8px; }
 #err[hidden] { display: none; }
+
+.sw2 { top: calc(58px + env(safe-area-inset-top)); }
+@media (max-width: 700px), (pointer: coarse) { .sw2 { top: calc(64px + env(safe-area-inset-top)); } }

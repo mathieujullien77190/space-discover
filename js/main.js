@@ -15,7 +15,7 @@
   // espace inertiel : Soleil (taille réelle), Lune réelle, orbite de la Terre autour du Soleil, trajectoire de la Lune. Le groupe `solar` est tourné de −GMST dans les vues « Terre fixe » (le Soleil et la Lune font le tour en un jour)
   // et pas tourné dans la vue « Soleil / Lune » (où c'est la Terre qui tourne : world.rotation.y = GMST). Créé peu après le démarrage (texture de la Lune ~0,3 s).
   const solar = new THREE.Group(); scene.add(solar);
-  let moonMesh = null, sunMesh = null, orbitG = null, moonLoop = null, loopD = -1e9, earthDot = null, moonDot = null, solarTarget = 'earth';
+  let moonPast = null, moonFut = null, sunRule = null, moonRule = null, earthRule = null, metric = false, moonMesh = null, sunMesh = null, orbitG = null, moonLoop = null, loopD = -1e9, earthDot = null, moonDot = null, solarTarget = 'earth';
   const mkLabel = text => { const el = document.createElement('div'); el.className = 'l3d'; el.textContent = text; el.style.display = 'none'; document.body.appendChild(el); return el; };
   const moonLabel = mkLabel('Lune'), sunLabel = mkLabel('Soleil (taille réelle)'), earthLabel = mkLabel('Terre');
   const dotOf = color => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3)); const p = new THREE.Points(g, new THREE.PointsMaterial({ color, size: 7, sizeAttenuation: false, depthWrite: false })); p.frustumCulled = false; solar.add(p); return p; };
@@ -27,7 +27,12 @@
     // orbite de la Terre autour du Soleil (ellipse réelle d'après la position du Soleil sur un an ; le groupe est posé sur le Soleil à chaque image)
     { const D0 = astroD(new Date()), pts = []; for (let i = 0; i <= 365; i++) pts.push(sunGeo(D0 + i * 365.2422 / 365).negate());
       orbitG = new THREE.Group(); const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x4a90e2, transparent: true, opacity: 0.9 })); l.frustumCulled = false; orbitG.add(l); solar.add(orbitG); }
-    moonLoop = new THREE.Line(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(121 * 3), 3)), new THREE.LineBasicMaterial({ color: 0x9fb4d0, transparent: true, opacity: 0.7 })); moonLoop.frustumCulled = false; solar.add(moonLoop);
+    moonLoop = new THREE.Group(); solar.add(moonLoop);   // trace de la Lune : le passé (un tour complet, s'estompe vers le début) et l'avenir (pâle)
+    const mkTrail = (n, op) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); const l = new THREE.Line(g, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: op })); l.frustumCulled = false; moonLoop.add(l); return l; };
+    moonPast = mkTrail(121, 1); moonFut = mkTrail(61, 0.45);
+    // règles de mesure (diamètres) du Soleil et de la Lune, tracées dans le repère du groupe solar
+    const mkRule = () => { const l = new THREE.Line(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3)), new THREE.LineBasicMaterial({ color: 0x4fd8ff, depthTest: false, transparent: true })); l.frustumCulled = false; l.renderOrder = 10; solar.add(l); return l; };
+    sunRule = mkRule(); moonRule = mkRule(); earthRule = mkRule();
     earthDot = dotOf(0x5ab0ff); moonDot = dotOf(0xdddddd);
   }
   setTimeout(buildSolar, 400);
@@ -68,6 +73,9 @@
   const angDiff = (a, b) => ((b - a + 540) % 360) - 180;
 
   function setMode(m) {
+    if ((m === 'solar') !== (cam.mode === 'solar')) {   // changement de repère (Terre fixe ↔ inertiel) : on tourne la pose de la caméra de l'angle sidéral pour que l'image ne saute pas (sinon le Soleil ferait un tour autour de la Terre)
+      const ang = m === 'solar' ? curGm : -curGm; cam.tgt.applyAxisAngle(Y_AXIS, ang); camera.position.applyAxisAngle(Y_AXIS, ang); cam.lon += ang / DEG; cam.goal.lon += ang / DEG; frameF = m === 'solar' ? 1 : 0;
+    }
     issGo = 0; cam.issLock = false; cam.anim = null;
     cam.mode = m; cam.fly = 2.2; cam.tfly = 2.2;
     syncView(m);
@@ -81,15 +89,25 @@
     }
   }
   /* vues Soleil / Lune : repère inertiel (la Terre tourne), cible = Soleil (orbite de la Terre en entier) ou Lune (avec sa trajectoire) */
+  /* changement de vue animé (toutes les vues) : de la pose actuelle (cible, distance, direction) vers la pose d'arrivée (cam.goal + cible du mode) ; la distance varie à vitesse régulière en échelle logarithmique,
+     la cible glisse, la direction tourne sur la fin, le tout lissé au départ et à l'arrivée ; durée selon l'écart d'échelle (3 à 12 s) ; un geste de l'utilisateur l'interrompt */
+  function animateTo() {
+    const l0 = Math.log(Math.max(1e-7, cam.dist)), l1 = Math.log(Math.max(1e-7, cam.goal.dist));
+    cam.anim = { t: 0, T: Math.min(12, 3 + 0.9 * Math.abs(l1 - l0)), l0, l1, lon0: cam.lon, lat0: cam.lat, lonG: cam.goal.lon, latG: cam.goal.lat, tgt0: cam.tgt.clone() };
+    cam.fly = cam.tfly = 0; cam.slow = false; cam.issLock = false;
+  }
+  const goEarth = () => { setMode('earth'); animateTo(); };
   function goSolar(target) {
     solarTarget = target; setMode('solar'); cam.fly = cam.tfly = 3; cam.goal.dist = target === 'sun' ? 90000 : 4;
     const d = ECLIPTIC_POLE.clone().add(tmp.set(0.35, 0, 0.1)).normalize(); cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG;
+    animateTo();
   }
-  cam.onEarth = () => setMode('earth');
+  cam.onEarth = () => goEarth();
   /* un seul sélecteur pour les vues (Terre, ISS, Lune, Soleil) ; l'interrupteur jour/nuit se comporte comme un « mode sombre » (réglage mémorisé) */
   const viewSel = document.getElementById('viewSel'), dnChk = document.getElementById('dnChk');
   function syncView(m) { viewSel.value = m === 'solar' ? (solarTarget === 'sun' ? 'sun' : 'moon') : m === 'iss' ? 'iss' : 'earth'; }
-  viewSel.onchange = () => { const v = viewSel.value; if (v === 'earth') setMode('earth'); else if (v === 'iss') goIss(); else goSolar(v); viewSel.blur(); };
+  const mtChk = document.getElementById('mtChk'); try { metric = localStorage.getItem('metric') === '1'; } catch (e) {} mtChk.checked = metric; mtChk.onchange = () => { metric = mtChk.checked; try { localStorage.setItem('metric', metric ? '1' : '0'); } catch (e) {} };
+  viewSel.onchange = () => { const v = viewSel.value; if (v === 'earth') goEarth(); else if (v === 'iss') goIss(); else goSolar(v); viewSel.blur(); };
   try { realSun = localStorage.getItem('realSun') === '1'; } catch (e) {}
   dnChk.checked = realSun; dnChk.onchange = () => { realSun = dnChk.checked; try { localStorage.setItem('realSun', realSun ? '1' : '0'); } catch (e) {} };
 
@@ -150,7 +168,8 @@
   const bStep = document.getElementById('bStep'); bStep.onclick = () => { stepI = (stepI + 1) % STEPS.length; bStep.textContent = STEPS[stepI] + '°'; };
   /* bouton ISS : d'abord on tourne autour de la Terre pour se retrouver au-dessus de la station (vue d'ensemble), puis un zoom pas trop rapide jusqu'à elle */
   const ISS_HOVER_KM = 3000;   // altitude de la caméra AU-DESSUS de l'ISS avant le zoom (2 000 à 4 000 km : on voit la Terre courbe et la station comme un point)
-  let issGo = 0;
+  let issGo = 0, frameF = 0, curGm = 0;   // frameF : 0 = repère de la Terre fixe, 1 = repère inertiel (vues Soleil / Lune) ; curGm : temps sidéral courant (rad)
+
   const goIss = () => { if (!iss) return; if (cam.mode === 'iss' && cam.dist * R_KM < 3000) { issGo = 0; setViewLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist); return; } setMode('earth'); cam.goal.lon = iss.lon; cam.goal.lat = iss.lat; cam.goal.dist = iss.pos.length() + ISS_HOVER_KM / R_KM; issGo = 1; cam.slow = true; cam.tfly = cam.fly = 8; };   /* étape 1 : on tourne autour de la Terre pour se placer à ISS_HOVER_KM au-dessus de la station ; étape 2 (dans la boucle) : descente animée */
   // ---------- lancement d'un satellite (js/launch-3d.js) ----------
   const KM_UA = 149597870.7, KM_AL = 9.4607304725808e12;
@@ -208,7 +227,6 @@
     if (!lbox.hidden) lp.preview();   // ouverture : aperçu du choix courant
     else if (launch && launch.preview) { evLabels.forEach(x => x.remove()); evLabels = []; tagEls.forEach(x => x.remove()); tagEls = []; launch.dispose(); launch = null; hLabel.style.display = 'none'; vLabel.style.display = 'none'; lp.hide(); storyUI.hide(); tl.hide(); }   // fermeture : on retire l'aperçu
   };
-  document.getElementById('bBehind').onclick = () => setViewLocal(VIEW_BEHIND.yaw, VIEW_BEHIND.pitch, VIEW_BEHIND.dist);
   document.getElementById('bCopy').onclick = () => { const t = viewTxt.dataset.json || ''; try { navigator.clipboard.writeText(t); } catch (e) {} const r = document.createRange(); r.selectNodeContents(viewJson); getSelection().removeAllRanges(); getSelection().addRange(r); };
   document.getElementById('bFeat').onclick = e => { featPanel.hidden = !featPanel.hidden; e.currentTarget.classList.toggle('on', !featPanel.hidden); };
 
@@ -227,7 +245,8 @@
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     const date = new Date();
     iss = issState(date);
-    const Dd = astroD(date), gm = gmstOf(Dd), solarMode = cam.mode === 'solar', apolloMode = !!(launch && launch.inertial), sunV = sunGeo(Dd), moonV = moonInertial(Dd).pos, rotS = solarMode ? 0 : -gm;
+    frameF = cam.mode === 'solar' ? 1 : 0;
+    const Dd = astroD(date), gm = curGm = gmstOf(Dd), solarMode = cam.mode === 'solar', apolloMode = !!(launch && launch.inertial), sunV = sunGeo(Dd), moonV = moonInertial(Dd).pos, rotS = -gm * (1 - frameF);
     const sunAbs = sunV.clone().applyAxisAngle(Y_AXIS, rotS), moonAbs = moonV.clone().applyAxisAngle(Y_AXIS, rotS);
 
     // trop loin pour voir l'ISS (cachée) : on passe en vue « Terre » sans bouger la caméra (le bouton Terre s'allume)
@@ -245,14 +264,20 @@
     }
     if (cam.tfly > 0 && !cam.issLock) { cam.tgt.lerp(goalTgt, 1 - Math.exp(-dt * (cam.slow ? 1.4 : 3.2))); cam.tfly -= dt; } else { cam.tgt.copy(goalTgt); if (cam.tfly > 0) cam.tfly -= dt; }
     // zoom : toujours amorti (jamais de saut), en altitude pour la Terre (sinon l'amortissement ne bouge plus près du sol)
-    if (issGo === 1) { if (iss) { cam.goal.lon = iss.lon; cam.goal.lat = iss.lat; cam.goal.dist = iss.pos.length() + ISS_HOVER_KM / R_KM; } if (iss && Math.abs(angDiff(cam.lon, iss.lon)) < 1.5 && Math.abs(cam.lat - iss.lat) < 1.5 && Math.abs(cam.dist - cam.goal.dist) < 0.06) { issGo = 2; const st0 = camera.position.clone(); setViewLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist);
+    if (issGo === 1) { if (iss) { cam.goal.lon = iss.lon; cam.goal.lat = iss.lat; cam.goal.dist = iss.pos.length() + ISS_HOVER_KM / R_KM; } if (iss && Math.abs(angDiff(cam.lon, iss.lon)) < 1.5 && Math.abs(cam.lat - iss.lat) < 1.5 && Math.abs(cam.dist - cam.goal.dist) < 0.06 && frameF < 0.03) { issGo = 2; const st0 = camera.position.clone(); setViewLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist);
       /* descente en ligne droite vers l'ISS : la cible colle à la station dès le départ (sinon la caméra traverserait la Terre), on part de la verticale de l'ISS et la direction tourne doucement vers la vue finale */
-      const dv = st0.clone().sub(iss.pos); cam.issLock = true; cam.tgt.copy(iss.pos); cam.dist = dv.length(); dv.normalize(); cam.lat = Math.asin(dv.y) / DEG; cam.lon = Math.atan2(-dv.z, dv.x) / DEG; cam.tfly = cam.fly = 0; cam.slow = false; cam.anim = { t: 0, T: 16, l0: Math.log(cam.dist), l1: Math.log(cam.goal.dist), lon0: cam.lon, lat0: cam.lat, lonG: cam.goal.lon, latG: cam.goal.lat }; } }
+      const dv = st0.clone().sub(iss.pos); cam.issLock = true; cam.tgt.copy(iss.pos); goalTgt.copy(iss.pos);   /* (goalTgt : calculée plus haut avec l'ancien mode, l'animation démarre dans cette même image) */ cam.dist = dv.length(); dv.normalize(); cam.lat = Math.asin(dv.y) / DEG; cam.lon = Math.atan2(-dv.z, dv.x) / DEG; cam.tfly = cam.fly = 0; cam.slow = false; cam.anim = { t: 0, T: 16, tgt0: iss.pos.clone(), l0: Math.log(cam.dist), l1: Math.log(cam.goal.dist), lon0: cam.lon, lat0: cam.lat, lonG: cam.goal.lon, latG: cam.goal.lat }; } }
     if (cam.tfly <= 0) cam.slow = false;
-    if (cam.anim) {   // descente vers l'ISS : la distance varie à vitesse régulière en échelle logarithmique (lissée au départ et à l'arrivée), la direction tourne vers la vue finale sur la fin
-      const A = cam.anim, ease = u => u * u * u * (u * (6 * u - 15) + 10); A.t += dt; const u = Math.min(1, A.t / A.T), e = ease(u), e2 = ease(Math.max(0, Math.min(1, (u - 0.2) / 0.8)));
-      cam.dist = cam.goal.dist = Math.exp(A.l0 + (A.l1 - A.l0) * e); cam.lon = cam.goal.lon = A.lon0 + angDiff(A.lon0, A.lonG) * e2; cam.lat = cam.goal.lat = A.lat0 + (A.latG - A.lat0) * e2; cam.fly = 0;
-      if (u >= 1) { cam.anim = null; cam.issLock = false; }
+    if (cam.anim) {   // animation de vue (changements de vue, descente vers l'ISS) : la caméra décrit un arc AUTOUR DE LA CIBLE D'ARRIVÉE : distance à vitesse régulière en échelle logarithmique, direction qui tourne (slerp) sur la fin,
+      // regard qui glisse de l'ancienne cible vers la nouvelle ; tout lissé au départ et à l'arrivée. (Faire glisser la cible linéairement pendant que la distance décroît en log donnait une chute brutale à la fin.)
+      const A = cam.anim, ease = u => u * u * u * (u * (6 * u - 15) + 10);
+      if (!A.init) { A.init = true; const off = camera.position.clone().sub(goalTgt); A.m0 = Math.max(1e-7, off.length()); A.d0 = off.normalize(); A.dG = ll(A.lonG, A.latG, new THREE.Vector3()); A.q = new THREE.Quaternion().setFromUnitVectors(A.d0, A.dG); A.l0 = Math.log(A.m0); }
+      A.t += dt; const u = Math.min(1, A.t / A.T), e = ease(u), e2 = ease(Math.max(0, Math.min(1, (u - 0.15) / 0.85)));
+      const m = Math.exp(A.l0 + (A.l1 - A.l0) * e), dir = A.d0.clone().applyQuaternion(new THREE.Quaternion().slerp(A.q, e2)), P = goalTgt.clone().addScaledVector(dir, m);
+      cam.tgt.copy(A.tgt0).lerp(goalTgt, e2);
+      const v = P.clone().sub(cam.tgt), L = Math.max(1e-9, v.length()); v.divideScalar(L);
+      cam.dist = L; cam.lat = Math.asin(Math.max(-1, Math.min(1, v.y))) / DEG; cam.lon = Math.atan2(-v.z, v.x) / DEG; cam.goal.dist = cam.dist; cam.goal.lon = cam.lon; cam.goal.lat = cam.lat; cam.fly = 0;
+      if (u >= 1) { cam.anim = null; cam.issLock = false; cam.goal.dist = A.l1 === undefined ? cam.dist : Math.exp(A.l1); cam.dist = cam.goal.dist; cam.tgt.copy(goalTgt); cam.lon = cam.goal.lon = A.lonG; cam.lat = cam.goal.lat = A.latG; }
     }
     const kz = 1 - Math.exp(-dt * (cam.tfly > 0 ? (cam.slow ? 0.4 : 3.2) : 14)), base = cam.mode === 'earth' && cam.tfly <= 0 ? 1 : 0;
     const cur = Math.max(1e-7, cam.dist - base), want = Math.max(1e-7, cam.goal.dist - base);
@@ -273,10 +298,21 @@
       sunMesh.position.copy(sunV); orbitG.position.copy(sunV); orbitG.visible = solarMode; moonMesh.position.copy(moonV); moonQuat(moonV.clone().normalize(), ECLIPTIC_POLE, moonMesh.quaternion);
       moonDot.visible = cam.dist > 60 && !(solarMode && solarTarget === 'moon' && cam.dist < 400); earthDot.visible = solarMode && cam.dist > 300;
       for (const [d, p] of [[moonDot, moonV], [earthDot, new THREE.Vector3()]]) { const at = d.geometry.attributes.position; at.setXYZ(0, p.x, p.y, p.z); at.needsUpdate = true; }
-      if (Math.abs(Dd - loopD) > 0.1) { loopD = Dd; const at = moonLoop.geometry.attributes.position; for (let k = 0; k <= 120; k++) { const q = moonInertial(Dd - 13.66 + k * 27.32 / 120).pos; at.setXYZ(k, q.x, q.y, q.z); } at.needsUpdate = true; }
+      if (Math.abs(Dd - loopD) > 0.05) {
+        loopD = Dd; const P = moonPast.geometry.attributes, F = moonFut.geometry.attributes;
+        for (let k = 0; k <= 120; k++) { const q = moonInertial(Dd - 27.32 + k * 27.32 / 120).pos, f = 0.12 + 0.88 * k / 120; P.position.setXYZ(k, q.x, q.y, q.z); P.color.setXYZ(k, 0.62 * f, 0.78 * f, 1 * f); }
+        for (let k = 0; k <= 60; k++) { const q = moonInertial(Dd + k * 13.66 / 60).pos; F.position.setXYZ(k, q.x, q.y, q.z); F.color.setXYZ(k, 0.45, 0.5, 0.6); }
+        P.color.needsUpdate = true; F.color.needsUpdate = true; P.position.needsUpdate = true; F.position.needsUpdate = true;
+      }
+      { const P = moonPast.geometry.attributes.position; P.setXYZ(120, moonV.x, moonV.y, moonV.z); P.needsUpdate = true; const F = moonFut.geometry.attributes.position; F.setXYZ(0, moonV.x, moonV.y, moonV.z); F.needsUpdate = true; }   // la trace colle à la Lune à chaque image
       moonLoop.visible = solarMode || camera.position.length() > 8;
+      // règles de mesure : diamètre vu de face (segment le long de la droite de l'écran), étiquettes avec la valeur
+      { const e = camera.matrixWorld.elements, rt = new THREE.Vector3(e[0], e[1], e[2]).applyAxisAngle(Y_AXIS, -rotS), fr = n => n.toLocaleString('fr-FR', { maximumFractionDigits: 0 });
+        const setRule = (rule, C, R) => { rule.visible = metric; if (!metric) return; const a = rule.geometry.attributes.position; a.setXYZ(0, C.x - rt.x * R, C.y - rt.y * R, C.z - rt.z * R); a.setXYZ(1, C.x + rt.x * R, C.y + rt.y * R, C.z + rt.z * R); a.needsUpdate = true; };
+        setRule(sunRule, sunV, SUN_R_U); setRule(moonRule, moonV, MOON_R); setRule(earthRule, new THREE.Vector3(), 1);
+        moonLabel.textContent = metric ? 'Lune · Ø ' + fr(2 * 1737.4) + ' km' : 'Lune'; sunLabel.textContent = metric ? 'Soleil · Ø ' + fr(2 * 695700) + ' km (' + fr(2 * 695700 / 12756) + ' Terres)' : 'Soleil (taille réelle)'; earthLabel.textContent = metric ? 'Terre · Ø 12 756 km' : 'Terre'; }
       const proj = (el, P, on) => { const pp = P.clone().project(camera); if (on && pp.z < 1 && Math.abs(pp.x) < 1 && Math.abs(pp.y) < 1) { el.style.display = 'block'; el.style.transform = `translate(${(pp.x + 1) / 2 * innerWidth + 10}px,${(1 - pp.y) / 2 * innerHeight - 8}px)`; return [(pp.x + 1) / 2 * innerWidth, (1 - pp.y) / 2 * innerHeight]; } el.style.display = 'none'; return null; };
-      moonScreen = proj(moonLabel, moonAbs, camera.position.distanceTo(moonAbs) > 6); sunScreen = proj(sunLabel, sunAbs, camera.position.distanceTo(sunAbs) > 2 * SUN_R_U); proj(earthLabel, new THREE.Vector3(), solarMode && cam.dist > 300);
+      moonScreen = proj(moonLabel, moonAbs, camera.position.distanceTo(moonAbs) > 6); sunScreen = proj(sunLabel, sunAbs, camera.position.distanceTo(sunAbs) > 2 * SUN_R_U); proj(earthLabel, new THREE.Vector3(), solarMode && cam.dist > 300 || (metric && cam.mode === 'earth' && cam.dist > 6));
     } else { moonLabel.style.display = sunLabel.style.display = earthLabel.style.display = 'none'; moonScreen = sunScreen = null; }
     // lumière
     if (realSun || solarMode) { sun.position.copy(sunAbs).normalize().multiplyScalar(10); amb.intensity = solarMode ? 0.12 : 0.22; }
@@ -417,7 +453,7 @@
     }
     // origine flottante : près de l'ISS, on recentre le monde sur elle pour rendre sans perte de précision
     const shift = cam.mode === 'launch' && launch ? launch.focusPos : iss && camera.position.distanceTo(iss.pos) * R_KM < 3000 ? iss.pos : null, saved = camera.position.clone();
-    world.rotation.y = apolloMode ? LCH.WE * launch.T : solarMode ? gm : 0;   // missions lunaires : la Terre tourne dans l'espace inertiel
+    world.rotation.y = apolloMode ? LCH.WE * launch.T : gm * frameF;   // missions lunaires : la Terre tourne dans l'espace inertiel
     if (shift) { world.position.copy(shift).negate(); camera.position.sub(shift); camera.updateMatrixWorld(); } else world.position.set(0, 0, 0);
     inertial.position.copy(world.position); solar.position.copy(world.position);
     renderer.render(scene, camera);
