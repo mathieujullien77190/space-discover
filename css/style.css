@@ -112,3 +112,6 @@ button.on { border-color: #ffd54a; color: #ffd54a; }
 .sw .ic { position: relative; z-index: 1; line-height: 1; }
 .sw input:focus-visible + .track { outline: 2px solid #ffd54a; }
 @media (max-width: 700px), (pointer: coarse) { #viewSel { min-height: 44px; font-size: 16px; flex: 0 0 auto; } .sw .track { height: 40px; width: 68px; } .sw .knob { width: 32px; height: 32px; } .sw input:checked + .track .knob { transform: translateX(28px); } }
+
+/* interrupteur jour/nuit : en haut à droite */
+.sw { position: fixed; right: calc(12px + env(safe-area-inset-right)); top: calc(12px + env(safe-area-inset-top)); z-index: 6; }
