@@ -1,4 +1,5 @@
 (function () {
+  const MISSIONS = false;   // missions (lancements, Apollo 11) désactivées pour le moment : on améliore d'abord les vues Terre, Lune, Soleil et ISS (mobile et bureau). Mettre true pour les réactiver.
   const canvas = document.getElementById('gl'), msg = document.getElementById('msg'), info = document.getElementById('info'), label = document.getElementById('issLabel');
   let renderer;
   try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true }); }
@@ -201,6 +202,7 @@
   sg2.setAttribute('position', new THREE.BufferAttribute(sp2, 3));
   const siteDots = new THREE.Points(sg2, new THREE.PointsMaterial({ color: 0xff5a3c, size: 9, sizeAttenuation: false })); siteDots.frustumCulled = false; world.add(siteDots);
   const siteLabels = LAUNCH_SITES.map((s, i) => { const el = document.createElement('div'); el.className = 'l3d site'; el.textContent = '🚀 ' + s.name; el.onclick = () => { lp.pick(i); lbox.hidden = false; document.getElementById('bLaunch').classList.add('on'); }; document.body.appendChild(el); return el; });
+  document.getElementById('bLaunch').hidden = !MISSIONS;
   document.getElementById('bLaunch').onclick = e => {
     lbox.hidden = !lbox.hidden; e.currentTarget.classList.toggle('on', !lbox.hidden);
     if (!lbox.hidden) lp.preview();   // ouverture : aperçu du choix courant
@@ -210,12 +212,13 @@
   document.getElementById('bCopy').onclick = () => { const t = viewTxt.dataset.json || ''; try { navigator.clipboard.writeText(t); } catch (e) {} const r = document.createRange(); r.selectNodeContents(viewJson); getSelection().removeAllRanges(); getSelection().addRange(r); };
   document.getElementById('bFeat').onclick = e => { featPanel.hidden = !featPanel.hidden; e.currentTarget.classList.toggle('on', !featPanel.hidden); };
 
-  let issScreen = null;   // position écran de l'ISS si visible
-  attachControls(canvas, cam, (x, y) => { if (issScreen && Math.hypot(x - issScreen[0], y - issScreen[1]) < 26) goIss(); });
-  canvas.addEventListener('pointermove', e => canvas.classList.toggle('hand', !!issScreen && Math.hypot(e.clientX - issScreen[0], e.clientY - issScreen[1]) < 26));
+  let issScreen = null, moonScreen = null, sunScreen = null;   // positions écran de l'ISS, de la Lune et du Soleil si visibles (cliquables : ISS → vue ISS, Lune → vue Lune, Soleil → vue Soleil)
+  const touch = matchMedia('(pointer: coarse)').matches, HIT = touch ? 42 : 26, near = (p, r, x, y) => !!p && Math.hypot(x - p[0], y - p[1]) < r;
+  attachControls(canvas, cam, (x, y) => { if (near(issScreen, HIT, x, y)) goIss(); else if (near(moonScreen, HIT + 4, x, y)) goSolar('moon'); else if (near(sunScreen, HIT + 14, x, y)) goSolar('sun'); });
+  canvas.addEventListener('pointermove', e => canvas.classList.toggle('hand', near(issScreen, HIT, e.clientX, e.clientY) || near(moonScreen, HIT + 4, e.clientX, e.clientY) || near(sunScreen, HIT + 14, e.clientX, e.clientY)));
 
-  function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
-  addEventListener('resize', resize); resize();
+  function resize() { const vv = window.visualViewport, w = Math.round(vv ? vv.width : innerWidth), h = Math.round(vv ? vv.height : innerHeight); renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+  addEventListener('resize', resize); addEventListener('orientationchange', () => setTimeout(resize, 200)); if (window.visualViewport) visualViewport.addEventListener('resize', resize); resize();
 
   const staleDays = Math.abs(Date.now() - ISS_EPOCH) / 86400000;
   let last = performance.now(), infoT = 0; const dirv = new THREE.Vector3(), basis = new THREE.Matrix4(), fw = new THREE.Vector3(), zz = new THREE.Vector3();
@@ -265,9 +268,9 @@
       for (const [d, p] of [[moonDot, moonV], [earthDot, new THREE.Vector3()]]) { const at = d.geometry.attributes.position; at.setXYZ(0, p.x, p.y, p.z); at.needsUpdate = true; }
       if (Math.abs(Dd - loopD) > 0.1) { loopD = Dd; const at = moonLoop.geometry.attributes.position; for (let k = 0; k <= 120; k++) { const q = moonInertial(Dd - 13.66 + k * 27.32 / 120).pos; at.setXYZ(k, q.x, q.y, q.z); } at.needsUpdate = true; }
       moonLoop.visible = solarMode || camera.position.length() > 8;
-      const proj = (el, P, on) => { const pp = P.clone().project(camera); if (on && pp.z < 1 && Math.abs(pp.x) < 1 && Math.abs(pp.y) < 1) { el.style.display = 'block'; el.style.transform = `translate(${(pp.x + 1) / 2 * innerWidth + 10}px,${(1 - pp.y) / 2 * innerHeight - 8}px)`; } else el.style.display = 'none'; };
-      proj(moonLabel, moonAbs, camera.position.distanceTo(moonAbs) > 6); proj(sunLabel, sunAbs, camera.position.distanceTo(sunAbs) > 2 * SUN_R_U); proj(earthLabel, new THREE.Vector3(), solarMode && cam.dist > 300);
-    } else { moonLabel.style.display = sunLabel.style.display = earthLabel.style.display = 'none'; }
+      const proj = (el, P, on) => { const pp = P.clone().project(camera); if (on && pp.z < 1 && Math.abs(pp.x) < 1 && Math.abs(pp.y) < 1) { el.style.display = 'block'; el.style.transform = `translate(${(pp.x + 1) / 2 * innerWidth + 10}px,${(1 - pp.y) / 2 * innerHeight - 8}px)`; return [(pp.x + 1) / 2 * innerWidth, (1 - pp.y) / 2 * innerHeight]; } el.style.display = 'none'; return null; };
+      moonScreen = proj(moonLabel, moonAbs, camera.position.distanceTo(moonAbs) > 6); sunScreen = proj(sunLabel, sunAbs, camera.position.distanceTo(sunAbs) > 2 * SUN_R_U); proj(earthLabel, new THREE.Vector3(), solarMode && cam.dist > 300);
+    } else { moonLabel.style.display = sunLabel.style.display = earthLabel.style.display = 'none'; moonScreen = sunScreen = null; }
     // lumière
     if (realSun || solarMode) { sun.position.copy(sunAbs).normalize().multiplyScalar(10); amb.intensity = solarMode ? 0.12 : 0.22; }
     else { sun.position.copy(launch && launch.inertial ? camera.position.clone().sub(cam.tgt).normalize() : camera.position.clone().normalize()).add(tmp.set(0.4, 0.5, 0.2)).multiplyScalar(10); amb.intensity = 0.55; }
@@ -297,6 +300,7 @@
     }
 
     if (solarMode || (camera.position.length() - 1) * R_KM > 20000) { issScreen = null; label.style.display = 'none'; dot.visible = false; issModel.visible = false; }   // dézoomé : l'ISS est cachée (point, nom et modèle)
+    document.getElementById('issOnly').hidden = cam.mode !== 'iss';   // « Vue dessus » et « Détails ISS » seulement avec l'ISS
     // caractéristiques 3D : mise à jour puis étiquettes projetées à l'écran
     for (const f of ISS_FEATURES) {   // une caractéristique « onlyIss » (taille, hauteur) n'apparaît que sur la vue de l'ISS
       const inst = featInst[f.id]; if (!inst) continue;
@@ -380,10 +384,10 @@
     }
     // sites de lancement : visibles hors de la vue de lancement, quand ils sont du côté visible de la Terre
     const farOut = (camera.position.length() - 1) * R_KM > 20000 || solarMode;   // dézoomé : plus de bases de lancement
-    siteDots.visible = cam.mode !== 'launch' && !farOut;
+    siteDots.visible = MISSIONS && cam.mode !== 'launch' && !farOut;
     LAUNCH_SITES.forEach((s, i) => {
       const el = siteLabels[i], u = siteU[i], p = u.clone().multiplyScalar(SITE_R).project(camera);
-      if (cam.mode !== 'launch' && !farOut && camera.position.dot(u) > SITE_R && p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1) { el.style.display = 'block'; el.style.transform = `translate(${(p.x + 1) / 2 * innerWidth + 8}px,${(1 - p.y) / 2 * innerHeight - 9}px)`; }
+      if (MISSIONS && cam.mode !== 'launch' && !farOut && camera.position.dot(u) > SITE_R && p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1) { el.style.display = 'block'; el.style.transform = `translate(${(p.x + 1) / 2 * innerWidth + 8}px,${(1 - p.y) / 2 * innerHeight - 9}px)`; }
       else el.style.display = 'none';
     });
 
@@ -397,6 +401,8 @@
       if (staleDays > 60) t += '\n(TLE ancien : position de l\'ISS imprécise)';
       if (hiState === 'loading') t += '\nChargement du modèle détaillé de l\'ISS…';
       if (cam.mode === 'iss') t += "\nÉchelle réelle : l'ISS (109 m) n'est visible qu'à moins de ~17 km.";
+      const dMoon = moonV.length() * R_KM, dSun = sunV.length() * R_KM; t += `\nLune à ${Math.round(dMoon).toLocaleString('fr-FR')} km · Soleil à ${fmtBig(dSun) || Math.round(dSun).toLocaleString('fr-FR') + ' km'}`;
+      if (solarMode) t += solarTarget === 'sun' ? '\nVue du Soleil : la Terre tourne sur elle-même et autour de lui (échelle réelle : Terre et Lune sont des points)' : '\nVue de la Lune : la Terre tourne, la Lune lui présente toujours la même face';
       info.textContent = t;
       // paramètres de la vue (à copier-coller pour les régler)
       const v = currentView();
