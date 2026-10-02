@@ -30,7 +30,7 @@ const SLOW_FLOOR = 0.3, SLOW_HOLD = 3, SLOW_K = 2;   // ralenti aux étapes : vi
 const MU_M = 1e-3 / R_KM;   // unités de la scène par mètre
 class Launch {
   constructor(site, targetKm, payloadKg, satScale, opts) {
-    const L = LCH, o = opts || {}; this.inertial = !!o.inertial; const spec = this.rocketSpec = (o.rocketId && ROCKETS[o.rocketId]) || rocketOf(site), az = o.az != null ? o.az : Math.PI / 2;   // az : azimut de tir (π/2 = plein est)
+    const L = LCH, o = opts || {}; this.inertial = !!o.inertial; const spec = this.rocketSpec = o.plan ? planToSpec(o.plan) : (o.rocketId && ROCKETS[o.rocketId]) || rocketOf(site), az = o.az != null ? o.az : Math.PI / 2;   // az : azimut de tir (π/2 = plein est)
     this.payloadUsed = Math.min(payloadKg || 9e3, spec.maxPayload * 0.9);   // charge limitée par la capacité de la fusée
     const sim = this.sim = o.plan ? flyPlan(o.plan) : simulateLaunch(targetKm, { lat: site.lat, payload: this.payloadUsed, az, rocket: spec, apoKm: o.apoKm });   // o.plan : plan de vol JSON (js/flight-plan.js), sans guidage
     this.story = o.story || null; this.direct = !!(spec.phys && spec.phys.direct);   // story : mission historique (js/story.js) ; direct : le dernier étage met la charge en orbite
@@ -70,6 +70,7 @@ class Launch {
       const rl = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x7fe3ff })); rl.frustumCulled = false; this.ring.add(rl);
     }
     this.buildModels();
+    if (spec.tower) this.buildTower();
     if (o.story === 'sputnik') this.buildSputnik();
     this.buildPieces();
     // noms affichés sur les éléments (étiquettes posées par main.js) : fusée, satellite, boosters, coiffe, étage principal
@@ -149,6 +150,19 @@ class Launch {
     const dot = (c) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3)); const p = new THREE.Points(g, new THREE.PointsMaterial({ color: c, size: 8, sizeAttenuation: false })); p.frustumCulled = false; this.group.add(p); return p; };
     this.dotRocket = dot(0xffffff); this.dotSat = dot(0xffd54a); this.mk = dot;
   }
+  // tour de lancement à bras de capture (Starship) : treillis en acier à ~25 m du pas de tir, deux bras à la hauteur de capture ; posée sur la photo du sol
+  buildTower() {
+    const g = new THREE.Group(), M = c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, metalness: 0.4 });
+    const tw = new THREE.Mesh(new THREE.BoxGeometry(14, 146, 14), M(0x7b8088)); tw.position.set(0, 73, 0);
+    const mount = new THREE.Mesh(new THREE.CylinderGeometry(9, 10, 8, 24), M(0x4a4d52)); mount.position.set(28, 4, 0);
+    for (const sgn of [-1, 1]) { const arm = new THREE.Mesh(new THREE.BoxGeometry(24, 3, 4), M(0x9aa0a8)); arm.position.set(17, 70, sgn * 6); g.add(arm); }
+    g.add(tw, mount);
+    // repère local : +x = vers le pas de tir (à 28 m), y = vertical, z = normale au plan de la trajectoire
+    const up = this.s.clone(), side = this.n.clone(), toward = this.e.clone();   // x local → −e ; z local → n
+    const q = new THREE.Matrix4().makeBasis(toward.clone().negate(), up, side); g.quaternion.setFromRotationMatrix(q);
+    g.position.copy(up).multiplyScalar(PATCH_R).addScaledVector(toward, 28 * MU_M);   // la tour est du côté « avant » du pas de tir
+    g.scale.setScalar(MU_M); this.tower = g; this.group.add(g);
+  }
   // Spoutnik 1 : sphère polie de 58 cm et ses 4 antennes (2 de 2,4 m, 2 de 2,9 m) rabattues vers l'arrière
   buildSputnik() {
     const g = this.satG; while (g.children.length) g.remove(g.children[0]);
@@ -172,12 +186,15 @@ class Launch {
       const e = this.ev[key]; if (!e) return;
       const jt = J && J[JK[key]]; if (jt) { burns = !!jt.disintegrates; model = jm(key, model); }   // le plan décide : masse, forme, désintégration
       const r = Math.hypot(e.x, e.y), dv = sepDv[key] || 0;
+      const RET = key === 'epcsep' && this.sim.plan && this.sim.plan.returns && this.sim.plan.returns.stage1;   // booster qui revient se poser (plan de retour du JSON)
+      let rr = null; if (RET) { const wE = PH.WE * Math.cos(this.site.lat * DEG) * Math.sin(((this.sim.plan.site.azimuthDeg != null ? this.sim.plan.site.azimuthDeg : 90)) * DEG); rr = flyReturn(RET, { t: e.t, x: e.x, y: e.y, vx: e.vx - dv * e.y / r, vy: e.vy + dv * e.x / r, wEff: wE }); this.retResult = rr; this.extraEvents = (this.extraEvents || []).concat(rr.events.filter(q => q.key !== 'epcsep').map(q => ({ t: q.t, key: q.key, label: q.label }))); }
       const body = new Body(model, { x: e.x, y: e.y, vx: e.vx - dv * e.y / r, vy: e.vy + dv * e.x / r, t: 0 }, { wEff, mode: 'tumble' });
-      const res = body.propagate({ tMax: 9000, sampleDt: 1, burnupAlt: burns ? (jt && jt.disintegrationAltitudeKm != null ? jt.disintegrationAltitudeKm * 1000 : key === 'epcsep' ? (e.alt > 150e3 ? 120e3 : 70e3) : 30e3) : null }), out = res.samples.map(s => [s.x, s.y]);
-      const last = out[out.length - 1], z0 = this.zMain(e.t), zd = this.crossV * Math.exp(-e.t / this.crossTau), impact = this.toEF(last[0], last[1], e.t + out.length, new THREE.Vector3(), z0 + zd * out.length), /* le débris garde la vitesse transversale du lanceur à la séparation */ endText = burns ? 'rentrée atmosphérique (désintégration)' : "impact dans l'océan";
+      const res = rr ? { samples: rr.samples, end: { reason: rr.touchdown ? 'catch' : 'time' } } : body.propagate({ tMax: 9000, sampleDt: 1, burnupAlt: burns ? (jt && jt.disintegrationAltitudeKm != null ? jt.disintegrationAltitudeKm * 1000 : key === 'epcsep' ? (e.alt > 150e3 ? 120e3 : 70e3) : 30e3) : null }), out = res.samples.map(s => [s.x, s.y]);
+      const last = out[out.length - 1], z0 = this.zMain(e.t), zd = this.crossV * Math.exp(-e.t / this.crossTau), impact = this.toEF(last[0], last[1], e.t + out.length, new THREE.Vector3(), z0 + zd * out.length), /* le débris garde la vitesse transversale du lanceur à la séparation */ endText = rr ? (rr.touchdown ? (rr.touchdown.ok ? 'rattrapé par les bras de la tour' : 'se pose à côté de la tour (' + Math.round(rr.touchdown.missM) + ' m)') : 'ne se pose pas') : burns ? 'rentrée atmosphérique (désintégration)' : "impact dans l'océan";
       const g = new THREE.Group(); g.add(mesh); g.visible = false; g.scale.setScalar(MU_M); this.group.add(g);
       const d = this.mk(0xaaaaaa), dir = this.dirAtEvent(e), latWorld = new THREE.Vector3(lat[0], 0, lat[1]).applyQuaternion(new THREE.Quaternion().setFromUnitVectors(Yv, dir));
-      this.pieces.push({ z0, zd, key, e, path: out, mesh, g, len: Math.max(model.shape.h, model.shape.r * 2), latWorld, r0, tumble, tagKey: tag, impact, endText, dot: d, dir, model, cdA: body.cdA, ballistic: model.dry / body.cdA });
+      const ret = rr ? { thr: rr.samples.map(q => q.thr), phi: rr.samples.map(q => q.phi || 0) } : null; if (ret) { const fl = new THREE.Mesh((() => { const gg = new THREE.ConeGeometry(1, 1, 14, 1, true); gg.rotateX(Math.PI); gg.translate(0, -0.5, 0); return gg; })(), new THREE.MeshBasicMaterial({ color: 0xffb060, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false })); fl.position.y = -(model.shape.h / 2 + 0.5); fl.visible = false; mesh.add(fl); ret.flame = fl; ret.r = model.shape.r; }
+      this.pieces.push({ ret, z0, zd, key, e, path: out, mesh, g, len: Math.max(model.shape.h, model.shape.r * 2), latWorld, r0, tumble, tagKey: tag, impact, endText, dot: d, dir, model, cdA: body.cdA, ballistic: model.dry / body.cdA });
     };
     this.pieces = [];
     // les meshes de débris sont des copies centrées sur leur milieu
@@ -264,7 +281,13 @@ class Launch {
       this.toEF(A[0] + (B[0] - A[0]) * f, A[1] + (B[1] - A[1]) * f, T, tmpP, p.z0 + p.zd * (T - p.e.t));
       tmpP.addScaledVector(p.latWorld, (p.r0 + 2.5 * Math.min(tau, 300)) * MU_M);   // les paires s'écartent
       if (p.tagKey) { const t = this.tagMap[p.tagKey]; t.on = true; t.pos.copy(tmpP); t.speed = Math.hypot(B[0] - A[0], B[1] - A[1]); t.alt = (tmpP.length() - 1) * R_KM * 1000; }   // vitesse (inertielle) = déplacement par seconde de la trajectoire calculée
-      p.g.position.copy(tmpP); p.g.quaternion.setFromUnitVectors(this.Y, p.dir); if (p.tumble) p.g.rotateOnAxis(new THREE.Vector3(1, 0, 0), p.tumble * tau);
+      p.g.position.copy(tmpP);
+      if (p.ret) {   // booster qui revient : nez dans le sens de la poussée quand les moteurs tournent, sinon moteurs vers l'avant (nez à l'opposé de la vitesse) ; flamme proportionnelle à la poussée
+        const R_ = p.ret, ii = Math.min(R_.thr.length - 1, ix), th = R_.thr[ii], dirv = this._rdir || (this._rdir = new THREE.Vector3()), qt = this._rq || (this._rq = new THREE.Quaternion());
+        if (th > 0.001) this.dirEF(A[0], A[1], R_.phi[ii], T, dirv); else { this.dirEF(A[0], A[1], Math.atan2((B[0] - A[0]) * A[0] / Math.hypot(A[0], A[1]) + (B[1] - A[1]) * A[1] / Math.hypot(A[0], A[1]), (B[1] - A[1]) * A[0] / Math.hypot(A[0], A[1]) - (B[0] - A[0]) * A[1] / Math.hypot(A[0], A[1])), T, dirv); dirv.negate(); }
+        qt.setFromUnitVectors(this.Y, dirv); if (!p.qInit) { p.g.quaternion.copy(qt); p.qInit = true; } else p.g.quaternion.slerp(qt, 0.12);
+        R_.flame.visible = th > 0.001; if (R_.flame.visible) { const k = Math.sqrt(th / 0.4); R_.flame.scale.set(R_.r * (0.5 + 0.7 * k), 6 + 40 * k * (0.9 + 0.2 * Math.random()), R_.r * (0.5 + 0.7 * k)); }
+      } else { p.g.quaternion.setFromUnitVectors(this.Y, p.dir); if (p.tumble) p.g.rotateOnAxis(new THREE.Vector3(1, 0, 0), p.tumble * tau); }
       this.pieceExtras(p, tmpP, true);
       const big = px(p.len, tmpP) >= 6; p.mesh.visible = big;
       p.dot.visible = !big; p.dot.geometry.attributes.position.setXYZ(0, tmpP.x, tmpP.y, tmpP.z); p.dot.geometry.attributes.position.needsUpdate = true;

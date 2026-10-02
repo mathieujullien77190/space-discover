@@ -52,3 +52,15 @@ console.log(vm.runInContext(`(() => {
   const base = mk(() => {}), fast = mk(j => { j.boosters.separationSpeedMs = -30; }), burn = mk(j => { j.boosters.disintegrates = true; j.boosters.disintegrationAltitudeKm = 30; j.stage1.disintegrates = false; });
   return 'JSON jettison : boosters tombent en ' + base.eap.path.length + ' s (' + base.eap.endText + '), avec séparation à −30 m/s : ' + fast.eap.path.length + ' s ; boosters désintégrés à 30 km : ' + burn.eap.path.length + ' s (' + burn.eap.endText + ') ; étage principal non désintégré : ' + burn.epc.path.length + ' s (' + burn.epc.endText + ')';
 })()`, sandbox));
+// Starship : plan JSON complet (visuel compris) + booster qui revient se poser sur la tour
+for (const f of ['js/data/plans.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), sandbox, { filename: f });
+console.log(vm.runInContext(`(() => {
+  const P = FLIGHT_PLANS.starship500, site = Object.assign({}, LAUNCH_SITES[0], { id: 'plan', name: P.site.name, lat: P.site.lat, lon: P.site.lon });
+  const L = new Launch(site, P.target.altitudeKm, P.vehicle.payloadKg, 1, { plan: P, az: Math.PI / 2 }), cam = { position: new THREE.Vector3(0, 0, 3) };
+  const p = L.pieces.find(q => q.tagKey === 'epc'), o = [];
+  o.push('Starship : ' + L.rocketSpec.name + ', tour ' + !!L.tower + ', orbite ' + Math.round((L.sim.orbit.rp - 6378137) / 1000) + ' x ' + Math.round((L.sim.orbit.ra - 6378137) / 1000) + ' km, ok ' + L.sim.ok);
+  o.push('booster : ' + p.endText + ', vol ' + p.path.length + ' s, écart ' + L.retResult.touchdown.missM.toFixed(1) + ' m, vitesse relative ' + L.retResult.touchdown.speedMs.toFixed(1) + ' m/s ; événements du retour : ' + L.extraEvents.map(e => e.key + '@' + e.t.toFixed(0)).join(' '));
+  let flames = 0, steps = 0; for (let T = L.ev.epcsep.t; T < L.ev.epcsep.t + p.path.length + 5; T += 2) { L.T = T; L.playing = false; L.update(0.016, cam); steps++; if (p.ret.flame.visible) flames++; }
+  o.push('flamme visible ' + flames + ' / ' + steps + ' images ; suivi du booster : ' + (L.follow = 'epc', L.update(0.016, cam), Number.isFinite(L.focusPos.x) && L.focusPos.length() > 0.9));
+  return o.join(String.fromCharCode(10));
+})()`, sandbox));

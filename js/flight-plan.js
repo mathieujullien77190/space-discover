@@ -70,3 +70,77 @@ function flyPlan(plan, opt) {
   }
   return { target: plan.target.altitudeKm, samples, events, orbit, ok, crashed, tEnd: t, state: { x, y, vx, vy }, maxQ, payload: V.payloadKg, final: { alt: (r - L.RE) / 1000, v: Math.hypot(vx, vy) }, plan };
 }
+
+// ---------- RETOUR D'UN ÉTAGE (booster qui revient se poser sur la tour) ----------
+// Plan de retour (JSON) :
+//   vehicle { dryKg, propKg, thrustN (poussée maximale dans le vide, TOUS les moteurs), ispVac, ispSea, cdA, dt, sampleEvery }
+//   pitch.table    [[t, angle °], …]   direction de la poussée comme pour la montée (0 = vers l'avant, 90 = vers le haut, 180 = vers l'arrière), interpolée
+//   throttle.table [[t, fraction de thrustN], …]   poussée relative (0 = moteurs éteints), interpolée : sert au boostback (et à toute poussée décrite à la main)
+//   landing { … }  atterrissage « hoverslam » décrit par des PARAMÈTRES (le moteur de vol applique le freinage, donc modifier le boostback ne casse pas l'atterrissage) :
+//       totalEngines, enginesFar (moteurs allumés tant que la vitesse relative dépasse farSpeedMs), enginesNear, enginesMin (poussée minimale en moteurs),
+//       ignitionMargin (allumage quand la hauteur restante = distance de freinage à poussée maximale ÷ marge), aimAltitudeM (point visé, un peu sous la tour),
+//       crossingSpeedMs (vitesse visée au point), horizontalKp / horizontalKd / horizontalMaxAccel (correction de position horizontale par rapport au pas de tir)
+//   target { altitudeM }   hauteur d'arrivée au-dessus du pas de tir (bras de la tour), events [{ t, key, label }] (étiquettes ; l'allumage d'atterrissage et l'arrivée sont ajoutés par le moteur)
+// Le pas de tir est dans le plan à l'angle wEff·t (il tourne avec la Terre). start = { t, x, y, vx, vy, wEff } : état à la séparation. opt.control(s) → { thr, phi } remplace tout (essais).
+// Résultat : { samples, events, touchdown: { t, missM, speedMs, verticalMs, propLeftKg, ok }, controls }.
+function flyReturn(ret, start, opt) {
+  const V = ret.vehicle, L = LCH, dt = V.dt || 0.1, G0 = L.G0, wEff = start.wEff, hT = ret.target.altitudeM, every = V.sampleEvery || 1, control = opt && opt.control, LD = ret.landing;
+  const tab = (T, t) => { if (!T || !T.length) return 0; if (t <= T[0][0]) return T[0][1]; for (let i = 1; i < T.length; i++) if (t <= T[i][0]) return T[i - 1][1] + (T[i][1] - T[i - 1][1]) * (t - T[i - 1][0]) / Math.max(1e-12, T[i][0] - T[i - 1][0]); return T[T.length - 1][1]; };
+  const padAt = t => { const a = wEff * t; return { x: L.RE * Math.cos(a), y: L.RE * Math.sin(a), vx: -wEff * L.RE * Math.sin(a), vy: wEff * L.RE * Math.cos(a), a }; };
+  let t = start.t, x = start.x, y = start.y, vx = start.vx, vy = start.vy, prop = V.propKg, nextS = t, landingOn = false, tLand = null; const samples = [], controls = [], tEnd = start.t + (opt && opt.tmax || 3000);
+  let td = null;
+  while (t < tEnd) {
+    const r = Math.hypot(x, y), ux = x / r, uy = y / r, ex = -uy, ey = ux, h = r - L.RE, air = Math.exp(-h / 7200), m = V.dryKg + prop, eff = 1 - (1 - V.ispSea / V.ispVac) * air, g = L.MU / (r * r), vr = vx * ux + vy * uy;
+    let thr, phi;
+    if (control) { const c = control({ t, x, y, vx, vy, r, ux, uy, ex, ey, h, air, m, prop, pad: padAt(t), padAt }); thr = c.thr; phi = c.phi; }
+    else {
+      thr = tab(ret.throttle && ret.throttle.table, t); phi = tab(ret.pitch && ret.pitch.table, t) * Math.PI / 180;
+      if (LD) {
+        const nF = LD.enginesFar / LD.totalEngines;
+        if (!landingOn && vr < 0 && h < 60000) { const aNet = nF * V.thrustN * eff / m - g; if (aNet > 5 && h - hT <= vr * vr / (2 * aNet * LD.ignitionMargin)) { landingOn = true; tLand = t; } }
+        if (landingOn) {   // freinage à décélération constante vers le point visé + correction horizontale par rapport au pas de tir
+          const pd = padAt(t), k = (L.RE + LD.aimAltitudeM) / L.RE, alt = h - LD.aimAltitudeM;
+          const wv = vr - (pd.vx * ux + pd.vy * uy), wh = (vx - pd.vx) * ex + (vy - pd.vy) * ey, rho = (x - pd.x * k) * ex + (y - pd.y * k) * ey;
+          const av = wv < 0 ? Math.max(0, (wv * wv - LD.crossingSpeedMs * LD.crossingSpeedMs) / (2 * Math.max(alt, 3))) : 0, ah = -LD.horizontalKp * rho - LD.horizontalKd * wh, lim = LD.horizontalMaxAccel;
+          const Fup = m * (av + g), Fh = m * Math.max(-lim, Math.min(lim, ah)), F = Math.hypot(Fup, Fh), vrel = Math.hypot(wv, wh);
+          const cap = (vrel > LD.farSpeedMs ? LD.enginesFar : LD.enginesNear) / LD.totalEngines, tmin = LD.enginesMin / LD.totalEngines;
+          thr = Math.max(tmin, Math.min(cap, F / (V.thrustN * eff))); phi = Math.atan2(Fup, Fh);
+        }
+      }
+    }
+    controls.push([t, thr, phi]);
+    if (prop <= 0) thr = 0;
+    const F = thr * V.thrustN * eff, md = thr * V.thrustN / (V.ispVac * G0);
+    const tx = ux * Math.sin(phi) + ex * Math.cos(phi), ty = uy * Math.sin(phi) + ey * Math.cos(phi);
+    const fa = phAccel(x, y, vx, vy, m, F, tx, ty, V.cdA, wEff);
+    if (t >= nextS - 1e-9) { samples.push({ t, x, y, vx, vy, m, F, thr, phi, alt: h, v: Math.hypot(vx, vy), q: fa.q }); nextS += every; }
+    if (h <= hT && t > start.t + 5 && vr < 0) {   // arrivée à la hauteur de la tour, en descendant
+      const pd = padAt(t), ang = Math.atan2(y, x) - pd.a, dvx = vx - pd.vx, dvy = vy - pd.vy;
+      td = { t, missM: ang * L.RE, speedMs: Math.hypot(dvx, dvy), verticalMs: -(dvx * ux + dvy * uy), propLeftKg: prop, ok: Math.abs(ang * L.RE) < 30 && Math.hypot(dvx, dvy) < 8 };
+      samples.push({ t, x, y, vx, vy, m, F: 0, thr: 0, alt: h, v: Math.hypot(vx, vy), q: fa.q }); break;
+    }
+    prop = Math.max(0, prop - md * dt);
+    vx += fa.ax * dt; vy += fa.ay * dt; x += vx * dt; y += vy * dt; t += dt;
+    if (Math.hypot(x, y) < L.RE - 1) break;
+  }
+  const events = (ret.events || []).map(e => Object.assign({}, e));
+  if (tLand != null) events.push({ t: tLand, key: 'landingBurn', label: (ret.landingLabel || 'Allumage d’atterrissage') });
+  if (td) events.push({ t: td.t, key: 'catch', label: (ret.catchLabel || 'Le booster est rattrapé par les bras de la tour') });
+  events.sort((a, b) => a.t - b.t);
+  return { samples, events, touchdown: td, controls, ok: !!(td && td.ok) };
+}
+
+// ---------- DESCRIPTION VISUELLE ET MASSES DES OBJETS : tout vient du plan JSON ----------
+// plan.visual { name, short, tower, names { booster, stage1, stage2 }, model { core {r, h, color}, boosters {n, r, h, nose, R, color, band} | null, upper {r, h, color}, fairing {r, cyl, cone, color}, noz {epc, eap, esc} } }
+// (couleurs : "#rrggbb"). Sans « visual », on retombe sur la fusée nommée dans plan.rocket (js/rockets.js). Les masses des objets largués viennent de plan.vehicle et plan.jettison.
+function planToSpec(plan) {
+  const base = ROCKETS[plan.rocket] || ROCKETS.ariane5, vis = plan.visual, V = plan.vehicle, col = c => (typeof c === 'string' ? parseInt(c.replace('#', ''), 16) : c);
+  let model = base.model;
+  if (vis && vis.model) { model = JSON.parse(JSON.stringify(vis.model)); for (const k of ['core', 'boosters', 'upper', 'fairing']) if (model[k]) { if (model[k].color != null) model[k].color = col(model[k].color); if (model[k].band != null) model[k].band = col(model[k].band); } }
+  const B = V.boosters || { dryKg: 0 }, S1 = V.stage1;
+  return {
+    name: (vis && vis.name) || plan.name || base.name, short: (vis && vis.short) || base.short, maxPayload: 1e12,
+    phys: { eap: { dry: B.dryKg }, epc: { dry: S1.dryKg, prop: S1.propKg }, fairing: V.fairingKg || 0, direct: false },
+    names: Object.assign({}, base.names, vis && vis.names), model, tower: vis ? !!vis.tower : !!base.tower, sepDv: {},
+  };
+}

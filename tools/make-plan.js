@@ -7,14 +7,15 @@ const fs = require('fs'), vm = require('vm'), path = require('path');
 const root = path.join(__dirname, '..'), ctx = { console, Math, Date, JSON }; vm.createContext(ctx);
 for (const f of ['js/physics.js', 'js/launch.js', 'js/rockets.js', 'js/flight-plan.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f });
 const jsonPath = path.join(root, 'data', 'plans', 'kourou-ariane5-500km.json'), jsPath = path.join(root, 'js', 'data', 'plans.js');
-const wrap = plan => fs.writeFileSync(jsPath, '// GÉNÉRÉ par tools/make-plan.js à partir de data/plans/*.json : ne pas éditer (modifier le JSON puis `node tools/make-plan.js --wrap`).\nconst FLIGHT_PLANS = { kourou500: ' + JSON.stringify(plan) + ' };\n');
-if (process.argv.includes('--wrap')) { wrap(JSON.parse(fs.readFileSync(jsonPath, 'utf8'))); console.log('écrit js/data/plans.js'); process.exit(0); }
+const { writePlansJs } = require('./lib-plans'), wrap = () => writePlansJs(root);
+if (process.argv.includes('--wrap')) { wrap(); console.log('écrit js/data/plans.js'); process.exit(0); }
 const out = vm.runInContext(`(() => {
   const rk = ROCKETS.ariane5, L = Object.assign({}, LCH, rk.phys), N = Object.assign({}, LCH_NAMES, rk.names);
   const SITE = { name: 'Kourou (Guyane)', lat: 5.2408, lon: -52.7688, azimuthDeg: 90 }, KM = 500, PAYLOAD = 3000;
   const fine = Object.assign({}, rk, { phys: Object.assign({}, rk.phys, { SAMPLE: 0.1 }) });   // échantillon à CHAQUE pas de 0,1 s : la table de direction contient la valeur exacte de chaque pas (marches comprises)
   const sim = simulateLaunch(KM, { lat: SITE.lat, payload: PAYLOAD, az: Math.PI / 2, rocket: fine });
   if (!sim.ok) throw new Error('simulation de référence : orbite non atteinte');
+  const hex = c => '#' + c.toString(16).padStart(6, '0'), visualOf = rk0 => { const m = JSON.parse(JSON.stringify(rk0.model)); for (const k of ['core', 'boosters', 'upper', 'fairing']) if (m[k]) { if (m[k].color != null) m[k].color = hex(m[k].color); if (m[k].band != null) m[k].band = hex(m[k].band); } return { name: rk0.name, short: rk0.short, tower: !!rk0.tower, names: { booster: rk0.names.booster || '', stage1: rk0.names.stage1, stage2: rk0.names.stage2 }, model: m }; };
   const round = (v, d) => Math.round(v * d) / d, T = e => e.t;
   const E = {}; for (const e of sim.events) E[e.key] = e;
   // événements : instants relevés dans la simulation de référence (valeur exacte : le moteur de plan les retrouve au pas près)
@@ -56,7 +57,7 @@ const out = vm.runInContext(`(() => {
   { const e = E.sat; jet.payload.atSeparation = { t: round(e.t, 10), altitudeKm: round(e.alt / 1000, 10), speedMs: round(e.v, 10) }; }
   return JSON.stringify({
     name: 'Kourou — Ariane 5 ECA — orbite circulaire de ' + KM + ' km', version: 1,
-    site: SITE, rocket: 'ariane5', target: { altitudeKm: KM },
+    site: SITE, rocket: 'ariane5', visual: visualOf(rk), target: { altitudeKm: KM },
     vehicle: {
       payloadKg: PAYLOAD, fairingKg: L.fairing, cdA: L.cdA, dt: L.DT, sampleEvery: LCH.SAMPLE,
       boosters: { count: L.eap.n, propKg: L.eap.prop, dryKg: L.eap.dry, burnS: L.eap.burn, ispVac: L.eap.ispV, ispSea: L.eap.ispS, thrustProfile: 'srb' },
@@ -72,5 +73,5 @@ const plan = JSON.parse(out);
 fs.mkdirSync(path.dirname(jsonPath), { recursive: true });
 // JSON lisible : un événement par ligne, la table de direction sur quelques lignes
 const lines = JSON.stringify(plan, null, 2).replace(/\{\n\s+"t": ([^\n]+)\n(?:\s+"[^\n]+\n)+?\s+\}/g, m => m.replace(/\n\s+/g, ' ')).replace(/\[\n\s+(-?[\d.]+),\n\s+(-?[\d.]+)\n\s+\]/g, '[$1, $2]');
-fs.writeFileSync(jsonPath, lines + '\n'); wrap(plan);
+fs.writeFileSync(jsonPath, lines + '\n'); wrap();
 console.log('plan écrit : ' + plan.events.length + ' événements, ' + plan.pitch.table.length + ' points de direction, ' + Math.round(fs.statSync(jsonPath).size / 1024 * 10) / 10 + ' Ko');

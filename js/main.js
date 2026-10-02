@@ -213,13 +213,13 @@
   const satBox = document.getElementById('satPanel');
   const stopSat = () => { if (launch) { launch.dispose(); launch = null; } hLabel.style.display = 'none'; vLabel.style.display = 'none'; cam.zoomFit = false; sat.hide(); if (cam.mode === 'launch') goEarth(); };
   // plan de vol : le JSON est relu à chaque lancement (on peut le modifier et recharger la page / relancer), sinon la copie embarquée
-  const loadPlan = () => (/^https?:/.test(location.protocol) ? fetch(SAT_PLAN_FILE + '?t=' + Date.now(), { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }) : Promise.reject(new Error('file'))).catch(() => FLIGHT_PLANS.kourou500);
-  function startSat() { loadPlan().then(launchPlan); }
+  const loadPlan = (key, custom) => custom ? Promise.resolve(custom) : (/^https?:/.test(location.protocol) && FLIGHT_PLAN_FILES[key] ? fetch(FLIGHT_PLAN_FILES[key] + '?t=' + Date.now(), { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }) : Promise.reject(new Error('file'))).catch(() => FLIGHT_PLANS[key]);
+  function startSat(key, custom) { loadPlan(key, custom).then(launchPlan); }
   function launchPlan(plan) {
     if (launch) { launch.dispose(); launch = null; }
     optShared.markers = false; optShared.names = false;
-    const site = Object.assign({}, LAUNCH_SITES[0], { name: plan.site.name, lat: plan.site.lat, lon: plan.site.lon });
-    launch = new Launch(site, plan.target.altitudeKm, plan.vehicle.payloadKg, 1, { opt: optShared, plan, rocketId: plan.rocket, az: plan.site.azimuthDeg * Math.PI / 180 }); world.add(launch.group);
+    const site = Object.assign({}, LAUNCH_SITES[0], { id: 'plan', name: plan.site.name, lat: plan.site.lat, lon: plan.site.lon });
+    launch = new Launch(site, plan.target.altitudeKm, plan.vehicle.payloadKg, 1, { opt: optShared, plan, rocketId: plan.rocket, az: (plan.site.azimuthDeg != null ? plan.site.azimuthDeg : 90) * Math.PI / 180 }); world.add(launch.group);
     launch.stepPause = false; launch.preview = false; launch.playing = true; launch.speed = 5; launch.topView = false;
     cam.launchK = 1; cam.zoomFit = false; cam.userDir = false; setMode('launch'); sat.show(launch);
   }
@@ -228,6 +228,7 @@
     speed(v) { if (!launch) return; if (v === 0) launch.playing = false; else { launch.playing = true; launch.speed = v; } },
     zoom() { if (!launch) return; cam.userDir = false; cam.zoomFit = true; launch.follow = 'rocket'; if (cam.mode !== 'launch') setMode('launch'); },
     top() { if (!launch) return; launch.topView = !launch.topView; cam.userDir = false; cam.zoomFit = false; cam.launchK = 1; if (cam.mode !== 'launch') setMode('launch'); },
+    booster() { if (!launch || !launch.retResult) return; launch.topView = false; cam.zoomFit = false; cam.userDir = false; cam.launchK = 1; launch.follow = 'epc'; if (cam.mode !== 'launch') setMode('launch'); },
     cam() { if (!launch) return; launch.topView = false; cam.zoomFit = false; cam.userDir = false; cam.launchK = 1; launch.follow = 'rocket'; if (cam.mode !== 'launch') setMode('launch'); },
   });
   document.getElementById('bSat').onclick = e => { satBox.hidden = !satBox.hidden; e.currentTarget.classList.toggle('on', !satBox.hidden); };

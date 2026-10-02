@@ -87,6 +87,19 @@ const ROCKETS = {
     names: { booster: '', stage1: 'Premier étage S-IC', stage2: 'Deuxième étage S-II', stage1Burns: false, fairing: 'Largage de la tour de sauvetage', meco: 'Arrêt des 5 moteurs F-1 du S-IC', epcsep: 'Séparation du S-IC', esc1: 'Allumage du S-II', esc1end: 'Fin de la 1re poussée du S-II', esc2: 'Allumage final (orbite circulaire)', esc2end: 'Orbite terrestre atteinte', sat: 'Orbite d’attente de 185 km' },
     model: { core: { r: 5.05, h: 42, color: 0xf2f2f2 }, boosters: null, upper: { r: 5.05, h: 25, color: 0xf2f2f2 }, fairing: { r: 3.3, cyl: 24, cone: 12, color: 0xf2f2f2 }, noz: { epc: 6, eap: 0, esc: 3.5 } },
   },
+  starship: {   // Starship (vaisseau) + Super Heavy (booster), SpaceX : valeurs de mémoire, simplifiées (V2 ≈ 120 m, 5 000 t). Le booster est « epc » : 3 400 t de propergol dont 600 t gardées pour revenir (comptées en masse sèche pendant la montée, voir le plan de retour) ; le vaisseau est « esc ».
+    name: 'Starship + Super Heavy', short: 'Starship', maxPayload: 150000,
+    phys: {
+      eap: { n: 0, prop: 0, dry: 0, burn: 1, ispV: 300, ispS: 280 },
+      epc: { prop: 2800e3, dry: 875e3, burn: 127, ispV: 350, ispS: 327 },   // dry = 275 t à vide + 600 t de réserve pour le retour (boostback + atterrissage)
+      esc: { prop: 1200e3, dry: 100e3, F: 14.4e6, isp: 372 },
+      fairing: 0, fairingAt: 400, sepEap: 150, sepDelay: 1, escDelay: 1, cdA: 25, kickAt: 15, kickDur: 5, kick: 2, escLifter: true, parkMax: 190,
+    },
+    sepDv: { epcsep: -2 },
+    names: { booster: '', stage1: 'Super Heavy (booster)', stage2: 'Starship (vaisseau)', stage1Burns: false, meco: 'Arrêt des moteurs du booster (MECO)', epcsep: 'Séparation à chaud : le booster se détache', esc1: 'Allumage des 6 Raptor du vaisseau', esc1end: 'Arrêt des moteurs du vaisseau', esc2: 'Allumage de circularisation', esc2end: 'Orbite atteinte', fairing: 'Ouverture de la soute', sat: 'Satellites déployés' },
+    tower: true,
+    model: { core: { r: 4.5, h: 71, color: 0xb9bec6 }, boosters: null, upper: { r: 4.5, h: 52, color: 0xc9ced6 }, fairing: { r: 0.3, cyl: 0.2, cone: 0.2, color: 0xc9ced6 }, noz: { epc: 3.5, eap: 0, esc: 2.5 } },
+  },
 };
 const ROCKET_OF_SITE = { kourou: 'ariane5', canaveral: 'falcon9', baikonour: 'soyuz', tanegashima: 'hiia', sriharikota: 'pslv', wenchang: 'cz5' };
 const rocketOf = site => ROCKETS[ROCKET_OF_SITE[site.id]] || ROCKETS.ariane5;

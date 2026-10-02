@@ -8,6 +8,48 @@
     "azimuthDeg": 90
   },
   "rocket": "ariane5",
+  "visual": {
+    "name": "Ariane 5 ECA",
+    "short": "Ariane 5",
+    "tower": false,
+    "names": {
+      "booster": "Booster à poudre (EAP)",
+      "stage1": "Étage principal (EPC)",
+      "stage2": "Étage supérieur (ESC-A)"
+    },
+    "model": {
+      "core": {
+        "r": 2.7,
+        "h": 30.5,
+        "color": "#d8b48a"
+      },
+      "boosters": {
+        "n": 2,
+        "r": 1.5,
+        "h": 31,
+        "nose": 3.2,
+        "R": 4.4,
+        "color": "#f2f2f2",
+        "band": "#b83030"
+      },
+      "upper": {
+        "r": 2.5,
+        "h": 4.6,
+        "color": "#bfc3c8"
+      },
+      "fairing": {
+        "r": 2.7,
+        "cyl": 12,
+        "cone": 6,
+        "color": "#f2f2f2"
+      },
+      "noz": {
+        "epc": 5.5,
+        "eap": 3.5,
+        "esc": 2.2
+      }
+    }
+  },
   "target": {
     "altitudeKm": 500
   },
