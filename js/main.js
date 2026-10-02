@@ -47,6 +47,7 @@
   const angDiff = (a, b) => ((b - a + 540) % 360) - 180;
 
   function setMode(m) {
+    issGo = 0;
     cam.mode = m; cam.fly = 2.2; cam.tfly = 2.2;
     document.getElementById('bEarth').classList.toggle('on', m === 'earth');
     document.getElementById('bIss').classList.toggle('on', m === 'iss');
@@ -119,7 +120,9 @@
     ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, () => { clearTimeout(tm); stop(); }));
   });
   const bStep = document.getElementById('bStep'); bStep.onclick = () => { stepI = (stepI + 1) % STEPS.length; bStep.textContent = STEPS[stepI] + '°'; };
-  const goIss = () => setViewLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist);
+  /* bouton ISS : d'abord on tourne autour de la Terre pour se retrouver au-dessus de la station (vue d'ensemble), puis un zoom pas trop rapide jusqu'à elle */
+  let issGo = 0;
+  const goIss = () => { if (!iss) return; if (cam.mode === 'iss' && cam.dist * R_KM < 3000) { issGo = 0; setViewLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist); return; } setMode('earth'); cam.goal.lon = iss.lon; cam.goal.lat = iss.lat; cam.goal.dist = 3.4; issGo = 1; };
   // ---------- lancement d'un satellite (js/launch-3d.js) ----------
   const fmtAlt = km => km < 10 ? Math.round(km * 1000).toLocaleString('fr-FR') + ' m' : (km < 1000 ? km.toFixed(1) : Math.round(km).toLocaleString('fr-FR')) + ' km';
   const hLabel = document.createElement('div'); hLabel.className = 'l3d'; hLabel.style.color = '#ffa040'; document.body.appendChild(hLabel);
@@ -200,13 +203,15 @@
       const auto = launch.camDistKm / R_KM; if (cam.zoomFit) cam.launchK = (launch.zoomLenM || launch.rocketLen) * 1.5 / 1000 / launch.camDistKm; cam.launchK = Math.max(0.02 / launch.camDistKm, Math.min(cam.launchK, (launch.maxDistU || 41) / auto));   // de 20 m de la fusée (à toute altitude) jusqu'à la Terre entière
       cam.goal.dist = auto * cam.launchK;
     }
-    if (cam.tfly > 0) { cam.tgt.lerp(goalTgt, 1 - Math.exp(-dt * 3.2)); cam.tfly -= dt; } else cam.tgt.copy(goalTgt);
+    if (cam.tfly > 0) { cam.tgt.lerp(goalTgt, 1 - Math.exp(-dt * (cam.slow ? 1.4 : 3.2))); cam.tfly -= dt; } else cam.tgt.copy(goalTgt);
     // zoom : toujours amorti (jamais de saut), en altitude pour la Terre (sinon l'amortissement ne bouge plus près du sol)
-    const kz = 1 - Math.exp(-dt * (cam.tfly > 0 ? 3.2 : 14)), base = cam.mode === 'earth' && cam.tfly <= 0 ? 1 : 0;
+    if (issGo === 1) { cam.goal.lon = iss ? iss.lon : cam.goal.lon; cam.goal.lat = iss ? iss.lat : cam.goal.lat; if (iss && Math.abs(angDiff(cam.lon, iss.lon)) < 2 && Math.abs(cam.lat - iss.lat) < 2 && Math.abs(cam.dist - 3.4) < 0.25) { issGo = 2; setViewLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist); cam.tfly = cam.fly = 9; cam.slow = true; } }
+    if (cam.tfly <= 0) cam.slow = false;
+    const kz = 1 - Math.exp(-dt * (cam.tfly > 0 ? (cam.slow ? 0.9 : 3.2) : 14)), base = cam.mode === 'earth' && cam.tfly <= 0 ? 1 : 0;
     const cur = Math.max(1e-7, cam.dist - base), want = Math.max(1e-7, cam.goal.dist - base);
     cam.dist = base + Math.exp(Math.log(cur) + (Math.log(want) - Math.log(cur)) * kz);
     if (Math.abs(Math.log(cam.dist - base) - Math.log(want)) < 1e-3) cam.dist = cam.goal.dist;
-    if (cam.fly > 0) { const k = 1 - Math.exp(-dt * 3.2); cam.lon += angDiff(cam.lon, cam.goal.lon) * k; cam.lat += (cam.goal.lat - cam.lat) * k; cam.fly -= dt; }
+    if (cam.fly > 0) { const k = 1 - Math.exp(-dt * (cam.slow ? 1.4 : 3.2)); cam.lon += angDiff(cam.lon, cam.goal.lon) * k; cam.lat += (cam.goal.lat - cam.lat) * k; cam.fly -= dt; }
     else { cam.lon = cam.goal.lon; cam.lat = cam.goal.lat; }
     cam.goal.lon = ((cam.goal.lon + 540) % 360) - 180;
     ll(cam.lon, cam.lat, dirv);
