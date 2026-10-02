@@ -162,13 +162,18 @@ class Launch {
   // (position, vitesse + petite poussée de séparation) ; la masse, la surface moyenne qui culbute et donc le coefficient balistique en découlent, et la chute (gravité, traînée, rotation de la Terre) se calcule seule.
   buildPieces() {
     const R = this.rocketSpec, mo = R.model, ph = Object.assign({}, LCH, R.phys), nm = R.names, Yv = new THREE.Vector3(0, 1, 0), wEff = PH.WE * Math.cos(this.site.lat * DEG);
+    const J = (this.sim.plan && this.sim.plan.jettison) || null;   // plan de vol JSON : section « jettison » (masse, forme, vitesse de séparation, désintégration de chaque objet largué) ; sinon valeurs par défaut de la fusée
     const sepDv = Object.assign({ eap: -1.5, fairing: 0.3, epcsep: -1, sat: -0.6 }, R.sepDv || {});   // m/s le long de la trajectoire (rétrofusées / ressorts)
+    if (J) { if (J.boosters) sepDv.eap = J.boosters.separationSpeedMs; if (J.fairing) sepDv.fairing = J.fairing.separationSpeedMs; if (J.stage1) sepDv.epcsep = J.stage1.separationSpeedMs; if (J.payload) sepDv.sat = J.payload.separationSpeedMs; }
+    const JK = { eap: 'boosters', fairing: 'fairing', epcsep: 'stage1', sat: 'payload' };
+    const jm = (k, m) => { const j = J && J[JK[k]]; if (!j) return m; return Object.assign({}, m, { dry: j.dryKgEach != null ? j.dryKgEach : j.dryKg != null ? j.dryKg : m.dry, prop: j.residualPropKg != null ? j.residualPropKg : m.prop, cd: j.dragCoefficient != null ? j.dragCoefficient : m.cd, shape: Object.assign({}, m.shape, j.radiusM != null ? { r: j.radiusM } : {}, j.lengthM != null ? { h: j.lengthM } : {}) }); };
     // un débris : model = { name, dry, prop, shape } ; lat = direction d'éloignement dans le plan du lanceur (cosmétique, hors du plan simulé)
     const mkPiece = (key, model, mesh, lat, r0, tumble, tag, burns) => {
       const e = this.ev[key]; if (!e) return;
+      const jt = J && J[JK[key]]; if (jt) { burns = !!jt.disintegrates; model = jm(key, model); }   // le plan décide : masse, forme, désintégration
       const r = Math.hypot(e.x, e.y), dv = sepDv[key] || 0;
       const body = new Body(model, { x: e.x, y: e.y, vx: e.vx - dv * e.y / r, vy: e.vy + dv * e.x / r, t: 0 }, { wEff, mode: 'tumble' });
-      const res = body.propagate({ tMax: 9000, sampleDt: 1, burnupAlt: burns ? (key === 'epcsep' ? (e.alt > 150e3 ? 120e3 : 70e3) : 30e3) : null }), out = res.samples.map(s => [s.x, s.y]);
+      const res = body.propagate({ tMax: 9000, sampleDt: 1, burnupAlt: burns ? (jt && jt.disintegrationAltitudeKm != null ? jt.disintegrationAltitudeKm * 1000 : key === 'epcsep' ? (e.alt > 150e3 ? 120e3 : 70e3) : 30e3) : null }), out = res.samples.map(s => [s.x, s.y]);
       const last = out[out.length - 1], z0 = this.zMain(e.t), zd = this.crossV * Math.exp(-e.t / this.crossTau), impact = this.toEF(last[0], last[1], e.t + out.length, new THREE.Vector3(), z0 + zd * out.length), /* le débris garde la vitesse transversale du lanceur à la séparation */ endText = burns ? 'rentrée atmosphérique (désintégration)' : "impact dans l'océan";
       const g = new THREE.Group(); g.add(mesh); g.visible = false; g.scale.setScalar(MU_M); this.group.add(g);
       const d = this.mk(0xaaaaaa), dir = this.dirAtEvent(e), latWorld = new THREE.Vector3(lat[0], 0, lat[1]).applyQuaternion(new THREE.Quaternion().setFromUnitVectors(Yv, dir));

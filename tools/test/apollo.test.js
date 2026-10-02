@@ -44,3 +44,11 @@ console.log(vm.runInContext(`(() => { const a = moonNow(new Date(Date.UTC(2026, 
 console.log(vm.runInContext(`(() => { const D = astroD(new Date(Date.UTC(2026, 9, 2, 12))), s = sunGeo(D); const dec = Math.asin(s.y / s.length()) / DEG, au = s.length() / AU_U;
   const g = v => Math.atan2(-v.z, v.x) / DEG, e0 = s.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), -gmstOf(D)), e1 = sunGeo(D + 0.25).applyAxisAngle(new THREE.Vector3(0, 1, 0), -gmstOf(D + 0.25));
   return 'Soleil 2 oct. 2026 12 h UTC : ' + au.toFixed(4) + ' UA, déclinaison ' + dec.toFixed(1) + '°, point subsolaire ' + g(e0).toFixed(1) + '° E ; 6 h plus tard ' + g(e1).toFixed(1) + '° (attendu ≈ −90°) ; rayon du Soleil ' + SUN_R_U.toFixed(1) + ' rayons terrestres'; })()`, sandbox));
+// plan de vol : la section « jettison » du JSON pilote les débris (vitesse de séparation, désintégration, masse)
+sandbox.PLAN_JSON = JSON.parse(fs.readFileSync(path.join(root, 'data/plans/kourou-ariane5-500km.json'), 'utf8'));
+for (const f of ['js/flight-plan.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), sandbox, { filename: f });
+console.log(vm.runInContext(`(() => {
+  const mk = edit => { const p = JSON.parse(JSON.stringify(PLAN_JSON)); edit(p.jettison); const L = new Launch(Object.assign({}, LAUNCH_SITES[0], p.site), p.target.altitudeKm, p.vehicle.payloadKg, 1, { plan: p, rocketId: p.rocket, az: Math.PI / 2 }); const g = k => L.pieces.find(q => q.tagKey === k); return { eap: g('eap1'), epc: g('epc'), fa: g('fairA') }; };
+  const base = mk(() => {}), fast = mk(j => { j.boosters.separationSpeedMs = -30; }), burn = mk(j => { j.boosters.disintegrates = true; j.boosters.disintegrationAltitudeKm = 30; j.stage1.disintegrates = false; });
+  return 'JSON jettison : boosters tombent en ' + base.eap.path.length + ' s (' + base.eap.endText + '), avec séparation à −30 m/s : ' + fast.eap.path.length + ' s ; boosters désintégrés à 30 km : ' + burn.eap.path.length + ' s (' + burn.eap.endText + ') ; étage principal non désintégré : ' + burn.epc.path.length + ' s (' + burn.epc.endText + ')';
+})()`, sandbox));

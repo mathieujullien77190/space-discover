@@ -834,5 +834,64 @@
     { "t": 3243.2999999981457, "do": "ignite", "engine": "stage2", "key": "esc2", "label": "Allumage à l’apogée (circularisation)", "phase": "circularisation" },
     { "t": 3271.0999999981204, "do": "cutoff", "engine": "stage2", "key": "esc2end", "label": "Extinction : orbite atteinte", "phase": "en orbite" },
     { "t": 3271.1999999981203, "do": "separate", "part": "payload", "key": "sat", "label": "Satellite largué" }
-  ]
+  ],
+  "jettison": {
+    "_note": "Entrées (modifiables) : dryKg, residualPropKg, radiusM, lengthM, dragCoefficient, separationSpeedMs (m/s le long de la trajectoire, négatif = vers l’arrière), disintegrates, disintegrationAltitudeKm. \"atSeparation\" et \"expected\" sont CALCULÉS à l’extraction (informatifs, non lus par le moteur).",
+    "boosters": {
+      "count": 2,
+      "dryKg": 33000,
+      "residualPropKg": 0,
+      "radiusM": 1.5,
+      "lengthM": 37.7,
+      "dragCoefficient": 1,
+      "separationSpeedMs": -1.5,
+      "disintegrates": false,
+      "atSeparation": { "t": 130, "altitudeKm": 72.4, "speedMs": 2533.1 },
+      "expected": {
+        "fallS": 455,
+        "endAltitudeKm": 0.1,
+        "endSpeedMs": 469.7,
+        "end": "tombe dans l’océan"
+      }
+    },
+    "fairing": {
+      "pieces": 2,
+      "dryKgEach": 1200,
+      "residualPropKg": 0,
+      "radiusM": 2.7,
+      "lengthM": 15,
+      "dragCoefficient": 1,
+      "separationSpeedMs": 0.3,
+      "disintegrates": false,
+      "atSeparation": { "t": 200.1, "altitudeKm": 141.2, "speedMs": 2829.8 },
+      "expected": {
+        "fallS": 988,
+        "endAltitudeKm": 0,
+        "endSpeedMs": 463.5,
+        "end": "tombe dans l’océan"
+      }
+    },
+    "stage1": {
+      "dryKg": 12200,
+      "residualPropKg": 3400,
+      "radiusM": 2.7,
+      "lengthM": 36,
+      "dragCoefficient": 1,
+      "separationSpeedMs": -1,
+      "disintegrates": true,
+      "disintegrationAltitudeKm": 120,
+      "atSeparation": { "t": 527.3, "altitudeKm": 199.4, "speedMs": 7761 },
+      "expected": {
+        "fallS": 2427,
+        "endAltitudeKm": 120,
+        "endSpeedMs": 7850.4,
+        "end": "se désintègre"
+      }
+    },
+    "payload": {
+      "dryKg": 3000,
+      "separationSpeedMs": -0.6,
+      "atSeparation": { "t": 3271.2, "altitudeKm": 500.5, "speedMs": 7612.7 }
+    }
+  }
 }
