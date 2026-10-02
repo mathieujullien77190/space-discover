@@ -3,6 +3,7 @@ function attachControls(canvas, cam, onClick) {
   const ptrs = new Map(); let pinch = 0, moved = 0;
   const tanH = () => Math.tan(cam.fov * DEG / 2);
   const zoom = f => {   // f > 1 = on s'éloigne
+    cam.anim = null; cam.issLock = false;   // l'utilisateur reprend la main sur la descente vers l'ISS
     if (cam.mode === 'launch') { cam.zoomFit = false; cam.launchK = Math.max(1e-7, Math.min(1e7, cam.launchK * f)); }   // zoom manuel sur la caméra auto de la fusée
     else if (cam.mode === 'earth') cam.goal.dist = 1 + Math.min(150, Math.max(2 / R_KM, (cam.goal.dist - 1) * f));   // on zoome sur l'altitude (min 2 km)
     else if (cam.mode === 'solar') cam.goal.dist = Math.min(3e5, Math.max(1.5, cam.goal.dist * f));   // vue Soleil / Lune : de 1,5 rayon terrestre à 3·10⁵ (≈ 13 UA)
@@ -12,7 +13,7 @@ function attachControls(canvas, cam, onClick) {
   const rotate = (dx, dy) => {
     const alt = Math.max(1e-5, cam.mode === 'earth' ? cam.dist - 1 : 0);
     const k = cam.mode === 'earth' ? Math.min(alt, 3) * 2 * tanH() / canvas.clientHeight / DEG : 0.3;   // le sol suit le doigt à tout zoom
-    cam.goal.lon -= dx * k; cam.goal.lat = Math.max(-89.5, Math.min(89.5, cam.goal.lat + dy * k));
+    cam.anim = null; cam.goal.lon -= dx * k; cam.goal.lat = Math.max(-89.5, Math.min(89.5, cam.goal.lat + dy * k));
     cam.lon = cam.goal.lon; cam.lat = cam.goal.lat; cam.fly = 0; if (cam.mode === 'launch') cam.userDir = true;   // l'utilisateur reprend la main
   };
   canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); moved = 0; canvas.classList.add('drag'); if (ptrs.size === 2) pinch = 0; });
