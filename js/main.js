@@ -225,6 +225,11 @@
     const Dd = astroD(date), gm = gmstOf(Dd), solarMode = cam.mode === 'solar', apolloMode = !!(launch && launch.inertial), sunV = sunGeo(Dd), moonV = moonInertial(Dd).pos, rotS = solarMode ? 0 : -gm;
     const sunAbs = sunV.clone().applyAxisAngle(Y_AXIS, rotS), moonAbs = moonV.clone().applyAxisAngle(Y_AXIS, rotS);
 
+    // trop loin pour voir l'ISS (cachée) : on passe en vue « Terre » sans bouger la caméra (le bouton Terre s'allume)
+    if (cam.mode === 'iss' && (camera.position.length() - 1) * R_KM > 20000) {
+      const p = camera.position, L = p.length(); cam.mode = 'earth'; cam.tgt.set(0, 0, 0); cam.dist = cam.goal.dist = L; cam.lat = cam.goal.lat = Math.asin(p.y / L) / DEG; cam.lon = cam.goal.lon = Math.atan2(-p.z, p.x) / DEG; cam.fly = cam.tfly = 0;
+      document.getElementById('bEarth').classList.add('on'); document.getElementById('bIss').classList.remove('on');
+    }
     // caméra : la cible suit l'ISS ou reste au centre ; transitions douces
     if (launch) { launch.update(dt, camera); tl.update(launch); }
     const goalTgt = solarMode ? (solarTarget === 'sun' ? sunAbs : solarTarget === 'moon' ? moonAbs : tmp.set(0, 0, 0)) : cam.mode === 'iss' && iss ? iss.pos : cam.mode === 'launch' && launch ? launch.focusPos : tmp.set(0, 0, 0);
