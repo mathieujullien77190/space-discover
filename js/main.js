@@ -43,7 +43,6 @@
   // lumière : par défaut « de face » (la Terre est lisible partout), ou le vrai Soleil (jour/nuit)
   const amb = new THREE.AmbientLight(0xffffff, 0.55), sun = new THREE.DirectionalLight(0xffffff, 1.0);
   scene.add(amb, sun, sun.target);
-  let realSun = false;
   function subsolar(d) {
     const n = (d - Date.UTC(d.getUTCFullYear(), 0, 0)) / 86400000, dec = -23.44 * Math.cos(2 * Math.PI * (n + 10) / 365);
     return ll((12 - (d.getUTCHours() + d.getUTCMinutes() / 60 + d.getUTCSeconds() / 3600)) * 15, dec);
@@ -101,12 +100,10 @@
   }
   cam.onEarth = () => goEarth();
   /* un seul sélecteur pour les vues (Terre, ISS, Lune, Soleil) ; l'interrupteur jour/nuit se comporte comme un « mode sombre » (réglage mémorisé) */
-  const viewSel = document.getElementById('viewSel'), dnChk = document.getElementById('dnChk');
+  const viewSel = document.getElementById('viewSel');
   function syncView(m) { viewSel.value = m === 'solar' ? (solarTarget === 'sun' ? 'sun' : 'moon') : m === 'iss' ? 'iss' : 'earth'; }
   const mtChk = document.getElementById('mtChk'); try { metric = localStorage.getItem('metric') === '1'; } catch (e) {} mtChk.checked = metric; mtChk.onchange = () => { metric = mtChk.checked; try { localStorage.setItem('metric', metric ? '1' : '0'); } catch (e) {} };
   viewSel.onchange = () => { const v = viewSel.value; if (v === 'earth') goEarth(); else if (v === 'iss') goIss(); else goSolar(v); viewSel.blur(); };
-  try { realSun = localStorage.getItem('realSun') === '1'; } catch (e) {}
-  dnChk.checked = realSun; dnChk.onchange = () => { realSun = dnChk.checked; try { localStorage.setItem('realSun', realSun ? '1' : '0'); } catch (e) {} };
 
   // caractéristiques de l'ISS affichées en 3D (cases à cocher ; définies dans ISS_FEATURES, js/iss.js)
   const VIEW_ISS = { yaw: -38, pitch: 55.5, dist: 0.5 };   // vue quand on zoome sur l'ISS (yaw °, pitch °, distance km) — réglée par l'utilisateur
@@ -336,8 +333,7 @@
       moonScreen = proj(moonLabel, moonAbs, camera.position.distanceTo(moonAbs) > 6); sunScreen = proj(sunLabel, sunAbs, camera.position.distanceTo(sunAbs) > 2 * SUN_R_U); proj(earthLabel, new THREE.Vector3(), solarMode && cam.dist > 300 || (metric && cam.mode === 'earth' && cam.dist > 6));
     } else { moonLabel.style.display = sunLabel.style.display = earthLabel.style.display = 'none'; moonScreen = sunScreen = null; }
     // lumière
-    if (realSun || solarMode) { sun.position.copy(sunAbs).normalize().multiplyScalar(10); amb.intensity = solarMode ? 0.12 : 0.22; }
-    else { sun.position.copy(launch && launch.inertial ? camera.position.clone().sub(cam.tgt).normalize() : camera.position.clone().normalize()).add(tmp.set(0.4, 0.5, 0.2)).multiplyScalar(10); amb.intensity = 0.55; }
+    sun.position.copy(cam.mode === 'solar' || (launch && launch.inertial) ? camera.position.clone().sub(cam.tgt).normalize() : camera.position.clone().normalize()).add(tmp.set(0.4, 0.5, 0.2)).multiplyScalar(10); amb.intensity = 0.55;   // toujours « jour » : la Terre et la Lune sont éclairées de face (pas de nuit)
 
     // ISS
     issScreen = null; label.style.display = 'none';

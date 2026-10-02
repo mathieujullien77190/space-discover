@@ -119,8 +119,8 @@ button.on { border-color: #ffd54a; color: #ffd54a; }
 #err { position: fixed; left: 12px; right: 12px; top: 60px; z-index: 20; padding: 8px 10px; background: rgba(120, 20, 20, .92); color: #fff; font: 12px ui-monospace, Consolas, monospace; white-space: pre-wrap; border-radius: 8px; }
 #err[hidden] { display: none; }
 
-.sw2 { top: calc(58px + env(safe-area-inset-top)); }
-@media (max-width: 700px), (pointer: coarse) { .sw2 { top: calc(64px + env(safe-area-inset-top)); } }
+.sw2 { top: calc(12px + env(safe-area-inset-top)); }
+@media (max-width: 700px), (pointer: coarse) { .sw2 { top: calc(12px + env(safe-area-inset-top)); } }
 
 /* accélération du temps (Lune qui tourne, Terre, Soleil) */
 #timeBar { position: fixed; right: calc(12px + env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 4; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; text-shadow: 0 1px 3px #000; }
@@ -131,7 +131,7 @@ button.on { border-color: #ffd54a; color: #ffd54a; }
 @media (max-width: 700px), (pointer: coarse) { #timeBar { left: 8px; right: 8px; bottom: calc(76px + env(safe-area-inset-bottom)); align-items: stretch; } #timeBar .tb { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; scrollbar-width: none; } #timeBar button { flex: 0 0 auto; min-height: 36px; padding: 6px 10px; font-size: 13px; } #timeTxt { text-align: right; } #scale { bottom: calc(150px + env(safe-area-inset-bottom)); } }
 
 /* lancement de satellite simple */
-#satPanel { position: fixed; right: calc(12px + env(safe-area-inset-right)); top: calc(108px + env(safe-area-inset-top)); width: 300px; max-height: calc(100% - 220px); overflow: auto; padding: 10px 12px; background: rgba(20, 30, 50, .88); border: 1px solid rgba(255, 255, 255, .25); border-radius: 8px; font-size: 13px; z-index: 5; }
+#satPanel { position: fixed; right: calc(12px + env(safe-area-inset-right)); top: calc(60px + env(safe-area-inset-top)); width: 300px; max-height: calc(100% - 220px); overflow: auto; padding: 10px 12px; background: rgba(20, 30, 50, .88); border: 1px solid rgba(255, 255, 255, .25); border-radius: 8px; font-size: 13px; z-index: 5; }
 #satPanel[hidden], #satPanel [hidden] { display: none; }
 #satPanel .ohead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 #satPanel .ohead button { padding: 2px 8px; }
