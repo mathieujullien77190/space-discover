@@ -32,7 +32,7 @@ class Launch {
   constructor(site, targetKm, payloadKg, satScale, opts) {
     const L = LCH, o = opts || {}; this.inertial = !!o.inertial; const spec = this.rocketSpec = (o.rocketId && ROCKETS[o.rocketId]) || rocketOf(site), az = o.az != null ? o.az : Math.PI / 2;   // az : azimut de tir (π/2 = plein est)
     this.payloadUsed = Math.min(payloadKg || 9e3, spec.maxPayload * 0.9);   // charge limitée par la capacité de la fusée
-    const sim = this.sim = simulateLaunch(targetKm, { lat: site.lat, payload: this.payloadUsed, az, rocket: spec, apoKm: o.apoKm });
+    const sim = this.sim = o.plan ? flyPlan(o.plan) : simulateLaunch(targetKm, { lat: site.lat, payload: this.payloadUsed, az, rocket: spec, apoKm: o.apoKm });   // o.plan : plan de vol JSON (js/flight-plan.js), sans guidage
     this.story = o.story || null; this.direct = !!(spec.phys && spec.phys.direct);   // story : mission historique (js/story.js) ; direct : le dernier étage met la charge en orbite
     this.opt = o.opt || launchOptDefault();   // options d'affichage (partagées entre les lancements)
     this.site = site; this.targetKm = targetKm; this.satScale = satScale || 1; this.T = 0; this.speed = 1; this.stepPause = true; this.stopT = null; this.effSpeed = 1; this.playing = true; this.userDir = false;

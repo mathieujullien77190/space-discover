@@ -212,10 +212,14 @@
   /* ---------- lancement de satellite SIMPLE : une fusée, une liste de choses à faire, boutons « zoom fusée » et « vue de dessus » (pas de frise ni d'étapes zoomées) ---------- */
   const satBox = document.getElementById('satPanel');
   const stopSat = () => { if (launch) { launch.dispose(); launch = null; } hLabel.style.display = 'none'; vLabel.style.display = 'none'; cam.zoomFit = false; sat.hide(); if (cam.mode === 'launch') goEarth(); };
-  function startSat(site, type) {
+  // plan de vol : le JSON est relu à chaque lancement (on peut le modifier et recharger la page / relancer), sinon la copie embarquée
+  const loadPlan = () => (/^https?:/.test(location.protocol) ? fetch(SAT_PLAN_FILE + '?t=' + Date.now(), { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }) : Promise.reject(new Error('file'))).catch(() => FLIGHT_PLANS.kourou500);
+  function startSat() { loadPlan().then(launchPlan); }
+  function launchPlan(plan) {
     if (launch) { launch.dispose(); launch = null; }
     optShared.markers = false; optShared.names = false;
-    launch = new Launch(site, type.km, type.payload * 1000, type.scale, { opt: optShared }); world.add(launch.group);
+    const site = Object.assign({}, LAUNCH_SITES[0], { name: plan.site.name, lat: plan.site.lat, lon: plan.site.lon });
+    launch = new Launch(site, plan.target.altitudeKm, plan.vehicle.payloadKg, 1, { opt: optShared, plan, rocketId: plan.rocket, az: plan.site.azimuthDeg * Math.PI / 180 }); world.add(launch.group);
     launch.stepPause = false; launch.preview = false; launch.playing = true; launch.speed = 5; launch.topView = false;
     cam.launchK = 1; cam.zoomFit = false; cam.userDir = false; setMode('launch'); sat.show(launch);
   }
