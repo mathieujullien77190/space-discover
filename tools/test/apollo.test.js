@@ -37,3 +37,6 @@ const out = vm.runInContext(`(() => {
 console.log(out);
 // non-régression : un lancement ordinaire (Kourou, Ariane 5) fonctionne toujours (repère de la Terre, options d'élément)
 console.log(vm.runInContext(`(() => { const L = new Launch(LAUNCH_SITES[0], 400, 9000, 1.4, {}); const cam = { position: new THREE.Vector3(0, 0, 3) }; L.T = 200; L.playing = false; L.update(0.016, cam); const o = L.elOpt('eap1'); return 'Launch ordinaire : inertial=' + L.inertial + ', alt ' + Math.round(L.altM / 1000) + ' km, trajectoire des boosters affichée : ' + o.traj + ', ' + L.pieces.length + ' débris'; })()`, sandbox));
+// la Lune réelle : distance et déclinaison plausibles, rotation d'un tour en ~24 h dans le repère de la Terre
+console.log(vm.runInContext(`(() => { const a = moonNow(new Date(Date.UTC(2026, 9, 2, 12))), b = moonNow(new Date(Date.UTC(2026, 9, 3, 12))), c = moonNow(new Date(Date.UTC(2026, 9, 2, 18))); const lon = v => Math.atan2(-v.z, v.x) / DEG, lat = v => Math.asin(v.y / v.length()) / DEG;
+  return 'Lune réelle 2 oct. 2026 12 h UTC : ' + a.km.toFixed(0) + ' km, point sublunaire ' + lat(a.pos).toFixed(1) + '° / ' + lon(a.pos).toFixed(1) + '° ; 6 h plus tard ' + lon(c.pos).toFixed(1) + '° ; 24 h plus tard ' + lon(b.pos).toFixed(1) + '° (la Terre tourne dessous : ≈ −15° par heure + 0,55°)'; })()`, sandbox));

@@ -11,6 +11,10 @@
   const inertial = new THREE.Group(); scene.add(inertial);   // missions lunaires : repère inertiel (la Terre tourne : world.rotation.y), décalé comme world   // tout ce qui est décalé à l'affichage (origine flottante près de l'ISS : précision au mètre)
   const earth = buildEarth(renderer); world.add(earth);
 
+  // la Lune : toujours là, à sa position réelle (formules approchées) ; dans le repère de la Terre fixe elle fait le tour en un jour. Créée peu après le démarrage (texture ~0,3 s).
+  let moonMesh = null; const moonLabel = document.createElement('div'); moonLabel.className = 'l3d'; moonLabel.textContent = 'Lune'; moonLabel.style.display = 'none'; document.body.appendChild(moonLabel);
+  setTimeout(() => { moonMesh = buildMoonMesh(renderer); world.add(moonMesh); }, 400);
+
   // fond d'étoiles
   const sp = new Float32Array(3 * 3000), tmp = new THREE.Vector3();
   for (let i = 0; i < 3000; i++) { tmp.set(Math.random() - .5, Math.random() - .5, Math.random() - .5).normalize().multiplyScalar(1500); sp.set([tmp.x, tmp.y, tmp.z], 3 * i); }
@@ -110,7 +114,7 @@
       applyLocal(((yaw + 540) % 360) - 180, pitch, dist, true);
     } else if (cam.mode === 'earth') {
       if (kind[0] === 'y') cam.goal.lon += sgn * st; else if (kind[0] === 'p') cam.goal.lat = Math.max(-89.5, Math.min(89.5, cam.goal.lat + sgn * st));
-      else cam.goal.dist = 1 + Math.min(40, Math.max(2 / R_KM, (cam.goal.dist - 1) * (sgn > 0 ? f : 1 / f)));
+      else cam.goal.dist = 1 + Math.min(150, Math.max(2 / R_KM, (cam.goal.dist - 1) * (sgn > 0 ? f : 1 / f)));
       cam.lon = cam.goal.lon; cam.lat = cam.goal.lat; cam.fly = 0;
     }
   }
@@ -220,6 +224,12 @@
     const closest = Math.max(1e-7, Math.min(cam.dist, camera.position.length() - 1) * 0.05);
     camera.near = Math.min(0.05, closest); camera.far = 4000; camera.updateProjectionMatrix();
 
+    // la Lune réelle (cachée pendant une mission lunaire : elle a la sienne)
+    if (moonMesh) {
+      const mn = moonNow(date), hideM = launch && launch.inertial; moonMesh.visible = !hideM; moonMesh.position.copy(mn.pos); moonQuat(mn.pos.clone().normalize(), mn.pole, moonMesh.quaternion);
+      const pp = mn.pos.clone().project(camera), cd = camera.position.distanceTo(mn.pos);
+      if (!hideM && pp.z < 1 && Math.abs(pp.x) < 1 && Math.abs(pp.y) < 1 && cd > 6) { moonLabel.style.display = 'block'; moonLabel.style.transform = `translate(${(pp.x + 1) / 2 * innerWidth + 10}px,${(1 - pp.y) / 2 * innerHeight - 8}px)`; } else moonLabel.style.display = 'none';
+    }
     // lumière
     if (realSun) { sun.position.copy(subsolar(date)).multiplyScalar(10); amb.intensity = 0.22; }
     else { sun.position.copy(launch && launch.inertial ? camera.position.clone().sub(cam.tgt).normalize() : camera.position.clone().normalize()).add(tmp.set(0.4, 0.5, 0.2)).multiplyScalar(10); amb.intensity = 0.55; }
