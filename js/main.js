@@ -152,7 +152,9 @@
   let issGo = 0;
   const goIss = () => { if (!iss) return; if (cam.mode === 'iss' && cam.dist * R_KM < 3000) { issGo = 0; setViewLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist); return; } setMode('earth'); cam.goal.lon = iss.lon; cam.goal.lat = iss.lat; cam.goal.dist = 3.4; issGo = 1; };
   // ---------- lancement d'un satellite (js/launch-3d.js) ----------
-  const fmtAlt = km => km < 10 ? Math.round(km * 1000).toLocaleString('fr-FR') + ' m' : (km < 1000 ? km.toFixed(1) : Math.round(km).toLocaleString('fr-FR')) + ' km';
+  const KM_UA = 149597870.7, KM_AL = 9.4607304725808e12;
+  const fmtBig = km => { const fr = (v, d) => v.toLocaleString('fr-FR', { maximumFractionDigits: d }); return km >= 0.1 * KM_AL ? fr(km / KM_AL, 2) + ' al' : km >= 1e7 ? fr(km / KM_UA, km / KM_UA < 10 ? 2 : 1) + ' UA' : null; };   // null : rester en km
+  const fmtAlt = km => fmtBig(km) || fmtAltKm(km), fmtAltKm = km => km < 10 ? Math.round(km * 1000).toLocaleString('fr-FR') + ' m' : (km < 1000 ? km.toFixed(1) : Math.round(km).toLocaleString('fr-FR')) + ' km';
   const hLabel = document.createElement('div'); hLabel.className = 'l3d'; hLabel.style.color = '#ffa040'; document.body.appendChild(hLabel);
   const vLabel = document.createElement('div'); vLabel.className = 'l3d'; vLabel.style.color = '#ffffff'; document.body.appendChild(vLabel);   // vitesse, collée à la fusée
   // texte posé sur un segment (de A à B, absolus), incliné comme lui, à un endroit visible ; false si rien n'est visible
@@ -371,7 +373,8 @@
       const dKm = cam.mode === 'earth' ? (camera.position.length() - 1) * R_KM : cam.dist * R_KM;
       if (dKm > 1e-6) {
         const pxPerKm = innerHeight / (2 * dKm * Math.tan(camera.fov * DEG / 2)), raw = 140 / pxPerKm, e10 = Math.pow(10, Math.floor(Math.log10(raw)));
-        const n = [5, 2, 1].map(k => k * e10).find(v => v <= raw) || e10, lbl = n < 1 ? Math.round(n * 1000).toLocaleString('fr-FR') + ' m' : n.toLocaleString('fr-FR') + ' km';
+        let n = [5, 2, 1].map(k => k * e10).find(v => v <= raw) || e10, lbl = n < 1 ? Math.round(n * 1000).toLocaleString('fr-FR') + ' m' : n.toLocaleString('fr-FR') + ' km';
+        if (raw >= 1e7) { const u = raw >= 0.1 * KM_AL ? KM_AL : KM_UA, ru = raw / u, e = Math.pow(10, Math.floor(Math.log10(ru))), nu = [5, 2, 1].map(k => k * e).find(v => v <= ru) || e; n = nu * u; lbl = nu.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + (u === KM_AL ? ' al' : ' UA'); }   // échelle en UA ou années-lumière quand on est très loin
         scaleBar.style.width = Math.round(n * pxPerKm) + 'px'; if (scaleTxt.textContent !== lbl) scaleTxt.textContent = lbl;
       }
     }
@@ -388,7 +391,7 @@
     if (infoT <= 0) {
       infoT = 0.2; if (launch) { lp.update(launch); storyUI.update(launch); }
       const altCam = (camera.position.length() - 1) * R_KM, f = v => v >= 1000 ? Math.round(v).toLocaleString('fr-FR') : v.toFixed(v < 10 ? 1 : 0);
-      let t = `Caméra : ${f(altCam)} km d'altitude` + (cam.mode === 'iss' ? ` · ${f(cam.dist * R_KM)} km de l'ISS` : '');
+      let t = `Caméra : ${fmtBig(altCam) || f(altCam) + ' km'} d'altitude` + (cam.mode === 'iss' ? ` · ${fmtBig(cam.dist * R_KM) || f(cam.dist * R_KM) + ' km'} de l'ISS` : '');
       if (iss) t += `\nISS : ${f(iss.alt)} km · ${iss.speed.toFixed(2)} km/s (${Math.round(iss.speed * 3600).toLocaleString('fr-FR')} km/h) · ${Math.abs(iss.lat).toFixed(1)}°${iss.lat < 0 ? 'S' : 'N'} ${Math.abs(iss.lon).toFixed(1)}°${iss.lon < 0 ? 'O' : 'E'}`;
       else t += '\nISS : hors de la période du TLE';
       if (staleDays > 60) t += '\n(TLE ancien : position de l\'ISS imprécise)';
