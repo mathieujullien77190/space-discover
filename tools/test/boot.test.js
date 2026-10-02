@@ -2,10 +2,10 @@
 // node tools/test/boot.test.js
 const fs = require('fs'), vm = require('vm'), path = require('path'), root = path.join(__dirname, '..', '..');
 const ctx2d = new Proxy({}, { get: (t, k) => (k === 'createLinearGradient' || k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : k in t ? t[k] : () => {}), set: (t, k, v) => { t[k] = v; return true; } });
-const els = {};
+const els = {}, allEls = [];
 const mkEl = (id) => { const e = { id, style: {}, dataset: {}, children: [], hidden: false, textContent: '', innerHTML: '', value: 'earth', checked: false, width: 0, height: 0, clientHeight: 800, offsetWidth: 50,
   classList: { _s: new Set(), add(c) { this._s.add(c); }, remove(c) { this._s.delete(c); }, toggle(c, on) { (on === undefined ? !this._s.has(c) : on) ? this._s.add(c) : this._s.delete(c); }, contains(c) { return this._s.has(c); } },
-  append() {}, appendChild() {}, prepend() {}, remove() {}, addEventListener() {}, setPointerCapture() {}, getContext: () => ctx2d, getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }), blur() {}, querySelectorAll: () => [], setAttribute() {} }; return e; };
+  append(...k) { this.kids = (this.kids || []).concat(k); }, appendChild() {}, prepend() {}, remove() {}, addEventListener() {}, setPointerCapture() {}, getContext: () => ctx2d, getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }), blur() {}, querySelectorAll: () => [], setAttribute() {} }; allEls.push(e); return e; };
 const htmlIds = new Set([...fs.readFileSync(path.join(root, 'index.html'), 'utf8').matchAll(/id="([^"]+)"/g)].map(m => m[1]));
 const document = { getElementById: id => htmlIds.has(id) ? (els[id] || (els[id] = mkEl(id))) : null, createElement: t => mkEl(t), createElementNS: () => mkEl('ns'), createRange: () => ({ selectNodeContents() {} }), body: mkEl('body'), querySelectorAll: s => (String(s).includes('data-sp') ? spBtns : []) };
 let frames = [], raf = 0;
@@ -36,5 +36,11 @@ for (const mt of [false, true]) for (const dn of [false, true]) { els.mtChk.chec
 // trajectoire de la caméra pendant le zoom sur l'ISS : jamais sous la surface, jamais non finie
 if (process.argv[2] === 'iss') { sandbox.__log = []; sel.value = 'iss'; sel.onchange(); step(1500, 'zoom ISS'); const L = sandbox.__log, nan = L.filter(p => !p.every(Number.isFinite)).length, r = L.map(p => Math.hypot(...p)), pts = [0, 60, 120, 240, 480, 800, 1200, 1499].filter(i => i < L.length).map(i => (i + ': ' + ((r[i] - 1) * 6378).toFixed(0) + ' km au-dessus du centre-1')); console.log('zoom ISS : ' + L.length + ' images, non finies ' + nan + ', altitude mini ' + ((Math.min(...r) - 1) * 6378).toFixed(1) + ' km ; ' + pts.join(' | ')); }
 // temps accéléré : 5 jours par seconde pendant 40 s simulées (> 60 jours : l'ISS sort de la validité du TLE), chaque vue
+if (errors.length) { console.log('ERREURS :' + String.fromCharCode(10) + errors.join(String.fromCharCode(10) + '---' + String.fromCharCode(10))); process.exit(1); }
 for (const sp of [1, 86400, 432000]) { spBtns.find(b => +b.dataset.sp === sp).onclick(); for (const v of ['earth', 'moon', 'sun', 'iss']) { sel.value = v; sel.onchange(); step(120, 'accéléré ×' + sp + ' vue ' + v); } }
+// lancement de satellite simple : Lancer, vitesses, vue de dessus, zoom fusée, caméra auto, arrêt (chaque base et type)
+const btn = txt => allEls.find(e => e.textContent === txt && e.onclick);
+for (const [si, ti] of [[0, 0], [1, 5], [4, 1]]) { const ss = allEls.filter(e => e.id === 'select'); ss[0].value = String(si); ss[1].value = String(ti); ss[0].onchange && ss[0].onchange();
+  btn('🚀 Lancer').onclick(); step(60, 'lancement'); for (const sp of ['×60', '×200']) { btn(sp).onclick(); step(300, 'vitesse ' + sp); }
+  btn('⬆ Vue de dessus').onclick(); step(200, 'dessus'); btn('🔍 Zoom fusée').onclick(); step(200, 'zoom'); btn('🎥 Caméra auto').onclick(); step(100, 'auto'); btn('⬆ Vue de dessus').onclick(); btn('×200').onclick(); step(2500, 'vol complet'); btn('⏹ Arrêter').onclick(); step(30, 'arrêt'); }
 console.log(errors.length ? 'ERREURS :\n' + errors.join('\n---\n') : 'démarrage et vues Terre / ISS / Lune / Soleil sans erreur (' + srcs.length + ' scripts)');

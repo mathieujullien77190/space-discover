@@ -19,6 +19,7 @@
       <option value="moon">🌙 Lune</option>
       <option value="sun">☀ Soleil</option>
     </select>
+    <button id="bSat">🚀 <span>Satellite</span></button>
     <button id="bLaunch" hidden>🚀 <span>Lancement</span></button>
     <span id="issOnly" hidden><button id="bFeat">📐 <span>Détails ISS</span></button></span>
     <div id="feat" hidden></div>
@@ -31,6 +32,7 @@
 <label class="sw sw2" title="Afficher les tailles réelles (diamètres) du Soleil, de la Lune et de la Terre"><input type="checkbox" id="mtChk"><span class="track"><span class="ic">·</span><span class="ic">📏</span><span class="knob"></span></span></label>
 <div id="timeBar"><span id="timeTxt"></span><span class="tb"><button data-sp="1" class="on">Temps réel</button><button data-sp="3600">1 h/s</button><button data-sp="21600">6 h/s</button><button data-sp="86400">1 j/s</button><button data-sp="432000">5 j/s</button><button id="bNow" title="Revenir à maintenant">⟳</button></span></div>
 <div id="launchPanel" hidden></div>
+<div id="satPanel" hidden></div>
 <div id="story" hidden></div>
 <div id="timeline" hidden></div>
 <div id="scale"><div id="scaleBar"></div><div id="scaleTxt"></div></div>
@@ -54,6 +56,7 @@
 <script src="js/data/surface-moon.js"></script>
 <script src="js/data/apollo11.js"></script>
 <script src="js/launch-3d.js"></script>
+<script src="js/sat-lite.js"></script>
 <script src="js/moon.js"></script>
 <script src="js/apollo.js"></script>
 <script src="js/controls.js"></script>

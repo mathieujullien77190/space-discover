@@ -212,6 +212,24 @@
     cam() { cam.zoomFit = false; cam.userDir = false; cam.launchK = 1; if (launch) launch.follow = 'rocket'; if (cam.mode !== 'launch' && launch) setMode('launch'); },
     quit() { evLabels.forEach(e => e.remove()); evLabels = []; tagEls.forEach(e => e.remove()); tagEls = []; hLabel.style.display = 'none'; vLabel.style.display = 'none'; tl.hide(); if (launch) { launch.dispose(); launch = null; } lp.hide(); if (cam.mode === 'launch') setMode('earth'); },
   });
+  /* ---------- lancement de satellite SIMPLE : une fusée, une liste de choses à faire, boutons « zoom fusée » et « vue de dessus » (pas de frise ni d'étapes zoomées) ---------- */
+  const satBox = document.getElementById('satPanel');
+  const stopSat = () => { if (launch) { launch.dispose(); launch = null; } hLabel.style.display = 'none'; vLabel.style.display = 'none'; cam.zoomFit = false; sat.hide(); if (cam.mode === 'launch') goEarth(); };
+  function startSat(site, type) {
+    if (launch) { launch.dispose(); launch = null; }
+    optShared.markers = false; optShared.names = false;
+    launch = new Launch(site, type.km, type.payload * 1000, type.scale, { opt: optShared }); world.add(launch.group);
+    launch.stepPause = false; launch.preview = false; launch.playing = true; launch.speed = 5; launch.topView = false;
+    cam.launchK = 1; cam.zoomFit = false; cam.userDir = false; setMode('launch'); sat.show(launch);
+  }
+  const sat = buildSatPanel(satBox, {
+    start: startSat, stop: stopSat, close() { satBox.hidden = true; document.getElementById('bSat').classList.remove('on'); },
+    speed(v) { if (!launch) return; if (v === 0) launch.playing = false; else { launch.playing = true; launch.speed = v; } },
+    zoom() { if (!launch) return; cam.userDir = false; cam.zoomFit = true; launch.follow = 'rocket'; if (cam.mode !== 'launch') setMode('launch'); },
+    top() { if (!launch) return; launch.topView = !launch.topView; cam.userDir = false; cam.zoomFit = false; cam.launchK = 1; if (cam.mode !== 'launch') setMode('launch'); },
+    cam() { if (!launch) return; launch.topView = false; cam.zoomFit = false; cam.userDir = false; cam.launchK = 1; launch.follow = 'rocket'; if (cam.mode !== 'launch') setMode('launch'); },
+  });
+  document.getElementById('bSat').onclick = e => { satBox.hidden = !satBox.hidden; e.currentTarget.classList.toggle('on', !satBox.hidden); };
   const SITE_R = 1 + 1e-5;   // les points des sites sont posés AU SOL (64 m au-dessus de la sphère : pas de scintillement de profondeur)
   // sites de lancement sur la carte : points + noms cliquables (choisit le site dans le panneau)
   const sg2 = new THREE.BufferGeometry(), sp2 = new Float32Array(LAUNCH_SITES.length * 3), siteU = LAUNCH_SITES.map((s, i) => { const u = ll(s.lon, s.lat); sp2.set([u.x * SITE_R, u.y * SITE_R, u.z * SITE_R], 3 * i); return u; });
@@ -292,7 +310,8 @@
     cam.goal.lon = ((cam.goal.lon + 540) % 360) - 180;
     ll(cam.lon, cam.lat, dirv);
     camera.position.copy(cam.tgt).addScaledVector(dirv, cam.dist);
-    camera.up.set(0, 1, 0); camera.lookAt(cam.tgt); camera.updateMatrixWorld();
+    if (launch && launch.topView && cam.mode === 'launch' && launch.topUp) camera.up.copy(launch.topUp); else camera.up.set(0, 1, 0);   // vue de dessus : la direction du vol en haut de l'écran
+    camera.lookAt(cam.tgt); camera.updateMatrixWorld();
     const closest = Math.max(1e-7, Math.min(cam.dist, camera.position.length() - 1) * 0.05);
     camera.near = Math.min(0.05, closest); camera.far = 4e6; camera.updateProjectionMatrix();
 
@@ -438,7 +457,7 @@
 
     infoT -= dt;
     if (infoT <= 0) {
-      infoT = 0.2; if (launch) { lp.update(launch); storyUI.update(launch); }
+      infoT = 0.2; if (launch) { if (MISSIONS) { lp.update(launch); storyUI.update(launch); } else sat.update(launch); }
       const altCam = (camera.position.length() - 1) * R_KM, f = v => v >= 1000 ? Math.round(v).toLocaleString('fr-FR') : v.toFixed(v < 10 ? 1 : 0);
       timeTxt.textContent = date.toLocaleString('fr-FR', { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' UTC' + (simSpeed > 1 ? ' · accéléré' : '');
       let t = `Caméra : ${fmtBig(altCam) || f(altCam) + ' km'} d'altitude` + (cam.mode === 'iss' ? ` · ${fmtBig(cam.dist * R_KM) || f(cam.dist * R_KM) + ' km'} de l'ISS` : '');

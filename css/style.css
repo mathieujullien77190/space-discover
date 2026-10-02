@@ -129,3 +129,17 @@ button.on { border-color: #ffd54a; color: #ffd54a; }
 #timeBar .tb { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
 #timeBar button { padding: 4px 8px; font-size: 12px; touch-action: manipulation; }
 @media (max-width: 700px), (pointer: coarse) { #timeBar { left: 8px; right: 8px; bottom: calc(76px + env(safe-area-inset-bottom)); align-items: stretch; } #timeBar .tb { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; scrollbar-width: none; } #timeBar button { flex: 0 0 auto; min-height: 36px; padding: 6px 10px; font-size: 13px; } #timeTxt { text-align: right; } #scale { bottom: calc(150px + env(safe-area-inset-bottom)); } }
+
+/* lancement de satellite simple */
+#satPanel { position: fixed; right: calc(12px + env(safe-area-inset-right)); top: calc(108px + env(safe-area-inset-top)); width: 300px; max-height: calc(100% - 220px); overflow: auto; padding: 10px 12px; background: rgba(20, 30, 50, .88); border: 1px solid rgba(255, 255, 255, .25); border-radius: 8px; font-size: 13px; z-index: 5; }
+#satPanel[hidden], #satPanel [hidden] { display: none; }
+#satPanel .ohead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+#satPanel .ohead button { padding: 2px 8px; }
+#satPanel select { width: 100%; margin: 4px 0 8px; background: #101826; color: #e8eef7; border: 1px solid rgba(255,255,255,.3); border-radius: 6px; padding: 5px; }
+#satPanel button { padding: 4px 8px; font-size: 12px; margin: 2px 2px 2px 0; }
+#satPanel button.go { width: 100%; margin-top: 8px; padding: 9px; font-size: 14px; border-color: #ffd54a; color: #ffd54a; }
+#satPanel button.go.stop { border-color: #ff7a6a; color: #ff7a6a; }
+#satPanel .ldesc { margin: 6px 0; color: #b8c6dc; white-space: pre-line; font-size: 12px; }
+#satPanel .osub { color: #9fb0c8; font-weight: 600; margin: 8px 0 2px; }
+#satPanel .levs { max-height: 220px; overflow: auto; }
+@media (max-width: 700px), (pointer: coarse) { #satPanel { left: 8px; right: 8px; top: auto; bottom: calc(76px + env(safe-area-inset-bottom)); width: auto; max-height: 48%; } #satPanel button { min-height: 36px; font-size: 13px; } }

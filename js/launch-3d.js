@@ -279,6 +279,9 @@ class Launch {
     this.camDistKm = isRocket ? (200 + 0.35 * h + ramp * 0.5 * h) / 1000 : (60 + 0.3 * h + ramp * 0.5 * h) / 1000;
     const up = isRocket ? this.radial : fpos.clone().normalize(), nrm = side, along = new THREE.Vector3().crossVectors(nrm, up).normalize();   // nrm × û = est (ê') à droite
     this.camDir.copy(nrm).multiplyScalar(-0.9).addScaledVector(up, 0.22 + 0.4 * ramp).addScaledVector(along, -0.15).normalize();
+    // vue de dessus (bouton) : caméra au-dessus du PLAN de la trajectoire (côté d'où l'on voit tourner la fusée dans le sens direct), la direction du vol en haut de l'écran
+    this.topUp = this.e.clone().applyAxisAngle(this.Y, this.inertial ? 0 : -LCH.WE * T);
+    if (this.topView) { this.camDir.copy(nrm).normalize(); this.camDistKm = Math.max(1200, 1500 + 1.6 * Math.max(0, this.altM / 1000)); }
   }
 
   tel() {
