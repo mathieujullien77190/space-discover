@@ -205,9 +205,9 @@
     }
     if (cam.tfly > 0) { cam.tgt.lerp(goalTgt, 1 - Math.exp(-dt * (cam.slow ? 1.4 : 3.2))); cam.tfly -= dt; } else cam.tgt.copy(goalTgt);
     // zoom : toujours amorti (jamais de saut), en altitude pour la Terre (sinon l'amortissement ne bouge plus près du sol)
-    if (issGo === 1) { cam.goal.lon = iss ? iss.lon : cam.goal.lon; cam.goal.lat = iss ? iss.lat : cam.goal.lat; if (iss && Math.abs(angDiff(cam.lon, iss.lon)) < 2 && Math.abs(cam.lat - iss.lat) < 2 && Math.abs(cam.dist - 3.4) < 0.25) { issGo = 2; setViewLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist); cam.tfly = cam.fly = 9; cam.slow = true; } }
+    if (issGo === 1) { cam.goal.lon = iss ? iss.lon : cam.goal.lon; cam.goal.lat = iss ? iss.lat : cam.goal.lat; if (iss && Math.abs(angDiff(cam.lon, iss.lon)) < 2 && Math.abs(cam.lat - iss.lat) < 2 && Math.abs(cam.dist - 3.4) < 0.25) { issGo = 2; setViewLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist); cam.tfly = cam.fly = 24; cam.slow = true; } }
     if (cam.tfly <= 0) cam.slow = false;
-    const kz = 1 - Math.exp(-dt * (cam.tfly > 0 ? (cam.slow ? 0.9 : 3.2) : 14)), base = cam.mode === 'earth' && cam.tfly <= 0 ? 1 : 0;
+    const kz = 1 - Math.exp(-dt * (cam.tfly > 0 ? (cam.slow ? 0.4 : 3.2) : 14)), base = cam.mode === 'earth' && cam.tfly <= 0 ? 1 : 0;
     const cur = Math.max(1e-7, cam.dist - base), want = Math.max(1e-7, cam.goal.dist - base);
     cam.dist = base + Math.exp(Math.log(cur) + (Math.log(want) - Math.log(cur)) * kz);
     if (Math.abs(Math.log(cam.dist - base) - Math.log(want)) < 1e-3) cam.dist = cam.goal.dist;
