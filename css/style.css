@@ -121,3 +121,11 @@ button.on { border-color: #ffd54a; color: #ffd54a; }
 
 .sw2 { top: calc(58px + env(safe-area-inset-top)); }
 @media (max-width: 700px), (pointer: coarse) { .sw2 { top: calc(64px + env(safe-area-inset-top)); } }
+
+/* accélération du temps (Lune qui tourne, Terre, Soleil) */
+#timeBar { position: fixed; right: calc(12px + env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 4; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; text-shadow: 0 1px 3px #000; }
+#timeBar[hidden] { display: none; }
+#timeTxt { font-size: 12px; color: #cfe0ff; }
+#timeBar .tb { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+#timeBar button { padding: 4px 8px; font-size: 12px; touch-action: manipulation; }
+@media (max-width: 700px), (pointer: coarse) { #timeBar { left: 8px; right: 8px; bottom: calc(76px + env(safe-area-inset-bottom)); align-items: stretch; } #timeBar .tb { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; scrollbar-width: none; } #timeBar button { flex: 0 0 auto; min-height: 36px; padding: 6px 10px; font-size: 13px; } #timeTxt { text-align: right; } #scale { bottom: calc(150px + env(safe-area-inset-bottom)); } }

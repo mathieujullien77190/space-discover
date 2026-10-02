@@ -236,11 +236,17 @@
   addEventListener('resize', resize); addEventListener('orientationchange', () => setTimeout(resize, 200)); if (window.visualViewport) visualViewport.addEventListener('resize', resize); resize();
 
   const staleDays = Math.abs(Date.now() - ISS_EPOCH) / 86400000;
+  /* temps : horloge simulée (simMs) qui avance de simSpeed secondes par seconde réelle ; sert à la Terre, à l'ISS, à la Lune et au Soleil */
+  let simMs = Date.now(), lastReal = Date.now(), simSpeed = 1;
+  const timeBar = document.getElementById('timeBar'), timeTxt = document.getElementById('timeTxt'), spBtns = [...document.querySelectorAll('#timeBar [data-sp]')];
+  const syncSpeed = () => spBtns.forEach(b => b.classList.toggle('on', +b.dataset.sp === simSpeed));
+  spBtns.forEach(b => { b.onclick = () => { simSpeed = +b.dataset.sp; syncSpeed(); }; });
+  document.getElementById('bNow').onclick = () => { simMs = Date.now(); simSpeed = 1; syncSpeed(); };
   let last = performance.now(), infoT = 0; const dirv = new THREE.Vector3(), basis = new THREE.Matrix4(), fw = new THREE.Vector3(), zz = new THREE.Vector3();
 
   function frame(now) {
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
-    const date = new Date();
+    const realNow = Date.now(); simMs += (realNow - lastReal) * simSpeed; lastReal = realNow; const date = new Date(simMs);   // horloge simulée : temps réel par défaut, accélérable (boutons en bas à droite)
     iss = issState(date);
     frameF = cam.mode === 'solar' ? 1 : 0;
     const Dd = astroD(date), gm = curGm = gmstOf(Dd), solarMode = cam.mode === 'solar', apolloMode = !!(launch && launch.inertial), sunV = sunGeo(Dd), moonV = moonInertial(Dd).pos, rotS = -gm * (1 - frameF);
@@ -251,6 +257,7 @@
       const p = camera.position, L = p.length(); cam.mode = 'earth'; cam.tgt.set(0, 0, 0); cam.dist = cam.goal.dist = L; cam.lat = cam.goal.lat = Math.asin(p.y / L) / DEG; cam.lon = cam.goal.lon = Math.atan2(-p.z, p.x) / DEG; cam.fly = cam.tfly = 0;
       syncView('earth');
     }
+    timeBar.hidden = !!launch;   // pendant une mission, le temps est celui de la mission
     // caméra : la cible suit l'ISS ou reste au centre ; transitions douces
     if (launch) { launch.update(dt, camera); tl.update(launch); }
     const goalTgt = solarMode ? (solarTarget === 'sun' ? sunAbs : solarTarget === 'moon' ? moonAbs : tmp.set(0, 0, 0)) : cam.mode === 'iss' && iss ? iss.pos : cam.mode === 'launch' && launch ? launch.focusPos : tmp.set(0, 0, 0);
@@ -433,6 +440,7 @@
     if (infoT <= 0) {
       infoT = 0.2; if (launch) { lp.update(launch); storyUI.update(launch); }
       const altCam = (camera.position.length() - 1) * R_KM, f = v => v >= 1000 ? Math.round(v).toLocaleString('fr-FR') : v.toFixed(v < 10 ? 1 : 0);
+      timeTxt.textContent = date.toLocaleString('fr-FR', { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' UTC' + (simSpeed > 1 ? ' · accéléré' : '');
       let t = `Caméra : ${fmtBig(altCam) || f(altCam) + ' km'} d'altitude` + (cam.mode === 'iss' ? ` · ${fmtBig(cam.dist * R_KM) || f(cam.dist * R_KM) + ' km'} de l'ISS` : '');
       if (iss) t += `\nISS : ${f(iss.alt)} km · ${iss.speed.toFixed(2)} km/s (${Math.round(iss.speed * 3600).toLocaleString('fr-FR')} km/h) · ${Math.abs(iss.lat).toFixed(1)}°${iss.lat < 0 ? 'S' : 'N'} ${Math.abs(iss.lon).toFixed(1)}°${iss.lon < 0 ? 'O' : 'E'}`;
       else t += '\nISS : hors de la période du TLE';
