@@ -168,7 +168,7 @@ class Launch {
       const e = this.ev[key]; if (!e) return;
       const r = Math.hypot(e.x, e.y), dv = sepDv[key] || 0;
       const body = new Body(model, { x: e.x, y: e.y, vx: e.vx - dv * e.y / r, vy: e.vy + dv * e.x / r, t: 0 }, { wEff, mode: 'tumble' });
-      const res = body.propagate({ tMax: 9000, sampleDt: 1, burnupAlt: burns ? (e.alt > 150e3 ? 120e3 : 70e3) : null }), out = res.samples.map(s => [s.x, s.y]);
+      const res = body.propagate({ tMax: 9000, sampleDt: 1, burnupAlt: burns ? (key === 'epcsep' ? (e.alt > 150e3 ? 120e3 : 70e3) : 30e3) : null }), out = res.samples.map(s => [s.x, s.y]);
       const last = out[out.length - 1], z0 = this.zMain(e.t), zd = this.crossV * Math.exp(-e.t / this.crossTau), impact = this.toEF(last[0], last[1], e.t + out.length, new THREE.Vector3(), z0 + zd * out.length), /* le débris garde la vitesse transversale du lanceur à la séparation */ endText = burns ? 'rentrée atmosphérique (désintégration)' : "impact dans l'océan";
       const g = new THREE.Group(); g.add(mesh); g.visible = false; g.scale.setScalar(MU_M); this.group.add(g);
       const d = this.mk(0xaaaaaa), dir = this.dirAtEvent(e), latWorld = new THREE.Vector3(lat[0], 0, lat[1]).applyQuaternion(new THREE.Quaternion().setFromUnitVectors(Yv, dir));
@@ -178,10 +178,10 @@ class Launch {
     // les meshes de débris sont des copies centrées sur leur milieu
     const centered = (src, mid) => { const g = new THREE.Group(), c = src.clone(); c.position.set(0, c.position.y - mid, 0); g.add(c); return g; };
     const bo = mo.boosters, fa = mo.fairing, core = mo.core;
-    if (bo) { const h = bo.h + (bo.nose || 0) + mo.noz.eap; this.mBoost.forEach((m, k) => mkPiece('eap', { name: nm.booster, dry: ph.eap.dry, prop: 0, shape: { type: 'cyl', r: bo.r, h } }, centered(m, (bo.h + (bo.nose || 0)) / 2), this.boostPos[k], bo.R, 0, 'eap' + (k + 1), false)); }
+    if (bo) { const h = bo.h + (bo.nose || 0) + mo.noz.eap; this.mBoost.forEach((m, k) => mkPiece('eap', { name: nm.booster, dry: ph.eap.dry, prop: 0, shape: { type: 'cyl', r: bo.r, h } }, centered(m, (bo.h + (bo.nose || 0)) / 2), this.boostPos[k], bo.R, 0, 'eap' + (k + 1), true)); }
     const fairModel = { name: 'Coiffe (moitié)', dry: ph.fairing / 2, prop: 0, shape: { type: 'shell', r: fa.r, h: fa.cyl + fa.cone / 2 } }, fairMid = core.h + mo.upper.h + (fa.cyl + fa.cone) / 2;
-    mkPiece('fairing', fairModel, centered(this.mFair, fairMid), [0, 1], fa.r * 0.6, 0.4, 'fairA', false);
-    mkPiece('fairing', fairModel, centered(this.mFair, fairMid), [0, -1], fa.r * 0.6, -0.4, 'fairB', false);
+    mkPiece('fairing', fairModel, centered(this.mFair, fairMid), [0, 1], fa.r * 0.6, 0.4, 'fairA', true);
+    mkPiece('fairing', fairModel, centered(this.mFair, fairMid), [0, -1], fa.r * 0.6, -0.4, 'fairB', true);
     mkPiece('epcsep', { name: nm.stage1, dry: ph.epc.dry, prop: ph.epc.prop * 0.02, shape: { type: 'cyl', r: core.r, h: core.h + mo.noz.epc } }, centered(this.mEpc, core.h / 2), [0, 0], 0, 0.05, 'epc', true);
     if (ph.direct) mkPiece('sat', { name: nm.stage1, dry: ph.epc.dry, prop: ph.epc.prop * 0.01, shape: { type: 'cyl', r: core.r, h: core.h + mo.noz.epc } }, centered(this.mEpc, core.h / 2), [0, 0], 0, 0.02, 'epc', false);   // le bloc central reste en orbite derrière le satellite (c'est lui qu'on voyait à l'œil nu)
   }
