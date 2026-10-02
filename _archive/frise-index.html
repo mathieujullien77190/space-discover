@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#04050d">
+<title>Frise de la conquête spatiale</title>
+<style>
+  :root {
+    --bg: #04050d; --text: #e4ebff; --muted: #92a6d6; --accent: #ffd24a; --line: rgba(160,185,235,0.2);
+    --canvas-h: 46vh;          /* mobile : la carte occupe le haut de l'écran */
+    --scene-h: 54vh;           /* hauteur d'une scène (une scène par écran de texte) */
+    --strip-h: 34px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { background: var(--bg); }
+  body { margin: 0; color: var(--text); background: var(--bg); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+
+  /* ---------- carte (canvas) ---------- */
+  #stage { position: fixed; top: 0; left: 0; width: 100vw; height: var(--canvas-h); z-index: 3; background: var(--bg); overflow: hidden; }
+  #stage canvas { width: 100%; height: 100%; display: block; }
+  #stage::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.55) 100%); }
+  #hudYear { position: absolute; top: 10px; left: 14px; z-index: 5; font: 700 38px/1 Georgia, "Times New Roman", serif; letter-spacing: 1px; font-variant-numeric: tabular-nums; text-shadow: 0 2px 12px #000; }
+  #hudSub { position: absolute; top: 52px; left: 16px; z-index: 5; font-size: 12px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+  #hudScale { position: absolute; bottom: 8px; left: 14px; z-index: 5; font-size: 11px; color: var(--muted); }
+
+  /* ---------- texte qui défile ---------- */
+  #scroller { position: relative; z-index: 2; padding-top: var(--canvas-h); padding-bottom: calc(var(--strip-h) + 20px); }
+  section.scene { min-height: var(--scene-h); display: flex; align-items: center; padding: 18px 14px; }
+  .card { width: 100%; background: rgba(12,16,34,0.82); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; backdrop-filter: blur(6px); }
+  .card .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 6px; font-size: 12px; color: var(--muted); }
+  .tag { padding: 1px 9px; border-radius: 999px; border: 1px solid var(--line); font-size: 11.5px; }
+  .card h2 { margin: 2px 0 8px; font: 700 22px/1.2 Georgia, "Times New Roman", serif; }
+  .card p { margin: 8px 0; }
+  .card .why { border-left: 3px solid var(--accent); padding-left: 11px; color: #f3e9bf; }
+  .card .stat { color: var(--muted); font-size: 13px; }
+  .hero h1 { margin: 4px 0 10px; font: 700 30px/1.15 Georgia, "Times New Roman", serif; }
+  .hint { color: var(--muted); }
+  .scrollhint { margin-top: 10px; font-size: 13px; color: var(--accent); animation: bob 1.8s ease-in-out infinite; }
+  @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(5px); } }
+  .cta { margin-top: 12px; padding: 12px 20px; font: 700 16px system-ui, sans-serif; color: #1a1500; background: var(--accent); border: 0; border-radius: 10px; cursor: pointer; }
+  .cta:hover { background: #ffe07f; }
+  .ghost { margin-left: 8px; padding: 10px 14px; color: var(--text); background: transparent; border: 1px solid var(--line); border-radius: 10px; font: inherit; cursor: pointer; }
+
+  /* ---------- pellicule en bas ---------- */
+  #strip { position: fixed; left: 0; right: 0; bottom: 0; height: var(--strip-h); z-index: 6; background: #07080f; border-top: 1px solid var(--line); }
+  #strip::before, #strip::after { content: ""; position: absolute; left: 0; right: 0; height: 5px; opacity: .55;
+    background: repeating-linear-gradient(90deg, transparent 0 6px, #2a2f45 6px 12px); }
+  #strip::before { top: 3px; } #strip::after { bottom: 3px; }
+  #track { position: absolute; left: 14px; right: 14px; top: 11px; bottom: 11px; }
+  #track .line { position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: rgba(160,185,235,0.25); transform: translateY(-50%); }
+  #track .decade { position: absolute; top: -2px; font-size: 9px; color: var(--muted); transform: translateX(-50%); }
+  #track .tick { position: absolute; top: 50%; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; background: #55618d; border: 0; padding: 0; cursor: pointer; }
+  #track .tick.past { background: #9fb3e8; }
+  #track .tick.now { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  #marker { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--accent); box-shadow: 0 0 8px var(--accent); pointer-events: none; }
+
+  /* ---------- modal « bientôt » ---------- */
+  #modal { position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; background: rgba(2,3,10,0.82); padding: 20px; }
+  #modal.open { display: flex; }
+  #modal .box { max-width: 460px; background: #0c1022; border: 1px solid var(--line); border-radius: 16px; padding: 22px; }
+  #modal h2 { margin: 0 0 8px; font: 700 24px Georgia, serif; }
+
+  /* ---------- grand écran : carte à gauche, texte à droite ---------- */
+  @media (min-width: 900px) {
+    :root { --canvas-h: 100vh; --scene-h: 100vh; }
+    #stage { z-index: 0; }
+    section.scene { padding: 0 4vw 0 0; justify-content: flex-end; }
+    .card { width: min(460px, 38vw); }
+    .card h2 { font-size: 26px; }
+    #hudYear { font-size: 64px; top: 18px; left: 26px; }
+    #hudSub { top: 88px; left: 30px; }
+    #hudScale { left: 26px; bottom: 48px; }
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="c"></canvas>
+  <div id="hudYear">1950</div>
+  <div id="hudSub"></div>
+  <div id="hudScale"></div>
+</div>
+<div id="scroller"></div>
+<div id="strip"><div id="track"><div class="line"></div><div id="marker"></div></div></div>
+<div id="modal"><div class="box">
+  <h2>À toi d'explorer</h2>
+  <p>Ici commencera le jeu : tu pars avec la technologie d'aujourd'hui, et tu vas de plus en plus loin. Plus tu t'éloignes, plus les voyages sont longs.</p>
+  <p class="hint">Cette partie n'est pas encore construite. On avance étape par étape.</p>
+  <button class="cta" id="closeModal">Retour à la frise</button>
+</div></div>
+
+<script>
+// =====================================================================
+//  DONNÉES : objets sur la carte
+// =====================================================================
+const AU = 149597870.7, MU_EARTH = 398600.4418;           // km ; km³/s²
+const R_EARTH = 6371, R_SUN = 696000, R_MOON = 1737, D_MOON = 384400;
+const YEAR_MIN = 1950, YEAR_MAX = 2026;
+const KORB = 690;                                         // temps accéléré des orbites terrestres (ISS : ~8 s par tour)
+const C_LIGHT = 299792.458;
+
+// Planètes : vraie distance au Soleil (UA) ; l'angle est illustratif, elles sont immobiles.
+const planets = [
+  { name: 'Mercure', a: 0.387, r: 2440,  color: '#a8a29e', th: 1.0 },
+  { name: 'Vénus',   a: 0.723, r: 6052,  color: '#e0b36a', th: 3.7 },
+  { name: 'Terre',   a: 1.000, r: R_EARTH, color: '#3a7bd5', th: 0 },
+  { name: 'Mars',    a: 1.524, r: 3390,  color: '#c1440e', th: 2.4 },
+  { name: 'Jupiter', a: 5.203, r: 69911, color: '#c9a27a', th: 5.2 },
+  { name: 'Saturne', a: 9.537, r: 58232, color: '#d8c38a', th: 4.2 },
+  { name: 'Uranus',  a: 19.19, r: 25362, color: '#7fd6d9', th: 1.9 },
+  { name: 'Neptune', a: 30.07, r: 24622, color: '#4b6cf0', th: 5.9 },
+];
+const planetByName = Object.fromEntries(planets.map(p => [p.name, p]));
+const EARTH = planetByName['Terre'];
+
+const CAT = {
+  satellite: '#7fd6ff', station: '#ffd24a', humain: '#ff9a5a', telescope: '#8affc1',
+  sonde: '#c7a6ff', atterrisseur: '#ff7a66',
+};
+
+// kind : 'orbit' (autour de la Terre, alt en km), 'l2', 'at' (sur une planète/la Lune), 'helio' (a UA du Soleil)
+const ITEMS = [
+  { id: 'sputnik1', name: 'Spoutnik 1', start: 1957, end: 1958, cat: 'satellite', kind: 'orbit', alt: 577, ph0: 0.3 },
+  { id: 'explorer1', name: 'Explorer 1', start: 1958, end: 1970, cat: 'satellite', kind: 'orbit', alt: 1450, ph0: 2.0 },
+  { id: 'vostok1', name: 'Vostok 1', start: 1961, end: 1961, cat: 'humain', kind: 'orbit', alt: 250, ph0: 4.0 },
+  { id: 'telstar1', name: 'Telstar 1', start: 1962, end: 1963, cat: 'satellite', kind: 'orbit', alt: 3440, ph0: 1.0 },
+  { id: 'vostok6', name: 'Vostok 6', start: 1963, end: 1963, cat: 'humain', kind: 'orbit', alt: 190, ph0: 5.2 },
+  { id: 'syncom3', name: 'Satellites géostationnaires', start: 1964, cat: 'satellite', kind: 'orbit', alt: 35786, ph0: 5.0 },
+  { id: 'voskhod2', name: 'Voskhod 2', start: 1965, end: 1965, cat: 'humain', kind: 'orbit', alt: 330, ph0: 3.0 },
+  { id: 'salyut1', name: 'Saliout 1', start: 1971, end: 1971, cat: 'station', kind: 'orbit', alt: 230, ph0: 1.5 },
+  { id: 'skylab', name: 'Skylab', start: 1973, end: 1979, cat: 'station', kind: 'orbit', alt: 435, ph0: 0.8 },
+  { id: 'gps', name: 'GPS', start: 1978, cat: 'satellite', kind: 'orbit', alt: 20200, ph0: 1.2 },
+  { id: 'shuttle', name: 'Navette spatiale', start: 1981, end: 2011, cat: 'humain', kind: 'orbit', alt: 350, ph0: 2.6 },
+  { id: 'mir', name: 'Mir', start: 1986, end: 2001, cat: 'station', kind: 'orbit', alt: 390, ph0: 4.4 },
+  { id: 'hubble', name: 'Hubble', start: 1990, cat: 'telescope', kind: 'orbit', alt: 540, ph0: 3.3 },
+  { id: 'iss', name: 'Station spatiale internationale', start: 1998, cat: 'station', kind: 'orbit', alt: 410, ph0: 0.0 },
+  { id: 'shenzhou5', name: 'Shenzhou 5', start: 2003, end: 2003, cat: 'humain', kind: 'orbit', alt: 340, ph0: 5.6 },
+  { id: 'starlink', name: 'Starlink', start: 2019, cat: 'satellite', kind: 'orbit', alt: 550, ph0: 1.9 },
+  { id: 'tiangong', name: 'Tiangong', start: 2021, cat: 'station', kind: 'orbit', alt: 390, ph0: 3.9 },
+
+  { id: 'luna2', name: 'Luna 2', start: 1959, cat: 'sonde', kind: 'at', body: 'Lune', slot: 0 },
+  { id: 'luna9', name: 'Luna 9', start: 1966, cat: 'atterrisseur', kind: 'at', body: 'Lune', slot: 1 },
+  { id: 'apollo8', name: 'Apollo 8', start: 1968, end: 1968, cat: 'humain', kind: 'at', body: 'Lune', slot: 2 },
+  { id: 'apollo11', name: 'Apollo 11', start: 1969, cat: 'humain', kind: 'at', body: 'Lune', slot: 3 },
+  { id: 'apollo17', name: 'Apollo 17', start: 1972, cat: 'humain', kind: 'at', body: 'Lune', slot: 4 },
+  { id: 'change4', name: 'Chang\'e 4', start: 2019, cat: 'atterrisseur', kind: 'at', body: 'Lune', slot: 5 },
+  { id: 'chandrayaan3', name: 'Chandrayaan-3', start: 2023, cat: 'atterrisseur', kind: 'at', body: 'Lune', slot: 6 },
+  { id: 'jwst', name: 'James Webb', start: 2021, cat: 'telescope', kind: 'l2' },
+
+  { id: 'mariner2', name: 'Mariner 2', start: 1962, cat: 'sonde', kind: 'at', body: 'Vénus', slot: 0 },
+  { id: 'venera7', name: 'Venera 7', start: 1970, cat: 'atterrisseur', kind: 'at', body: 'Vénus', slot: 1 },
+  { id: 'viking1', name: 'Viking 1', start: 1976, cat: 'atterrisseur', kind: 'at', body: 'Mars', slot: 0 },
+  { id: 'pathfinder', name: 'Pathfinder et Sojourner', start: 1997, cat: 'atterrisseur', kind: 'at', body: 'Mars', slot: 1 },
+  { id: 'rovers2004', name: 'Spirit et Opportunity', start: 2004, end: 2018, cat: 'atterrisseur', kind: 'at', body: 'Mars', slot: 2 },
+  { id: 'curiosity', name: 'Curiosity', start: 2012, cat: 'atterrisseur', kind: 'at', body: 'Mars', slot: 3 },
+  { id: 'perseverance', name: 'Perseverance et Ingenuity', start: 2021, cat: 'atterrisseur', kind: 'at', body: 'Mars', slot: 4 },
+  { id: 'cassini', name: 'Cassini-Huygens', start: 1997, end: 2017, cat: 'sonde', kind: 'at', body: 'Saturne', slot: 0 },
+  { id: 'rosetta', name: 'Rosetta et Philae', start: 2014, end: 2016, cat: 'atterrisseur', kind: 'helio', a: 3.0, th: 0.2 },
+  { id: 'dart', name: 'DART', start: 2022, cat: 'sonde', kind: 'helio', a: 1.05, th: 0.9 },
+  { id: 'parker', name: 'Parker Solar Probe', start: 2018, cat: 'sonde', kind: 'helio', a: 0.045, th: 0.4 },
+  { id: 'pioneer10', name: 'Pioneer 10', start: 1972, cat: 'sonde', kind: 'helio', a: 80, th: 3.0 },
+  { id: 'voyager2', name: 'Voyager 2', start: 1977, cat: 'sonde', kind: 'helio', a: 142, th: 4.9 },
+  { id: 'voyager1', name: 'Voyager 1', start: 1977, cat: 'sonde', kind: 'helio', a: 170, th: 2.2 },
+  { id: 'newhorizons', name: 'New Horizons', start: 2006, cat: 'sonde', kind: 'helio', a: 65, th: 0.9 },
+];
+const itemById = Object.fromEntries(ITEMS.map(i => [i.id, i]));
+
+// =====================================================================
+//  SCÈNES DE LA FRISE
+//  R : échelle de la carte (leo/high/moon/l2/inner/giants/kuiper/far) ; focus : objets mis en avant ;
+//  place : {id: distance en UA} pour montrer une sonde là où elle était à ce moment ; viz : illustration d'une découverte
+//  ⚠ Contenu rédigé de mémoire : à relire et sourcer (NASA, ESA, articles) avant publication.
+// =====================================================================
+const RK = { leo: 1.7e4, high: 6e4, moon: 5.5e5, l2: 2.2e6, inner: 3.4e8, giants: 1.9e9, kuiper: 8e9, far: 3.6e10 };
+const SCENES = [
+  { y: 1950, date: '1944 – 1950', tag: 'Contexte', title: 'Avant l\'espace', R: 'leo', focus: [],
+    text: "En 1944, une fusée V-2 allemande franchit pour la première fois la limite de l'espace, à plus de 170 km d'altitude, sans y rester. En 1950, aucun objet fabriqué par l'humanité ne tourne autour de la Terre.",
+    why: "Pour rester en orbite, il faut atteindre environ 7,8 km/s. C'est tout l'enjeu des années qui viennent." },
+  { y: 1957, date: '4 octobre 1957', tag: 'Mission', title: 'Spoutnik 1', org: 'URSS', R: 'leo', focus: ['sputnik1'],
+    text: "Une sphère de 58 cm et 83 kg, qui émet des « bip-bip » radio captés partout dans le monde. Son orbite elliptique va d'environ 215 à 939 km d'altitude ; il retombera et brûlera en janvier 1958.",
+    why: "Il ouvre l'ère spatiale et déclenche la course à l'espace entre l'URSS et les États-Unis." },
+  { y: 1958, date: '31 janvier 1958', tag: 'Découverte', title: 'Explorer 1 et les ceintures de Van Allen', org: 'États-Unis', R: 'leo', focus: ['explorer1'],
+    text: "Premier satellite américain, d'environ 14 kg. Son compteur de particules, conçu par James Van Allen, révèle que la Terre est entourée de zones de rayonnement intense. La NASA est créée quelques mois plus tard.",
+    why: "Première découverte scientifique de l'ère spatiale : les ceintures de Van Allen, que les vaisseaux habités doivent traverser vite." },
+  { y: 1959, date: 'Septembre – octobre 1959', tag: 'Mission', title: 'Luna 2 et la face cachée', org: 'URSS', R: 'moon', focus: ['luna2'],
+    text: "En septembre, Luna 2 s'écrase volontairement sur la Lune : premier objet humain à atteindre un autre astre. Un mois plus tard, Luna 3 photographie pour la première fois la face cachée.",
+    why: "Il devient possible de viser un astre à 384 000 km, et de découvrir ce qu'aucun humain n'avait jamais vu." },
+  { y: 1961, date: '12 avril 1961', tag: 'Vol habité', title: 'Gagarine, premier humain dans l\'espace', org: 'URSS', R: 'leo', focus: ['vostok1'],
+    text: "Youri Gagarine fait un tour complet de la Terre en 108 minutes, entre environ 169 et 327 km d'altitude. Le vol est entièrement automatique : on craignait qu'un humain ne puisse pas garder ses esprits en apesanteur.",
+    why: "Il prouve qu'un être humain peut survivre à l'apesanteur et à un vol orbital." },
+  { y: 1962, date: '10 juillet 1962', tag: 'Mission', title: 'Telstar 1, la télévision par satellite', org: 'États-Unis', R: 'leo', focus: ['telstar1'],
+    text: "Telstar 1 relaie en direct des images de télévision entre les États-Unis et l'Europe, par satellite, pour la première fois. Il tourne sur une orbite elliptique entre environ 950 et 5 900 km.",
+    why: "Naissance des télécommunications spatiales : le monde peut regarder la même image au même moment." },
+  { y: 1962, date: '14 décembre 1962', tag: 'Mission', title: 'Mariner 2 survole Vénus', org: 'États-Unis', R: 'inner', focus: ['mariner2'],
+    text: "Premier succès d'une mission vers une autre planète : Mariner 2 passe à environ 35 000 km de Vénus. Elle montre que la surface est extrêmement chaude, plus de 400 °C.",
+    why: "Fin de l'espoir d'une Vénus accueillante, et début de l'exploration planétaire." },
+  { y: 1963, date: '16 juin 1963', tag: 'Vol habité', title: 'Valentina Terechkova', org: 'URSS', R: 'leo', focus: ['vostok6'],
+    text: "Première femme dans l'espace : trois jours et 48 orbites à bord de Vostok 6.",
+    why: "Il faudra attendre 1982 pour qu'une autre femme, Svetlana Savitskaïa, vole dans l'espace." },
+  { y: 1964, date: '1964', tag: 'Mission', title: 'L\'orbite géostationnaire', org: 'États-Unis', R: 'high', focus: ['syncom3'],
+    text: "À 35 786 km d'altitude, un satellite met exactement 24 h pour faire un tour : il reste au-dessus du même point de l'équateur. Syncom 3 est le premier ; il retransmet des images des Jeux olympiques de Tokyo.",
+    why: "Une antenne fixe suffit pour recevoir la télévision par satellite et la météo en continu." },
+  { y: 1965, date: '18 mars 1965', tag: 'Vol habité', title: 'Léonov, première sortie dans l\'espace', org: 'URSS', R: 'leo', focus: ['voskhod2'],
+    text: "Alexeï Léonov passe une douzaine de minutes à l'extérieur de Voskhod 2. Sa combinaison se gonfle dans le vide au point qu'il a du mal à rentrer, et doit la dégonfler un peu.",
+    why: "Il faudra apprendre à travailler dehors pour construire des stations." },
+  { y: 1965, date: '1964 – 1965', tag: 'Découverte', title: 'Le fond diffus cosmologique', viz: 'cmb', R: 'leo', focus: [],
+    text: "Deux ingénieurs, Penzias et Wilson, cherchent à éliminer un bruit persistant dans leur antenne. Il vient de partout dans le ciel : c'est la lumière la plus ancienne de l'univers, émise environ 380 000 ans après le Big Bang, aujourd'hui à 2,7 K.",
+    why: "Une preuve majeure du Big Bang. Penzias et Wilson recevront le prix Nobel en 1978." },
+  { y: 1966, date: '3 février 1966', tag: 'Mission', title: 'Luna 9, premier atterrissage en douceur', org: 'URSS', R: 'moon', focus: ['luna9'],
+    text: "Première sonde à se poser sans dommage sur la Lune. Elle envoie des panoramas du sol lunaire.",
+    why: "On y voit que le sol est assez ferme pour porter un vaisseau : la voie vers Apollo est ouverte." },
+  { y: 1967, date: 'Novembre 1967', tag: 'Découverte', title: 'Les pulsars', viz: 'pulsar', R: 'leo', focus: [],
+    text: "Jocelyn Bell Burnell, étudiante, repère un signal radio qui se répète toutes les 1,337 secondes. Un temps surnommé « petits hommes verts », c'est en fait une étoile à neutrons qui tourne très vite, comme un phare.",
+    why: "La première preuve de l'existence des étoiles à neutrons, des astres incroyablement denses." },
+  { y: 1968, date: 'Décembre 1968', tag: 'Vol habité', title: 'Apollo 8 fait le tour de la Lune', org: 'NASA', R: 'moon', focus: ['apollo8'],
+    text: "Frank Borman, James Lovell et William Anders sont les premiers humains à quitter l'orbite terrestre et à orbiter autour de la Lune. Ils rapportent la photo « Earthrise » : la Terre se levant au-dessus de l'horizon lunaire.",
+    why: "Une image qui a changé notre regard sur notre planète : un petit monde fragile dans le noir." },
+  { y: 1969, date: '20 juillet 1969', tag: 'Vol habité', title: 'Apollo 11 : premiers pas sur la Lune', org: 'NASA', R: 'moon', focus: ['apollo11'],
+    text: "Neil Armstrong et Buzz Aldrin se posent en mer de la Tranquillité pendant que Michael Collins reste en orbite. Ils passent environ 2 h 30 à l'extérieur et rapportent 21,5 kg de roches.",
+    why: "Une prouesse d'ingénierie accomplie avec des ordinateurs bien moins puissants qu'un téléphone actuel." },
+  { y: 1970, date: '15 décembre 1970', tag: 'Mission', title: 'Venera 7 se pose sur Vénus', org: 'URSS', R: 'inner', focus: ['venera7'],
+    text: "Premier atterrissage sur une autre planète. La sonde émet environ 23 minutes malgré 475 °C et une pression environ 90 fois celle de la Terre.",
+    why: "Une leçon sur l'effet de serre : Vénus est plus chaude que Mercure alors qu'elle est plus loin du Soleil." },
+  { y: 1971, date: '19 avril 1971', tag: 'Station', title: 'Saliout 1, première station spatiale', org: 'URSS', R: 'leo', focus: ['salyut1'],
+    text: "Une station orbitale de quelques dizaines de mètres cubes habitables. Les trois cosmonautes de Soyouz 11, premiers à l'occuper, périssent au retour en juin 1971 : leur capsule s'est dépressurisée.",
+    why: "La station devient le moyen d'apprendre à vivre longtemps dans l'espace. Cette tragédie a aussi imposé les combinaisons de sécurité lors du retour." },
+  { y: 1972, date: 'Décembre 1972', tag: 'Vol habité', title: 'Apollo 17, dernière mission lunaire habitée', org: 'NASA', R: 'moon', focus: ['apollo17'],
+    text: "Eugene Cernan est le dernier humain à marcher sur la Lune. Depuis, personne n'est retourné plus loin que l'orbite terrestre basse.",
+    why: "Il y a un demi-siècle d'écart entre ces pas et les projets actuels de retour sur la Lune." },
+  { y: 1973, date: 'Décembre 1973', tag: 'Mission', title: 'Pioneer 10 survole Jupiter', org: 'NASA', R: 'giants', focus: ['pioneer10'], place: { pioneer10: 5.2 },
+    text: "Lancée en mars 1972, c'est la première sonde à traverser la ceinture d'astéroïdes puis à survoler Jupiter. Elle porte une plaque gravée destinée à d'éventuels êtres extraterrestres. Son dernier signal date de janvier 2003, à environ 80 UA.",
+    why: "La ceinture d'astéroïdes se traverse sans danger : la route des planètes lointaines est ouverte." },
+  { y: 1973, date: 'Mai 1973', tag: 'Station', title: 'Skylab', org: 'États-Unis', R: 'leo', focus: ['skylab'],
+    text: "Première station américaine, habitée par trois équipages en 1973 et 1974. Elle retombera sur Terre en 1979.",
+    why: "Les premières études longues sur le corps humain en apesanteur." },
+  { y: 1976, date: '20 juillet 1976', tag: 'Mission', title: 'Viking 1 se pose sur Mars', org: 'NASA', R: 'inner', focus: ['viking1'],
+    text: "Il fonctionne plus de six ans. Il envoie les premières photos du sol martien et réalise des expériences pour chercher des traces de vie : les résultats restent ambigus.",
+    why: "Mars apparaît comme un désert froid, et la question de la vie ailleurs est posée." },
+  { y: 1977, date: 'Août – septembre 1977', tag: 'Mission', title: 'Voyager 1 et 2 partent', org: 'NASA', R: 'inner', focus: ['voyager1', 'voyager2'], place: { voyager1: 1.4, voyager2: 1.25 },
+    text: "Voyager 2 est lancée le 20 août, Voyager 1 le 5 septembre. Elles profitent d'un alignement rare des planètes géantes pour les visiter l'une après l'autre. Chacune emporte un disque d'or avec des sons et des images de la Terre.",
+    why: "Ce voyage ne peut se faire qu'une fois tous les 175 ans environ." },
+  { y: 1979, date: 'Mars 1979', tag: 'Découverte', title: 'Io, un monde en éruption', org: 'NASA', R: 'giants', focus: ['voyager1'], place: { voyager1: 5.2, voyager2: 3.5 },
+    text: "Voyager 1 survole Jupiter. Sur une image, l'ingénieure Linda Morabito repère un panache au bord d'Io, une des lunes de Jupiter : c'est un volcan en éruption.",
+    why: "La première observation d'un volcanisme actif ailleurs que sur Terre." },
+  { y: 1981, date: '12 avril 1981', tag: 'Vol habité', title: 'La navette spatiale Columbia', org: 'NASA', R: 'leo', focus: ['shuttle'],
+    text: "Premier vol d'un vaisseau en partie réutilisable. Pendant 30 ans, la navette transporte des équipages, lance des satellites et assemble la future station spatiale.",
+    why: "L'idée d'un transport régulier vers l'orbite, même si la navette s'est révélée plus chère et plus risquée que prévu." },
+  { y: 1986, date: '28 janvier 1986', tag: 'Drame', title: 'Challenger', org: 'NASA', R: 'leo', focus: [],
+    text: "73 secondes après le décollage, la navette Challenger se désintègre : ses sept astronautes périssent. En cause, un joint défaillant par grand froid, dont les ingénieurs avaient averti. En 2003, la navette Columbia sera aussi perdue au retour.",
+    why: "Une leçon sur la culture de la sécurité : écouter les alertes, même quand le calendrier presse." },
+  { y: 1986, date: 'Février 1986', tag: 'Station', title: 'Mir', org: 'URSS / Russie', R: 'leo', focus: ['mir'],
+    text: "Station spatiale modulaire, assemblée peu à peu en orbite. Elle restera habitée presque en continu pendant une dizaine d'années, avant de rentrer dans l'atmosphère en 2001.",
+    why: "L'expérience de la vie longue durée qui servira à la Station spatiale internationale." },
+  { y: 1986, date: 'Janvier 1986 – août 1989', tag: 'Découverte', title: 'Voyager 2 : Uranus puis Neptune', org: 'NASA', R: 'giants', focus: ['voyager2'], place: { voyager2: 19.2, voyager1: 38 },
+    text: "Voyager 2 survole Uranus en janvier 1986 puis Neptune en août 1989. Elle est la seule sonde à les avoir visitées.",
+    why: "Presque tout ce que nous savons sur Uranus et Neptune vient de cette unique sonde." },
+  { y: 1990, date: '24 avril 1990', tag: 'Mission', title: 'Le télescope Hubble', org: 'NASA / ESA', R: 'leo', focus: ['hubble'],
+    text: "Placé au-dessus de l'atmosphère, il voit bien plus net que les télescopes au sol. Son miroir présentait une erreur de forme, réparée par des astronautes en 1993. Il a affiné l'âge de l'univers et révélé que son expansion s'accélère.",
+    why: "Il a transformé l'astronomie : on voit les galaxies lointaines avec une netteté inédite." },
+  { y: 1990, date: '14 février 1990', tag: 'Découverte', title: 'Un point bleu pâle', org: 'NASA', R: 'kuiper', focus: ['voyager1'], place: { voyager1: 40, voyager2: 33 },
+    text: "À environ 6 milliards de km, Voyager 1 se retourne et photographie la Terre : un point de moins d'un pixel dans un rayon de lumière. L'astronome Carl Sagan l'a appelé « Pale Blue Dot ».",
+    why: "Tout ce que l'humanité a connu vit sur ce minuscule point." },
+  { y: 1995, date: 'Octobre 1995', tag: 'Découverte', title: 'La première exoplanète autour d\'une étoile comme le Soleil', viz: 'wobble', R: 'inner', focus: [],
+    text: "Michel Mayor et Didier Queloz repèrent 51 Pegasi b : une géante qui tourne en 4,2 jours autour de son étoile, en observant le léger balancement de l'étoile. En 1992, d'autres planètes avaient déjà été trouvées autour d'un pulsar.",
+    why: "Les planètes existent ailleurs, et elles sont très variées. Mayor et Queloz recevront le prix Nobel en 2019." },
+  { y: 1997, date: '4 juillet 1997', tag: 'Mission', title: 'Pathfinder et le rover Sojourner', org: 'NASA', R: 'inner', focus: ['pathfinder'],
+    text: "Premier rover à rouler sur Mars. Sojourner, d'environ 10 kg, explore les alentours de son atterrisseur pendant quelques semaines.",
+    why: "Une preuve qu'on peut explorer un autre monde avec un petit véhicule peu coûteux." },
+  { y: 1998, date: 'Novembre 1998', tag: 'Station', title: 'La Station spatiale internationale', org: 'NASA, Roscosmos, ESA, JAXA, CSA', R: 'leo', focus: ['iss'],
+    text: "Premier module en novembre 1998 ; des équipages s'y relaient sans interruption depuis novembre 2000. Elle fait le tour de la Terre en environ 92 minutes : une quinzaine de levers de Soleil par jour. Elle est en chute libre permanente autour de la Terre, c'est pour ça qu'on y flotte.",
+    why: "Un laboratoire permanent pour apprendre à vivre longtemps dans l'espace, étape avant de partir plus loin." },
+  { y: 1998, date: '1998', tag: 'Découverte', title: 'L\'expansion de l\'univers s\'accélère', viz: 'expansion', R: 'leo', focus: [],
+    text: "En observant des étoiles qui explosent très loin, deux équipes découvrent que les galaxies s'éloignent de plus en plus vite. Quelque chose pousse l'univers à s'étendre : on l'appelle l'énergie noire.",
+    why: "On ne sait pas encore ce qu'est cette énergie, qui représenterait environ 70 % du contenu de l'univers. Prix Nobel 2011." },
+  { y: 2003, date: '15 octobre 2003', tag: 'Vol habité', title: 'Shenzhou 5 : la Chine dans l\'espace', org: 'Chine', R: 'leo', focus: ['shenzhou5'],
+    text: "Yang Liwei fait 14 tours de la Terre en environ 21 heures. La Chine devient le troisième pays à envoyer un humain dans l'espace par ses propres moyens, après l'URSS et les États-Unis.",
+    why: "La conquête spatiale n'est plus un duel : de nouvelles puissances rejoignent le jeu." },
+  { y: 2004, date: 'Janvier 2004', tag: 'Mission', title: 'Spirit et Opportunity', org: 'NASA', R: 'inner', focus: ['rovers2004'],
+    text: "Deux rovers jumeaux trouvent des minéraux qui ne se forment qu'en présence d'eau liquide. Opportunity a roulé environ 45 km, bien au-delà de ce qui était prévu, jusqu'à une tempête de poussière en 2018.",
+    why: "Mars a eu de l'eau liquide dans le passé, donc peut-être des conditions favorables à la vie." },
+  { y: 2005, date: '14 janvier 2005', tag: 'Mission', title: 'Huygens se pose sur Titan', org: 'ESA / NASA', R: 'giants', focus: ['cassini'],
+    text: "La sonde Cassini, en orbite autour de Saturne depuis 2004, largue Huygens qui se pose sur Titan, une lune à l'atmosphère épaisse. Cassini découvrira aussi des geysers sur Encelade, signe d'un océan sous la glace. Elle sera détruite volontairement dans Saturne en 2017.",
+    why: "Des océans liquides sous la glace : de nouveaux endroits où chercher de la vie." },
+  { y: 2009, date: 'Mars 2009', tag: 'Découverte', title: 'Kepler : des planètes par milliers', viz: 'transit', R: 'inner', focus: [],
+    text: "Le télescope spatial Kepler surveille 150 000 étoiles et guette les infimes baisses de lumière quand une planète passe devant. Il en trouvera des milliers avant la fin de sa mission en 2018.",
+    why: "Les planètes sont la norme, pas l'exception : presque chaque étoile en possède." },
+  { y: 2012, date: '6 août 2012', tag: 'Mission', title: 'Curiosity', org: 'NASA', R: 'inner', focus: ['curiosity'],
+    text: "Un rover de la taille d'une voiture, posé dans le cratère Gale. Il explore la base du mont Sharp et trouve les traces d'un ancien lac avec des éléments chimiques nécessaires à la vie.",
+    why: "Mars a déjà eu un environnement habitable." },
+  { y: 2012, date: 'Août 2012', tag: 'Mission', title: 'Voyager 1 entre dans l\'espace interstellaire', org: 'NASA', R: 'far', focus: ['voyager1'], place: { voyager1: 121, voyager2: 100 },
+    text: "À environ 121 UA du Soleil, Voyager 1 franchit l'héliopause, la frontière de l'influence du Soleil. C'est le premier objet humain dans l'espace interstellaire. Voyager 2 la suivra en novembre 2018.",
+    why: "À sa vitesse, elle mettrait plus de 70 000 ans pour atteindre l'étoile la plus proche." },
+  { y: 2014, date: '12 novembre 2014', tag: 'Mission', title: 'Rosetta et Philae : sur une comète', org: 'ESA', R: 'inner', focus: ['rosetta'],
+    text: "Rosetta met dix ans pour atteindre la comète 67P ; son petit atterrisseur Philae se pose après plusieurs rebonds. La mission s'achève en 2016.",
+    why: "Les comètes sont des vestiges très anciens de la formation du système solaire." },
+  { y: 2015, date: '14 juillet 2015', tag: 'Découverte', title: 'New Horizons survole Pluton', org: 'NASA', R: 'kuiper', focus: ['newhorizons'], place: { newhorizons: 33, voyager1: 130, voyager2: 108 },
+    text: "Lancée en 2006, la sonde révèle un monde actif avec une grande plaine de glace en forme de cœur. En 2019, elle visite Arrokoth, un petit objet très ancien de la ceinture de Kuiper.",
+    why: "Un aperçu des objets glacés qui n'ont presque pas changé depuis la formation du système solaire." },
+  { y: 2015, date: '21 décembre 2015', tag: 'Moment', title: 'Les fusées reviennent se poser', org: 'SpaceX', R: 'leo', focus: [],
+    text: "Le premier étage d'une fusée Falcon 9 se pose verticalement après avoir lancé des satellites. Récupérer et réutiliser les fusées fait fortement baisser le prix d'un lancement.",
+    why: "Un lancement moins cher change ce qu'on peut faire dans l'espace." },
+  { y: 2016, date: '14 septembre 2015 (annoncé en février 2016)', tag: 'Découverte', title: 'Les ondes gravitationnelles', viz: 'waves', R: 'leo', focus: [],
+    text: "Les détecteurs LIGO captent une infime déformation de l'espace : deux trous noirs, à environ 1,3 milliard d'années-lumière, viennent de fusionner. Einstein l'avait prédit un siècle plus tôt.",
+    why: "Une toute nouvelle façon d'observer l'univers, avec des « ondes » au lieu de la lumière." },
+  { y: 2018, date: 'Août 2018', tag: 'Mission', title: 'Parker Solar Probe', org: 'NASA', R: 'inner', focus: ['parker'],
+    text: "Elle s'approche du Soleil à environ 6,1 millions de km de sa surface (passage de décembre 2024), à environ 192 km/s : l'objet le plus rapide jamais construit. Un bouclier de carbone de 11,4 cm l'abrite ; elle traverse l'atmosphère du Soleil, la couronne.",
+    why: "Elle aide à comprendre pourquoi la couronne est bien plus chaude que la surface et d'où vient le vent solaire." },
+  { y: 2019, date: '3 janvier 2019', tag: 'Mission', title: 'Chang\'e 4 : la face cachée', org: 'Chine', R: 'moon', focus: ['change4'],
+    text: "La sonde se pose dans le cratère Von Kármán, sur la face cachée de la Lune. Comme aucune radio ne passe à travers la Lune, un satellite relais transmet les données.",
+    why: "Étudier une croûte différente de la face visible." },
+  { y: 2019, date: '10 avril 2019', tag: 'Découverte', title: 'La première image d\'un trou noir', viz: 'blackhole', R: 'leo', focus: [],
+    text: "L'Event Horizon Telescope, un réseau de radiotélescopes sur toute la Terre, photographie l'ombre du trou noir au cœur de la galaxie M87, à environ 55 millions d'années-lumière. En 2022, c'est le trou noir de notre propre galaxie qui est dévoilé.",
+    why: "Une confirmation visuelle des prédictions de la relativité générale." },
+  { y: 2020, date: '30 mai 2020', tag: 'Vol habité', title: 'Les vols habités privés', org: 'SpaceX / NASA', R: 'leo', focus: ['starlink'],
+    text: "Une capsule Crew Dragon amène deux astronautes à la station spatiale : première fois qu'une entreprise privée assure un vol habité orbital pour la NASA. Depuis 2019, des milliers de satellites Starlink forment aussi une immense constellation.",
+    why: "L'espace devient un secteur commercial, avec ses promesses et ses problèmes (encombrement de l'orbite, pollution lumineuse)." },
+  { y: 2021, date: '25 décembre 2021', tag: 'Mission', title: 'Le télescope James Webb', org: 'NASA / ESA / CSA', R: 'l2', focus: ['jwst'],
+    text: "Il observe l'infrarouge avec un miroir de 6,5 m en 18 segments. Il se tient au point de Lagrange L2, à environ 1,5 million de km de la Terre, derrière un pare-soleil de la taille d'un court de tennis. Premières images en juillet 2022.",
+    why: "L'infrarouge permet de voir les toutes premières galaxies et d'analyser l'atmosphère de planètes lointaines." },
+  { y: 2021, date: '2021', tag: 'Mission', title: 'Perseverance, Ingenuity et Tiangong', org: 'NASA / Chine', R: 'inner', focus: ['perseverance'],
+    text: "Perseverance se pose en février dans le cratère Jezero, un ancien delta de rivière, et met de côté des échantillons pour un retour futur. Le 19 avril, l'hélicoptère Ingenuity réalise le premier vol motorisé sur une autre planète. La Chine commence l'assemblage de sa station Tiangong.",
+    why: "Voler dans l'air martien, 100 fois moins dense que le nôtre, était considéré comme très difficile." },
+  { y: 2022, date: '26 septembre 2022', tag: 'Mission', title: 'DART dévie un astéroïde', org: 'NASA', R: 'inner', focus: ['dart'],
+    text: "La sonde percute volontairement Dimorphos, petite lune de l'astéroïde Didymos. Elle raccourcit son orbite d'environ 32 minutes.",
+    why: "Première démonstration de défense planétaire : on peut modifier la trajectoire d'un astéroïde." },
+  { y: 2023, date: '23 août 2023', tag: 'Mission', title: 'Chandrayaan-3', org: 'Inde', R: 'moon', focus: ['chandrayaan3'],
+    text: "L'Inde réussit un alunissage près du pôle sud de la Lune. Cette région intéresse les agences : certains cratères, toujours dans l'ombre, pourraient contenir de la glace d'eau.",
+    why: "De l'eau sur place permettrait de produire de l'air, de l'eau potable et du carburant pour de futures bases." },
+];
+// début et fin de la frise
+const HERO = { y: 1950, R: 'leo', focus: [] };
+const FINALE = { y: 2026, R: 'giants', focus: [] };
+const ALL = [HERO, ...SCENES, FINALE];
+
+// =====================================================================
+//  CARTE (canvas)
+// =====================================================================
+const canvas = document.getElementById('c'), ctx = canvas.getContext('2d');
+const stage = document.getElementById('stage');
+let W = 0, H = 0, dpr = 1, wide = false, ccx = 0, ccy = 0, vsize = 0;
+function resize() {
+  dpr = Math.min(devicePixelRatio || 1, 2);
+  W = stage.clientWidth; H = stage.clientHeight;
+  canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+  wide = innerWidth >= 900;
+  ccx = wide ? W * 0.30 : W / 2; ccy = H / 2;
+  vsize = wide ? Math.min(W * 0.56, H * 0.92) : Math.min(W, H) * 0.96;
+}
+addEventListener('resize', () => { resize(); computeLayout(); });
+
+const smooth = x => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
+const lerp = (a, b, t) => a + (b - a) * t;
+const orbitR = it => R_EARTH + it.alt;
+const orbitPeriod = it => 2 * Math.PI * Math.sqrt(Math.pow(orbitR(it), 3) / MU_EARTH);
+const earthPos = () => [EARTH.a * AU, 0];
+function bodyPos(name) {
+  if (name === 'Lune') { const e = earthPos(); return [e[0] + D_MOON * Math.cos(0.8), e[1] + D_MOON * Math.sin(0.8)]; }
+  const p = planetByName[name];
+  return [p.a * AU * Math.cos(p.th), p.a * AU * Math.sin(p.th)];
+}
+// position d'un objet ; aOverride = distance au Soleil forcée (sondes lointaines)
+function itemPos(it, t, aOverride) {
+  const e = earthPos();
+  switch (it.kind) {
+    case 'orbit': { const ph = it.ph0 + 2 * Math.PI * (t * KORB) / orbitPeriod(it), r = orbitR(it); return { x: e[0] + r * Math.cos(ph), y: e[1] + r * Math.sin(ph), ox: 0, oy: 0 }; }
+    case 'l2': return { x: e[0] + 1.5e6, y: e[1], ox: 0, oy: 0 };
+    case 'at': { const b = bodyPos(it.body); return { x: b[0], y: b[1], ox: 12, oy: -4 + it.slot * 13 }; }
+    case 'helio': { const a = aOverride !== undefined ? aOverride : it.a; return { x: a * AU * Math.cos(it.th), y: a * AU * Math.sin(it.th), ox: 0, oy: 0 }; }
+  }
+}
+const visibleAt = (it, y) => y >= it.start && (it.end === undefined || y <= it.end);
+
+// caméra : centrée sur la Terre de près, glisse vers le Soleil en dézoomant
+function camera(logR) {
+  const R = Math.exp(logR);
+  const s = smooth((Math.log10(R) - 7.3) / (9.0 - 7.3));
+  const e = earthPos();
+  return { R, k: (vsize / 2) / R, cx: e[0] * (1 - s), cy: e[1] * (1 - s) };
+}
+const toScreen = (cam, x, y) => [ccx + (x - cam.cx) * cam.k, ccy + (y - cam.cy) * cam.k];
+
+// générateur pseudo-aléatoire déterministe (mêmes étoiles à chaque fois)
+let seed = 12345; const rnd = () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
+const stars = Array.from({ length: 200 }, () => ({ x: rnd(), y: rnd(), s: 0.4 + rnd() * 1.3, p: rnd() * 6.28, r: 0.7 + rnd() * 2 }));
+const blobs = Array.from({ length: 260 }, () => ({ x: rnd(), y: rnd(), r: 18 + rnd() * 60, v: rnd(), p: rnd() * 6.28 }));
+const galaxies = Array.from({ length: 70 }, () => ({ a: rnd() * 6.283, d: 0.06 + rnd() * 0.9, s: 0.8 + rnd() * 1.6, h: rnd() }));
+
+function ring(cam, x, y, rkm, color, width, dash) {
+  const [sx, sy] = toScreen(cam, x, y), rp = rkm * cam.k;
+  if (rp < 3 || rp > 20000) return;
+  ctx.strokeStyle = color; ctx.lineWidth = width; ctx.setLineDash(dash || []);
+  ctx.beginPath(); ctx.arc(sx, sy, rp, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+}
+function text(str, x, y, color, size, align, weight) {
+  ctx.font = `${weight || 400} ${size || 12}px system-ui, sans-serif`; ctx.textAlign = align || 'left';
+  ctx.fillStyle = color || '#9fb3d9'; ctx.fillText(str, x, y);
+}
+
+// état courant de la frise (rempli par update())
+const state = { i: 0, s: 0, sm: 0, logR: Math.log(RK.leo), year: 1950, focus: new Set(), t: 0, vizA: {} };
+let hoverItem = null, visibleDots = [];
+
+function drawMap(t) {
+  const cam = camera(state.logR), k = cam.k, yr = Math.floor(state.year);
+  // fond
+  ctx.fillStyle = '#04050d'; ctx.fillRect(0, 0, W, H);
+  for (const s of stars) {
+    ctx.globalAlpha = 0.25 + 0.55 * (0.5 + 0.5 * Math.sin(t * s.r + s.p));
+    ctx.fillStyle = '#fff'; ctx.fillRect(s.x * W, s.y * H, s.s, s.s);
+  }
+  ctx.globalAlpha = 1;
+  const sunS = toScreen(cam, 0, 0);
+  // ceintures et héliopause : des zones, pas des orbites exactes
+  const band = (a0, a1, color, name) => {
+    const rp = (a0 + a1) / 2 * AU * k, wpx = (a1 - a0) * AU * k;
+    if (rp < 8 || rp > 20000) return;
+    ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, wpx);
+    ctx.beginPath(); ctx.arc(sunS[0], sunS[1], rp, 0, 7); ctx.stroke();
+    if (rp > 40 && wpx > 4) text(name, sunS[0] + rp * 0.707 + 4, sunS[1] - rp * 0.707, 'rgba(170,190,235,0.55)', 10);
+  };
+  band(2.2, 3.2, 'rgba(180,170,150,0.07)', 'Ceinture d\'astéroïdes');
+  band(30, 50, 'rgba(150,170,210,0.06)', 'Ceinture de Kuiper');
+  ring(cam, 0, 0, 120 * AU, 'rgba(255,180,120,0.35)', 1.2, [6, 6]);
+  if (120 * AU * k > 40 && 120 * AU * k < 20000) text('Héliopause ≈ 120 UA', sunS[0] + 120 * AU * k * 0.707 + 4, sunS[1] + 120 * AU * k * 0.707, 'rgba(255,180,120,0.7)', 10);
+
+  // planètes
+  for (const p of planets) {
+    ring(cam, 0, 0, p.a * AU, 'rgba(160,185,235,0.12)', 1);
+    if (p.a * AU * k < 14 && p.name !== 'Terre') continue;
+    const pos = bodyPos(p.name), [sx, sy] = toScreen(cam, pos[0], pos[1]), rp = Math.max(p.r * k, 2.6);
+    if (sx < -60 || sx > W + 60 || sy < -60 || sy > H + 60) continue;
+    ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(sx, sy, rp, 0, 7); ctx.fill();
+    if (p.name === 'Terre' && rp > 6) {
+      const g = ctx.createRadialGradient(sx, sy, rp * 0.95, sx, sy, rp * 1.25);
+      g.addColorStop(0, 'rgba(120,180,255,0.45)'); g.addColorStop(1, 'rgba(120,180,255,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx, sy, rp * 1.25, 0, 7); ctx.fill();
+    }
+    if (p.name !== 'Terre' || rp < 70) text(p.name, sx + rp + 4, sy - rp - 2, '#a9bde6', 11);
+  }
+  // Soleil
+  { const rp = Math.max(R_SUN * k, 5);
+    const g = ctx.createRadialGradient(sunS[0], sunS[1], rp * 0.4, sunS[0], sunS[1], rp * 3);
+    g.addColorStop(0, 'rgba(255,210,90,0.55)'); g.addColorStop(1, 'rgba(255,210,90,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sunS[0], sunS[1], rp * 3, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ffcc33'; ctx.beginPath(); ctx.arc(sunS[0], sunS[1], rp, 0, 7); ctx.fill();
+    text('Soleil', sunS[0] + rp + 5, sunS[1] - rp - 2, '#ffe9a0', 11); }
+  // Lune
+  { const e = earthPos(), m = bodyPos('Lune');
+    ring(cam, e[0], e[1], D_MOON, 'rgba(200,200,220,0.2)', 1, [3, 5]);
+    if (D_MOON * k > 6) { const [mx, my] = toScreen(cam, m[0], m[1]), rp = Math.max(R_MOON * k, 2.6);
+      ctx.fillStyle = '#bbb'; ctx.beginPath(); ctx.arc(mx, my, rp, 0, 7); ctx.fill(); text('Lune', mx + rp + 4, my - rp - 2, '#cfcfcf', 11); } }
+
+  // objets envoyés par l'humanité : apparaissent à leur année de lancement
+  visibleDots = [];
+  const pulse = 0.5 + 0.5 * Math.sin(t * 4);
+  for (const it of ITEMS) {
+    if (!visibleAt(it, yr)) continue;
+    const aOv = placeA(it);
+    const p = itemPos(it, t, aOv);
+    if (it.kind === 'orbit') {
+      if (orbitR(it) * k < 7) continue;
+      ring(cam, earthPos()[0], earthPos()[1], orbitR(it), 'rgba(127,214,255,0.14)', 1);
+    } else if (it.kind === 'at') {
+      if (it.body === 'Lune' ? D_MOON * k < 6 : planetByName[it.body].a * AU * k < 14) continue;
+    } else if (it.kind === 'helio') {
+      if (Math.hypot(p.x, p.y) * k < 16) continue;
+    } else if (it.kind === 'l2' && 1.5e6 * k < 6) continue;
+    let [sx, sy] = toScreen(cam, p.x, p.y); const bx = sx, by = sy; sx += p.ox; sy += p.oy;
+    if (sx < -80 || sx > W + 80 || sy < -40 || sy > H + 40) continue;
+    const foc = state.focus.has(it.id), hov = hoverItem === it, col = CAT[it.cat];
+    if (p.ox || p.oy) { ctx.strokeStyle = 'rgba(200,215,255,0.25)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(sx, sy); ctx.stroke(); }
+    if (foc) { ctx.strokeStyle = `rgba(255,210,74,${0.5 + 0.5 * pulse})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(sx, sy, 8 + pulse * 5, 0, 7); ctx.stroke(); }
+    ctx.fillStyle = col; ctx.beginPath(); ctx.arc(sx, sy, foc ? 5 : 3.2, 0, 7); ctx.fill();
+    if (foc || hov) text(it.name, sx + 10, sy + 4, foc ? '#fff' : col, 12, 'left', foc ? 700 : 400);
+    visibleDots.push({ it, sx, sy });
+  }
+}
+
+// distance forcée d'une sonde pour la scène en cours (interpolée entre deux scènes)
+function placeA(it) {
+  if (it.kind !== 'helio') return undefined;
+  const a0 = (ALL[state.i].place || {})[it.id], a1 = (ALL[Math.min(state.i + 1, ALL.length - 1)].place || {})[it.id];
+  if (a0 === undefined && a1 === undefined) return undefined;
+  return lerp(a0 !== undefined ? a0 : it.a, a1 !== undefined ? a1 : it.a, state.sm);
+}
+
+// ---------- illustrations des découvertes ----------
+const VIZ = {
+  cmb(t) {
+    for (const b of blobs) {
+      const x = b.x * W + Math.sin(t * 0.15 + b.p) * 6, y = b.y * H + Math.cos(t * 0.12 + b.p) * 6;
+      const hue = 215 - b.v * 190; // du bleu à l'orange : fluctuations de température
+      const g = ctx.createRadialGradient(x, y, 0, x, y, b.r);
+      g.addColorStop(0, `hsla(${hue},85%,55%,0.35)`); g.addColorStop(1, `hsla(${hue},85%,55%,0)`);
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, b.r, 0, 7); ctx.fill();
+    }
+    text('Lumière vieille de 13,8 milliards d\'années · 2,7 K', ccx, H - 18, '#f0e0c0', 12, 'center');
+  },
+  pulsar(t) {
+    const r = vsize * 0.05, ang = t * 3;
+    for (const dir of [0, Math.PI]) {
+      const a = ang + dir, L = vsize * 0.6;
+      const g = ctx.createLinearGradient(ccx, ccy, ccx + Math.cos(a) * L, ccy + Math.sin(a) * L);
+      g.addColorStop(0, 'rgba(160,200,255,0.55)'); g.addColorStop(1, 'rgba(160,200,255,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(ccx, ccy);
+      ctx.lineTo(ccx + Math.cos(a - 0.12) * L, ccy + Math.sin(a - 0.12) * L); ctx.lineTo(ccx + Math.cos(a + 0.12) * L, ccy + Math.sin(a + 0.12) * L); ctx.fill();
+    }
+    ctx.fillStyle = '#e8f2ff'; ctx.beginPath(); ctx.arc(ccx, ccy, r, 0, 7); ctx.fill();
+    // signal reçu : une impulsion à chaque passage du faisceau
+    const y0 = H - 40, x0 = ccx - vsize * 0.4, w = vsize * 0.8; ctx.strokeStyle = '#9ec2ff'; ctx.lineWidth = 1.5; ctx.beginPath();
+    for (let i = 0; i <= 160; i++) { const u = i / 160, ph = (u * 6 + t * 0.6) % 1, v = Math.exp(-Math.pow((ph - 0.5) * 18, 2));
+      const x = x0 + u * w, y = y0 - v * 26; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    ctx.stroke(); text('Une impulsion toutes les 1,337 s', ccx, H - 10, '#9ec2ff', 11, 'center');
+  },
+  wobble(t) {
+    const R = vsize * 0.09, ph = t * 1.4, off = Math.sin(ph) * R * 0.35;
+    const orbit = vsize * 0.28;
+    ctx.strokeStyle = 'rgba(160,185,235,0.3)'; ctx.setLineDash([4, 5]); ctx.beginPath(); ctx.arc(ccx, ccy, orbit, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+    const px = ccx + Math.cos(ph + Math.PI) * orbit, py = ccy + Math.sin(ph + Math.PI) * orbit * 0.4;
+    const v = Math.cos(ph); // vitesse de l'étoile vers nous ou à l'opposé
+    const col = v > 0 ? `rgb(${255},${220 - v * 40},${150 - v * 60})` : `rgb(${255 + v * 60},${230 + v * 20},${255})`;
+    const g = ctx.createRadialGradient(ccx + off, ccy, R * 0.3, ccx + off, ccy, R * 2.2);
+    g.addColorStop(0, col); g.addColorStop(1, 'rgba(255,230,160,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(ccx + off, ccy, R * 2.2, 0, 7); ctx.fill();
+    ctx.fillStyle = '#c9a27a'; ctx.beginPath(); ctx.arc(px, py, R * 0.32, 0, 7); ctx.fill();
+    text('L\'étoile oscille : sa couleur tire un peu vers le rouge, puis vers le bleu', ccx, H - 14, '#c9d6f5', 12, 'center');
+  },
+  transit(t) {
+    const R = vsize * 0.17, u = (t * 0.25) % 1, px = lerp(ccx - R * 2.2, ccx + R * 2.2, u), pr = R * 0.22;
+    const g = ctx.createRadialGradient(ccx, ccy - 20, R * 0.5, ccx, ccy - 20, R * 1.5);
+    g.addColorStop(0, 'rgba(255,225,150,1)'); g.addColorStop(1, 'rgba(255,200,120,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(ccx, ccy - 20, R * 1.5, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ffe8a8'; ctx.beginPath(); ctx.arc(ccx, ccy - 20, R, 0, 7); ctx.fill();
+    ctx.fillStyle = '#10131f'; ctx.beginPath(); ctx.arc(px, ccy - 20, pr, 0, 7); ctx.fill();
+    // courbe de lumière
+    const x0 = ccx - vsize * 0.4, w = vsize * 0.8, y0 = H - 46; ctx.strokeStyle = '#8affc1'; ctx.lineWidth = 1.5; ctx.beginPath();
+    for (let i = 0; i <= 120; i++) { const uu = i / 120, d = Math.abs(uu - 0.5) < 0.2 ? 9 * (1 - Math.pow((uu - 0.5) / 0.2, 6)) : 0;
+      i ? ctx.lineTo(x0 + uu * w, y0 + d) : ctx.moveTo(x0 + uu * w, y0 + d); }
+    ctx.stroke(); ctx.fillStyle = '#8affc1'; ctx.beginPath(); ctx.arc(x0 + u * w, y0 + (Math.abs(u - 0.5) < 0.2 ? 9 * (1 - Math.pow((u - 0.5) / 0.2, 6)) : 0), 3.5, 0, 7); ctx.fill();
+    text('Une planète passe devant son étoile : la lumière baisse un peu', ccx, H - 14, '#c9d6f5', 12, 'center');
+  },
+  blackhole(t) {
+    const R = vsize * 0.2;
+    const glow = ctx.createRadialGradient(ccx, ccy, R * 0.9, ccx, ccy, R * 2.1);
+    glow.addColorStop(0, 'rgba(255,140,40,0.35)'); glow.addColorStop(1, 'rgba(255,140,40,0)'); ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(ccx, ccy, R * 2.1, 0, 7); ctx.fill();
+    ctx.lineWidth = R * 0.2;
+    for (let i = 0; i < 90; i++) { const a0 = i / 90 * 6.283, a1 = (i + 1.5) / 90 * 6.283;
+      const br = 0.25 + 0.75 * (0.5 + 0.5 * Math.cos(a0 - (1.9 + Math.sin(t * 0.2) * 0.15)));
+      ctx.strokeStyle = `rgba(255,${120 + br * 90},40,${0.2 + br * 0.8})`; ctx.beginPath(); ctx.arc(ccx, ccy, R, a0, a1); ctx.stroke(); }
+    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(ccx, ccy, R * 0.82, 0, 7); ctx.fill();
+    text('L\'ombre du trou noir de M87, au centre d\'un anneau de gaz chaud', ccx, H - 14, '#f4d9b0', 12, 'center');
+  },
+  waves(t) {
+    const cyc = (t * 0.18) % 1, rad = lerp(vsize * 0.18, vsize * 0.015, Math.pow(cyc, 2.2)), ang = t * (2 + 14 * Math.pow(cyc, 2.2));
+    for (let k = 0; k < 6; k++) { const u = ((t * 0.35 + k / 6) % 1), rr = u * vsize * 0.55;
+      ctx.strokeStyle = `rgba(150,190,255,${(1 - u) * 0.5})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(ccx, ccy, rr, 0, 7); ctx.stroke(); }
+    for (const dir of [0, Math.PI]) { const x = ccx + Math.cos(ang + dir) * rad, y = ccy + Math.sin(ang + dir) * rad;
+      ctx.fillStyle = '#000'; ctx.strokeStyle = '#ffb066'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, vsize * 0.025, 0, 7); ctx.fill(); ctx.stroke(); }
+    if (cyc > 0.92) { ctx.fillStyle = `rgba(255,255,255,${(cyc - 0.92) * 8})`; ctx.beginPath(); ctx.arc(ccx, ccy, vsize * 0.08, 0, 7); ctx.fill(); }
+    text('Deux trous noirs spiralent l\'un vers l\'autre, puis fusionnent', ccx, H - 14, '#c9d6f5', 12, 'center');
+  },
+  expansion(t) {
+    const sc = 1 + 0.35 * (0.5 + 0.5 * Math.sin(t * 0.5));
+    for (const g of galaxies) { const d = g.d * sc * vsize * 0.5, x = ccx + Math.cos(g.a) * d, y = ccy + Math.sin(g.a) * d;
+      ctx.fillStyle = `hsla(${200 + g.h * 60},60%,${65 + g.h * 20}%,0.9)`; ctx.beginPath(); ctx.ellipse(x, y, 3 * g.s, 1.6 * g.s, g.a, 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.beginPath(); ctx.moveTo(ccx + Math.cos(g.a) * g.d * vsize * 0.5, ccy + Math.sin(g.a) * g.d * vsize * 0.5); ctx.lineTo(x, y); ctx.stroke(); }
+    text('Plus une galaxie est loin, plus elle s\'éloigne vite', ccx, H - 14, '#c9d6f5', 12, 'center');
+  },
+};
+function drawViz(t) {
+  for (const [name, a] of Object.entries(state.vizA)) {
+    if (a <= 0.01) continue;
+    ctx.save(); ctx.globalAlpha = Math.min(1, a);
+    ctx.fillStyle = '#04050d'; ctx.fillRect(0, 0, W, H);
+    VIZ[name](t);
+    ctx.restore();
+  }
+}
+
+// =====================================================================
+//  FRISE : construction du DOM, défilement → état
+// =====================================================================
+const scroller = document.getElementById('scroller');
+const sections = [];
+function addSection(html, cls) { const s = document.createElement('section'); s.className = 'scene ' + (cls || ''); s.innerHTML = html; scroller.append(s); sections.push(s); return s; }
+
+addSection(`<div class="card hero"><div class="meta"><span class="tag">1950 → aujourd'hui</span></div>
+  <h1>De la première fusée à aujourd'hui</h1>
+  <p>Tout ce que l'humanité a envoyé dans l'espace, et ce que cela nous a appris. Une histoire à lire en faisant défiler l'écran.</p>
+  <p class="hint">Ensuite, ce sera à toi d'explorer l'univers.</p>
+  <div class="scrollhint">↓ Fais défiler</div></div>`, 'hero');
+for (const sc of SCENES) {
+  const org = sc.org ? `<span>${sc.org}</span>` : '';
+  addSection(`<div class="card"><div class="meta"><span class="tag">${sc.tag}</span><span>${sc.date}</span>${org ? '· ' + org : ''}</div>
+    <h2>${sc.title}</h2><p>${sc.text}</p><p class="why"><b>Pourquoi c'est important :</b> ${sc.why}</p></div>`);
+}
+addSection(`<div class="card"><div class="meta"><span class="tag">Aujourd'hui</span><span>2026</span></div>
+  <h2>Et maintenant ?</h2>
+  <p>La Station spatiale est habitée sans interruption depuis plus de 25 ans. On connaît plus de 6 000 exoplanètes. Les deux Voyager, vieilles de presque 50 ans, continuent d'envoyer des données depuis l'espace interstellaire. Des missions préparent le retour d'humains sur la Lune.</p>
+  <p class="why"><b>La suite :</b> on part de la technologie d'aujourd'hui, et on va plus loin.</p>
+  <button class="cta" id="goGame">Explorer l'univers</button></div>`);
+
+// mise en page : centre de chaque section, point de lecture dans la fenêtre
+let centers = [], readY = 0;
+function computeLayout() {
+  centers = sections.map(s => s.offsetTop + s.offsetHeight / 2);
+  const canvasH = stage.clientHeight;
+  readY = wide ? innerHeight * 0.5 : canvasH + (innerHeight - canvasH) / 2;
+  buildStrip();
+}
+
+// pellicule
+const track = document.getElementById('track'), marker = document.getElementById('marker');
+let tickEls = [];
+function yearPct(y) { return (y - YEAR_MIN) / (YEAR_MAX - YEAR_MIN) * 100; }
+function buildStrip() {
+  [...track.querySelectorAll('.tick,.decade')].forEach(e => e.remove());
+  for (let y = 1950; y <= 2020; y += 10) { const d = document.createElement('div'); d.className = 'decade'; d.style.left = yearPct(y) + '%'; d.textContent = y; track.append(d); }
+  tickEls = [];
+  SCENES.forEach((sc, idx) => {
+    const b = document.createElement('button'); b.className = 'tick'; b.style.left = yearPct(sc.y) + '%'; b.title = sc.y + ' · ' + sc.title;
+    b.addEventListener('click', () => scrollTo({ top: centers[idx + 1] - readY, behavior: 'smooth' }));
+    track.append(b); tickEls.push(b);
+  });
+}
+
+function fmtLight(sec) {
+  if (sec < 60) return sec.toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' s';
+  if (sec < 3600) return (sec / 60).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' min';
+  if (sec < 172800) return (sec / 3600).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' h';
+  return (sec / 86400).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' jours';
+}
+function fmtKm(km) {
+  if (km < 1e6) return Math.round(km).toLocaleString('fr-FR') + ' km';
+  if (km < 1e9) return (km / 1e6).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' millions de km';
+  return (km / 1e9).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' milliards de km';
+}
+
+const hudYear = document.getElementById('hudYear'), hudSub = document.getElementById('hudSub'), hudScale = document.getElementById('hudScale');
+let targetLogR = Math.log(RK.leo), targetYear = 1950, lastIdx = -1;
+
+// transforme la position de défilement en cible (scène courante + progression vers la suivante)
+function readScroll() {
+  const y = scrollY + readY;
+  let i = 0;
+  while (i < centers.length - 1 && y >= centers[i + 1]) i++;
+  const next = Math.min(i + 1, centers.length - 1);
+  const span = Math.max(1, centers[next] - centers[i]);
+  const s = i === next ? 0 : Math.max(0, Math.min(1, (y - centers[i]) / span));
+  const sm = smooth((s - 0.3) / 0.4); // plateau : la scène reste en place, la transition se fait au milieu
+  const A = ALL[i], B = ALL[next];
+  targetLogR = lerp(Math.log(RK[A.R]), Math.log(RK[B.R]), sm);
+  targetYear = lerp(A.y, B.y, sm);
+  state.i = i; state.s = s; state.sm = sm;
+  state.focus = new Set(sm < 0.5 ? A.focus : B.focus);
+  const vz = {}; // fondu des illustrations
+  if (A.viz) vz[A.viz] = (vz[A.viz] || 0) + (1 - sm);
+  if (B.viz && i !== next) vz[B.viz] = (vz[B.viz] || 0) + sm;
+  state.vizA = vz;
+  lastIdx = i;
+}
+
+function updateUI() {
+  const fy = Math.floor(state.year);
+  hudYear.textContent = fy;
+  const A = ALL[state.i], B = ALL[Math.min(state.i + 1, ALL.length - 1)], cur = state.sm < 0.5 ? A : B;
+  hudSub.textContent = cur.tag ? cur.tag : '';
+  const R = Math.exp(state.logR);
+  hudScale.textContent = `Rayon de la vue : ${fmtKm(R)} · lumière : ${fmtLight(R / C_LIGHT)}${state.logR < Math.log(2e5) ? ' · orbites accélérées ×' + KORB : ''}`;
+  marker.style.left = yearPct(Math.max(YEAR_MIN, Math.min(YEAR_MAX, state.year))) + '%';
+  tickEls.forEach((b, idx) => { const sc = SCENES[idx]; b.classList.toggle('past', sc.y <= fy); b.classList.toggle('now', idx + 1 === (state.sm < 0.5 ? state.i : state.i + 1)); });
+}
+
+// ---------- boucle ----------
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min((now - last) / 1000, 0.1); last = now;
+  readScroll();
+  const f = Math.min(1, dt * 7);
+  state.logR += (targetLogR - state.logR) * f;
+  state.year += (targetYear - state.year) * f;
+  state.t = now / 1000;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawMap(state.t);
+  drawViz(state.t);
+  updateUI();
+  requestAnimationFrame(loop);
+}
+
+// survol (souris) : étiquette d'un objet
+canvas.addEventListener('mousemove', e => {
+  const r = canvas.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+  hoverItem = null; let bd = 12;
+  for (const v of visibleDots) { const d = Math.hypot(v.sx - mx, v.sy - my); if (d < bd) { bd = d; hoverItem = v.it; } }
+});
+canvas.addEventListener('mouseleave', () => { hoverItem = null; });
+
+// modal de fin
+const modal = document.getElementById('modal');
+document.getElementById('goGame').addEventListener('click', () => modal.classList.add('open'));
+document.getElementById('closeModal').addEventListener('click', () => modal.classList.remove('open'));
+
+resize(); computeLayout();
+state.logR = targetLogR = Math.log(RK.leo);
+addEventListener('load', computeLayout);
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+// Données : météorites et impacts célèbres (repères sur le globe de la Terre).
+// ---------- Météorites et impacts célèbres (affichés comme repères sur la Terre) ----------
+const METEORITES = [
+  { id: 'chelyabinsk', name: 'Tcheliabinsk', type: 'chute', where: 'Russie', lat: 54.8, lon: 61.1, when: '15 février 2013', date: '2013-02-15', size: 'astéroïde d\'environ 20 m',
+    facts: ["Un astéroïde d'environ 20 m a explosé en altitude (≈ 30 km), avec une énergie de plusieurs centaines de kilotonnes.", "L'onde de choc a brisé des vitres et fait environ 1 500 blessés, surtout par des éclats de verre.", "Le plus gros morceau, d'environ 600 kg, a été repêché dans le lac Tchebarkoul en 2013."] },
+  { id: 'tunguska', name: 'Toungouska', type: 'explosion', where: 'Sibérie, Russie', lat: 60.9, lon: 101.9, when: '30 juin 1908', date: '1908-06-30', size: 'objet de quelques dizaines de mètres',
+    facts: ["Une explosion en altitude a couché environ 80 millions d'arbres sur plus de 2 000 km².", "On n'a jamais trouvé de cratère : l'objet (astéroïde ou comète) s'est désintégré avant de toucher le sol.", "Énergie estimée : plusieurs mégatonnes."] },
+  { id: 'meteorcrater', name: 'Meteor Crater (Barringer)', type: 'cratère', where: 'Arizona, États-Unis', lat: 35.03, lon: -111.02, when: 'il y a ≈ 50 000 ans', size: 'cratère de 1,2 km',
+    facts: ["Un cratère d'environ 1,2 km de large et 170 m de profondeur, creusé par un bloc de fer d'une cinquantaine de mètres.", "Le premier cratère terrestre reconnu comme un impact de météorite."] },
+  { id: 'chicxulub', name: 'Chicxulub', type: 'cratère', where: 'Yucatan, Mexique', lat: 21.3, lon: -89.5, when: 'il y a ≈ 66 millions d\'années', size: 'cratère d\'environ 180 km',
+    facts: ["Un astéroïde d'une dizaine de km de large a frappé le Yucatan.", "Il est lié à l'extinction des dinosaures non aviens et de nombreuses autres espèces.", "Le cratère, enfoui sous les sédiments, fait environ 180 km de diamètre."] },
+  { id: 'vredefort', name: 'Vredefort', type: 'cratère', where: 'Afrique du Sud', lat: -27.0, lon: 27.5, when: 'il y a ≈ 2 milliards d\'années', size: 'structure de plus de 150 km',
+    facts: ["La plus grande structure d'impact vérifiée sur Terre, très érodée.", "Classée au patrimoine mondial de l'UNESCO."] },
+  { id: 'hoba', name: 'Hoba', type: 'chute', where: 'Namibie', lat: -19.6, lon: 17.9, when: 'tombée il y a des dizaines de milliers d\'années', size: '≈ 60 tonnes',
+    facts: ["La plus grosse météorite connue d'un seul bloc, en fer et nickel (environ 60 tonnes).", "Découverte en 1920 et laissée sur place : elle n'a pas fait de cratère."] },
+  { id: 'murchison', name: 'Murchison', type: 'chute', where: 'Victoria, Australie', lat: -36.6, lon: 145.2, when: '28 septembre 1969', date: '1969-09-28', size: '≈ 100 kg récupérés',
+    facts: ["Une chondrite carbonée très étudiée : elle contient des acides aminés et d'autres molécules organiques.", "Certains de ses grains sont plus vieux que le Soleil."] },
+  { id: 'allende', name: 'Allende', type: 'chute', where: 'Chihuahua, Mexique', lat: 26.97, lon: -105.3, when: '8 février 1969', date: '1969-02-08', size: '≈ 2 tonnes',
+    facts: ["La plus grosse chondrite carbonée connue, tombée en pluie de fragments.", "Elle contient les plus vieux solides connus du système solaire, d'environ 4,567 milliards d'années."] },
+  { id: 'sikhote', name: 'Sikhote-Alin', type: 'chute', where: 'Extrême-Orient russe', lat: 46.16, lon: 134.65, when: '12 février 1947', date: '1947-02-12', size: 'plusieurs tonnes récupérées',
+    facts: ["Une pluie de fragments de fer, observée en plein jour, a creusé plus d'une centaine de cratères.", "Plus de 23 tonnes de fragments ont été récupérées."] },
+  { id: 'peekskill', name: 'Peekskill', type: 'chute', where: 'État de New York, États-Unis', lat: 41.29, lon: -73.92, when: '9 octobre 1992', date: '1992-10-09', size: '≈ 12,4 kg',
+    facts: ["Une météorite a percé le coffre d'une voiture, filmée par de nombreux témoins pendant sa chute.", "La voiture est devenue célèbre et a été exposée."] },
+  { id: 'winchcombe', name: 'Winchcombe', type: 'chute', where: 'Gloucestershire, Royaume-Uni', lat: 51.95, lon: -1.96, when: '28 février 2021', date: '2021-02-28', size: '≈ 600 g',
+    facts: ["Une chondrite carbonée récupérée en quelques heures, sans être contaminée par la pluie : un précieux échantillon.", "Sa chute a été filmée par de nombreuses caméras de surveillance."] },
+  { id: 'ensisheim', name: 'Ensisheim', type: 'chute', where: 'Alsace, France', lat: 47.86, lon: 7.35, when: '7 novembre 1492', size: '≈ 127 kg',
+    facts: ["La plus ancienne météorite européenne dont la date de chute est connue avec certitude.", "Elle est conservée à Ensisheim, en Alsace."] },
+];

@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exploration spatiale</title>
+<style>
+  :root {
+    --bg: #04050d; --panel: rgba(12,16,34,0.78); --line: rgba(160,185,235,0.18);
+    --text: #dbe5ff; --muted: #8fa3d1; --accent: #ffd24a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+  canvas { position: fixed; inset: 0; display: block; cursor: grab; }
+  canvas.dragging { cursor: grabbing; }
+  .panel { position: fixed; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; backdrop-filter: blur(6px); }
+  button { font: inherit; color: var(--text); background: rgba(40,54,100,0.7); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+  button:hover { background: rgba(60,80,150,0.8); }
+  button.active { border-color: var(--accent); color: #fff1b8; background: rgba(90,80,30,0.55); }
+
+  #title { top: 14px; left: 14px; padding: 12px 14px; max-width: 330px; }
+  #title h1 { margin: 0 0 4px; font-size: 17px; letter-spacing: .3px; }
+  #title p { margin: 0; color: var(--muted); font-size: 13px; }
+
+  #list { top: 118px; left: 14px; bottom: 150px; width: 250px; padding: 8px; overflow-y: auto; }
+  #list h2 { margin: 2px 6px 6px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; }
+  #list button { display: flex; gap: 8px; width: 100%; text-align: left; border: 0; background: transparent; padding: 4px 6px; border-radius: 6px; align-items: baseline; }
+  #list button:hover { background: rgba(70,90,160,0.35); }
+  #list button.selected { background: rgba(255,210,74,0.15); }
+  #list button.future { opacity: .35; }
+  #list .y { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 38px; }
+  #list .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; align-self: center; }
+
+  #info { top: 14px; right: 14px; width: 340px; max-height: calc(100vh - 160px); overflow-y: auto; padding: 14px 16px; }
+  #info h2 { margin: 0 0 2px; font-size: 19px; }
+  #info .meta { color: var(--muted); font-size: 12.5px; margin-bottom: 8px; }
+  #info .tag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11.5px; margin-right: 4px; border: 1px solid var(--line); }
+  #info dl { margin: 8px 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 13px; }
+  #info dt { color: var(--muted); }
+  #info dd { margin: 0; }
+  #info p { margin: 8px 0; }
+  #info .why { border-left: 3px solid var(--accent); padding-left: 10px; color: #f1e7bd; }
+  #info .note { color: var(--muted); font-size: 12px; }
+  #info .hint { color: var(--muted); }
+
+  #bottom { left: 50%; transform: translateX(-50%); bottom: 12px; width: min(920px, calc(100vw - 28px)); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+  #stages { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+  #caption { text-align: center; color: var(--muted); font-size: 13px; min-height: 18px; }
+  #yearRow { display: flex; align-items: center; gap: 10px; }
+  #yearRow input { flex: 1; accent-color: var(--accent); }
+  #yearLabel { min-width: 74px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  #news { color: var(--muted); font-size: 13px; min-height: 18px; }
+  #readout { position: fixed; left: 14px; bottom: 150px; color: var(--muted); font-size: 12px; pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="title" class="panel">
+  <h1>Exploration spatiale</h1>
+  <p>Tout ce que l'humanité a envoyé dans l'espace. Molette pour zoomer, clic sur un objet pour comprendre.</p>
+</div>
+<div id="list" class="panel"></div>
+<div id="info" class="panel"></div>
+<div id="readout"></div>
+<div id="bottom" class="panel">
+  <div id="stages"></div>
+  <div id="caption"></div>
+  <div id="yearRow">
+    <button id="play" title="Voir l'histoire défiler">▶ Histoire</button>
+    <span id="yearLabel"></span>
+    <input id="year" type="range" min="1950" max="2026" step="1" value="2026">
+  </div>
+  <div id="news"></div>
+</div>
+
+<script>
+// ============================ DONNÉES ============================
+const AU = 149597870.7;          // km
+const MU_EARTH = 398600.4418;    // km³/s²
+const R_EARTH = 6371, R_SUN = 696000, R_MOON = 1737, D_MOON = 384400;
+const YEAR_NOW = 2026;
+const KORB = 690;                // temps accéléré des orbites terrestres : l'ISS fait un tour en ~8 s
+
+// Planètes à leur vraie distance du Soleil (a en UA). L'ANGLE est illustratif (les planètes sont immobiles ici).
+const planets = [
+  { name: 'Mercure', a: 0.387, r: 2440,  color: '#a8a29e', th: 1.0 },
+  { name: 'Vénus',   a: 0.723, r: 6052,  color: '#e0b36a', th: 3.7 },
+  { name: 'Terre',   a: 1.000, r: R_EARTH, color: '#3a7bd5', th: 0 },
+  { name: 'Mars',    a: 1.524, r: 3390,  color: '#c1440e', th: 2.4 },
+  { name: 'Jupiter', a: 5.203, r: 69911, color: '#c9a27a', th: 5.2 },
+  { name: 'Saturne', a: 9.537, r: 58232, color: '#d8c38a', th: 4.2 },
+  { name: 'Uranus',  a: 19.19, r: 25362, color: '#7fd6d9', th: 1.9 },
+  { name: 'Neptune', a: 30.07, r: 24622, color: '#4b6cf0', th: 5.9 },
+];
+const planetByName = Object.fromEntries(planets.map(p => [p.name, p]));
+const EARTH = planetByName['Terre'];
+
+const CAT = {
+  satellite: { label: 'Satellite',   color: '#7fd6ff' },
+  station:   { label: 'Station',     color: '#ffd24a' },
+  humain:    { label: 'Vol habité',  color: '#ff9a5a' },
+  telescope: { label: 'Télescope',   color: '#8affc1' },
+  sonde:     { label: 'Sonde',       color: '#c7a6ff' },
+  atterrisseur: { label: 'Atterrisseur / rover', color: '#ff7a66' },
+};
+
+// kind : 'orbit' (autour de la Terre, alt en km), 'moon', 'l2', 'at' (à destination, sur la planète/lune `body`), 'helio' (a UA du Soleil)
+// posNote : ce qui est réel et ce qui est illustratif dans la position affichée
+const ITEMS = [
+  { id: 'sputnik1', name: 'Spoutnik 1', start: 1957, end: 1958, org: 'URSS', cat: 'satellite', kind: 'orbit', alt: 577, ph0: 0.3,
+    short: 'Premier satellite artificiel, 4 octobre 1957',
+    text: "Une sphère de 58 cm et 83 kg, qui émettait des « bip-bip » radio captés partout dans le monde. Son orbite elliptique allait d'environ 215 à 939 km d'altitude ; il a fini par retomber et brûler en janvier 1958.",
+    why: "Il a ouvert l'ère spatiale et déclenché la course à l'espace entre l'URSS et les États-Unis.",
+    posNote: "Altitude moyenne. Son orbite réelle était une ellipse." },
+  { id: 'explorer1', name: 'Explorer 1', start: 1958, end: 1970, org: 'États-Unis', cat: 'satellite', kind: 'orbit', alt: 1450, ph0: 2.0,
+    short: 'Découvre les ceintures de Van Allen, 1958',
+    text: "Premier satellite américain (31 janvier 1958), d'environ 14 kg. Son compteur de particules, conçu par James Van Allen, a montré que la Terre est entourée de zones de rayonnement intense. Son orbite allait d'environ 358 à 2 550 km ; il est retombé en 1970.",
+    why: "Première découverte scientifique de l'ère spatiale : les ceintures de Van Allen, que les vaisseaux habités doivent éviter ou traverser vite.",
+    posNote: "Altitude moyenne d'une orbite elliptique." },
+  { id: 'vostok1', name: 'Vostok 1 (Gagarine)', start: 1961, end: 1961, org: 'URSS', cat: 'humain', kind: 'orbit', alt: 250, ph0: 4.0,
+    short: 'Premier humain dans l\'espace, 12 avril 1961',
+    text: "Youri Gagarine fait un tour complet de la Terre en 108 minutes, entre environ 169 et 327 km d'altitude. Le vol est entièrement automatique : les concepteurs craignaient qu'un humain ne puisse pas garder ses esprits en apesanteur.",
+    why: "Il prouve qu'un être humain peut survivre à l'apesanteur et à un vol orbital.",
+    posNote: "Altitude moyenne." },
+  { id: 'syncom3', name: 'Satellites géostationnaires (Syncom 3, 1964)', start: 1964, org: 'États-Unis', cat: 'satellite', kind: 'orbit', alt: 35786, ph0: 5.0,
+    short: 'À 35 786 km, ils restent fixes au-dessus d\'un point',
+    text: "À cette altitude précise, un satellite met exactement 24 h pour faire un tour : il reste donc au-dessus du même point de l'équateur. Syncom 3 (1964) a été le premier ; il a retransmis des images des Jeux olympiques de Tokyo. Aujourd'hui, des centaines de satellites de télévision et de météo y sont placés.",
+    why: "Une antenne fixe suffit pour les recevoir : c'est la base de la télévision par satellite et de la météo en continu.",
+    posNote: "Altitude réelle de l'orbite géostationnaire." },
+  { id: 'gps', name: 'GPS', start: 1978, org: 'États-Unis', cat: 'satellite', kind: 'orbit', alt: 20200, ph0: 1.2,
+    short: 'Une trentaine de satellites à 20 200 km',
+    text: "Le premier satellite Navstar est lancé en 1978 ; le système est complet en 1995. Chaque satellite émet l'heure avec une horloge atomique ; ton récepteur compare les heures reçues de plusieurs satellites pour calculer sa position. Il faut même corriger les effets de la relativité pour rester précis.",
+    why: "Une application directe de la physique : sans les corrections de la relativité, l'erreur de position grandirait de plusieurs kilomètres par jour.",
+    posNote: "Altitude réelle. Un seul satellite représenté pour la constellation." },
+  { id: 'hubble', name: 'Télescope Hubble', start: 1990, org: 'NASA / ESA', cat: 'telescope', kind: 'orbit', alt: 540, ph0: 3.3,
+    short: 'Télescope spatial lancé en 1990',
+    text: "Placé au-dessus de l'atmosphère, qui floute et absorbe la lumière, il voit bien plus net que les télescopes au sol. Son miroir faisait une erreur de forme, réparée par des astronautes en 1993. Il a affiné l'âge de l'univers et révélé que son expansion s'accélère.",
+    why: "Il a transformé l'astronomie : on voit les galaxies lointaines avec une netteté inédite.",
+    posNote: "Altitude réelle (environ 540 km)." },
+  { id: 'iss', name: 'Station spatiale internationale', start: 1998, org: 'NASA, Roscosmos, ESA, JAXA, CSA', cat: 'station', kind: 'orbit', alt: 410, ph0: 0.0,
+    short: 'Habitée en continu depuis novembre 2000',
+    text: "Premier module en novembre 1998 ; des équipages s'y relaient sans interruption depuis novembre 2000. Elle fait le tour de la Terre en environ 92 minutes : les astronautes voient donc une quinzaine de levers de Soleil par jour. Elle est en chute libre permanente autour de la Terre, c'est pour ça qu'on y flotte.",
+    why: "Un laboratoire permanent pour apprendre à vivre longtemps dans l'espace, étape nécessaire avant de partir plus loin.",
+    posNote: "Altitude réelle (environ 410 km), orbite animée en temps accéléré." },
+
+  { id: 'luna2', name: 'Luna 2', start: 1959, org: 'URSS', cat: 'sonde', kind: 'at', body: 'Lune', slot: 0,
+    short: 'Premier objet humain sur la Lune, 1959',
+    text: "En septembre 1959, la sonde soviétique s'écrase volontairement sur la Lune. C'est le premier objet fabriqué par l'humanité à atteindre un autre astre.",
+    why: "Il prouve qu'on peut viser un astre à 384 000 km de distance.",
+    posNote: "Position à la distance réelle de la Lune." },
+  { id: 'apollo11', name: 'Apollo 11', start: 1969, org: 'NASA', cat: 'humain', kind: 'at', body: 'Lune', slot: 1,
+    short: 'Premiers humains sur la Lune, juillet 1969',
+    text: "Neil Armstrong et Buzz Aldrin se posent en mer de la Tranquillité pendant que Michael Collins reste en orbite. Ils y passent environ 2 h 30 à l'extérieur et rapportent 21,5 kg de roches.",
+    why: "Une prouesse d'ingénierie accomplie avec des ordinateurs bien moins puissants qu'un téléphone actuel.",
+    posNote: "Position à la distance réelle de la Lune." },
+  { id: 'change4', name: 'Chang\'e 4', start: 2019, org: 'Chine', cat: 'atterrisseur', kind: 'at', body: 'Lune', slot: 2,
+    short: 'Premier atterrissage sur la face cachée, 2019',
+    text: "En janvier 2019, la sonde se pose dans le cratère Von Kármán, face cachée de la Lune. Comme aucune radio ne passe à travers la Lune, un satellite relais, Queqiao, transmet les données.",
+    why: "La face cachée n'est jamais tournée vers la Terre ; la voir de près a permis d'étudier une croûte différente de la face visible.",
+    posNote: "Position à la distance réelle de la Lune." },
+  { id: 'chandrayaan3', name: 'Chandrayaan-3', start: 2023, org: 'Inde', cat: 'atterrisseur', kind: 'at', body: 'Lune', slot: 3,
+    short: 'Atterrissage près du pôle sud lunaire, 2023',
+    text: "En août 2023, l'Inde réussit un alunissage près du pôle sud de la Lune. Cette région intéresse les agences spatiales car certains cratères, toujours dans l'ombre, pourraient contenir de la glace d'eau.",
+    why: "De l'eau sur place permettrait de fabriquer de l'air, de l'eau potable et du carburant pour de futures bases.",
+    posNote: "Position à la distance réelle de la Lune." },
+  { id: 'jwst', name: 'Télescope James Webb', start: 2021, org: 'NASA / ESA / CSA', cat: 'telescope', kind: 'l2',
+    short: 'Au point L2, à 1,5 million de km',
+    text: "Lancé le 25 décembre 2021, il observe l'infrarouge avec un miroir de 6,5 m en 18 segments. Il se tient au point de Lagrange L2, à environ 1,5 million de km de la Terre, derrière un pare-soleil de la taille d'un court de tennis qui le maintient à très basse température. Premières images en juillet 2022.",
+    why: "L'infrarouge permet de voir les toutes premières galaxies et d'analyser l'atmosphère de planètes lointaines.",
+    posNote: "Distance réelle à la Terre, du côté opposé au Soleil." },
+
+  { id: 'mariner2', name: 'Mariner 2', start: 1962, org: 'États-Unis', cat: 'sonde', kind: 'at', body: 'Vénus', slot: 0,
+    short: 'Première sonde réussie vers une autre planète, 1962',
+    text: "Elle survole Vénus le 14 décembre 1962 à environ 35 000 km. Elle montre que la surface est extrêmement chaude (plus de 400 °C), ce qui ruine l'espoir d'une Vénus accueillante.",
+    why: "Premier succès d'une mission interplanétaire.",
+    posNote: "Placée sur Vénus. Distance au Soleil réelle, angle illustratif." },
+  { id: 'venera7', name: 'Venera 7', start: 1970, org: 'URSS', cat: 'atterrisseur', kind: 'at', body: 'Vénus', slot: 1,
+    short: 'Premier atterrissage sur une autre planète, 1970',
+    text: "En décembre 1970, la sonde soviétique atteint la surface de Vénus et émet environ 23 minutes malgré 475 °C et une pression environ 90 fois celle de la Terre.",
+    why: "Une leçon sur l'effet de serre : Vénus est plus chaude que Mercure alors qu'elle est plus loin du Soleil.",
+    posNote: "Placée sur Vénus. Distance au Soleil réelle, angle illustratif." },
+  { id: 'viking1', name: 'Viking 1', start: 1976, org: 'NASA', cat: 'atterrisseur', kind: 'at', body: 'Mars', slot: 0,
+    short: 'Premier atterrisseur durable sur Mars, 1976',
+    text: "Il se pose le 20 juillet 1976 et fonctionne plus de six ans. Il envoie les premières photos du sol martien et réalise des expériences pour chercher des traces de vie : les résultats sont restés ambigus.",
+    why: "Il a montré Mars comme un désert froid, et posé la question de la vie ailleurs.",
+    posNote: "Placé sur Mars. Distance au Soleil réelle, angle illustratif." },
+  { id: 'rovers2004', name: 'Spirit et Opportunity', start: 2004, end: 2018, org: 'NASA', cat: 'atterrisseur', kind: 'at', body: 'Mars', slot: 1,
+    short: 'Deux rovers jumeaux, preuves d\'eau ancienne',
+    text: "Posés en janvier 2004, ils trouvent des minéraux qui ne se forment qu'en présence d'eau liquide. Opportunity a roulé environ 45 km et a fonctionné bien au-delà de ce qui était prévu, jusqu'à une tempête de poussière en 2018.",
+    why: "Mars a eu de l'eau liquide dans le passé, donc peut-être des conditions favorables à la vie.",
+    posNote: "Placés sur Mars. Distance au Soleil réelle, angle illustratif." },
+  { id: 'curiosity', name: 'Curiosity', start: 2012, org: 'NASA', cat: 'atterrisseur', kind: 'at', body: 'Mars', slot: 2,
+    short: 'Rover de la taille d\'une voiture, 2012',
+    text: "Atterri le 6 août 2012 dans le cratère Gale, il explore la base du mont Sharp. Il a trouvé les traces d'un ancien lac avec des éléments chimiques nécessaires à la vie.",
+    why: "Il confirme que Mars a déjà eu un environnement habitable.",
+    posNote: "Placé sur Mars. Distance au Soleil réelle, angle illustratif." },
+  { id: 'perseverance', name: 'Perseverance et Ingenuity', start: 2021, org: 'NASA', cat: 'atterrisseur', kind: 'at', body: 'Mars', slot: 3,
+    short: 'Collecte d\'échantillons, premier vol motorisé hors de la Terre',
+    text: "Posé le 18 février 2021 dans le cratère Jezero, un ancien delta de rivière, il met de côté des échantillons pour un retour futur vers la Terre. Le petit hélicoptère Ingenuity a réalisé le 19 avril 2021 le premier vol motorisé contrôlé sur une autre planète.",
+    why: "Voler dans l'air martien, 100 fois moins dense que le nôtre, était considéré comme très difficile.",
+    posNote: "Placé sur Mars. Distance au Soleil réelle, angle illustratif." },
+  { id: 'cassini', name: 'Cassini-Huygens', start: 1997, end: 2017, org: 'NASA / ESA / ASI', cat: 'sonde', kind: 'at', body: 'Saturne', slot: 0,
+    short: 'Saturne, Titan et les geysers d\'Encelade',
+    text: "Lancée en 1997, elle entre en orbite autour de Saturne en 2004. Son atterrisseur Huygens se pose sur Titan en janvier 2005. Elle découvre des geysers sur Encelade, signe d'un océan sous la glace. En 2017, elle est volontairement détruite dans l'atmosphère de Saturne pour protéger ses lunes.",
+    why: "Des océans liquides sous la glace : de nouveaux endroits où chercher de la vie.",
+    posNote: "Placée sur Saturne. Distance au Soleil réelle, angle illustratif." },
+  { id: 'rosetta', name: 'Rosetta et Philae', start: 2014, end: 2016, org: 'ESA', cat: 'atterrisseur', kind: 'helio', a: 3.0, th: 0.2,
+    short: 'Premier atterrissage sur une comète, 2014',
+    text: "Rosetta met onze ans pour atteindre la comète 67P ; son petit atterrisseur Philae se pose le 12 novembre 2014 après plusieurs rebonds. La mission s'achève en septembre 2016.",
+    why: "Les comètes sont des vestiges très anciens de la formation du système solaire.",
+    posNote: "Distance au Soleil approximative (la comète change de distance), angle illustratif." },
+  { id: 'dart', name: 'DART', start: 2022, org: 'NASA', cat: 'sonde', kind: 'helio', a: 1.05, th: 0.9,
+    short: 'Première déviation d\'un astéroïde, 2022',
+    text: "Le 26 septembre 2022, la sonde percute volontairement Dimorphos, petite lune de l'astéroïde Didymos. Elle a raccourci son orbite d'environ 32 minutes, prouvant qu'on peut modifier la trajectoire d'un astéroïde.",
+    why: "Première démonstration de défense planétaire.",
+    posNote: "Distance au Soleil approximative, angle illustratif." },
+  { id: 'parker', name: 'Parker Solar Probe', start: 2018, org: 'NASA', cat: 'sonde', kind: 'helio', a: 0.045, th: 0.4,
+    short: 'L\'objet le plus rapide jamais construit',
+    text: "Lancée en 2018, elle s'approche du Soleil à environ 6,1 millions de km de sa surface (passage de décembre 2024), à environ 192 km/s, soit près de 700 000 km/h. Un bouclier de carbone de 11,4 cm d'épaisseur la protège ; elle traverse l'atmosphère du Soleil, la couronne.",
+    why: "Elle aide à comprendre pourquoi la couronne est bien plus chaude que la surface, et d'où vient le vent solaire.",
+    speed: "jusqu'à ≈ 192 km/s",
+    posNote: "Distance au Soleil réelle au plus près. Angle illustratif." },
+  { id: 'pioneer10', name: 'Pioneer 10', start: 1972, org: 'NASA', cat: 'sonde', kind: 'helio', a: 80, th: 3.0,
+    short: 'Première à traverser la ceinture d\'astéroïdes',
+    text: "Lancée en mars 1972, elle survole Jupiter en décembre 1973 : première sonde à y parvenir et à traverser la ceinture d'astéroïdes. Le dernier signal date de janvier 2003, à environ 80 UA. Elle porte une plaque gravée destinée à d'éventuels êtres extraterrestres.",
+    why: "Elle a prouvé que la ceinture d'astéroïdes se traverse sans danger : la route des planètes lointaines était ouverte.",
+    speed: "≈ 12 km/s",
+    posNote: "Dernière position connue (contact perdu en 2003). Angle illustratif." },
+  { id: 'voyager2', name: 'Voyager 2', start: 1977, org: 'NASA', cat: 'sonde', kind: 'helio', a: 142, th: 4.9,
+    short: 'La seule à avoir visité Uranus et Neptune',
+    text: "Lancée le 20 août 1977, elle survole Jupiter (1979), Saturne (1981), Uranus (1986) puis Neptune (1989), profitant d'un alignement favorable des planètes. Elle entre dans l'espace interstellaire en novembre 2018.",
+    why: "Une seule sonde nous a montré deux planètes géantes de glace ; presque tout ce que nous savons sur Uranus et Neptune vient d'elle.",
+    speed: "≈ 15 km/s",
+    posNote: "Distance approximative actuelle (≈ 140 UA, ordre de grandeur). Angle illustratif." },
+  { id: 'voyager1', name: 'Voyager 1', start: 1977, org: 'NASA', cat: 'sonde', kind: 'helio', a: 170, th: 2.2,
+    short: 'L\'objet humain le plus lointain',
+    text: "Lancée le 5 septembre 1977, elle survole Jupiter (1979) et Saturne (1980). En 1990, à environ 6 milliards de km, elle prend la photo « Pale Blue Dot » : la Terre, un point minuscule. En août 2012, elle devient le premier objet humain dans l'espace interstellaire. Elle emporte un disque d'or avec des sons et des images de la Terre.",
+    why: "À sa vitesse actuelle, elle met plus de 70 000 ans pour parcourir la distance qui nous sépare de l'étoile la plus proche.",
+    speed: "≈ 17 km/s",
+    posNote: "Distance approximative actuelle (≈ 170 UA, ordre de grandeur). Angle illustratif." },
+  { id: 'newhorizons', name: 'New Horizons', start: 2006, org: 'NASA', cat: 'sonde', kind: 'helio', a: 65, th: 0.9,
+    short: 'Pluton, puis la ceinture de Kuiper',
+    text: "Lancée en janvier 2006, elle survole Pluton le 14 juillet 2015 et révèle un monde actif avec une grande plaine de glace en forme de cœur. En janvier 2019, elle visite Arrokoth, un petit objet très ancien de la ceinture de Kuiper, et continue plus loin.",
+    why: "Un aperçu des objets glacés qui n'ont presque pas changé depuis la formation du système solaire.",
+    speed: "≈ 14 km/s",
+    posNote: "Distance approximative actuelle (plus de 60 UA). Angle illustratif." },
+];
+
+// ============================ ÉTAT ============================
+const canvas = document.getElementById('c'), ctx = canvas.getContext('2d');
+let W = 0, H = 0, dpr = 1;
+function resize() {
+  dpr = Math.min(devicePixelRatio || 1, 2);
+  W = innerWidth; H = innerHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+}
+addEventListener('resize', resize); resize();
+
+const STAGES = [
+  { name: 'Orbite basse',     R: 1.6e4,  cap: 'De 200 à 2 000 km : premiers satellites, télescopes, station spatiale.' },
+  { name: 'Orbites hautes',   R: 6.0e4,  cap: 'GPS à 20 200 km, orbite géostationnaire à 35 786 km.' },
+  { name: 'La Lune',          R: 5.5e5,  cap: 'À 384 400 km : la lumière met 1,3 seconde pour l\'atteindre.' },
+  { name: 'Point L2',         R: 2.2e6,  cap: 'À 1,5 million de km, derrière la Terre : le télescope James Webb.' },
+  { name: 'Planètes intérieures', R: 3.4e8, cap: 'Vénus, la Terre, Mars : les premières sondes interplanétaires.' },
+  { name: 'Planètes géantes', R: 1.9e9,  cap: 'Jupiter et Saturne : les sondes qui ont visité les géantes.' },
+  { name: 'Neptune et Kuiper', R: 8.0e9, cap: 'Au-delà de Neptune, la ceinture de Kuiper : Pluton, New Horizons.' },
+  { name: 'Espace interstellaire', R: 3.6e10, cap: 'Les Voyager et Pioneer 10, au-delà de l\'héliopause (≈ 120 UA).' },
+];
+let logR = Math.log(STAGES[0].R * 2.2), logTarget = Math.log(STAGES[0].R * 2.2);
+const LOG_MIN = Math.log(7000), LOG_MAX = Math.log(4.2e10);
+let year = YEAR_NOW, playing = false, selected = null, hover = null, activeStage = -1;
+
+// ============================ OUTILS ============================
+const fmtInt = n => Math.round(n).toLocaleString('fr-FR').replace(/ /g, ' ');
+function fmtKm(km) {
+  if (km < 1e6) return fmtInt(km) + ' km';
+  if (km < 1e9) return (km / 1e6).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' million de km';
+  return (km / 1e9).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' milliards de km';
+}
+function fmtLight(sec) {
+  if (sec < 60) return sec.toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' s';
+  if (sec < 3600) return (sec / 60).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' min';
+  if (sec < 172800) return (sec / 3600).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' h';
+  return (sec / 86400).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' jours';
+}
+const C_LIGHT = 299792.458; // km/s
+const smooth = x => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
+const orbitR = it => R_EARTH + it.alt;
+const orbitPeriod = it => 2 * Math.PI * Math.sqrt(Math.pow(orbitR(it), 3) / MU_EARTH); // s
+const orbitSpeed = it => Math.sqrt(MU_EARTH / orbitR(it));                             // km/s
+
+// position dans le repère « Soleil au centre », en km ; ox/oy = décalage en pixels (pour empiler les objets d'une même planète)
+function earthPos() { return [EARTH.a * AU, 0]; }
+function bodyPos(name) {
+  if (name === 'Lune') { const e = earthPos(); return [e[0] + D_MOON * Math.cos(0.8), e[1] + D_MOON * Math.sin(0.8)]; }
+  const p = planetByName[name];
+  return [p.a * AU * Math.cos(p.th), p.a * AU * Math.sin(p.th)];
+}
+function itemPos(it, t) {
+  const e = earthPos();
+  switch (it.kind) {
+    case 'orbit': {
+      const ph = it.ph0 + 2 * Math.PI * (t * KORB) / orbitPeriod(it), r = orbitR(it);
+      return { x: e[0] + r * Math.cos(ph), y: e[1] + r * Math.sin(ph), ox: 0, oy: 0 };
+    }
+    case 'l2': return { x: e[0] + 1.5e6, y: e[1], ox: 0, oy: 0 };
+    case 'at': { const b = bodyPos(it.body); return { x: b[0], y: b[1], ox: 14, oy: 4 + it.slot * 15 }; }
+    case 'helio': return { x: it.a * AU * Math.cos(it.th), y: it.a * AU * Math.sin(it.th), ox: 0, oy: 0 };
+  }
+}
+// rayon de vue conseillé pour montrer un objet
+function itemZoom(it) {
+  switch (it.kind) {
+    case 'orbit': return orbitR(it) * 2.4;
+    case 'l2': return 2.2e6;
+    case 'at': return it.body === 'Lune' ? 5.5e5 : planetByName[it.body].a * AU * 1.7;
+    case 'helio': return Math.max(1.2e7, it.a * AU * 1.7);
+  }
+}
+const isVisibleYear = it => year >= it.start && (it.end === undefined || year <= it.end);
+
+// caméra : centrée sur la Terre en vue rapprochée, puis glisse vers le Soleil en dézoomant
+function camera() {
+  const R = Math.exp(logR);
+  const s = smooth((Math.log10(R) - 7.3) / (9.0 - 7.3));
+  const e = earthPos();
+  return { R, k: (Math.min(W, H) / 2) / R, cx: e[0] * (1 - s), cy: e[1] * (1 - s) };
+}
+
+// ============================ DESSIN ============================
+const stars = Array.from({ length: 220 }, () => ({ x: Math.random(), y: Math.random(), s: 0.4 + Math.random() * 1.3, p: Math.random() * 6.28, r: 0.7 + Math.random() * 2 }));
+function toScreen(cam, x, y) { return [W / 2 + (x - cam.cx) * cam.k, H / 2 + (y - cam.cy) * cam.k]; }
+
+function drawBackground(t) {
+  ctx.fillStyle = '#04050d'; ctx.fillRect(0, 0, W, H);
+  for (const s of stars) {
+    ctx.globalAlpha = 0.25 + 0.55 * (0.5 + 0.5 * Math.sin(t * s.r + s.p));
+    ctx.fillStyle = '#fff'; ctx.fillRect(s.x * W, s.y * H, s.s, s.s);
+  }
+  ctx.globalAlpha = 1;
+}
+function ring(cam, x, y, rkm, color, width, dash) {
+  const [sx, sy] = toScreen(cam, x, y), rp = rkm * cam.k;
+  if (rp < 3 || rp > 20000) return;
+  ctx.strokeStyle = color; ctx.lineWidth = width;
+  ctx.setLineDash(dash || []);
+  ctx.beginPath(); ctx.arc(sx, sy, rp, 0, 7); ctx.stroke();
+  ctx.setLineDash([]);
+}
+function label(text, x, y, color, size, align) {
+  ctx.font = `${size || 12}px system-ui, sans-serif`; ctx.textAlign = align || 'left';
+  ctx.fillStyle = color || '#9fb3d9'; ctx.fillText(text, x, y);
+}
+
+function draw(t) {
+  const cam = camera(), k = cam.k;
+  drawBackground(t);
+
+  // ceintures et héliopause (zones, pas des orbites exactes)
+  const sunS = toScreen(cam, 0, 0);
+  const band = (a0, a1, color, name) => {
+    const rp = (a0 + a1) / 2 * AU * k, wpx = (a1 - a0) * AU * k;
+    if (rp < 8 || rp > 20000) return;
+    ctx.strokeStyle = color; ctx.lineWidth = Math.max(1, wpx);
+    ctx.beginPath(); ctx.arc(sunS[0], sunS[1], rp, 0, 7); ctx.stroke();
+    if (rp > 40 && wpx > 4) label(name, sunS[0] + rp * 0.707 + 4, sunS[1] - rp * 0.707, 'rgba(170,190,235,0.55)', 11);
+  };
+  band(2.2, 3.2, 'rgba(180,170,150,0.07)', 'Ceinture d\'astéroïdes');
+  band(30, 50, 'rgba(150,170,210,0.06)', 'Ceinture de Kuiper');
+  ring(cam, 0, 0, 120 * AU, 'rgba(255,180,120,0.35)', 1.2, [6, 6]);
+  if (120 * AU * k > 40 && 120 * AU * k < 20000) label('Héliopause ≈ 120 UA', sunS[0] + 120 * AU * k * 0.707 + 4, sunS[1] + 120 * AU * k * 0.707, 'rgba(255,180,120,0.7)', 11);
+
+  // orbites planétaires + planètes
+  for (const p of planets) {
+    ring(cam, 0, 0, p.a * AU, 'rgba(160,185,235,0.13)', 1);
+    const pos = bodyPos(p.name), [sx, sy] = toScreen(cam, pos[0], pos[1]);
+    if (p.a * AU * k < 14 && p.name !== 'Terre') continue;
+    const rp = Math.max(p.r * k, 2.6);
+    if (sx < -60 || sx > W + 60 || sy < -60 || sy > H + 60) continue;
+    ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(sx, sy, rp, 0, 7); ctx.fill();
+    if (p.name === 'Terre' && rp > 6) { // atmosphère
+      const g = ctx.createRadialGradient(sx, sy, rp * 0.95, sx, sy, rp * 1.25);
+      g.addColorStop(0, 'rgba(120,180,255,0.45)'); g.addColorStop(1, 'rgba(120,180,255,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx, sy, rp * 1.25, 0, 7); ctx.fill();
+    }
+    if (p.name !== 'Terre' || rp < 80) label(p.name, sx + rp + 4, sy - rp - 2, '#a9bde6', 12);
+  }
+  // Soleil
+  {
+    const rp = Math.max(R_SUN * k, 5);
+    const g = ctx.createRadialGradient(sunS[0], sunS[1], rp * 0.4, sunS[0], sunS[1], rp * 3);
+    g.addColorStop(0, 'rgba(255,210,90,0.55)'); g.addColorStop(1, 'rgba(255,210,90,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sunS[0], sunS[1], rp * 3, 0, 7); ctx.fill();
+    ctx.fillStyle = '#ffcc33'; ctx.beginPath(); ctx.arc(sunS[0], sunS[1], rp, 0, 7); ctx.fill();
+    label('Soleil', sunS[0] + rp + 5, sunS[1] - rp - 2, '#ffe9a0', 12);
+  }
+  // Lune et son orbite
+  {
+    const e = earthPos(), m = bodyPos('Lune');
+    ring(cam, e[0], e[1], D_MOON, 'rgba(200,200,220,0.2)', 1, [3, 5]);
+    if (D_MOON * k > 6) {
+      const [mx, my] = toScreen(cam, m[0], m[1]), rp = Math.max(R_MOON * k, 2.6);
+      ctx.fillStyle = '#bbb'; ctx.beginPath(); ctx.arc(mx, my, rp, 0, 7); ctx.fill();
+      label('Lune', mx + rp + 4, my - rp - 2, '#cfcfcf', 12);
+    }
+  }
+
+  // objets humains
+  const visible = [];
+  for (const it of ITEMS) {
+    if (!isVisibleYear(it)) continue;
+    const p = itemPos(it, t);
+    // collés au point de leur planète tant que celle-ci est assez grande à l'écran
+    if (it.kind === 'orbit') {
+      const rr = orbitR(it) * k;
+      if (rr < 7) continue;
+      ring(cam, earthPos()[0], earthPos()[1], orbitR(it), 'rgba(127,214,255,0.16)', 1);
+    } else if (it.kind === 'at') {
+      const body = it.body === 'Lune' ? null : planetByName[it.body];
+      if (body && body.a * AU * k < 14) continue;
+      if (it.body === 'Lune' && D_MOON * k < 6) continue;
+    } else if (it.kind === 'helio') {
+      if (Math.hypot(p.x, p.y) * k < 16) continue;
+    } else if (it.kind === 'l2' && 1.5e6 * k < 6) continue;
+    let [sx, sy] = toScreen(cam, p.x, p.y);
+    const bx = sx, by = sy;
+    sx += p.ox; sy += p.oy;
+    if (sx < -80 || sx > W + 80 || sy < -40 || sy > H + 40) continue;
+    const c = CAT[it.cat].color, sel = selected === it, hov = hover === it;
+    if (p.ox || p.oy) { ctx.strokeStyle = 'rgba(200,215,255,0.25)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(sx, sy); ctx.stroke(); }
+    if (sel) { ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(sx, sy, 11, 0, 7); ctx.stroke(); }
+    ctx.fillStyle = c; ctx.beginPath(); ctx.arc(sx, sy, sel || hov ? 5.5 : 4, 0, 7); ctx.fill();
+    label(it.name, sx + 9, sy + 4, sel || hov ? '#fff' : c, sel || hov ? 13 : 12);
+    visible.push({ it, sx, sy });
+  }
+  draw.visible = visible;
+  draw.cam = cam;
+}
+
+// ============================ INTERFACE ============================
+const infoEl = document.getElementById('info'), listEl = document.getElementById('list');
+const stagesEl = document.getElementById('stages'), captionEl = document.getElementById('caption');
+const yearEl = document.getElementById('year'), yearLabel = document.getElementById('yearLabel');
+const newsEl = document.getElementById('news'), readoutEl = document.getElementById('readout');
+const playBtn = document.getElementById('play');
+
+function showInfo(it) {
+  if (!it) {
+    infoEl.innerHTML = `<h2>Choisis un objet</h2>
+      <p class="hint">Clique sur un point de la carte ou sur la liste à gauche. Fais défiler la molette pour dézoomer de la Terre jusqu'aux sondes les plus lointaines.</p>
+      <p class="hint">Le curseur d'année en bas montre ce que l'humanité avait envoyé dans l'espace à chaque époque.</p>`;
+    return;
+  }
+  const c = CAT[it.cat];
+  let rows = '';
+  if (it.kind === 'orbit') {
+    const T = orbitPeriod(it) / 60, v = orbitSpeed(it);
+    rows += `<dt>Altitude</dt><dd>≈ ${fmtInt(it.alt)} km</dd>`;
+    rows += `<dt>Un tour</dt><dd>≈ ${T < 180 ? fmtInt(T) + ' min' : (T / 60).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' h'}</dd>`;
+    rows += `<dt>Vitesse</dt><dd>≈ ${v.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km/s (${fmtInt(v * 3600)} km/h)</dd>`;
+  } else if (it.kind === 'l2') {
+    rows += `<dt>Distance à la Terre</dt><dd>≈ 1,5 million de km</dd><dt>Lumière</dt><dd>≈ 5 secondes</dd>`;
+  } else if (it.kind === 'at') {
+    if (it.body === 'Lune') rows += `<dt>Où</dt><dd>Sur la Lune, à 384 400 km</dd><dt>Lumière</dt><dd>≈ 1,3 s</dd>`;
+    else { const a = planetByName[it.body].a; rows += `<dt>Où</dt><dd>${it.body}, ${a.toLocaleString('fr-FR')} UA du Soleil</dd><dt>Lumière (Soleil)</dt><dd>${fmtLight(a * AU / C_LIGHT)}</dd>`; }
+  } else if (it.kind === 'helio') {
+    rows += `<dt>Distance au Soleil</dt><dd>≈ ${it.a.toLocaleString('fr-FR')} UA (${fmtKm(it.a * AU)})</dd><dt>Lumière</dt><dd>${fmtLight(it.a * AU / C_LIGHT)}</dd>`;
+  }
+  if (it.speed) rows += `<dt>Vitesse</dt><dd>${it.speed}</dd>`;
+  const end = it.end !== undefined ? ` – ${it.end}` : '';
+  infoEl.innerHTML = `
+    <h2>${it.name}</h2>
+    <div class="meta"><span class="tag" style="border-color:${c.color};color:${c.color}">${c.label}</span><span class="tag">${it.start}${end}</span><span class="tag">${it.org}</span></div>
+    <p>${it.text}</p>
+    <p class="why"><b>Pourquoi c'est important :</b> ${it.why}</p>
+    <dl>${rows}</dl>
+    <p class="note">${it.posNote}</p>`;
+}
+function select(it, zoomTo) {
+  selected = it; showInfo(it);
+  if (it && zoomTo) { logTarget = Math.log(itemZoom(it)); activeStage = -1; refreshStages(); }
+  refreshList();
+}
+
+function refreshStages() {
+  [...stagesEl.children].forEach((b, i) => b.classList.toggle('active', i === activeStage));
+  captionEl.textContent = activeStage >= 0 ? STAGES[activeStage].cap : '';
+}
+STAGES.forEach((s, i) => {
+  const b = document.createElement('button'); b.textContent = s.name;
+  b.addEventListener('click', () => { logTarget = Math.log(s.R); activeStage = i; refreshStages(); });
+  stagesEl.append(b);
+});
+
+const sorted = [...ITEMS].sort((a, b) => a.start - b.start || a.name.localeCompare(b.name));
+function buildList() {
+  listEl.innerHTML = '<h2>Chronologie</h2>';
+  for (const it of sorted) {
+    const b = document.createElement('button');
+    b.dataset.id = it.id;
+    b.innerHTML = `<span class="y">${it.start}</span><span class="dot" style="background:${CAT[it.cat].color}"></span><span>${it.name}</span>`;
+    b.addEventListener('click', () => select(it, true));
+    listEl.append(b);
+  }
+}
+function refreshList() {
+  for (const b of listEl.querySelectorAll('button')) {
+    const it = ITEMS.find(i => i.id === b.dataset.id);
+    b.classList.toggle('future', !isVisibleYear(it));
+    b.classList.toggle('selected', it === selected);
+  }
+}
+buildList();
+
+function setYear(y) {
+  year = y; yearEl.value = Math.floor(y);
+  yearLabel.textContent = 'Année ' + Math.floor(y);
+  const fy = Math.floor(y);
+  const news = ITEMS.filter(i => i.start === fy).map(i => i.name);
+  newsEl.textContent = news.length ? `En ${fy} : ${news.join(', ')}` : (fy < 1957 ? `En ${fy} : aucun objet humain en orbite. Le premier satellite arrivera en 1957.` : '');
+  refreshList();
+}
+yearEl.addEventListener('input', () => { playing = false; playBtn.textContent = '▶ Histoire'; setYear(parseFloat(yearEl.value)); });
+playBtn.addEventListener('click', () => {
+  playing = !playing; playBtn.textContent = playing ? '❚❚ Pause' : '▶ Histoire';
+  if (playing && year >= YEAR_NOW) setYear(1950);
+});
+setYear(YEAR_NOW);
+showInfo(null);
+
+// ============================ ENTRÉES ============================
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  logTarget = Math.max(LOG_MIN, Math.min(LOG_MAX, logTarget + e.deltaY * 0.0012));
+  activeStage = -1; refreshStages();
+}, { passive: false });
+
+function pick(mx, my) {
+  let best = null, bd = 14;
+  for (const v of draw.visible || []) {
+    const d = Math.hypot(v.sx - mx, v.sy - my);
+    if (d < bd) { bd = d; best = v.it; }
+  }
+  return best;
+}
+canvas.addEventListener('mousemove', e => { hover = pick(e.clientX, e.clientY); canvas.style.cursor = hover ? 'pointer' : 'default'; });
+canvas.addEventListener('click', e => { const it = pick(e.clientX, e.clientY); if (it) select(it, false); else if (selected) select(null, false); });
+
+// ============================ BOUCLE ============================
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min((now - last) / 1000, 0.1); last = now;
+  logR += (logTarget - logR) * Math.min(1, dt * 4);
+  if (playing) {
+    setYear(Math.min(YEAR_NOW, year + dt * 0.9));
+    if (year >= YEAR_NOW) { playing = false; playBtn.textContent = '▶ Histoire'; }
+  }
+  draw(now / 1000);
+  const R = Math.exp(logR);
+  readoutEl.textContent = `Rayon de la vue : ${fmtKm(R)} · la lumière le traverse en ${fmtLight(R / C_LIGHT)} · orbites terrestres accélérées ×${KORB}`;
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+node_modules/
+*.log
+# image haute resolution IGN/Pleiades du pas de tir de Kourou : licence a clarifier, non publiee
+data/photo-kourou-hi.jpg

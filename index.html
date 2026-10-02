@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Terre 3D</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="hud">
+  <div class="bar">
+    <button id="bEarth" class="on">🌍 Terre</button>
+    <button id="bIss">🛰 ISS</button>
+    <button id="bSun">☀ Jour/nuit</button>
+    <button id="bOpts">🎛 Options mission</button>
+    <button id="bLaunch">🚀 Lancement</button>
+    <button id="bBehind">👁 Vue dessus / derrière</button>
+    <button id="bFeat">📐 Caractéristiques ISS</button>
+    <div id="feat" hidden></div>
+  </div>
+  <div id="info"></div>
+</div>
+<div id="viewTxt" hidden><b>Vue</b> <button id="bCopy">📋 Copier</button><br><code id="viewJson"></code>
+  <div id="nudge">yaw <button data-n="y-">◀</button><button data-n="y+">▶</button> pitch <button data-n="p+">▲</button><button data-n="p-">▼</button> dist <button data-n="d-">＋</button><button data-n="d+">－</button> pas <button id="bStep">1°</button></div></div>
+<div id="launchPanel" hidden></div>
+<div id="story" hidden></div>
+<div id="optPanel" hidden></div>
+<div id="timeline" hidden></div>
+<div id="scale"><div id="scaleBar"></div><div id="scaleTxt"></div></div>
+<div id="issLabel">ISS</div>
+<div id="msg">Chargement…</div>
+<script src="js/vendor/three.min.js"></script>
+<script src="js/vendor/satellite.min.js"></script>
+<script src="js/data/surface-earth.js"></script>
+<script src="js/data/earth-borders.js"></script>
+<script src="js/data/iss-data.js"></script>
+<script src="js/earth.js"></script>
+<script src="js/iss.js"></script>
+<script src="js/gltf-mini.js"></script>
+<script src="js/physics.js"></script>
+<script src="js/launch.js"></script>
+<script src="js/rockets.js"></script>
+<script src="js/story.js"></script>
+<script src="js/launch-3d.js"></script>
+<script src="js/controls.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

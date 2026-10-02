@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Fusée & gravité</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #05060f; overflow: hidden; }
+  canvas { display: block; }
+  .panel { position: fixed; color: #9fb3d9; font: 13px monospace; background: rgba(10,14,30,0.6); padding: 8px 10px; border-radius: 8px; }
+  #bodies { bottom: 12px; left: 12px; display: flex; flex-direction: column; gap: 2px; max-height: calc(100vh - 150px); overflow-y: auto; }
+  #bodies label { cursor: pointer; display: flex; align-items: center; gap: 6px; }
+  #bodies .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .panel button { background: #24305a; color: #cfe0ff; border: 1px solid transparent; border-radius: 4px; padding: 4px 8px; font: 12px monospace; cursor: pointer; text-align: left; }
+  .panel button:hover { background: #2e3d70; }
+  .panel button.active { border-color: #ffd24a; background: #3b3a2a; color: #ffe9a0; }
+  .panel button.danger { background: #5a2430; color: #ffd0d8; margin-top: 4px; }
+  .panel button.danger:hover { background: #7a2f3f; }
+  .panel h4 { margin: 6px 0 3px; font-size: 12px; color: #7f93c4; font-weight: normal; }
+  .panel h4:first-child { margin-top: 0; }
+  #tools { right: 12px; top: 12px; display: flex; flex-direction: column; gap: 3px; width: 220px; }
+  #speedBox { bottom: 14px; right: 14px; display: flex; flex-direction: column; gap: 4px; }
+  #speedBox input { width: 180px; accent-color: #ffd24a; }
+  #launchBtn { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 12px 36px; font: bold 16px monospace; color: #05060f; background: #ffd24a; border: 0; border-radius: 8px; cursor: pointer; }
+  #launchBtn:hover { background: #ffe07f; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="tools" class="panel"></div>
+<div id="bodies" class="panel"><b>Corps du système</b></div>
+<button id="launchBtn">Tirer</button>
+<div id="speedBox" class="panel">
+  <label id="speedLabel">Puissance <b id="speedVal"></b></label>
+  <input id="speedSlider" type="range" min="0" max="300" step="1">
+  <label>Vitesse du temps <b id="timeVal"></b></label>
+  <input id="timeSlider" type="range" min="0" max="100" step="0.5" title="Double-clic : retour à x1">
+</div>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+function resize() { canvas.width = innerWidth; canvas.height = innerHeight; }
+addEventListener('resize', resize); resize();
+
+// ======================= SYSTÈME SOLAIRE =======================
+// distance au soleil, rayon, "masse" (force gravité), vitesse orbitale, couleur
+const sun = { name: 'Soleil', r: 40, mass: 9000, color: '#ffcc33', x: 0, y: 0 };
+const planets = [
+  { name: 'Mercure', dist: 90,  r: 6,  mass: 500,  color: '#a8a29e', angle: 1.0, speed: 0.45 },
+  { name: 'Vénus',   dist: 130, r: 11, mass: 1500, color: '#e0b36a', angle: 3.6, speed: 0.32 },
+  { name: 'Terre',   dist: 180, r: 12, mass: 2000, color: '#3a7bd5', angle: 0.5, speed: 0.22 },
+  { name: 'Mars',    dist: 240, r: 9,  mass: 1500, color: '#c1440e', angle: 2.4, speed: 0.17 },
+  { name: 'Jupiter', dist: 340, r: 30, mass: 6000, color: '#c9a27a', angle: 5.2, speed: 0.10 },
+  { name: 'Saturne', dist: 450, r: 24, mass: 5000, color: '#d8c38a', angle: 4.2, speed: 0.07, ring: true },
+  { name: 'Uranus',  dist: 550, r: 17, mass: 3000, color: '#7fd6d9', angle: 1.9, speed: 0.05 },
+  { name: 'Neptune', dist: 640, r: 16, mass: 3000, color: '#4b6cf0', angle: 5.9, speed: 0.04 },
+];
+const earth = planets.find(p => p.name === 'Terre');
+const uranus = planets.find(p => p.name === 'Uranus');
+// lunes : orbitent autour de leur planète (dist = distance à la planète). Elles doivent venir APRÈS leur planète dans `bodies`.
+const P = name => planets.find(p => p.name === name);
+const moons = [
+  { name: 'Lune',      parent: earth,        dist: 36, r: 5,   mass: 400, color: '#bbbbbb', angle: 0, speed: 0.9 },
+  { name: 'Phobos',    parent: P('Mars'),    dist: 20, r: 2.5, mass: 40,  color: '#9c8f86', angle: 0, speed: 2.2 },
+  { name: 'Déimos',    parent: P('Mars'),    dist: 30, r: 2,   mass: 30,  color: '#b7a99c', angle: 0, speed: 1.4 },
+  { name: 'Io',        parent: P('Jupiter'), dist: 48, r: 4,   mass: 150, color: '#e8d36a', angle: 0, speed: 1.6 },
+  { name: 'Europe',    parent: P('Jupiter'), dist: 60, r: 3.5, mass: 120, color: '#d9cfc0', angle: 0, speed: 1.2 },
+  { name: 'Ganymède',  parent: P('Jupiter'), dist: 74, r: 5,   mass: 250, color: '#a79b8a', angle: 0, speed: 0.9 },
+  { name: 'Callisto',  parent: P('Jupiter'), dist: 90, r: 4.5, mass: 200, color: '#7d7468', angle: 0, speed: 0.65 },
+  { name: 'Rhéa',      parent: P('Saturne'),     dist: 62, r: 3,   mass: 60,  color: '#cfcfcf', angle: 0, speed: 0.8 },
+  { name: 'Titan',     parent: P('Saturne'),     dist: 78, r: 5.5, mass: 250, color: '#d99a4a', angle: 0, speed: 0.6 },
+  { name: 'Miranda',   parent: uranus,       dist: 40, r: 2.5, mass: 40,  color: '#b8c4cc', angle: 0, speed: 1.1 },
+  { name: 'Titania',   parent: uranus,       dist: 52, r: 4,   mass: 120, color: '#a9b3b9', angle: 0, speed: 0.8 },
+  { name: 'Obéron',    parent: uranus,       dist: 66, r: 3.5, mass: 100, color: '#8e989e', angle: 0, speed: 0.6 },
+  { name: 'Triton',    parent: P('Neptune'), dist: 36, r: 4,   mass: 150, color: '#c9d3e0', angle: 0, speed: 0.9 },
+];
+const bodies = [sun, ...planets, ...moons]; // une lune vient toujours après sa planète
+// enabled : coché dans le panneau ; spin : rotation sur elle-même (rad) ; shield : bouclier autour ;
+// mirrors : miroirs posés à la surface (angles relatifs à la rotation de la planète)
+const SPIN_MUL = 4; // multiplicateur de la vitesse de rotation des planètes sur elles-mêmes
+bodies.forEach((b, i) => {
+  b.enabled = true; b.idx = i; b.tail = [];
+  b.shield = false; b.mirrors = [];
+  b.spin = 0; b.spinSpeed = b === sun ? 0 : SPIN_MUL * (0.8 + ((i * 37) % 10) / 10 * 1.4); // de base 0,8 à 2,2 rad/s (temps de jeu)
+});
+// un corps compte dans le jeu s'il est coché (les lunes disparaissent avec leur planète)
+const isActive = b => b.enabled && (!b.parent || b.parent.enabled);
+
+const TAIL_MAX = 400, MOON_TAIL_MAX = 120; // traînées plus courtes pour les lunes (il y en a beaucoup)
+function randomizePositions() {
+  for (const b of bodies) if (b !== sun) { b.angle = Math.random() * Math.PI * 2; b.spin = Math.random() * Math.PI * 2; b.tail = []; }
+}
+randomizePositions();
+// orbites très lentes : la trajectoire prévue reste fiable
+const ORBIT_SLOWDOWN = 0.4; // 1 = vitesse d'orbite d'origine, 0 = immobiles
+for (const b of bodies) if (b !== sun) b.speed *= ORBIT_SLOWDOWN;
+
+const TIME_SCALE = 0.375; // vitesse du temps de base (= x1)
+let timeMul = 1;          // multiplicateur choisi avec le curseur (tests)
+const G = 1.5;            // gravité
+const OUT_OF_BOUNDS = 1300;
+let orbits = true, showFields = true;
+
+// anneaux de Saturne : particules en orbite, vue du dessus
+const saturn = planets.find(p => p.name === 'Saturne');
+const ringParticles = Array.from({ length: 160 }, () => {
+  const k = 1.5 + Math.random() * 0.8;
+  return { k, angle: Math.random() * Math.PI * 2, speed: 0.6 / Math.sqrt(k) };
+});
+
+// positions des corps à l'instant t (relatif à maintenant) ; remplit px, py
+function bodyPositions(t, px, py) {
+  for (let k = 0; k < bodies.length; k++) {
+    const b = bodies[k];
+    if (b === sun) { px[k] = 0; py[k] = 0; continue; }
+    const a = b.angle + (orbits ? b.speed * t : 0);
+    const ox = b.parent ? px[b.parent.idx] : 0, oy = b.parent ? py[b.parent.idx] : 0;
+    px[k] = ox + Math.cos(a) * b.dist; py[k] = oy + Math.sin(a) * b.dist;
+  }
+}
+const PX = new Array(bodies.length), PY = new Array(bodies.length);
+
+// ======================= CIBLE =======================
+const TARGET_MAX_HP = 100;
+let target = null, targetHp = TARGET_MAX_HP, score = 0, attempts = 0;
+function newTarget() {
+  target = isActive(uranus) ? uranus : null; // la cible est toujours Uranus
+  targetHp = TARGET_MAX_HP;
+}
+newTarget();
+// rayon de contact : la cible est plus généreuse à toucher
+const hitRadius = b => b.r + (b === target ? 16 : 5);
+
+// ======================= PROJECTILES =======================
+// max/def : plage de puissance (vitesse initiale). damage(vitesseImpact, tempsDeVol) → points de vie retirés.
+const PROJ = {
+  balistique: { key: '1', name: 'Balistique',     max: 300, def: 110, damage: () => 25,
+                desc: 'Gravité normale, 25 dégâts' },
+  obus:       { key: '2', name: 'Obus lent',      max: 170, def: 140, damage: (v, t) => Math.min(90, 10 + 2 * t),
+                desc: 'Plus il voyage, plus il frappe fort' },
+  missile:    { key: '3', name: 'Missile rapide', max: 450, def: 280, damage: v => Math.min(90, Math.round(v * 0.2)),
+                desc: 'Dégâts selon la vitesse d\'impact' },
+  laser:      { key: '4', name: 'Laser',          max: 100, def: 100, damage: () => 12,
+                desc: 'Ligne droite, rebondit sur les miroirs' },
+};
+let curType = 'balistique';
+const damageFor = (type, speed, t) => Math.round(PROJ[type].damage(speed, t));
+
+// ======================= CONTRE-MESURES =======================
+// Bouclier et miroir se posent SUR une planète (clic sur la planète) et la suivent. Seul le trou noir se place librement.
+const holes = [];     // {x,y,r,mass} : attire fort les projectiles (pas la lumière)
+const SHIELD_PAD = 18, SHIELD_MAX_SPEED = 140; // bouclier : rayon planète + 18 ; arrête les projectiles plus lents que 140
+const SHIELD_GRACE = 1.5; // le bouclier de la Terre ne bloque pas un tir qui vient de partir d'elle
+const HOLE_R = 8, HOLE_MASS = 5000;
+const MIRROR_FRAC = 1 / 8; // longueur du miroir = 1/8 de la circonférence de la planète
+const MIRROR_GAP = 2;      // le miroir flotte juste hors du rayon de contact (sinon le laser toucherait la planète d'abord)
+const shieldRadius = b => b.r + SHIELD_PAD;
+// segment du miroir d'angle phi (absolu) sur la planète b dont le centre est (bx, by)
+function mirrorSeg(b, bx, by, phi, id) {
+  const R = hitRadius(b) + MIRROR_GAP, half = Math.max(4, Math.PI * b.r * MIRROR_FRAC);
+  const cx = bx + Math.cos(phi) * R, cy = by + Math.sin(phi) * R;
+  const tx = -Math.sin(phi) * half, ty = Math.cos(phi) * half; // tangent : orienté par rapport au centre de la planète
+  return { x1: cx - tx, y1: cy - ty, x2: cx + tx, y2: cy + ty, id };
+}
+// tous les miroirs en coordonnées monde, à l'instant t (la planète bouge et tourne) ; remplit out
+function mirrorSegments(px, py, t, out) {
+  out.length = 0;
+  for (let k = 0; k < bodies.length; k++) {
+    const b = bodies[k];
+    if (!b.mirrors.length || !isActive(b)) continue;
+    const spin = b.spin + (orbits ? b.spinSpeed * t : 0);
+    for (let j = 0; j < b.mirrors.length; j++) out.push(mirrorSeg(b, px[k], py[k], spin + b.mirrors[j], k * 100 + j));
+  }
+  return out;
+}
+const liveMirrors = [], predMirrors = [], drawMirrors = [];
+
+// ======================= CANON / TIRS =======================
+// `ship` = projectile d'APERÇU (ce qui partira au prochain tir). Les projectiles lancés sont dans `shots` :
+// on peut en tirer plusieurs, ils volent en même temps.
+const ship = { x: 0, y: 0, vx: 0, vy: 0, t: 0, type: 'balistique' };
+const shots = [];   // {x,y,vx,vy,t,type,dead,trail,...}
+const MAX_SHOTS = 40;
+const toasts = [];  // messages de résultat affichés quelques secondes
+function addToast(text, good) { toasts.push({ text, good, born: performance.now() }); if (toasts.length > 5) toasts.shift(); }
+const BARREL = 6; // départ juste au-dessus de la surface de la Terre (hors rayon de contact)
+const cannon = { angle: -Math.PI / 2, power: PROJ.balistique.def };
+const earthPos = () => ({ x: Math.cos(earth.angle) * earth.dist, y: Math.sin(earth.angle) * earth.dist });
+const launch = { x: 0, y: 0, vx: 0, vy: 0 };
+// après un tir, la prévision depuis la Terre est masquée jusqu'à ce qu'on change la visée (angle, puissance, projectile)
+let aimHidden = false;
+const LASER_SPEED = 450; // px/s : un trait de laser visible qui voyage (pas instantané)
+// longueur de la flèche (px monde) par unité de puissance ; le laser a une flèche courte, direction seule
+const arrowK = () => curType === 'laser' ? 120 / LASER_SPEED : 360 / PROJ[curType].max;
+function applyLaunch() {
+  const e = earthPos(), c = Math.cos(cannon.angle), s = Math.sin(cannon.angle);
+  launch.x = e.x + c * (earth.r + BARREL); launch.y = e.y + s * (earth.r + BARREL);
+  const v = curType === 'laser' ? LASER_SPEED : cannon.power;
+  launch.vx = c * v; launch.vy = s * v;
+  ship.x = launch.x; ship.y = launch.y;
+  ship.vx = launch.vx; ship.vy = launch.vy;
+  ship.t = 0; ship.type = curType;
+}
+function fireShot() {
+  applyLaunch();
+  shots.push({ x: launch.x, y: launch.y, vx: launch.vx, vy: launch.vy, t: 0, type: curType, dead: false, trail: [] });
+  aimHidden = true;
+  if (shots.length > MAX_SHOTS) shots.shift();
+  attempts++;
+}
+function clearShots() { shots.length = 0; toasts.length = 0; }
+applyLaunch();
+
+function finishShot(s, ev) {
+  s.dead = true;
+  const speed = Math.hypot(s.vx, s.vy);
+  if (ev.kind === 'hit') {
+    if (ev.body === target) {
+      const dmg = damageFor(s.type, speed, s.t);
+      targetHp = Math.max(0, targetHp - dmg);
+      if (targetHp <= 0) { score++; addToast(`${target.name} détruite ! (-${dmg} PV) · score ${score}`, true); newTarget(); }
+      else addToast(`Touché ! -${dmg} PV (reste ${targetHp})`, true);
+    } else addToast(`Raté : impact sur ${ev.body.name}`, false);
+  } else if (ev.kind === 'shield') addToast('Intercepté par un bouclier', false);
+  else if (ev.kind === 'hole') addToast('Avalé par un trou noir', false);
+  else addToast("Perdu dans l'espace", false);
+}
+
+// ======================= PHYSIQUE =======================
+// un pas pour un projectile non lumineux (s a x,y,vx,vy,t,type) ; renvoie null ou un événement de fin
+function stepProjectile(s, px, py, dt) {
+  let ax = 0, ay = 0, best = 0, dom = null;
+  const speed = Math.hypot(s.vx, s.vy);
+  for (let k = 0; k < bodies.length; k++) {
+    const b = bodies[k];
+    if (!isActive(b)) continue;
+    const dx = px[k] - s.x, dy = py[k] - s.y;
+    const d2 = dx * dx + dy * dy, d = Math.sqrt(d2);
+    if (b.shield && speed < SHIELD_MAX_SPEED && d < shieldRadius(b) && !(b === earth && s.t < SHIELD_GRACE)) return { kind: 'shield' };
+    if (d < hitRadius(b)) return { kind: 'hit', body: b };
+    const acc = G * b.mass / Math.max(d2, 400) * 60;
+    ax += (dx / d) * acc; ay += (dy / d) * acc;
+    if (acc > best) { best = acc; dom = b; }
+  }
+  for (const h of holes) {
+    const dx = h.x - s.x, dy = h.y - s.y;
+    const d2 = dx * dx + dy * dy, d = Math.sqrt(d2);
+    if (d < h.r + 3) return { kind: 'hole' };
+    const acc = G * h.mass / Math.max(d2, 400) * 60;
+    ax += (dx / d) * acc; ay += (dy / d) * acc;
+    if (acc > best) { best = acc; dom = { name: 'Trou noir' }; }
+  }
+  s.gAcc = Math.hypot(ax, ay); s.dom = dom;
+  s.vx += ax * dt; s.vy += ay * dt;
+  s.x += s.vx * dt; s.y += s.vy * dt;
+  s.t += dt;
+  if (s.x * s.x + s.y * s.y > OUT_OF_BOUNDS * OUT_OF_BOUNDS) return { kind: 'out' };
+  return null;
+}
+
+// laser : trait à vitesse constante (LASER_SPEED), ligne droite, ignore la gravité et les boucliers.
+// Rebondit sur les miroirs (mir), s'arrête au premier corps touché. Collisions testées sur tout le segment du pas.
+const LASER_MAX_TIME = 40;
+function stepLaser(s, px, py, dt, mir) {
+  const skip = s.lastMirror; s.lastMirror = null; // évite de re-toucher le miroir qu'on vient de quitter
+  const x0 = s.x, y0 = s.y, dx = s.vx * dt, dy = s.vy * dt;
+  const a = dx * dx + dy * dy;
+  let tBest = 1, hitBody = null, hitMirror = null;
+  for (let k = 0; k < bodies.length; k++) {
+    const b = bodies[k];
+    if (!isActive(b)) continue;
+    const fx = x0 - px[k], fy = y0 - py[k], r = hitRadius(b);
+    const c2 = fx * fx + fy * fy - r * r;
+    let t;
+    if (c2 < 0) t = 0;
+    else {
+      const bq = 2 * (fx * dx + fy * dy), disc = bq * bq - 4 * a * c2;
+      if (disc < 0) continue;
+      t = (-bq - Math.sqrt(disc)) / (2 * a);
+    }
+    if (t >= 0 && t <= tBest) { tBest = t; hitBody = b; hitMirror = null; }
+  }
+  for (const m of mir) {
+    if (m.id === skip) continue;
+    const ex = m.x2 - m.x1, ey = m.y2 - m.y1;
+    const den = dx * ey - dy * ex;
+    if (Math.abs(den) < 1e-9) continue;
+    const wx = m.x1 - x0, wy = m.y1 - y0;
+    const t = (wx * ey - wy * ex) / den, u = (wx * dy - wy * dx) / den;
+    if (t > 1e-6 && t < tBest && u >= 0 && u <= 1) { tBest = t; hitMirror = m; hitBody = null; }
+  }
+  s.x = x0 + dx * tBest; s.y = y0 + dy * tBest;
+  s.t += dt * tBest;
+  if (hitBody) return { kind: 'hit', body: hitBody };
+  if (hitMirror) {
+    // réflexion : v' = v - 2 (v·n) n
+    const ex = hitMirror.x2 - hitMirror.x1, ey = hitMirror.y2 - hitMirror.y1, len = Math.hypot(ex, ey);
+    const nx = -ey / len, ny = ex / len, dot = s.vx * nx + s.vy * ny;
+    s.vx -= 2 * dot * nx; s.vy -= 2 * dot * ny;
+    s.lastMirror = hitMirror.id;
+    s.bounced = true;
+    return null;
+  }
+  if (s.t > LASER_MAX_TIME || s.x * s.x + s.y * s.y > OUT_OF_BOUNDS * OUT_OF_BOUNDS) return { kind: 'out' };
+  return null;
+}
+
+// trajectoire prévue depuis un état : même physique, planètes (et leurs miroirs) qui continuent de bouger
+const PRED_DT = 0.03, PRED_STEPS = 3000;
+const predPX = new Array(bodies.length), predPY = new Array(bodies.length);
+function predictFrom(st, type) {
+  const s = { x: st.x, y: st.y, vx: st.vx, vy: st.vy, t: st.t, type };
+  const pts = [{ x: s.x, y: s.y }];
+  for (let i = 0; i < PRED_STEPS; i++) {
+    // update() avance les planètes puis fait le pas : le pas i voit les positions à (i+1)·dt
+    const t = (i + 1) * PRED_DT;
+    bodyPositions(t, predPX, predPY);
+    let ev;
+    if (type === 'laser') ev = stepLaser(s, predPX, predPY, PRED_DT, mirrorSegments(predPX, predPY, t, predMirrors));
+    else ev = stepProjectile(s, predPX, predPY, PRED_DT);
+    if (s.bounced) { pts.push({ x: s.x, y: s.y }); s.bounced = false; }
+    if (ev) {
+      pts.push({ x: s.x, y: s.y });
+      if (ev.kind === 'hit' && ev.body === target) ev.dmg = damageFor(type, Math.hypot(s.vx, s.vy), s.t);
+      return { pts, end: ev };
+    }
+    if (i % 2 === 0) pts.push({ x: s.x, y: s.y });
+  }
+  return { pts, end: { kind: 'out' } };
+}
+const predict = () => predictFrom(ship, curType); // prévision du prochain tir
+
+function update(dt) {
+  // les planètes bougent et tournent en permanence, y compris pendant la visée. O pour les figer.
+  const moving = orbits;
+  if (moving) for (const b of bodies) if (b !== sun) { b.angle += b.speed * dt; b.spin += b.spinSpeed * dt; }
+  for (const rp of ringParticles) rp.angle += rp.speed * dt;
+  bodyPositions(0, PX, PY);
+  for (let k = 0; k < bodies.length; k++) { bodies[k].x = PX[k]; bodies[k].y = PY[k]; }
+  if (moving) {
+    for (const b of bodies) {
+      if (b === sun) continue;
+      const lt = b.tail[b.tail.length - 1];
+      if (!lt || Math.hypot(b.x - lt.x, b.y - lt.y) > 2) b.tail.push({ x: b.x, y: b.y });
+      if (b.tail.length > (b.parent ? MOON_TAIL_MAX : TAIL_MAX)) b.tail.shift();
+    }
+  }
+  applyLaunch(); // l'aperçu de tir suit la Terre si elle bouge
+
+  let mir = null;
+  for (const s of shots) {
+    if (s.dead) continue;
+    let ev;
+    if (s.type === 'laser') { if (!mir) mir = mirrorSegments(PX, PY, 0, liveMirrors); ev = stepLaser(s, PX, PY, dt, mir); }
+    else ev = stepProjectile(s, PX, PY, dt);
+    s.bounced = false;
+    if (ev) { finishShot(s, ev); continue; }
+    if (s.type === 'laser') continue; // le trait de laser ne laisse pas de trace
+    // on ne garde un point que tous les ~3 px pour que la trace puisse rester longtemps
+    const lt = s.trail[s.trail.length - 1];
+    if (!lt || Math.hypot(s.x - lt.x, s.y - lt.y) > 3) s.trail.push({ x: s.x, y: s.y });
+    if (s.trail.length > 20000) s.trail.shift();
+  }
+}
+
+// ======================= ENTRÉES =======================
+let tool = 'cannon'; // 'cannon' | 'mirror' | 'shield' | 'hole' | 'erase'
+let zoom = 1;
+const SYSTEM_RADIUS = 700; // le système entier tient à l'écran
+
+function setType(t) {
+  aimHidden = false;
+  curType = t;
+  const p = PROJ[t];
+  cannon.power = p.def;
+  speedSlider.max = p.max;
+  speedSlider.disabled = t === 'laser';
+  applyLaunch();
+  refreshToolButtons();
+}
+function setSpeed(v) {
+  if (curType === 'laser') return;
+  aimHidden = false;
+  cannon.power = Math.min(PROJ[curType].max, Math.max(0, v));
+  applyLaunch();
+}
+
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (k === 'f') showFields = !showFields;
+  else if (k === 'r') clearShots();
+  else if (k === 'o') orbits = !orbits;
+  else if (k === 'n') randomizePositions();
+  else if (k === 'c' || e.key === 'Escape') setTool('cannon');
+  else if (k === 'x') clearCounters();
+  else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); fireShot(); }
+  for (const [name, p] of Object.entries(PROJ)) if (e.key === p.key) setType(name);
+
+  const fine = e.shiftKey ? 0.2 : 1;
+  if (e.key === '+' || e.key === '=') setSpeed(cannon.power + 5);
+  else if (e.key === '-') setSpeed(cannon.power - 5);
+  else if (e.key === 'ArrowUp') { e.preventDefault(); setSpeed(cannon.power + fine); }
+  else if (e.key === 'ArrowDown') { e.preventDefault(); setSpeed(cannon.power - fine); }
+  else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    e.preventDefault();
+    aimHidden = false;
+    cannon.angle += (e.key === 'ArrowRight' ? 1 : -1) * fine * Math.PI / 180;
+    applyLaunch();
+  }
+});
+
+function worldPos(e) {
+  return { x: (e.clientX - canvas.width / 2) / zoom, y: (e.clientY - canvas.height / 2) / zoom };
+}
+let drag = null;
+function aimAt(p) {
+  aimHidden = false;
+  const e = earthPos();
+  cannon.angle = Math.atan2(p.y - e.y, p.x - e.x);
+}
+function pullHandle(p) {
+  aimHidden = false;
+  aimAt(p);
+  if (curType !== 'laser') cannon.power = Math.min(PROJ[curType].max, Math.hypot(p.x - launch.x, p.y - launch.y) / arrowK());
+}
+// planète (ou lune) visée par la souris : la plus proche à moins de ~28 px d'écran de sa surface
+function planetAt(p) {
+  let best = null, bd = Infinity;
+  for (const b of bodies) {
+    if (b === sun || !isActive(b)) continue;
+    const d = Math.hypot(p.x - b.x, p.y - b.y) - b.r;
+    if (d < 28 / zoom && d < bd) { bd = d; best = b; }
+  }
+  return best;
+}
+function eraseAt(p) {
+  // d'abord un trou noir proche, sinon on retire bouclier + miroirs de la planète visée
+  const near = 20 / zoom;
+  for (const h of holes) if (Math.hypot(p.x - h.x, p.y - h.y) - h.r < near) { holes.splice(holes.indexOf(h), 1); return; }
+  const b = planetAt(p);
+  if (b) { b.shield = false; b.mirrors = []; }
+}
+canvas.addEventListener('mousedown', e => {
+  const p = worldPos(e);
+  if (tool === 'cannon') {
+    const hx = launch.x + launch.vx * arrowK(), hy = launch.y + launch.vy * arrowK();
+    if (curType !== 'laser' && Math.hypot(p.x - hx, p.y - hy) < 16 / zoom) drag = { kind: 'power' };
+    else { drag = { kind: 'aim' }; aimAt(p); }
+    applyLaunch();
+  } else if (tool === 'mirror') {
+    const b = planetAt(p);
+    if (b) { b.mirrors.push(Math.atan2(p.y - b.y, p.x - b.x) - b.spin); if (!e.shiftKey) setTool('cannon'); }
+  } else if (tool === 'shield') {
+    const b = planetAt(p);
+    if (b) { b.shield = !b.shield; if (!e.shiftKey) setTool('cannon'); }
+  } else if (tool === 'hole') { holes.push({ x: p.x, y: p.y, r: HOLE_R, mass: HOLE_MASS }); if (!e.shiftKey) setTool('cannon'); }
+  else if (tool === 'erase') eraseAt(p);
+});
+addEventListener('mousemove', e => {
+  if (!drag) return;
+  const p = worldPos(e);
+  if (drag.kind === 'aim') { aimAt(p); applyLaunch(); }
+  else if (drag.kind === 'power') { pullHandle(p); applyLaunch(); }
+});
+addEventListener('mouseup', () => { drag = null; });
+canvas.addEventListener('mousemove', e => { mouseW = worldPos(e); });
+canvas.addEventListener('mouseleave', () => { mouseW = null; });
+
+// curseur de puissance : règle la vitesse de lancement du prochain tir
+const speedSlider = document.getElementById('speedSlider');
+const speedVal = document.getElementById('speedVal');
+let sliderHeld = false;
+speedSlider.addEventListener('pointerdown', () => sliderHeld = true);
+addEventListener('pointerup', () => sliderHeld = false);
+speedSlider.addEventListener('input', () => setSpeed(parseFloat(speedSlider.value)));
+speedSlider.addEventListener('change', () => speedSlider.blur()); // garde Espace pour tirer
+// curseur de vitesse du temps (échelle logique x0.25 → x50) : tout va plus vite, la trajectoire prévue reste exacte
+const TIME_MIN = 0.25, TIME_MAX = 50;
+const timeSlider = document.getElementById('timeSlider');
+const timeVal = document.getElementById('timeVal');
+const sliderToMul = v => TIME_MIN * Math.pow(TIME_MAX / TIME_MIN, v / 100);
+const mulToSlider = m => 100 * Math.log(m / TIME_MIN) / Math.log(TIME_MAX / TIME_MIN);
+function setTimeMul(m) {
+  timeMul = m;
+  timeVal.textContent = 'x' + (m < 10 ? m.toFixed(2) : m.toFixed(0));
+}
+timeSlider.value = mulToSlider(1);
+setTimeMul(1);
+timeSlider.addEventListener('input', () => setTimeMul(sliderToMul(parseFloat(timeSlider.value))));
+timeSlider.addEventListener('change', () => timeSlider.blur());
+timeSlider.addEventListener('dblclick', () => { timeSlider.value = mulToSlider(1); setTimeMul(1); });
+function syncSpeedUI() {
+  if (curType === 'laser') { speedVal.textContent = '(fixe)'; return; }
+  speedVal.textContent = `${cannon.power.toFixed(0)} px/s`;
+  if (!sliderHeld) speedSlider.value = cannon.power;
+}
+
+// ======================= INTERFACE : panneaux =======================
+const toolsEl = document.getElementById('tools');
+const toolButtons = {}, typeButtons = {};
+function addHeader(text) { const h = document.createElement('h4'); h.textContent = text; toolsEl.append(h); }
+function addButton(label, onClick, title) {
+  const b = document.createElement('button');
+  b.textContent = label; if (title) b.title = title;
+  b.addEventListener('click', () => { onClick(); b.blur(); });
+  toolsEl.append(b);
+  return b;
+}
+addHeader('Projectile');
+for (const [name, p] of Object.entries(PROJ)) typeButtons[name] = addButton(`${p.key}  ${p.name}`, () => setType(name), p.desc);
+addHeader('Contre-mesures');
+const TOOLS = {
+  cannon: 'Canon (viser)',
+  mirror: 'Miroir (clic sur une planète)',
+  shield: 'Bouclier (clic sur une planète)',
+  hole: 'Trou noir (clic sur la carte)',
+  erase: 'Gomme',
+};
+for (const [name, label] of Object.entries(TOOLS)) toolButtons[name] = addButton(label, () => setTool(name));
+const clearBtn = addButton('Clear contre-mesures (X)', clearCounters);
+clearBtn.classList.add('danger');
+function clearCounters() { holes.length = 0; for (const b of bodies) { b.shield = false; b.mirrors = []; } }
+function setTool(t) { tool = t; refreshToolButtons(); canvas.style.cursor = t === 'cannon' ? 'default' : 'crosshair'; }
+function refreshToolButtons() {
+  for (const [n, b] of Object.entries(typeButtons)) b.classList.toggle('active', n === curType);
+  for (const [n, b] of Object.entries(toolButtons)) b.classList.toggle('active', n === tool);
+}
+setType('balistique');
+setTool('cannon');
+
+// panneau : cocher / décocher chaque corps du système
+const panel = document.getElementById('bodies');
+function refreshTarget() { if (!target || !isActive(target)) newTarget(); }
+// ordre d'affichage : chaque planète suivie de ses lunes (indentées)
+const panelOrder = [sun, ...planets.flatMap(p => [p, ...moons.filter(m => m.parent === p)])];
+for (const b of panelOrder) {
+  const label = document.createElement('label');
+  if (b.parent) label.style.paddingLeft = '16px';
+  const cb = document.createElement('input');
+  cb.type = 'checkbox'; cb.checked = true;
+  cb.addEventListener('change', () => { b.enabled = cb.checked; refreshTarget(); });
+  b.checkbox = cb;
+  const dot = document.createElement('span');
+  dot.className = 'dot'; dot.style.background = b.color;
+  label.append(cb, dot, b.name);
+  panel.append(label);
+}
+for (const [text, value] of [['Tout', true], ['Rien', false]]) {
+  const btn = document.createElement('button');
+  btn.textContent = text;
+  btn.addEventListener('click', () => {
+    for (const b of bodies) { b.enabled = value; b.checkbox.checked = value; }
+    refreshTarget();
+    btn.blur();
+  });
+  panel.append(btn);
+}
+
+// bouton Tirer : lance un projectile de plus (plusieurs peuvent voler en même temps)
+const launchBtn = document.getElementById('launchBtn');
+launchBtn.addEventListener('click', () => { fireShot(); launchBtn.blur(); }); // blur : Espace ne re-clique pas le bouton
+
+// ======================= DESSIN =======================
+const stars = Array.from({ length: 250 }, () => ({
+  x: Math.random(), y: Math.random(),
+  size: 0.5 + Math.random() * 1.5,
+  phase: Math.random() * Math.PI * 2,
+  rate: 1 + Math.random() * 3,
+}));
+function drawStars(t) {
+  const W = canvas.width, H = canvas.height;
+  for (const s of stars) {
+    const alpha = 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(t * s.rate + s.phase));
+    ctx.fillStyle = `rgba(255,255,255,${alpha.toFixed(2)})`;
+    ctx.fillRect(s.x * W, s.y * H, s.size, s.size);
+  }
+}
+
+function hexToRgb(h) {
+  const n = parseInt(h.slice(1), 16);
+  return `${n >> 16},${(n >> 8) & 255},${n & 255}`;
+}
+// champ gravitationnel du Soleil : halo dont l'intensité suit G·M/d²
+function fieldRadius(b, acc) { return Math.sqrt(G * b.mass * 60 / acc); }
+function drawField(b) {
+  const rgb = hexToRgb(b.color);
+  const R = fieldRadius(b, 1.5);
+  const g = ctx.createRadialGradient(b.x, b.y, b.r, b.x, b.y, R);
+  for (let i = 0; i <= 10; i++) {
+    const d = b.r + (R - b.r) * (i / 10) ** 2;
+    const acc = G * b.mass * 60 / Math.max(d * d, 400);
+    g.addColorStop((d - b.r) / (R - b.r), `rgba(${rgb},${Math.min(0.35, acc / 120).toFixed(3)})`);
+  }
+  g.addColorStop(1, `rgba(${rgb},0)`);
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(b.x, b.y, R, 0, 7); ctx.fill();
+}
+
+// traînée derrière un corps en mouvement : s'estompe vers le passé
+function drawTail(b) {
+  const t = b.tail;
+  if (!t || t.length < 2) return;
+  const rgb = hexToRgb(b.color);
+  ctx.lineWidth = 1.5 / zoom;
+  for (let i = 1; i < t.length; i++) {
+    ctx.strokeStyle = `rgba(${rgb},${(0.6 * i / t.length).toFixed(2)})`;
+    ctx.beginPath(); ctx.moveTo(t[i - 1].x, t[i - 1].y); ctx.lineTo(t[i].x, t[i].y); ctx.stroke();
+  }
+}
+
+function drawBody(b) {
+  ctx.fillStyle = b.color;
+  ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.fill();
+  if (b.ring) drawRing(b);
+  if (b !== sun) {
+    // trait du centre vers l'extérieur : montre la rotation de la planète sur elle-même
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.5 / zoom;
+    ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x + Math.cos(b.spin) * b.r, b.y + Math.sin(b.spin) * b.r); ctx.stroke();
+  }
+  ctx.fillStyle = b.parent ? 'rgba(159,179,217,0.7)' : '#9fb3d9';
+  ctx.font = `${(b.parent ? 8 : 11) / zoom}px monospace`; ctx.textAlign = 'center';
+  ctx.fillText(b.name, b.x, b.y - b.r - (b.parent ? 4 : 8));
+}
+function drawRing(b) {
+  ctx.fillStyle = 'rgba(216,195,138,0.85)';
+  for (const rp of ringParticles) {
+    ctx.fillRect(b.x + Math.cos(rp.angle) * rp.k * b.r, b.y + Math.sin(rp.angle) * rp.k * b.r, 2, 2);
+  }
+}
+
+// anneau vert pulsant + "CIBLE" + barre de PV
+function drawTarget() {
+  const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 300);
+  const r = target.r + 8 / zoom + pulse * 5 / zoom;
+  ctx.strokeStyle = `rgba(93,255,138,${0.5 + 0.5 * pulse})`; ctx.lineWidth = 2 / zoom;
+  ctx.beginPath(); ctx.arc(target.x, target.y, r, 0, 7); ctx.stroke();
+  ctx.fillStyle = '#5dff8a'; ctx.font = `bold ${12 / zoom}px monospace`; ctx.textAlign = 'center';
+  ctx.fillText('CIBLE', target.x, target.y + r + 14 / zoom);
+  const w = 44 / zoom, h = 5 / zoom, bx = target.x - w / 2, by = target.y + r + 20 / zoom;
+  ctx.fillStyle = 'rgba(255,255,255,0.15)'; ctx.fillRect(bx, by, w, h);
+  ctx.fillStyle = targetHp > 50 ? '#5dff8a' : (targetHp > 25 ? '#ffd24a' : '#ff6b6b');
+  ctx.fillRect(bx, by, w * targetHp / TARGET_MAX_HP, h);
+}
+
+function drawMirror(m) {
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#bfe9ff'; ctx.lineWidth = 4 / zoom;
+  ctx.beginPath(); ctx.moveTo(m.x1, m.y1); ctx.lineTo(m.x2, m.y2); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1.5 / zoom;
+  ctx.beginPath(); ctx.moveTo(m.x1, m.y1); ctx.lineTo(m.x2, m.y2); ctx.stroke();
+  ctx.lineCap = 'butt';
+}
+function drawShield(x, y, r) {
+  ctx.fillStyle = 'rgba(80,160,255,0.12)'; ctx.strokeStyle = 'rgba(120,190,255,0.8)'; ctx.lineWidth = 1.5 / zoom;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.stroke();
+}
+// trou noir : disque noir + halo violet
+function drawHole(h) {
+  const g = ctx.createRadialGradient(h.x, h.y, h.r, h.x, h.y, h.r * 5);
+  g.addColorStop(0, 'rgba(170,90,255,0.55)'); g.addColorStop(1, 'rgba(170,90,255,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(h.x, h.y, h.r * 5, 0, 7); ctx.fill();
+  ctx.fillStyle = '#000'; ctx.strokeStyle = '#b57bff'; ctx.lineWidth = 1.5 / zoom;
+  ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, 7); ctx.fill(); ctx.stroke();
+}
+function drawCounters() {
+  for (const b of bodies) if (b.shield && isActive(b)) drawShield(b.x, b.y, shieldRadius(b));
+  for (const m of mirrorSegments(PX, PY, 0, drawMirrors)) drawMirror(m);
+  for (const h of holes) drawHole(h);
+}
+
+// aperçu de l'objet à poser : il suit la souris ; apply/undo l'ajoutent temporairement pour que la
+// trajectoire prévue en tienne compte avant même le clic
+let mouseW = null;
+function ghostItem() {
+  if (!mouseW || drag) return null;
+  if (tool === 'hole') {
+    const h = { x: mouseW.x, y: mouseW.y, r: HOLE_R, mass: HOLE_MASS };
+    return { apply: () => holes.push(h), undo: () => holes.pop(), draw: () => drawHole(h) };
+  }
+  if (tool === 'mirror' || tool === 'shield') {
+    const b = planetAt(mouseW);
+    if (!b) return null;
+    if (tool === 'shield') {
+      let prev;
+      return { apply: () => { prev = b.shield; b.shield = true; }, undo: () => { b.shield = prev; },
+               draw: () => drawShield(b.x, b.y, shieldRadius(b)) };
+    }
+    const off = Math.atan2(mouseW.y - b.y, mouseW.x - b.x) - b.spin;
+    return { apply: () => b.mirrors.push(off), undo: () => b.mirrors.pop(),
+             draw: () => drawMirror(mirrorSeg(b, b.x, b.y, b.spin + off, -1)) };
+  }
+  return null;
+}
+
+// prévision : pointillés ; marqueur selon la fin (cible verte, raté rouge, bouclier, trou noir)
+function drawPrediction({ pts, end }, type, alpha = 1) {
+  const laser = type === 'laser';
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = laser ? 'rgba(255,120,150,0.8)' : 'rgba(255,255,255,0.7)';
+  ctx.lineWidth = 1.5 / zoom;
+  ctx.setLineDash([6 / zoom, 6 / zoom]);
+  ctx.beginPath();
+  pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+  ctx.stroke();
+  ctx.setLineDash([]);
+  const last = pts[pts.length - 1];
+  if (!end || end.kind === 'out') { ctx.globalAlpha = 1; return; }
+  const s = 6 / zoom;
+  const good = end.kind === 'hit' && end.body === target;
+  ctx.strokeStyle = good ? '#5dff8a' : (end.kind === 'shield' ? '#78beff' : (end.kind === 'hole' ? '#b57bff' : '#ff6b6b'));
+  ctx.lineWidth = 2 / zoom;
+  ctx.beginPath();
+  ctx.moveTo(last.x - s, last.y - s); ctx.lineTo(last.x + s, last.y + s);
+  ctx.moveTo(last.x + s, last.y - s); ctx.lineTo(last.x - s, last.y + s);
+  ctx.stroke();
+  if (good) {
+    const dmg = end.dmg !== undefined ? end.dmg : damageFor('laser', 0, 0);
+    ctx.fillStyle = '#5dff8a'; ctx.font = `bold ${12 / zoom}px monospace`; ctx.textAlign = 'left';
+    ctx.fillText(`-${dmg} PV`, last.x + 10 / zoom, last.y - 8 / zoom);
+  }
+  ctx.globalAlpha = 1;
+}
+
+// flèche de réglage direction + puissance, avec poignée à tirer
+function drawLaunchArrow() {
+  const hx = launch.x + launch.vx * arrowK(), hy = launch.y + launch.vy * arrowK();
+  ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 2 / zoom;
+  ctx.beginPath(); ctx.moveTo(launch.x, launch.y); ctx.lineTo(hx, hy); ctx.stroke();
+  ctx.fillStyle = '#ffd24a';
+  ctx.beginPath(); ctx.arc(hx, hy, 7 / zoom, 0, 7); ctx.fill();
+}
+
+// trace laissée derrière un tir : pointillés fins, reste jusqu'à R
+function drawShotTrail(s) {
+  if (s.trail.length < 2) return;
+  ctx.strokeStyle = 'rgba(120,200,255,0.75)'; ctx.lineWidth = 1.5 / zoom;
+  ctx.setLineDash([2 / zoom, 5 / zoom]);
+  ctx.beginPath();
+  s.trail.forEach((t, i) => i ? ctx.lineTo(t.x, t.y) : ctx.moveTo(t.x, t.y));
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+// projectile en vol : point blanc ; laser = simple trait épais qui avance
+function drawProbe(s) {
+  if (s.type === 'laser') {
+    const sp = Math.hypot(s.vx, s.vy) || 1, ux = s.vx / sp, uy = s.vy / sp, L = 26;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#ff4d73'; ctx.lineWidth = 5 / zoom;
+    ctx.beginPath(); ctx.moveTo(s.x - ux * L, s.y - uy * L); ctx.lineTo(s.x, s.y); ctx.stroke();
+    ctx.lineCap = 'butt';
+    return;
+  }
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(s.x, s.y, 4 / zoom, 0, 7); ctx.fill();
+}
+
+// messages de résultat (haut, centré), s'estompent après quelques secondes
+const TOAST_MS = 4500;
+function drawToasts() {
+  const now = performance.now();
+  while (toasts.length && now - toasts[0].born > TOAST_MS) toasts.shift();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.textAlign = 'center'; ctx.font = 'bold 18px monospace';
+  toasts.forEach((t, i) => {
+    const age = now - t.born;
+    ctx.globalAlpha = Math.max(0, Math.min(1, (TOAST_MS - age) / 1000));
+    ctx.fillStyle = t.good ? '#5dff8a' : '#ff8a8a';
+    ctx.fillText(t.text, canvas.width / 2, 34 + (toasts.length - 1 - i) * 26);
+  });
+  ctx.globalAlpha = 1;
+}
+
+function draw() {
+  zoom = Math.min(canvas.width, canvas.height) / 2 / SYSTEM_RADIUS;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = '#05060f';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  drawStars(performance.now() / 1000);
+
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.scale(zoom, zoom);
+
+  const active = bodies.filter(isActive);
+  if (showFields && isActive(sun)) drawField(sun);
+  for (const b of active) drawTail(b);
+  for (const b of active) drawBody(b);
+  if (target) drawTarget();
+  drawCounters();
+
+  // prévisions : l'objet à poser (fantôme) compte avant même le clic
+  const ghost = ghostItem();
+  if (ghost) ghost.apply();
+  const aim = predict();
+  const flying = shots.filter(s => !s.dead && s.type !== 'laser').map(s => ({ s, p: predictFrom(s, s.type) }));
+  if (ghost) ghost.undo();
+
+  for (const s of shots) drawShotTrail(s);
+  for (const f of flying) drawPrediction(f.p, f.s.type, 0.35); // devant chaque tir en vol, en discret
+  if (!aimHidden) drawPrediction(aim, curType);                // prochain tir (masqué juste après un tir)
+  if (ghost) { ctx.globalAlpha = 0.5; ghost.draw(); ctx.globalAlpha = 1; }
+  if (tool === 'cannon') drawLaunchArrow();
+  for (const s of shots) if (!s.dead) drawProbe(s);
+  drawToasts();
+}
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min((now - last) / 1000, 0.05) * TIME_SCALE * timeMul;
+  last = now;
+  // sous-pas pour garder la même précision que la trajectoire prévue (pas ≤ PRED_DT)
+  const n = Math.max(1, Math.ceil(dt / PRED_DT));
+  for (let i = 0; i < n; i++) update(dt / n);
+  draw(); syncSpeedUI();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

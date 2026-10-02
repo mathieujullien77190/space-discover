@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#03040a">
+<title>Système solaire à l'échelle</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="top"><div class="chips" id="chips"></div><div class="chips sub" id="sub"></div></div>
+<div id="info" class="panel"></div>
+<div id="layers" class="panel"></div>
+<div id="scale"></div>
+<div id="hint">Molette ou pincement pour zoomer (dézoome à fond : les étoiles voisines) · glisse pour déplacer · clique un astre</div>
+<div id="timebar" class="panel">
+  <div class="row">
+    <span class="date" id="date"></span>
+    <input type="range" id="slider" aria-label="Date simulée">
+    <input type="date" id="datepick" aria-label="Choisir une date" min="1900-01-01" max="2100-12-31">
+  </div>
+  <div class="row">
+    <button id="play">❚❚</button>
+    <span id="speeds" style="display:flex;gap:5px"></span>
+    <button id="v1replay" title="Rejouer le voyage de Voyager 1 depuis son lancement en 1977">↺ Voyager 1</button>
+    <button id="now">Maintenant</button>
+  </div>
+</div>
+
+<script src="js/constants.js"></script>
+<script src="js/astro.js"></script>
+<script src="js/lambert.js"></script>
+<script src="js/bodies.js"></script>
+<script src="js/probes.js"></script>
+<script src="js/vendor/satellite.min.js"></script>
+<script src="js/iss-data.js"></script>
+<script src="js/iss.js"></script>
+<script src="js/iss-model.js"></script>
+<script src="js/iss-follow.js"></script>
+<script src="js/earth-borders.js"></script>
+<script src="js/country-view.js"></script>
+<script src="js/launch.js"></script>
+<script src="js/launch-view.js"></script>
+<script src="js/comets.js"></script>
+<script src="js/positions.js"></script>
+<script src="js/meteorites.js"></script>
+<script src="js/stars.js"></script>
+<script src="js/layers.js"></script>
+<script src="js/state.js"></script>
+<script src="js/render-utils.js"></script>
+<script src="js/rings.js"></script>
+<script src="js/draw-sphere.js"></script>
+<script src="js/globe-projection.js"></script>
+<script src="js/mars-data.js"></script>
+<script src="js/names.js"></script>
+<script src="js/surface-earth.js"></script>
+<script src="js/surface-moon.js"></script>
+<script src="js/surface-io.js"></script>
+<script src="js/surface-europa.js"></script>
+<script src="js/surface-ganymede.js"></script>
+<script src="js/surface-titan.js"></script>
+<script src="js/surfaces.js"></script>
+<script src="js/surface-setup.js"></script>
+<script src="js/vendor/three.min.js"></script>
+<script src="js/globe-gl.js"></script>
+<script src="js/draw-objects.js"></script>
+<script src="js/draw.js"></script>
+<script src="js/ui-info.js"></script>
+<script src="js/ui-time.js"></script>
+<script src="js/input.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
