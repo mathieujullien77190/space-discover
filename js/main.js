@@ -289,7 +289,7 @@
       }
     }
 
-    if (solarMode) { issScreen = null; label.style.display = 'none'; }
+    if (solarMode || (camera.position.length() - 1) * R_KM > 20000) { issScreen = null; label.style.display = 'none'; dot.visible = false; issModel.visible = false; }   // dézoomé : l'ISS est cachée (point, nom et modèle)
     // caractéristiques 3D : mise à jour puis étiquettes projetées à l'écran
     for (const f of ISS_FEATURES) {   // une caractéristique « onlyIss » (taille, hauteur) n'apparaît que sur la vue de l'ISS
       const inst = featInst[f.id]; if (!inst) continue;
