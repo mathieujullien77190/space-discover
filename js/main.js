@@ -70,9 +70,7 @@
   function setMode(m) {
     issGo = 0;
     cam.mode = m; cam.fly = 2.2; cam.tfly = 2.2;
-    document.getElementById('bEarth').classList.toggle('on', m === 'earth');
-    document.getElementById('bIss').classList.toggle('on', m === 'iss');
-    document.getElementById('bSunView').classList.toggle('on', m === 'solar' && solarTarget === 'sun'); document.getElementById('bMoonView').classList.toggle('on', m === 'solar' && solarTarget === 'moon');
+    syncView(m);
     if (m === 'launch') { cam.userDir = false; }   // caméra auto de la fusée (réglée dans la boucle)
     if (m === 'iss' && iss) {   // on regarde l'ISS d'en haut, un peu de côté (la Terre en fond)
       const side = new THREE.Vector3().crossVectors(iss.up, iss.vel).normalize(), v = iss.up.clone().addScaledVector(side, 0.55).normalize();
@@ -86,13 +84,14 @@
   function goSolar(target) {
     solarTarget = target; setMode('solar'); cam.fly = cam.tfly = 3; cam.goal.dist = target === 'sun' ? 90000 : 4;
     const d = ECLIPTIC_POLE.clone().add(tmp.set(0.35, 0, 0.1)).normalize(); cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG;
-    document.getElementById('bSunView').classList.toggle('on', target === 'sun'); document.getElementById('bMoonView').classList.toggle('on', target === 'moon');
   }
-  document.getElementById('bSunView').onclick = () => goSolar('sun'); document.getElementById('bMoonView').onclick = () => goSolar('moon');
   cam.onEarth = () => setMode('earth');
-  document.getElementById('bEarth').onclick = () => setMode('earth');
-  document.getElementById('bIss').onclick = () => goIss();
-  document.getElementById('bSun').onclick = e => { realSun = !realSun; e.currentTarget.classList.toggle('on', realSun); };
+  /* un seul sélecteur pour les vues (Terre, ISS, Lune, Soleil) ; l'interrupteur jour/nuit se comporte comme un « mode sombre » (réglage mémorisé) */
+  const viewSel = document.getElementById('viewSel'), dnChk = document.getElementById('dnChk');
+  function syncView(m) { viewSel.value = m === 'solar' ? (solarTarget === 'sun' ? 'sun' : 'moon') : m === 'iss' ? 'iss' : 'earth'; }
+  viewSel.onchange = () => { const v = viewSel.value; if (v === 'earth') setMode('earth'); else if (v === 'iss') goIss(); else goSolar(v); viewSel.blur(); };
+  try { realSun = localStorage.getItem('realSun') === '1'; } catch (e) {}
+  dnChk.checked = realSun; dnChk.onchange = () => { realSun = dnChk.checked; try { localStorage.setItem('realSun', realSun ? '1' : '0'); } catch (e) {} };
 
   // caractéristiques de l'ISS affichées en 3D (cases à cocher ; définies dans ISS_FEATURES, js/iss.js)
   const VIEW_ISS = { yaw: -38, pitch: 55.5, dist: 0.5 };   // vue quand on zoome sur l'ISS (yaw °, pitch °, distance km) — réglée par l'utilisateur
@@ -233,7 +232,7 @@
     // trop loin pour voir l'ISS (cachée) : on passe en vue « Terre » sans bouger la caméra (le bouton Terre s'allume)
     if (cam.mode === 'iss' && (camera.position.length() - 1) * R_KM > 20000) {
       const p = camera.position, L = p.length(); cam.mode = 'earth'; cam.tgt.set(0, 0, 0); cam.dist = cam.goal.dist = L; cam.lat = cam.goal.lat = Math.asin(p.y / L) / DEG; cam.lon = cam.goal.lon = Math.atan2(-p.z, p.x) / DEG; cam.fly = cam.tfly = 0;
-      document.getElementById('bEarth').classList.add('on'); document.getElementById('bIss').classList.remove('on');
+      syncView('earth');
     }
     // caméra : la cible suit l'ISS ou reste au centre ; transitions douces
     if (launch) { launch.update(dt, camera); tl.update(launch); }

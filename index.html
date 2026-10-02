@@ -13,11 +13,13 @@
 <canvas id="gl"></canvas>
 <div id="hud">
   <div class="bar" id="bar">
-    <button id="bEarth" class="on">🌍 <span>Terre</span></button>
-    <button id="bIss">🛰 <span>ISS</span></button>
-    <button id="bMoonView">🌙 <span>Lune</span></button>
-    <button id="bSunView">☀ <span>Soleil</span></button>
-    <button id="bSun">🌗 <span>Jour/nuit</span></button>
+    <select id="viewSel" title="Vue">
+      <option value="earth">🌍 Terre</option>
+      <option value="iss">🛰 ISS</option>
+      <option value="moon">🌙 Lune</option>
+      <option value="sun">☀ Soleil</option>
+    </select>
+    <label class="sw" title="Jour et nuit réels sur la Terre (sinon la Terre est éclairée de face)"><input type="checkbox" id="dnChk"><span class="track"><span class="ic">☀</span><span class="ic">🌙</span><span class="knob"></span></span></label>
     <button id="bLaunch" hidden>🚀 <span>Lancement</span></button>
     <span id="issOnly" hidden><button id="bBehind">👁 <span>Vue dessus</span></button><button id="bFeat">📐 <span>Détails ISS</span></button></span>
     <div id="feat" hidden></div>
