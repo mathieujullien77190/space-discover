@@ -158,3 +158,13 @@ button.on { border-color: #ffd54a; color: #ffd54a; }
 #satsPanel label { display: block; cursor: pointer; padding: 5px 0; font-size: 14px; }
 #satsPanel .ldesc { margin: 14px 0 2px; color: #b8c6dc; font-size: 12px; line-height: 1.6; }
 @media (max-width: 700px), (pointer: coarse) { #satsPanel { left: 8px; right: 8px; top: auto; bottom: calc(76px + env(safe-area-inset-bottom)); width: auto; max-height: 48%; } #satsPanel .sitem { min-height: 44px; } }
+
+/* panneau « Fusées » : composants (suivre, trajectoire, vitesse, poids) */
+#satPanel .crow { margin: 6px 0 10px; }
+#satPanel .chead { display: flex; align-items: center; gap: 6px; }
+#satPanel .cname { flex: 1; text-align: left; margin: 0; padding: 6px 8px; font-size: 13px; }
+#satPanel .cname.follow { border-color: #ffd54a; color: #ffd54a; }
+#satPanel .copts { display: flex; gap: 3px; }
+#satPanel .copt { margin: 0; padding: 5px 7px; font-size: 14px; opacity: .55; }
+#satPanel .copt.on { opacity: 1; border-color: #7fe3ff; background: rgba(127, 227, 255, .18); }
+#satPanel .cval { color: #b8c6dc; font-size: 12px; margin: 2px 0 0 4px; min-height: 16px; }

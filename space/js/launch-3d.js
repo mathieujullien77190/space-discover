@@ -39,7 +39,7 @@ class Launch {
     this.crossTau = 80; this.crossV = LCH.WE * LCH.RE * Math.cos(site.lat * DEG) * new THREE.Vector3(-Math.sin(site.lon * DEG), 0, -Math.cos(site.lon * DEG)).dot(this.n);   // vitesse transversale initiale du pas de tir (m/s), annulée en ~80 s
     if (o.object && objectStart(o.object, { date: o.date }).frame === 'inertial') this.crossV = 0;   // objet déjà en orbite : pas de pas de tir qui tourne avec la Terre, donc pas de décalage transversal
     this.Y = new THREE.Vector3(0, 1, 0);
-    this.wRot = LCH.WE - (sim.nodeRate || 0);   // vitesse de rotation du plan par rapport au repère de la Terre : la Terre tourne (WE) et le plan d'un satellite dérive (précession J2 du nœud)
+    this.wRot = LCH.WE - (sim.nodeRate || 0); this.satMassKg = (sim.plan && sim.plan.jettison && sim.plan.jettison.payload && sim.plan.jettison.payload.dryKg) || this.payloadUsed || 0;   // vitesse de rotation du plan par rapport au repère de la Terre : la Terre tourne (WE) et le plan d'un satellite dérive (précession J2 du nœud)
     const S = sim.samples; this.last = S[S.length - 1]; this.tEnd = sim.tEnd; this.Tmax = (sim.ok ? sim.tEnd : this.last.t) + 900;
     this.ev = {}; for (const e of sim.events) this.ev[e.key] = e;
     this.pos = new THREE.Vector3(); this.center = new THREE.Vector3();   // pos = base du lanceur ; center = milieu (cible de la caméra)
@@ -224,8 +224,8 @@ class Launch {
   }
 
   // ---------- mise à jour ----------
-  // options d'un élément (id d'étiquette) : trajectoire, vitesse, hauteur ; la fusée montre sa hauteur par défaut
-  elOpt(id) { const e = this.opt.el; if (!e[id]) e[id] = { traj: !!(this.tagMap && this.tagMap[id] && this.tagMap[id].piece), speed: true, alt: id === 'rocket' }; /* les débris montrent leur trajectoire (on ne les suit plus) */ return e[id]; }
+  // options d'un composant (id d'étiquette : fusée, satellite, boosters, coiffe, étage) : trajectoire, vitesse, poids, hauteur
+  elOpt(id) { const e = this.opt.el; if (!e[id]) e[id] = { traj: true, speed: true, mass: false, alt: id === 'rocket' }; return e[id]; }   // options de chaque composant (panneau « Composants ») : trajectoire, vitesse, poids (la fusée montre aussi sa hauteur)
   // trajectoire (trait) et trait de hauteur d'un débris, créés à la demande selon ses options
   pieceExtras(p, pos, flying) {
     const eo = this.elOpt(p.tagKey || p.key), tmp = this._pe || (this._pe = new THREE.Vector3());
@@ -256,14 +256,14 @@ class Launch {
     this.mBoost.forEach(m => m.visible = !past('eap')); this.mFair.visible = !past('fairing'); this.mEpc.visible = !past('epcsep') && !coreGone;
     this.fBoost.forEach(f => f.visible = !!st.eap && !past('eap')); this.fEpc.visible = !!st.epc; this.fEsc.visible = !!st.esc;
     const fk = 0.85 + 0.3 * Math.random(); for (const f of [...this.fBoost, this.fEpc, this.fEsc]) if (f.visible) f.userData.cone.scale.set(1, fk, 1);
-    this.plan.visible = this.opt.plan; this.trail.visible = this.opt.trail; this.markPts.visible = this.markDrops.visible = this.opt.markers; this.ring.visible = !!this.sim.ok && this.opt.plan; this.ring.rotation.y = this.inertial ? 0 : -this.wRot * T; this.ring.children.forEach(c => { c.material.transparent = true; c.material.opacity = past('esc2end') ? 0.95 : 0.35; });   // orbite visée : pâle d'avance, vive une fois atteinte
+    const rt = this.elOpt('rocket').traj; this.plan.visible = this.opt.plan && rt; this.trail.visible = this.opt.trail && rt; this.markPts.visible = this.markDrops.visible = this.opt.markers; this.ring.visible = !!this.sim.ok && this.opt.plan && this.elOpt('sat').traj; this.ring.rotation.y = this.inertial ? 0 : -this.wRot * T; this.ring.children.forEach(c => { c.material.transparent = true; c.material.opacity = past('esc2end') ? 0.95 : 0.35; });   // orbite visée : pâle d'avance, vive une fois atteinte
     // sillage
     const n = Math.min(this.trailN, st.idx + 1), tp = this.trailPos; tp.set([this.pos.x, this.pos.y, this.pos.z], 3 * n);
     this.trail.geometry.setDrawRange(0, n + 1); this.trail.geometry.attributes.position.needsUpdate = true;
     if (this.fut) {   // trajectoire à l'avance : recalculée chaque seconde de vol, le départ colle à l'objet à chaque image
       const f = this.fut, tp = this._ft || (this._ft = new THREE.Vector3());
       if (T < f.built || T - f.built >= 1) { f.built = T; for (let k = 1; k <= f.N; k++) { const t2 = T + f.period * k / f.N, q = this.stateAt(t2); this.toEF(q.x, q.y, t2, tp); f.pos.set([tp.x, tp.y, tp.z], 3 * k); } }
-      f.pos.set([this.pos.x, this.pos.y, this.pos.z], 0); f.g.attributes.position.needsUpdate = true; f.line.visible = !!this.opt.plan;
+      f.pos.set([this.pos.x, this.pos.y, this.pos.z], 0); f.g.attributes.position.needsUpdate = true; f.line.visible = !!this.opt.plan && this.elOpt('rocket').traj;
     }
     // satellite largué : s'éloigne doucement vers le haut
     // satellite : sous la coiffe (au sommet de l'étage supérieur) jusqu'au largage, puis il s'éloigne doucement vers le haut
@@ -276,19 +276,19 @@ class Launch {
     const camP = camera ? camera.position : null;
     const px = (len, p) => camP ? (len / 1000 / Math.max(1e-9, camP.distanceTo(p) * R_KM)) / (2 * Math.tan(25 * DEG)) * innerHeightSafe() : 100;
     const tmpP = new THREE.Vector3(), side = this.n.clone().applyAxisAngle(this.Y, this.inertial ? 0 : -this.wRot * T);
-    for (const t of this.tagList) if (t.piece) { t.on = false; t.text = t.base; t.speed = null; t.alt = null; }
+    for (const t of this.tagList) if (t.piece) { t.on = false; t.text = t.base; t.speed = null; t.alt = null; t.mass = null; }
     for (const p of this.pieces) {
       const tau = T - p.e.t; p.g.visible = tau >= 0 && tau < p.path.length;
       if (!p.g.visible) {
         this.pieceExtras(p, null, false);
         p.dot.visible = false;
-        if (tau >= p.path.length && tau < p.path.length + 240 && p.tagKey) { const t = this.tagMap[p.tagKey]; t.on = true; t.pos.copy(p.impact); t.text = t.base + ' — ' + p.endText; p.dot.visible = true; p.dot.geometry.attributes.position.setXYZ(0, p.impact.x, p.impact.y, p.impact.z); p.dot.geometry.attributes.position.needsUpdate = true; }
+        if (tau >= p.path.length && tau < p.path.length + 240 && p.tagKey) { const t = this.tagMap[p.tagKey]; t.on = true; t.mass = (p.model.dry || 0) + (p.model.prop || 0); t.pos.copy(p.impact); t.text = t.base + ' — ' + p.endText; p.dot.visible = true; p.dot.geometry.attributes.position.setXYZ(0, p.impact.x, p.impact.y, p.impact.z); p.dot.geometry.attributes.position.needsUpdate = true; }
         continue;
       }
       const ix = Math.min(p.path.length - 1, Math.floor(tau)), A = p.path[ix], B = p.path[Math.min(p.path.length - 1, ix + 1)], f = tau - Math.floor(tau);
       this.toEF(A[0] + (B[0] - A[0]) * f, A[1] + (B[1] - A[1]) * f, T, tmpP, p.z0 + p.zd * (T - p.e.t));
       tmpP.addScaledVector(p.latWorld, (p.r0 + 2.5 * Math.min(tau, 300)) * MU_M);   // les paires s'écartent
-      if (p.tagKey) { const t = this.tagMap[p.tagKey]; t.on = true; t.pos.copy(tmpP); t.speed = Math.hypot(B[0] - A[0], B[1] - A[1]); t.alt = (tmpP.length() - 1) * R_KM * 1000; }   // vitesse (inertielle) = déplacement par seconde de la trajectoire calculée
+      if (p.tagKey) { const t = this.tagMap[p.tagKey]; t.on = true; t.mass = (p.model.dry || 0) + (p.model.prop || 0); t.pos.copy(tmpP); t.speed = Math.hypot(B[0] - A[0], B[1] - A[1]); t.alt = (tmpP.length() - 1) * R_KM * 1000; }   // vitesse (inertielle) = déplacement par seconde de la trajectoire calculée
       p.g.position.copy(tmpP);
       if (p.ret) {   // booster qui revient : nez dans le sens de la poussée quand les moteurs tournent, sinon moteurs vers l'avant (nez à l'opposé de la vitesse) ; flamme proportionnelle à la poussée
         const R_ = p.ret, ii = Math.min(R_.thr.length - 1, ix), th = R_.thr[ii], dirv = this._rdir || (this._rdir = new THREE.Vector3()), qt = this._rq || (this._rq = new THREE.Quaternion());
@@ -300,7 +300,7 @@ class Launch {
       const big = px(p.len, tmpP) >= 6; p.mesh.visible = big;
       p.dot.visible = !big; p.dot.geometry.attributes.position.setXYZ(0, tmpP.x, tmpP.y, tmpP.z); p.dot.geometry.attributes.position.needsUpdate = true;
     }
-    { const r = this.tagMap.rocket; r.speed = this.st.v; this.tagMap.sat.speed = this.st.v; r.alt = this.altM; this.tagMap.sat.alt = this.altM; r.on = !coreGone; r.pos.copy(this.center); r.text = this.direct ? this.rocketSpec.name + '' : past('epcsep') ? this.rocketSpec.names.stage2 + (past('sat') ? '' : ' + satellite') : this.rocketSpec.name + ''; const sa = this.tagMap.sat; sa.on = past('sat') && !!this.sim.ok; sa.pos.copy(this.satG.position); }
+    { const r = this.tagMap.rocket; r.speed = this.st.v; r.mass = this.st.m; this.tagMap.sat.mass = this.satMassKg; this.tagMap.sat.speed = this.st.v; r.alt = this.altM; this.tagMap.sat.alt = this.altM; r.on = !coreGone; r.pos.copy(this.center); r.text = this.direct ? this.rocketSpec.name + '' : past('epcsep') ? this.rocketSpec.names.stage2 + (past('sat') ? '' : ' + satellite') : this.rocketSpec.name + ''; const sa = this.tagMap.sat; sa.on = past('sat') && !!this.sim.ok; sa.pos.copy(this.satG.position); }
     const big = px(this.rocketLen, this.pos) >= 6; this.rocket.visible = big && !coreGone;
     this.dotRocket.visible = !big && !coreGone; this.dotRocket.geometry.attributes.position.setXYZ(0, this.pos.x, this.pos.y, this.pos.z); this.dotRocket.geometry.attributes.position.needsUpdate = true;
     this.dotSat.visible = false;

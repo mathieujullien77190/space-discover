@@ -173,12 +173,15 @@
   let launch = null, evLabels = [], tagEls = [], slowOn = true, lastSel = null; const lbox = document.getElementById('launchPanel');
   // crée la mission (aperçu : à l'arrêt, vue de la Terre entière centrée sur le site ; sinon vol : caméra de la fusée)
   const optShared = launchOptDefault();
+  // composants du vol (fusée, boosters, coiffe, étage, satellite) : un nom collé à chacun, cliquable pour le suivre ; la caméra suit alors ce composant (si encore attaché ou retombé, retour à la fusée)
+  function followComponent(id) { if (!launch || launch.preview) return; launch.follow = id; cam.userDir = false; cam.launchK = 1; if (cam.mode !== 'launch') setMode('launch'); }
+  function makeTags() { tagEls.forEach(e => e.remove()); tagEls = launch.tagList.map(t => { const el = document.createElement('div'); el.className = 'l3d tag'; el.textContent = t.text; el.title = 'Cliquer pour suivre'; el.onclick = () => followComponent(t.id); document.body.appendChild(el); return el; }); }
   const storyUI = buildStoryPanel(document.getElementById('story')), tl = buildTimeline(document.getElementById('timeline'), { jump: T => { if (launch) launch.jump(T); }, hold: on => { if (!launch) return; if (on) { launch._was = launch.playing; launch.playing = false; } else { if (launch._was) launch.playing = true; launch._was = false; } } });
   function makeLaunch(site, type, preview) {
     evLabels.forEach(e => e.remove()); tagEls.forEach(e => e.remove());
     if (launch) launch.dispose();
     launch = new Launch(site, type.km, type.payload * 1000, type.scale, { az: type.az, rocketId: type.rocket, apoKm: type.apoKm, story: type.story, opt: optShared }); world.add(launch.group);
-    tagEls = launch.tagList.map(t => { const el = document.createElement('div'); el.className = 'l3d tag'; el.textContent = t.text; if (!t.piece) el.title = 'Cliquer pour suivre'; else el.style.cursor = 'default'; el.onclick = () => { if (!launch || launch.preview || t.piece) return; launch.follow = t.id; cam.userDir = false; cam.launchK = 1; setMode('launch'); }; document.body.appendChild(el); return el; });
+    makeTags();
     evLabels = launch.markers.map(mk => { const el = document.createElement('div'); el.className = 'l3d evl'; el.textContent = fmtT(mk.t) + ' ' + mk.label + ' · ' + fmtAlt(mk.altKm); document.body.appendChild(el); return el; });
     launch.stepPause = slowOn; launch.preview = !!preview; lastSel = { site, type };
     if (preview) { launch.playing = false; setMode('earth'); if (launch.previewDir) { const d = launch.previewDir; cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; cam.goal.dist = launch.previewDist; cam.lon = cam.goal.lon; cam.lat = cam.goal.lat; cam.dist = cam.goal.dist; } else { cam.goal.lon = site.lon; cam.goal.lat = site.lat * 0.6; cam.goal.dist = Math.max(3.4, 1 + 1.6 * (1 + type.km / 6378)); } }
@@ -200,7 +203,7 @@
   });
   /* ---------- lancement de satellite SIMPLE : une fusée, une liste de choses à faire, boutons « zoom fusée » et « vue de dessus » (pas de frise ni d'étapes zoomées) ---------- */
   const satBox = document.getElementById('satPanel');
-  const stopSat = () => { if (launch) { launch.dispose(); launch = null; } hLabel.style.display = 'none'; vLabel.style.display = 'none'; sat.hide(); if (cam.mode === 'launch') goEarth(); };
+  const stopSat = () => { if (launch) { launch.dispose(); launch = null; } tagEls.forEach(e => e.remove()); tagEls = []; hLabel.style.display = 'none'; vLabel.style.display = 'none'; sat.hide(); if (cam.mode === 'launch') goEarth(); };
   // plan de vol : le JSON est relu à chaque lancement (on peut le modifier et recharger la page / relancer), sinon la copie embarquée
   const loadPlan = (key, custom) => custom ? Promise.resolve(custom) : (/^https?:/.test(location.protocol) && FLIGHT_PLAN_FILES[key] ? fetch(FLIGHT_PLAN_FILES[key] + '?t=' + Date.now(), { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }) : Promise.reject(new Error('file'))).catch(() => FLIGHT_PLANS[key]);
   // objet générique (js/flight-object.js) : le JSON est relu à chaque lancement sur http(s), sinon la copie embarquée
@@ -209,21 +212,22 @@
   function startSat(key, custom) { if (custom ? custom.timeline : key.startsWith('obj:')) loadObject(key.replace(/^obj:/, ''), custom).then(launchObject); else loadPlan(key, custom).then(launchPlan); }
   function launchObject(obj) {
     if (launch) { launch.dispose(); launch = null; }
-    optShared.markers = false; optShared.names = false;
+    optShared.markers = false; optShared.names = true;
     const date = new Date(), s0 = objectStart(obj, { date }), site = Object.assign({}, LAUNCH_SITES[0], { id: 'obj', name: obj.name, lat: s0.lat, lon: s0.lon });
-    launch = new Launch(site, 0, 0, 1, { opt: optShared, object: obj, date, az: (s0.azimuthDeg != null ? s0.azimuthDeg : 90) * Math.PI / 180 }); world.add(launch.group);
+    launch = new Launch(site, 0, 0, 1, { opt: optShared, object: obj, date, az: (s0.azimuthDeg != null ? s0.azimuthDeg : 90) * Math.PI / 180 }); world.add(launch.group); makeTags();
     launch.stepPause = false; launch.preview = false; launch.playing = true; launch.speed = s0.date ? 1 : 5;   // objet calé sur l'heure réelle (satellite) : lecture ×1, sinon il s'éloigne de l'ISS réelle
     cam.launchK = 1; cam.userDir = false; setMode('launch'); sat.show(launch);
   }
   function launchPlan(plan) {
     if (launch) { launch.dispose(); launch = null; }
-    optShared.markers = false; optShared.names = false;
+    optShared.markers = false; optShared.names = true;
     const site = Object.assign({}, LAUNCH_SITES[0], { id: 'plan', name: plan.site.name, lat: plan.site.lat, lon: plan.site.lon });
-    launch = new Launch(site, plan.target.altitudeKm, plan.vehicle.payloadKg, 1, { opt: optShared, plan, rocketId: plan.rocket, az: (plan.site.azimuthDeg != null ? plan.site.azimuthDeg : 90) * Math.PI / 180 }); world.add(launch.group);
+    launch = new Launch(site, plan.target.altitudeKm, plan.vehicle.payloadKg, 1, { opt: optShared, plan, rocketId: plan.rocket, az: (plan.site.azimuthDeg != null ? plan.site.azimuthDeg : 90) * Math.PI / 180 }); world.add(launch.group); makeTags();
     launch.stepPause = false; launch.preview = false; launch.playing = true; launch.speed = 5;
     cam.launchK = 1; cam.userDir = false; setMode('launch'); sat.show(launch);
   }
   const sat = buildSatPanel(satBox, {
+    follow: followComponent, setOpt: (id, k, v) => { if (launch) launch.elOpt(id)[k] = v; },
     start: startSat, stop: stopSat, close() { satBox.hidden = true; document.getElementById('bSat').classList.remove('on'); },
     speed(v) { if (!launch) return; if (v === 0) launch.playing = false; else { launch.playing = true; launch.speed = v; } },
   });
@@ -378,7 +382,8 @@
       if (!t.on || hid || p.z >= 1 || Math.abs(p.x) > 1 || Math.abs(p.y) > 1) { el.style.display = 'none'; return; }
       const eo = launch.elOpt(t.id), parts = [];   // nom, vitesse, hauteur selon les options de l'élément
       if (launch.opt.names) parts.push(t.text);
-      if (eo.speed && t.speed != null) parts.push((t.speed / 1000).toFixed(2).replace('.', ',') + ' km/s · ' + Math.round(t.speed * 3.6).toLocaleString('fr-FR') + ' km/h');
+      if (eo.speed && t.speed != null && t.id !== 'rocket') parts.push((t.speed / 1000).toFixed(2).replace('.', ',') + ' km/s · ' + Math.round(t.speed * 3.6).toLocaleString('fr-FR') + ' km/h');
+      if (eo.mass && t.mass != null) parts.push('poids ' + fmtMass(t.mass));
       if (eo.alt && t.alt != null) parts.push('hauteur ' + fmtAlt(t.alt / 1000));
       const txt = parts.join(' · '); if (!txt) { el.style.display = 'none'; return; }
       if (el.textContent !== txt) el.textContent = txt;

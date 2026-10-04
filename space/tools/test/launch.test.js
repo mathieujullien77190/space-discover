@@ -46,5 +46,12 @@ console.log(vm.runInContext(`(() => {
   out.push('étiquettes : ' + L.tagList.map(t => t.id).join(' '));
   let bad = 0; for (let T = 0; T <= L.Tmax; T += 97) { L.T = T; L.playing = false; L.update(0.016, cam); if (![L.pos.x, L.pos.y, L.pos.z].every(Number.isFinite)) bad++; }
   out.push('lecture : ' + (bad ? bad + ' positions non finies' : 'positions finies, tout le vol') + ' ; boosters ' + g('eap').length + ', coiffe ' + g('fairing').length + ', étage principal ' + g('epcsep').length);
+  // composants : suivi d'un booster, d'une coiffe, de l'étage ; poids de chacun
+  const at = T => { L.T = T; L.playing = false; L.update(0.016, cam); };
+  at(100); const m100 = L.tagMap.rocket.mass; at(200); const eap = L.tagMap.eap1, fa = L.tagMap.fairA, rk = L.tagMap.rocket;
+  L.follow = 'eap1'; at(200.5); const dEap = L.focusPos.distanceTo(eap.pos) * 6378137, dRk = L.focusPos.distanceTo(L.center) * 6378137;
+  out.push('T+200 : booster ' + (eap.on ? 'en vol, ' + Math.round(eap.mass) + ' kg, ' + Math.round(eap.speed) + ' m/s' : 'absent') + ' ; coiffe ' + (fa.on ? Math.round(fa.mass) + ' kg' : 'absente') + ' ; fusée ' + Math.round(rk.mass) + ' kg (T+100 : ' + Math.round(m100) + ' kg) ; caméra sur le booster : écart ' + dEap.toFixed(2) + ' m (à la fusée : ' + Math.round(dRk) + ' m), suivi = ' + L.follow);
+  L.follow = 'epc'; at(700); const ep = L.tagMap.epc; out.push('T+700 : étage principal ' + (ep.on ? Math.round(ep.mass) + ' kg (12 200 + 5 257 de propergol restant)' : 'absent') + ', suivi = ' + L.follow);
+  L.follow = 'eap1'; at(1500); out.push('T+1500 : booster retombé (plus de suivi) → suivi = ' + L.follow);
   return out.join(N);
 })()`, sandbox));
