@@ -235,17 +235,17 @@ class Launch {
     let seed = 12345; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };   // aléa fixe : la même fumée à chaque lecture
     const puffs = [], base = this.s.clone().multiplyScalar(PATCH_R), mk = (o) => { const mat = new THREE.SpriteMaterial({ map: tex, color: 0xffffff, transparent: true, depthWrite: false, opacity: 0 }), sp = new THREE.Sprite(mat); sp.visible = false; sp.frustumCulled = false; sp.renderOrder = 20; this.group.add(sp); puffs.push(Object.assign(o, { sp, mat, ph: rnd() * 2 * Math.PI })); };
     const hdir = th => this.e.clone().multiplyScalar(Math.cos(th)).addScaledVector(this.n, Math.sin(th));   // direction horizontale au sol
-    for (let i = 0; i < 130 * DENS; i++) { const th = rnd() * 2 * Math.PI; mk({ kind: 'pad', b: Math.pow(rnd(), 1.4) * 10, org: base.clone().addScaledVector(hdir(th), rnd() * 90 * MU_M), dir: hdir(th), spd: 24 + rnd() * 90, up: 2 + rnd() * 9, s0: 110 + rnd() * 110, life: 34 + rnd() * 12, a0: 0.45 + rnd() * 0.2 }); }
+    for (let i = 0; i < 130 * DENS; i++) { const th = rnd() * 2 * Math.PI; mk({ kind: 'pad', b: Math.pow(rnd(), 1.4) * 10, org: base.clone().addScaledVector(hdir(th), rnd() * 30 * MU_M), dir: hdir(th), spd: 8 + rnd() * 30, up: 2 + rnd() * 9, s0: 45 + rnd() * 45, life: 32 + rnd() * 10, a0: 0.55 + rnd() * 0.25 }); }
     // traînée : 4 volutes par seconde (× DENS) à la base de la fusée tant qu'elle est sous 1 000 m d'altitude ; elle reste dans l'air (repère de la Terre) et s'estompe en ~30 s
     const low = S.filter(s => s.alt < 1000).map(s => s.t), tTrail = low.length ? low[low.length - 1] : 0, tmp = new THREE.Vector3();
-    for (let t = 0.25 / DENS; t < tTrail; t += 0.25 / DENS) { const st = this.stateAt(t), th = rnd() * 2 * Math.PI; this.toEF(st.x, st.y, t, tmp); mk({ kind: 'trail', b: t, org: tmp.clone(), dir: hdir(th), spd: 1 + rnd() * 5, up: 0.5 + rnd() * 2, s0: 22 + rnd() * 14, life: 26 + rnd() * 10, a0: 0.5 + rnd() * 0.2 }); }
+    for (let t = 0.25 / DENS; t < tTrail; t += 0.25 / DENS) { const st = this.stateAt(t), th = rnd() * 2 * Math.PI; this.toEF(st.x, st.y, t, tmp); mk({ kind: 'trail', b: t, org: tmp.clone(), dir: hdir(th), spd: 3 + rnd() * 15, up: 0.5 + rnd() * 2, s0: 66 + rnd() * 42, life: 26 + rnd() * 10, a0: 0.45 + rnd() * 0.2 }); }
     this.smoke = { puffs, tex, tEnd: Math.max(...puffs.map(p => p.b + p.life)) + 1, off: false, tmp: new THREE.Vector3() };
   }
   updateSmoke(T) {
     const K = this.smoke; if (T > K.tEnd) { if (!K.off) { K.off = true; for (const p of K.puffs) p.sp.visible = false; } return; } K.off = false;
     for (const p of K.puffs) {
       const age = T - p.b; if (age < 0 || age > p.life) { p.sp.visible = false; continue; }
-      const pad = p.kind === 'pad', tau = pad ? 6 : 8, d = p.spd * tau * (1 - Math.exp(-age / tau)) + 3 * age, h = (pad ? 6 : 2) + p.up * (pad ? 14 : 10) * (1 - Math.exp(-age / (pad ? 14 : 10))), size0 = p.s0 + (pad ? 15 : 3.5) * age;   // roule vers l'extérieur (freinée) en dérivant au vent, monte, grossit
+      const pad = p.kind === 'pad', tau = pad ? 6 : 8, d = p.spd * tau * (1 - Math.exp(-age / tau)), h = (pad ? 6 : 2) + p.up * (pad ? 14 : 10) * (1 - Math.exp(-age / (pad ? 14 : 10))), size0 = p.s0 + (pad ? 6 : 10.5) * age;   // roule vers l'extérieur (freinée) en dérivant au vent, monte, grossit
       const fout = Math.max(0, Math.min(1, (p.life - age) / (p.life * 0.55))), dis = 1 - fout;   // dis : 0 → 1 pendant la désintégration (derniers 55 % de la vie)
       // DÉSINTÉGRATION : la volute se disperse en vacillant (déplacements de plus en plus grands), rétrécit et s'éteint par à-coups
       const wob = dis * dis * 70 * MU_M, size = size0 * (1 - 0.4 * dis);
