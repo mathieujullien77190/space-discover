@@ -22,8 +22,7 @@ function buildSatPanel(box, hooks) {
   const tel = el('pre', { className: 'ltel' }), list = el('div', { className: 'levs' }), msg = el('div', { className: 'lmsg' });
   const speeds = el('div'), spB = [];
   [['⏸', 0], ['×1', 1], ['×5', 5], ['×20', 20], ['×60', 60], ['×200', 200]].forEach(([n, v]) => { const b = el('button', { textContent: n, onclick: () => hooks.speed(v) }); spB.push([b, v]); speeds.append(b); });
-  const bZoom = el('button', { textContent: '🔍 Zoom fusée', title: 'Se rapproche pour bien voir la fusée', onclick: () => hooks.zoom() }), bTop = el('button', { textContent: '⬆ Vue de dessus', title: 'Caméra au-dessus du plan de la trajectoire (vue de dessus de la montée en orbite)', onclick: () => hooks.top() }), bAuto = el('button', { textContent: '🎥 Caméra auto', onclick: () => hooks.cam() }), bBoost = el('button', { textContent: '🛬 Suivre le booster', title: 'La caméra suit le booster qui revient se poser', hidden: true, onclick: () => hooks.booster() });
-  const run = el('div', { hidden: true }, tel, speeds, el('div', {}, bZoom, bTop, bAuto, bBoost), msg, el('div', { className: 'osub', textContent: 'À faire' }), list);
+  const run = el('div', { hidden: true }, tel, speeds, msg, el('div', { className: 'osub', textContent: 'À faire' }), list);
   const head = el('div', { className: 'ohead' }, el('b', { textContent: '🚀 Lancer un satellite' }), el('button', { textContent: '✖', title: 'Fermer', onclick: () => hooks.close() }));
   let running = false, items = [];
   const syncGo = () => { go.textContent = running ? '⏹ Arrêter' : '🚀 Lancer'; go.classList.toggle('stop', running); planSel.disabled = running; bFile.disabled = running; };
@@ -34,7 +33,6 @@ function buildSatPanel(box, hooks) {
       running = true; syncGo(); run.hidden = false; list.innerHTML = ''; items = [];
       const evs = [{ t: 0, label: 'Décollage' }].concat(launch.sim.events.map(e => ({ t: e.t, label: e.label })), (launch.extraEvents || []).map(e => ({ t: e.t, label: e.label }))).sort((a, b) => a.t - b.t);
       evs.forEach(e => { const d = el('div', { className: 'lev', textContent: e.label }); d.dataset.t = e.t; items.push(d); list.append(d); });
-      bBoost.hidden = !launch.retResult;
       msg.textContent = launch.sim.message || (launch.sim.ok ? '' : 'Cette orbite est hors de portée de la fusée : elle retombe.');
     },
     update(launch) {
@@ -42,7 +40,6 @@ function buildSatPanel(box, hooks) {
       tel.textContent = `Temps T+${Math.floor(t.T / 60)}:${String(Math.floor(t.T % 60)).padStart(2, '0')}   (lecture ×${t.eff < 10 ? t.eff.toFixed(1) : Math.round(t.eff)})\nAltitude  ${t.alt.toFixed(1)} km\nVitesse   ${t.v.toFixed(2)} km/s (${Math.round(t.v * 3600).toLocaleString('fr-FR')} km/h)`;
       items.forEach(d => d.classList.toggle('done', launch.T >= +d.dataset.t));
       spB.forEach(([b, v]) => b.classList.toggle('on', launch.playing ? v === launch.speed : v === 0));
-      bTop.classList.toggle('on', !!launch.topView); bBoost.classList.toggle('on', launch.follow === 'epc');
     },
     hide() { running = false; syncGo(); run.hidden = true; },
   };

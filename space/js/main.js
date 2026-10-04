@@ -195,12 +195,12 @@
     jump(T) { if (launch) launch.jump(T); },
     next() { if (!launch) return; const e = [{ t: 0 }].concat(launch.sim.events).find(x => x.t > launch.T + 1.5); if (e) launch.jump(Math.max(0, e.t - 1)); },
     zoom() { if (!launch) return; cam.userDir = false; cam.zoomFit = true; launch.follow = 'rocket'; if (launch.preview) { launch.preview = false; launch.playing = true; } setMode('launch'); },
-    cam() { cam.zoomFit = false; cam.userDir = false; cam.launchK = 1; if (launch) launch.follow = 'rocket'; if (cam.mode !== 'launch' && launch) setMode('launch'); },
+    cam() { cam.userDir = false; cam.launchK = 1; if (launch) launch.follow = 'rocket'; if (cam.mode !== 'launch' && launch) setMode('launch'); },
     quit() { evLabels.forEach(e => e.remove()); evLabels = []; tagEls.forEach(e => e.remove()); tagEls = []; hLabel.style.display = 'none'; vLabel.style.display = 'none'; tl.hide(); if (launch) { launch.dispose(); launch = null; } lp.hide(); if (cam.mode === 'launch') setMode('earth'); },
   });
   /* ---------- lancement de satellite SIMPLE : une fusée, une liste de choses à faire, boutons « zoom fusée » et « vue de dessus » (pas de frise ni d'étapes zoomées) ---------- */
   const satBox = document.getElementById('satPanel');
-  const stopSat = () => { if (launch) { launch.dispose(); launch = null; } hLabel.style.display = 'none'; vLabel.style.display = 'none'; cam.zoomFit = false; sat.hide(); if (cam.mode === 'launch') goEarth(); };
+  const stopSat = () => { if (launch) { launch.dispose(); launch = null; } hLabel.style.display = 'none'; vLabel.style.display = 'none'; sat.hide(); if (cam.mode === 'launch') goEarth(); };
   // plan de vol : le JSON est relu à chaque lancement (on peut le modifier et recharger la page / relancer), sinon la copie embarquée
   const loadPlan = (key, custom) => custom ? Promise.resolve(custom) : (/^https?:/.test(location.protocol) && FLIGHT_PLAN_FILES[key] ? fetch(FLIGHT_PLAN_FILES[key] + '?t=' + Date.now(), { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }) : Promise.reject(new Error('file'))).catch(() => FLIGHT_PLANS[key]);
   // objet générique (js/flight-object.js) : le JSON est relu à chaque lancement sur http(s), sinon la copie embarquée
@@ -213,24 +213,19 @@
     const date = new Date(), s0 = objectStart(obj, { date }), site = Object.assign({}, LAUNCH_SITES[0], { id: 'obj', name: obj.name, lat: s0.lat, lon: s0.lon });
     launch = new Launch(site, 0, 0, 1, { opt: optShared, object: obj, date, az: (s0.azimuthDeg != null ? s0.azimuthDeg : 90) * Math.PI / 180 }); world.add(launch.group);
     launch.stepPause = false; launch.preview = false; launch.playing = true; launch.speed = s0.date ? 1 : 5;   // objet calé sur l'heure réelle (satellite) : lecture ×1, sinon il s'éloigne de l'ISS réelle
-    launch.topView = false;
-    cam.launchK = 1; cam.zoomFit = false; cam.userDir = false; setMode('launch'); sat.show(launch);
+    cam.launchK = 1; cam.userDir = false; setMode('launch'); sat.show(launch);
   }
   function launchPlan(plan) {
     if (launch) { launch.dispose(); launch = null; }
     optShared.markers = false; optShared.names = false;
     const site = Object.assign({}, LAUNCH_SITES[0], { id: 'plan', name: plan.site.name, lat: plan.site.lat, lon: plan.site.lon });
     launch = new Launch(site, plan.target.altitudeKm, plan.vehicle.payloadKg, 1, { opt: optShared, plan, rocketId: plan.rocket, az: (plan.site.azimuthDeg != null ? plan.site.azimuthDeg : 90) * Math.PI / 180 }); world.add(launch.group);
-    launch.stepPause = false; launch.preview = false; launch.playing = true; launch.speed = 5; launch.topView = false;
-    cam.launchK = 1; cam.zoomFit = false; cam.userDir = false; setMode('launch'); sat.show(launch);
+    launch.stepPause = false; launch.preview = false; launch.playing = true; launch.speed = 5;
+    cam.launchK = 1; cam.userDir = false; setMode('launch'); sat.show(launch);
   }
   const sat = buildSatPanel(satBox, {
     start: startSat, stop: stopSat, close() { satBox.hidden = true; document.getElementById('bSat').classList.remove('on'); },
     speed(v) { if (!launch) return; if (v === 0) launch.playing = false; else { launch.playing = true; launch.speed = v; } },
-    zoom() { if (!launch) return; cam.userDir = false; cam.zoomFit = true; launch.follow = 'rocket'; if (cam.mode !== 'launch') setMode('launch'); },
-    top() { if (!launch) return; launch.topView = !launch.topView; cam.userDir = false; cam.zoomFit = false; cam.launchK = 1; if (cam.mode !== 'launch') setMode('launch'); },
-    booster() { if (!launch || !launch.retResult) return; launch.topView = false; cam.zoomFit = false; cam.userDir = false; cam.launchK = 1; launch.follow = 'epc'; if (cam.mode !== 'launch') setMode('launch'); },
-    cam() { if (!launch) return; launch.topView = false; cam.zoomFit = false; cam.userDir = false; cam.launchK = 1; launch.follow = 'rocket'; if (cam.mode !== 'launch') setMode('launch'); },
   });
   document.getElementById('bSat').onclick = e => { satBox.hidden = !satBox.hidden; e.currentTarget.classList.toggle('on', !satBox.hidden); if (!satBox.hidden) { satsBox.hidden = true; bSats.classList.remove('on'); } };
   const SITE_R = 1 + 1e-5;   // les points des sites sont posés AU SOL (64 m au-dessus de la sphère : pas de scintillement de profondeur)
@@ -284,7 +279,7 @@
     const goalTgt = solarMode ? (solarTarget === 'sun' ? sunAbs : solarTarget === 'moon' ? moonAbs : tmp.set(0, 0, 0)) : cam.mode === 'iss' && iss ? iss.pos : cam.mode === 'launch' && launch ? launch.focusPos : tmp.set(0, 0, 0);
     if (cam.mode === 'launch' && launch) {   // caméra auto : sur le côté de la trajectoire, de plus en plus loin ; le zoom manuel multiplie la distance
       if (!cam.userDir) { const d = launch.camDir; cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; }
-      const auto = launch.camDistKm / R_KM; if (cam.zoomFit) cam.launchK = (launch.zoomLenM || launch.rocketLen) * 1.5 / 1000 / launch.camDistKm; cam.launchK = Math.max(0.02 / launch.camDistKm, Math.min(cam.launchK, (launch.maxDistU || 41) / auto));   // de 20 m de la fusée (à toute altitude) jusqu'à la Terre entière
+      const auto = launch.rocketLen * 1.6 / 1000 / R_KM; cam.launchK = Math.max(0.02 / (auto * R_KM), Math.min(cam.launchK, 41 / auto));   // caméra TOUT PRÈS de la fusée (1,6 fois sa longueur, toute la fusée visible), à toute altitude ; la molette ajuste (de 20 m à la Terre entière)
       cam.goal.dist = auto * cam.launchK;
     }
     cam.tgt.copy(goalTgt);   // la cible est posée directement (plus de glissement entre les vues)
@@ -297,7 +292,7 @@
     cam.goal.lon = ((cam.goal.lon + 540) % 360) - 180;
     ll(cam.lon, cam.lat, dirv);
     camera.position.copy(cam.tgt).addScaledVector(dirv, cam.dist);
-    if (launch && launch.topView && cam.mode === 'launch' && launch.topUp) camera.up.copy(launch.topUp); else camera.up.set(0, 1, 0);   // vue de dessus : la direction du vol en haut de l'écran
+    camera.up.set(0, 1, 0);
     camera.lookAt(cam.tgt); camera.updateMatrixWorld();
     const closest = Math.max(1e-7, Math.min(cam.dist, camera.position.length() - 1) * 0.05);
     camera.near = Math.min(0.05, closest); camera.far = 4e6; camera.updateProjectionMatrix();
