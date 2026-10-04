@@ -34,11 +34,11 @@ function buildSatPanel(box, hooks) {
       running = true; syncGo(); run.hidden = false; list.innerHTML = ''; items = [];
       const evs = [{ t: 0, label: 'Décollage' }].concat(launch.sim.events.map(e => ({ t: e.t, label: e.label })), (launch.extraEvents || []).map(e => ({ t: e.t, label: e.label }))).sort((a, b) => a.t - b.t);
       evs.forEach(e => { const d = el('div', { className: 'lev', textContent: e.label }); d.dataset.t = e.t; items.push(d); list.append(d); });
-      // composants : la fusée, ses boosters, la coiffe, l'étage principal, le satellite — on les suit avec la caméra (◎) et on choisit pour chacun trajectoire (🛤), vitesse (⚡) et poids (⚖)
+      // composants : la fusée, ses boosters, la coiffe, l'étage principal, le satellite — un clic sur le nom zoome dessus (caméra), le bouton ℹ affiche d'un coup trajectoire, vitesse et poids
       comps.innerHTML = ''; rows = launch.tagList.map(t => {
-        const nameB = el('button', { className: 'cname', title: 'Suivre avec la caméra', onclick: () => hooks.follow(t.id) }), val = el('div', { className: 'cval' });
-        const optB = [['traj', '🛤', 'Trajectoire'], ['speed', '⚡', 'Vitesse'], ['mass', '⚖', 'Poids']].map(([k, ic, tip]) => { const b = el('button', { className: 'copt', textContent: ic, title: tip, onclick: () => hooks.setOpt(t.id, k, !launch.elOpt(t.id)[k]) }); b.dataset.k = k; return b; });
-        comps.append(el('div', { className: 'crow' }, el('div', { className: 'chead' }, nameB, el('span', { className: 'copts' }, ...optB)), val));
+        const nameB = el('button', { className: 'cname', title: 'Zoomer sur ce composant (la caméra le suit)', onclick: () => hooks.follow(t.id) }), val = el('div', { className: 'cval' });
+        const optB = el('button', { className: 'copt', textContent: 'ℹ', title: 'Afficher la trajectoire, la vitesse et le poids de ce composant', onclick: () => { const eo = launch.elOpt(t.id), v = !(eo.traj && eo.speed && eo.mass); for (const k of ['traj', 'speed', 'mass']) hooks.setOpt(t.id, k, v); } });   // UN seul bouton : tout afficher / tout masquer
+        comps.append(el('div', { className: 'crow' }, el('div', { className: 'chead' }, nameB, optB), val));
         return { t, nameB, optB, val, name: '' };
       });
       msg.textContent = launch.sim.message || (launch.sim.ok ? '' : 'Cette orbite est hors de portée de la fusée : elle retombe.');
@@ -48,8 +48,8 @@ function buildSatPanel(box, hooks) {
       tel.textContent = `Temps T+${Math.floor(t.T / 60)}:${String(Math.floor(t.T % 60)).padStart(2, '0')}   (lecture ×${t.eff < 10 ? t.eff.toFixed(1) : Math.round(t.eff)})\nAltitude  ${t.alt.toFixed(1)} km\nVitesse   ${t.v.toFixed(2)} km/s (${Math.round(t.v * 3600).toLocaleString('fr-FR')} km/h)`;
       items.forEach(d => d.classList.toggle('done', launch.T >= +d.dataset.t));
       for (const r of rows) {   // état de chaque composant : suivi, options, valeurs en direct
-        const t = r.t, eo = launch.elOpt(t.id), nm = '◎ ' + (t.id === 'rocket' ? t.text : t.base); if (r.name !== nm) { r.name = nm; r.nameB.textContent = nm; }
-        r.nameB.classList.toggle('follow', launch.follow === t.id); r.optB.forEach(b => b.classList.toggle('on', !!eo[b.dataset.k]));
+        const t = r.t, eo = launch.elOpt(t.id), nm = t.id === 'rocket' ? t.text : t.base; if (r.name !== nm) { r.name = nm; r.nameB.textContent = nm; }
+        r.nameB.classList.toggle('follow', launch.follow === t.id); r.optB.classList.toggle('on', !!(eo.traj && eo.speed && eo.mass));
         const piece = launch.pieces.find(p => p.tagKey === t.id), sepT = piece ? piece.e.t : t.id === 'sat' && launch.ev.sat ? launch.ev.sat.t : 0;
         let txt; if (t.on) { const p = []; if (eo.speed && t.speed != null) p.push((t.speed / 1000).toFixed(2).replace('.', ',') + ' km/s'); if (eo.mass && t.mass != null) p.push(fmtMass(t.mass)); txt = p.join(' · '); }
         else txt = launch.T < sepT || (t.id === 'sat' && !launch.ev.sat) ? 'encore attaché' : 'retombé'; if (r.val.textContent !== txt) r.val.textContent = txt;

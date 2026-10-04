@@ -252,7 +252,7 @@ class Launch {
   }
   // ---------- mise à jour ----------
   // options d'un composant (id d'étiquette : fusée, satellite, boosters, coiffe, étage) : trajectoire, vitesse, poids, hauteur
-  elOpt(id) { const e = this.opt.el; if (!e[id]) e[id] = { traj: true, speed: true, mass: false, alt: id === 'rocket' }; return e[id]; }   // options de chaque composant (panneau « Composants ») : trajectoire, vitesse, poids (la fusée montre aussi sa hauteur)
+  elOpt(id) { const e = this.opt.el; if (!e[id]) e[id] = { traj: true, speed: false, mass: false, alt: id === 'rocket' }; return e[id]; }   // options de chaque composant (panneau « Composants », un seul bouton ℹ pour les trois) : trajectoire (allumée par défaut), vitesse, poids (éteints par défaut) ; la fusée montre aussi sa hauteur
   // trajectoire (trait) et trait de hauteur d'un débris, créés à la demande selon ses options
   pieceExtras(p, pos, flying) {
     const eo = this.elOpt(p.tagKey || p.key), tmp = this._pe || (this._pe = new THREE.Vector3());
