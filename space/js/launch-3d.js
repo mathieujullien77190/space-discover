@@ -70,6 +70,8 @@ class Launch {
       const pts = phOrbitPoints(sim.state, 180).map(p => this.s.clone().multiplyScalar(p[0] / L.RE).addScaledVector(this.e, p[1] / L.RE));   // orbite visée (ellipse képlérienne)
       const rl = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x7fe3ff })); rl.frustumCulled = false; this.ring.add(rl);
     }
+    // objet JSON en orbite : trajectoire À L'AVANCE sur un tour (même méthode que la « Trajectoire future » de l'ISS réelle : positions dans le repère de la Terre qui tourne, de maintenant à maintenant + une période), en cyan
+    if (o.object && sim.ok) { const N = 180, pos = new Float32Array((N + 1) * 3), g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); const line = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0x4fe0ff })); line.frustumCulled = false; this.group.add(line); this.fut = { N, pos, g, line, period: objectPeriodS(o.object) || phElements(sim.state.x, sim.state.y, sim.state.vx, sim.state.vy).T, built: -1e12 }; }
     this.buildModels();
     if (spec.tower) this.buildTower();
     if (o.story === 'sputnik') this.buildSputnik();
@@ -258,6 +260,11 @@ class Launch {
     // sillage
     const n = Math.min(this.trailN, st.idx + 1), tp = this.trailPos; tp.set([this.pos.x, this.pos.y, this.pos.z], 3 * n);
     this.trail.geometry.setDrawRange(0, n + 1); this.trail.geometry.attributes.position.needsUpdate = true;
+    if (this.fut) {   // trajectoire à l'avance : recalculée chaque seconde de vol, le départ colle à l'objet à chaque image
+      const f = this.fut, tp = this._ft || (this._ft = new THREE.Vector3());
+      if (T < f.built || T - f.built >= 1) { f.built = T; for (let k = 1; k <= f.N; k++) { const t2 = T + f.period * k / f.N, q = this.stateAt(t2); this.toEF(q.x, q.y, t2, tp); f.pos.set([tp.x, tp.y, tp.z], 3 * k); } }
+      f.pos.set([this.pos.x, this.pos.y, this.pos.z], 0); f.g.attributes.position.needsUpdate = true; f.line.visible = !!this.opt.plan;
+    }
     // satellite largué : s'éloigne doucement vers le haut
     // satellite : sous la coiffe (au sommet de l'étage supérieur) jusqu'au largage, puis il s'éloigne doucement vers le haut
     const tSat = E.sat ? E.sat.t : 1e12, sat = this.satG, dm = MU_M;

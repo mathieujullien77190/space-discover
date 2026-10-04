@@ -18,6 +18,13 @@ const fails = [], res = vm.runInContext(`(() => {
     const ground = Math.acos(Math.max(-1, Math.min(1, a.dot(b)))) * R_KM, dh = (L.pos.length() - real.pos.length()) * R_KM;
     out.push({ T, ground, dh, txt: 'T+' + String(T).padStart(5) + ' s : écart au sol ' + ground.toFixed(1) + ' km, écart de hauteur ' + dh.toFixed(1) + ' km (JSON ' + ((L.pos.length() - 1) * R_KM).toFixed(1) + ' km, SGP4 ' + real.alt.toFixed(1) + ' km), lat/lon JSON ' + (Math.asin(a.y) / DEG).toFixed(2) + ' / ' + (Math.atan2(-a.z, a.x) / DEG).toFixed(2) + ', SGP4 ' + real.lat.toFixed(2) + ' / ' + real.lon.toFixed(2) });
   }
+  // trajectoire à l'avance sur un tour (cyan) contre celle de l'ISS réelle (jaune, même méthode que la case « Trajectoire future ») : points aux quarts et à la fin
+  L.T = 0; L.playing = false; L.update(0.016, cam); const f = L.fut, N = f.N;
+  for (const k of [45, 90, 135, 180]) {
+    const real = issState(new Date(date.getTime() + f.period * 1000 * k / N)), a = new THREE.Vector3(f.pos[3 * k], f.pos[3 * k + 1], f.pos[3 * k + 2]), g = Math.acos(Math.max(-1, Math.min(1, a.clone().normalize().dot(real.pos.clone().normalize())))) * R_KM;
+    out.push({ T: 'fut' + k, ground: g, txt: 'trajectoire à l’avance, point ' + k + '/' + N + ' (' + (f.period * k / N / 60).toFixed(1) + ' min) : écart avec l’ISS réelle ' + g.toFixed(1) + ' km' });
+  }
+  out.push({ txt: 'trajectoire : ' + (N + 1) + ' points, période ' + (f.period / 60).toFixed(2) + ' min, visible ' + f.line.visible });
   return out;
 })()`, sandbox);
 for (const r of res) { console.log(r.txt); if (r.T != null && (r.ground > (r.T === 0 ? 1 : 10))) fails.push('T+' + r.T + ' : écart au sol ' + r.ground.toFixed(1) + ' km (> ' + (r.T === 0 ? 1 : 10) + ' km)'); }

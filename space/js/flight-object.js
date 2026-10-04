@@ -83,6 +83,8 @@ function objectStart(obj, opt) {
   const vU = dot(V, up), vE = dot(V, east), vN = dot(V, north);
   return { lat: lat / D, lon: lon / D, altitudeM: rr - L.RE, azimuthDeg: Math.atan2(vE, vN) / D, elevationDeg: Math.atan2(vU, Math.hypot(vE, vN)) / D, speedMs: Math.hypot(vE, vN, vU), frame: 'inertial', nodeRate: -k * Math.cos(i), date: new Date(at).toISOString() };   // nodeRate : précession du plan (rad/s, < 0 : le nœud recule), appliquée par Launch
 }
+// période affichée d'un satellite décrit par ses éléments (86400 / tours par jour), ou null : c'est celle du TLE, comme la « Trajectoire future » de l'ISS réelle
+function objectPeriodS(obj) { const S = obj.start, O = S && (S.orbit || (S.tle && tleToOrbit(S.tle))); return O ? 86400 / O.meanMotionRevDay : null; }
 function flyObject(obj, opt) {
   validateObject(obj);
   const L = LCH, G0 = L.G0, D = Math.PI / 180, S0 = objectStart(obj, opt), tl = obj.timeline.slice().sort((a, b) => a.t - b.t), tLast = tl[tl.length - 1].t, dryKg = obj.dryKg || 0;
