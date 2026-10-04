@@ -34,29 +34,51 @@ function objectPitch(pts, t) {   // direction (rad) interpolée entre les palier
   for (let i = 1; i < pts.length; i++) if (t <= pts[i][0]) return (pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * (t - pts[i - 1][0]) / Math.max(1e-12, pts[i][0] - pts[i - 1][0])) * Math.PI / 180;
   return pts[pts.length - 1][1] * Math.PI / 180;
 }
-// éléments d'un TLE (deux lignes) → { epoch, inclinationDeg, raanDeg, eccentricity, argPerigeeDeg, meanAnomalyDeg, meanMotionRevDay }
+// éléments d'un TLE (deux lignes) → { epoch, inclinationDeg, raanDeg, eccentricity, argPerigeeDeg, meanAnomalyDeg, meanMotionRevDay, ndotRevDay2, bstar }
 function tleToOrbit(tle) {
-  const l1 = tle[0], l2 = tle[1], yy = +l1.substr(18, 2), day = +l1.substr(20, 12);
-  return { epoch: new Date(Date.UTC(yy < 57 ? 2000 + yy : 1900 + yy, 0, 1) + (day - 1) * 86400000).toISOString(), inclinationDeg: +l2.substr(8, 8), raanDeg: +l2.substr(17, 8), eccentricity: +('0.' + l2.substr(26, 7).trim()), argPerigeeDeg: +l2.substr(34, 8), meanAnomalyDeg: +l2.substr(43, 8), meanMotionRevDay: +l2.substr(52, 11) };
+  const l1 = tle[0], l2 = tle[1], yy = +l1.substr(18, 2), day = +l1.substr(20, 12), ex = (m, e) => +(m.trim() ? m.trim().replace(/^([+-]?)(\d+)$/, '$10.$2') : 0) * Math.pow(10, +e);   // champ « 76468-4 » = 0,76468e-4
+  const bs = l1.substr(53, 8).trim(), bsM = bs ? bs.slice(0, bs.length - 2) : '', bsE = bs ? bs.slice(-2) : '0';
+  return { epoch: new Date(Date.UTC(yy < 57 ? 2000 + yy : 1900 + yy, 0, 1) + (day - 1) * 86400000).toISOString(), inclinationDeg: +l2.substr(8, 8), raanDeg: +l2.substr(17, 8), eccentricity: +('0.' + l2.substr(26, 7).trim()), argPerigeeDeg: +l2.substr(34, 8), meanAnomalyDeg: +l2.substr(43, 8), meanMotionRevDay: +l2.substr(52, 11),
+    ndotRevDay2: +l1.substr(33, 10), bstar: bsM ? ex(bsM, bsE) : 0 };
+}
+// l'inverse : éléments → deux lignes de TLE (pour la bibliothèque SGP4 ; le numéro de satellite et les champs d'identification ne servent à rien)
+function orbitToTle(O) {
+  const ms = Date.parse(O.epoch), y = new Date(ms).getUTCFullYear(), day = (ms - Date.UTC(y, 0, 1)) / 86400000 + 1, sum = s => { let c = 0; for (const ch of s) c += ch >= '0' && ch <= '9' ? +ch : ch === '-' ? 1 : 0; return s + (c % 10); };
+  const expF = x => { if (!x) return ' 00000+0'; const e = Math.floor(Math.log10(Math.abs(x))) + 1, m = Math.round(Math.abs(x) / Math.pow(10, e) * 1e5); return (x < 0 ? '-' : ' ') + String(m).padStart(5, '0') + (e < 0 ? '-' : '+') + Math.abs(e); };
+  const nd = O.ndotRevDay2 || 0, ndF = (nd < 0 ? '-' : ' ') + Math.abs(nd).toFixed(8).slice(1);
+  const l1 = '1 00001U 00001A   ' + String(y % 100).padStart(2, '0') + day.toFixed(8).padStart(12, '0') + ' ' + ndF + '  00000+0 ' + expF(O.bstar) + ' 0  999';
+  const l2 = '2 00001 ' + O.inclinationDeg.toFixed(4).padStart(8) + ' ' + O.raanDeg.toFixed(4).padStart(8) + ' ' + O.eccentricity.toFixed(7).slice(2) + ' ' + O.argPerigeeDeg.toFixed(4).padStart(8) + ' ' + O.meanAnomalyDeg.toFixed(4).padStart(8) + ' ' + O.meanMotionRevDay.toFixed(8).padStart(11) + '00001';
+  return [sum(l1), sum(l2)];
 }
 // temps sidéral de Greenwich (rad) à la date ms (UTC)
 function foGmst(ms) { const d = ms / 86400000 + 2440587.5 - 2451545, T = d / 36525, g = 280.46061837 + 360.98564736629 * d + 0.000387933 * T * T - T * T * T / 38710000; return (((g % 360) + 360) % 360) * Math.PI / 180; }
-// Départ résolu : si « start » donne une orbite (ou un TLE), calcule où est le satellite à la date voulue et renvoie le départ équivalent { lat, lon, altitudeM, azimuthDeg, elevationDeg, speedMs, frame: 'inertial' }
-// (le plan de Launch est celui de la verticale du lieu et de la direction de la vitesse inertielle ; la Terre tourne dessous). Éléments moyens + dérive séculaire J2 du nœud et du périgée entre l'époque et la date (pas de freinage).
+// Départ résolu : si « start » donne une orbite (ou un TLE), calcule où est le satellite à la date voulue et renvoie le départ équivalent { lat, lon, altitudeM, azimuthDeg, elevationDeg, speedMs, frame: 'inertial', nodeRate }
+// (le plan de Launch est celui de la verticale du lieu et de la direction de la vitesse inertielle ; la Terre tourne dessous).
+// Position : si la bibliothèque SGP4 (satellite.js, js/vendor) est chargée, c'est l'état SGP4 EXACT à cette date (l'ISS JSON part pile de l'ISS réelle) ; sinon éléments moyens + dérive séculaire J2 du nœud et du périgée + freinage (ndot).
+// Dans les deux cas la vitesse est recalée pour que le vol képlérien de Launch ait la cadence moyenne réelle (argument de latitude : n + ωdot + 2·ndot·t), sinon la position osculatrice (± quelques km autour de la moyenne) ferait dériver de dizaines de km par tour.
 function objectStart(obj, opt) {
   const S = obj.start; if (!S.orbit && !S.tle) return S;
-  const L = LCH, D = Math.PI / 180, O = S.orbit || tleToOrbit(S.tle), ms0 = Date.parse(O.epoch), now = opt && opt.date ? +opt.date : Date.now(), at = S.at === 'now' ? now : S.at ? Date.parse(S.at) : ms0, dt = (at - ms0) / 1000;
-  const n = O.meanMotionRevDay * 2 * Math.PI / 86400, e = O.eccentricity, i = O.inclinationDeg * D, J2 = 1.08262668e-3, a0 = Math.cbrt(L.MU / (n * n)), p0 = a0 * (1 - e * e), k = 1.5 * J2 * Math.pow(L.RE / p0, 2) * n;
-  const Mdot = n, wdot = 0.5 * k * (5 * Math.cos(i) ** 2 - 1), nEff = Mdot + wdot;   // le TLE donne déjà la cadence de l'anomalie (n) ; J2 fait dériver le nœud et le périgée ; l'argument de latitude avance à n + ωdot (mesuré contre SGP4)
-  const a = Math.cbrt(L.MU / (nEff * nEff)), p = a * (1 - e * e);   // demi-grand axe « effectif » : le vol képlérien de Launch (sans J2) garde ainsi la cadence réelle le long du plan
-  const raan = O.raanDeg * D - k * Math.cos(i) * dt, w = O.argPerigeeDeg * D + wdot * dt, M = O.meanAnomalyDeg * D + Mdot * dt;
-  let E = M; for (let j = 0; j < 12; j++) E -= (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
-  const nu = 2 * Math.atan2(Math.sqrt(1 + e) * Math.sin(E / 2), Math.sqrt(1 - e) * Math.cos(E / 2)), r = a * (1 - e * Math.cos(E)), kv = Math.sqrt(L.MU / p);
-  const px = r * Math.cos(nu), py = r * Math.sin(nu), vx = -kv * Math.sin(nu), vy = kv * (e + Math.cos(nu));   // plan de l'orbite (périgée sur x)
-  const cO = Math.cos(raan), sO = Math.sin(raan), ci = Math.cos(i), si = Math.sin(i), cw = Math.cos(w), sw = Math.sin(w);
-  const eci = (x, y) => { const x1 = x * cw - y * sw, y1 = x * sw + y * cw; return [x1 * cO - y1 * ci * sO, x1 * sO + y1 * ci * cO, y1 * si]; };   // Rz(Ω) Rx(i) Rz(ω)
-  const g = foGmst(at), cg = Math.cos(g), sg = Math.sin(g), fix = v => [v[0] * cg + v[1] * sg, -v[0] * sg + v[1] * cg, v[2]];   // repère de la Terre à cet instant : Rz(−gmst)
-  const P = fix(eci(px, py)), V = fix(eci(vx, vy)), rr = Math.hypot(...P), lat = Math.asin(P[2] / rr), lon = Math.atan2(P[1], P[0]);
+  const L = LCH, D = Math.PI / 180, O = S.orbit || tleToOrbit(S.tle), ms0 = Date.parse(O.epoch), now = opt && opt.date ? +opt.date : Date.now(), at = S.at === 'now' ? now : S.at ? Date.parse(S.at) : ms0, days = (at - ms0) / 86400000, dt = days * 86400;
+  const e = O.eccentricity, i = O.inclinationDeg * D, J2 = 1.08262668e-3, nd = O.ndotRevDay2 || 0, n0 = O.meanMotionRevDay * 2 * Math.PI / 86400, n = (O.meanMotionRevDay + 2 * nd * days) * 2 * Math.PI / 86400;   // freinage : n(t) = n + 2·ndot·t
+  const a0 = Math.cbrt(L.MU / (n * n)), p0 = a0 * (1 - e * e), k = 1.5 * J2 * Math.pow(L.RE / p0, 2) * n, wdot = 0.5 * k * (5 * Math.cos(i) ** 2 - 1), nEff = n + wdot, aEff = Math.cbrt(L.MU / (nEff * nEff)), p = aEff * (1 - e * e);
+  let P, V;   // état dans le repère de la Terre figé à l'instant `at` (m, m/s) : position et vitesse INERTIELLE
+  const sat = typeof satellite !== 'undefined' ? satellite : null;
+  if (sat && sat.twoline2satrec) {
+    const tle = S.tle || orbitToTle(O), pv = sat.propagate(sat.twoline2satrec(tle[0], tle[1]), new Date(at));
+    if (pv.position) { const g = sat.gstime(new Date(at)), cg = Math.cos(g), sg = Math.sin(g), fix = v => [(v.x * cg + v.y * sg) * 1000, (-v.x * sg + v.y * cg) * 1000, v.z * 1000]; P = fix(pv.position); V = fix(pv.velocity); }
+  }
+  if (!P) {   // sans SGP4 : éléments moyens → position et vitesse képlériennes
+    const raan = O.raanDeg * D - k * Math.cos(i) * dt, w = O.argPerigeeDeg * D + wdot * dt, M = O.meanAnomalyDeg * D + 2 * Math.PI * (O.meanMotionRevDay * days + nd * days * days);
+    let E = M; for (let j = 0; j < 12; j++) E -= (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+    const nu = 2 * Math.atan2(Math.sqrt(1 + e) * Math.sin(E / 2), Math.sqrt(1 - e) * Math.cos(E / 2)), r = aEff * (1 - e * Math.cos(E)), kv = Math.sqrt(L.MU / p);
+    const px = r * Math.cos(nu), py = r * Math.sin(nu), vx = -kv * Math.sin(nu), vy = kv * (e + Math.cos(nu));   // plan de l'orbite (périgée sur x)
+    const cO = Math.cos(raan), sO = Math.sin(raan), ci = Math.cos(i), si = Math.sin(i), cw = Math.cos(w), sw = Math.sin(w);
+    const eci = (x, y) => { const x1 = x * cw - y * sw, y1 = x * sw + y * cw; return [x1 * cO - y1 * ci * sO, x1 * sO + y1 * ci * cO, y1 * si]; };   // Rz(Ω) Rx(i) Rz(ω)
+    const g = foGmst(at), cg = Math.cos(g), sg = Math.sin(g), fix = v => [v[0] * cg + v[1] * sg, -v[0] * sg + v[1] * cg, v[2]];   // repère de la Terre à cet instant : Rz(−gmst)
+    P = fix(eci(px, py)); V = fix(eci(vx, vy));
+  }
+  const rr = Math.hypot(...P), lat = Math.asin(P[2] / rr), lon = Math.atan2(P[1], P[0]);
+  const vis = Math.sqrt(Math.max(1, L.MU * (2 / rr - 1 / aEff))), vs = vis / Math.hypot(...V); V = V.map(c => c * vs);   // vitesse recalée : le demi-grand axe du vol est aEff
   const up = P.map(c => c / rr), east = [-Math.sin(lon), Math.cos(lon), 0], north = [-Math.sin(lat) * Math.cos(lon), -Math.sin(lat) * Math.sin(lon), Math.cos(lat)], dot = (u, v) => u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
   const vU = dot(V, up), vE = dot(V, east), vN = dot(V, north);
   return { lat: lat / D, lon: lon / D, altitudeM: rr - L.RE, azimuthDeg: Math.atan2(vE, vN) / D, elevationDeg: Math.atan2(vU, Math.hypot(vE, vN)) / D, speedMs: Math.hypot(vE, vN, vU), frame: 'inertial', nodeRate: -k * Math.cos(i), date: new Date(at).toISOString() };   // nodeRate : précession du plan (rad/s, < 0 : le nœud recule), appliquée par Launch

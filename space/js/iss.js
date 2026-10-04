@@ -14,7 +14,7 @@ function issState(d) {
   const toScene = (e, v) => v.set(e.x, e.z, -e.y);
   const dirv = toScene(ecf, new THREE.Vector3()).normalize(), alt = geo.height;
   return {
-    pos: dirv.clone().multiplyScalar(1 + alt / R_KM), up: dirv, vel: toScene(vel, new THREE.Vector3()).normalize(),
+    pos: dirv.clone().multiplyScalar(Math.hypot(ecf.x, ecf.y, ecf.z) / R_KM), up: dirv, vel: toScene(vel, new THREE.Vector3()).normalize(),
     alt, speed: Math.hypot(pv.velocity.x, pv.velocity.y, pv.velocity.z),
     lon: ((geo.longitude / DEG + 540) % 360) - 180, lat: geo.latitude / DEG,
   };

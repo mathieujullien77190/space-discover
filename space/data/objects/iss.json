@@ -8,7 +8,9 @@
       "eccentricity": 0.0006934,
       "argPerigeeDeg": 209.9872,
       "meanAnomalyDeg": 150.072,
-      "meanMotionRevDay": 15.48703850
+      "meanMotionRevDay": 15.48703850,
+      "ndotRevDay2": 0.00003723,
+      "bstar": 0.000076468
     },
     "at": "now"
   },

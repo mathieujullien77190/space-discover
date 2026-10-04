@@ -6,9 +6,9 @@ const sandbox = { console, Math, Date, JSON, Float32Array, Float64Array, Uint8Ar
   document: { createElement: () => ({ width: 0, height: 0, getContext: () => ctx2d, style: {}, addEventListener() {} }), createElementNS: () => ({ style: {}, addEventListener() {}, setAttribute() {} }), getElementById: () => null } };
 sandbox.window = sandbox; sandbox.self = sandbox; vm.createContext(sandbox);
 for (const f of ['js/vendor/three.min.js', 'js/vendor/satellite.min.js', 'js/data/surface-earth.js', 'js/data/iss-data.js', 'js/earth.js', 'js/iss.js', 'js/physics.js', 'js/launch.js', 'js/rockets.js', 'js/story.js', 'js/flight-plan.js', 'js/flight-object.js', 'js/launch-3d.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), sandbox, { filename: f });
-sandbox.ISS_OBJ = JSON.parse(fs.readFileSync(path.join(root, 'data/objects/iss.json'), 'utf8'));
+sandbox.ISS_DATE = process.env.ISS_DATE || '2026-10-04T12:00:00Z'; sandbox.ISS_OBJ = JSON.parse(fs.readFileSync(path.join(root, 'data/objects/iss.json'), 'utf8'));
 const fails = [], res = vm.runInContext(`(() => {
-  const out = [], date = new Date('2026-10-04T12:00:00Z'), s0 = objectStart(ISS_OBJ, { date }), cam = { position: new THREE.Vector3(0, 0, 3) };
+  const out = [], date = new Date(ISS_DATE), s0 = objectStart(ISS_OBJ, { date }), cam = { position: new THREE.Vector3(0, 0, 3) };
   const site = Object.assign({}, LAUNCH_SITES[0], { id: 'obj', lat: s0.lat, lon: s0.lon });
   const L = new Launch(site, 0, 0, 1, { opt: launchOptDefault(), object: ISS_OBJ, date, az: s0.azimuthDeg * Math.PI / 180 });
   out.push({ txt: 'départ résolu : lat ' + s0.lat.toFixed(2) + '°, lon ' + s0.lon.toFixed(2) + '°, altitude ' + (s0.altitudeM / 1000).toFixed(1) + ' km, azimut ' + s0.azimuthDeg.toFixed(2) + '°, vitesse ' + s0.speedMs.toFixed(1) + ' m/s' });
@@ -20,8 +20,8 @@ const fails = [], res = vm.runInContext(`(() => {
   }
   return out;
 })()`, sandbox);
-for (const r of res) { console.log(r.txt); if (r.T != null && r.ground > 40) fails.push('T+' + r.T + ' : écart au sol ' + r.ground.toFixed(0) + ' km (> 40 km)'); }
+for (const r of res) { console.log(r.txt); if (r.T != null && (r.ground > (r.T === 0 ? 1 : 10))) fails.push('T+' + r.T + ' : écart au sol ' + r.ground.toFixed(1) + ' km (> ' + (r.T === 0 ? 1 : 10) + ' km)'); }
 // un TLE donne le même départ que les éléments écrits à la main
-const viaTle = vm.runInContext(`(() => { const a = objectStart(ISS_OBJ, { date: new Date('2026-10-04T12:00:00Z') }), b = objectStart({ start: { tle: ISS_TLE, at: 'now' } }, { date: new Date('2026-10-04T12:00:00Z') }); return Math.hypot(a.lat - b.lat, a.lon - b.lon) + Math.abs(a.speedMs - b.speedMs) / 1000; })()`, sandbox);
+const viaTle = vm.runInContext(`(() => { const a = objectStart(ISS_OBJ, { date: new Date(ISS_DATE) }), b = objectStart({ start: { tle: ISS_TLE, at: 'now' } }, { date: new Date(ISS_DATE) }); return Math.hypot(a.lat - b.lat, a.lon - b.lon) + Math.abs(a.speedMs - b.speedMs) / 1000; })()`, sandbox);
 console.log('TLE directement dans le JSON : écart avec les éléments saisis ' + viaTle.toExponential(1)); if (viaTle > 0.01) fails.push('start.tle différent de start.orbit');
 if (fails.length) { console.log('ÉCHEC : ' + fails.join(' ; ')); process.exit(1); } else console.log('ok : l\'ISS JSON suit l\'ISS SGP4');

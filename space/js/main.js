@@ -222,7 +222,8 @@
     optShared.markers = false; optShared.names = false;
     const date = new Date(), s0 = objectStart(obj, { date }), site = Object.assign({}, LAUNCH_SITES[0], { id: 'obj', name: obj.name, lat: s0.lat, lon: s0.lon });
     launch = new Launch(site, 0, 0, 1, { opt: optShared, object: obj, date, az: (s0.azimuthDeg != null ? s0.azimuthDeg : 90) * Math.PI / 180 }); world.add(launch.group);
-    launch.stepPause = false; launch.preview = false; launch.playing = true; launch.speed = 5; launch.topView = false;
+    launch.stepPause = false; launch.preview = false; launch.playing = true; launch.speed = s0.date ? 1 : 5;   // objet calé sur l'heure réelle (satellite) : lecture ×1, sinon il s'éloigne de l'ISS réelle
+    launch.topView = false;
     cam.launchK = 1; cam.zoomFit = false; cam.userDir = false; setMode('launch'); sat.show(launch);
   }
   function launchPlan(plan) {
