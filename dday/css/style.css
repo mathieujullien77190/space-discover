@@ -1,0 +1,6 @@
+html, body { margin: 0; height: 100%; background: #0b1522; overflow: hidden; font-family: system-ui, sans-serif; color: #e8eef7; overscroll-behavior: none; -webkit-user-select: none; user-select: none; }
+#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+#hud { position: fixed; left: 12px; top: calc(12px + env(safe-area-inset-top)); font-size: 14px; line-height: 1.5; text-shadow: 0 1px 3px #000; pointer-events: none; }
+#info { font-size: 12px; opacity: .8; }
+#err { position: fixed; left: 12px; right: 12px; top: 60px; z-index: 20; padding: 8px 10px; background: rgba(120, 20, 20, .92); color: #fff; font: 12px ui-monospace, Consolas, monospace; white-space: pre-wrap; border-radius: 8px; }
+#err[hidden] { display: none; }
