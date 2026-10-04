@@ -217,7 +217,7 @@
     optShared.markers = true; optShared.names = true;
     const date = new Date(), s0 = objectStart(obj, { date }), site = Object.assign({}, LAUNCH_SITES[0], { id: 'obj', name: obj.name, lat: s0.lat, lon: s0.lon });
     launch = new Launch(site, 0, 0, 1, { opt: optShared, object: obj, date, az: (s0.azimuthDeg != null ? s0.azimuthDeg : 90) * Math.PI / 180 }); world.add(launch.group); makeTags(); makeEvLabels();
-    launch.stepPause = false; launch.preview = false; launch.playing = true; launch.speed = s0.date ? 1 : 5;   // objet calé sur l'heure réelle (satellite) : lecture ×1, sinon il s'éloigne de l'ISS réelle
+    launch.stepPause = false; launch.preview = false; launch.playing = true; launch.speed = 1;   // lecture ×1 par défaut (demande de l'utilisateur)
     cam.launchK = 1; cam.userDir = false; setMode('launch'); sat.show(launch);
   }
   function launchPlan(plan) {
@@ -225,7 +225,7 @@
     optShared.markers = true; optShared.names = true;
     const site = Object.assign({}, LAUNCH_SITES[0], { id: 'plan', name: plan.site.name, lat: plan.site.lat, lon: plan.site.lon });
     launch = new Launch(site, plan.target.altitudeKm, plan.vehicle.payloadKg, 1, { opt: optShared, plan, rocketId: plan.rocket, az: (plan.site.azimuthDeg != null ? plan.site.azimuthDeg : 90) * Math.PI / 180 }); world.add(launch.group); makeTags(); makeEvLabels();
-    launch.stepPause = false; launch.preview = false; launch.playing = true; launch.speed = 5;
+    launch.stepPause = false; launch.preview = false; launch.playing = true; launch.speed = 1;
     cam.launchK = 1; cam.userDir = false; setMode('launch'); sat.show(launch);
   }
   const sat = buildSatPanel(satBox, {

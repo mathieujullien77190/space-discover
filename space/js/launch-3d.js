@@ -225,27 +225,23 @@ class Launch {
   }
 
   // ---------- FUMÉE AU DÉCOLLAGE (demande de l'utilisateur : « une masse de fumée au décollage ») ----------
-  // Deux sources, toutes calculées en fonction du temps de vol T (on peut rejouer ou sauter dans le vol) :
-  //  - le NUAGE du pas de tir : une centaine de volutes crachées pendant les premières secondes, qui roulent vers l'extérieur (freinées), montent et grossissent jusqu'à ~200 m avant de s'estomper (~45 s) ;
-  //  - la TRAÎNÉE : une volute toutes les 0,5 s à la base de la fusée tant qu'elle est sous ~3 km, qui reste dans l'air (repère de la Terre) et se dissipe en ~30 s.
-  // Des sprites (disques flous blancs-gris, orangés au début), posés dans le repère de la Terre : la fumée ne suit pas la fusée. Seulement pour un départ du sol (altitude < 200 m, poussée dès le début).
+  // Seulement AU DÉCOLLAGE (demande de l'utilisateur : pas de traînée) : le NUAGE du pas de tir, calculé en fonction du temps de vol T (on peut rejouer ou sauter dans le vol) : 130 volutes crachées pendant les 10 premières secondes, qui roulent vers l'extérieur (freinées), montent et grossissent jusqu'à ~250 m avant de s'estomper (~40 s) ;
+  // Des sprites (disques flous blancs-gris, orangés au début), posés dans le repère de la Terre et dessinés APRÈS la photo du sol (renderOrder 20) : la fumée ne suit pas la fusée. Seulement pour un départ du sol (altitude < 200 m, poussée dès le début).
   buildSmoke() {
     this.smoke = null;
     const S = this.sim.samples; if (!S.length || S[0].alt > 200 || !S.some(s => s.t < 5 && s.F > 0)) return;
     let tex = null; try { const cv = document.createElement('canvas'); cv.width = cv.height = 64; const g = cv.getContext('2d'), gr = g.createRadialGradient(32, 32, 2, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,0.95)'); gr.addColorStop(0.45, 'rgba(255,255,255,0.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); tex = new THREE.CanvasTexture(cv); } catch (e) { tex = null; }
     let seed = 12345; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };   // aléa fixe : la même fumée à chaque lecture
-    const puffs = [], base = this.s.clone().multiplyScalar(PATCH_R), mk = (o) => { const mat = new THREE.SpriteMaterial({ map: tex, color: 0xffffff, transparent: true, depthWrite: false, opacity: 0 }), sp = new THREE.Sprite(mat); sp.visible = false; sp.frustumCulled = false; this.group.add(sp); puffs.push(Object.assign(o, { sp, mat })); };
+    const puffs = [], base = this.s.clone().multiplyScalar(PATCH_R), mk = (o) => { const mat = new THREE.SpriteMaterial({ map: tex, color: 0xffffff, transparent: true, depthWrite: false, opacity: 0 }), sp = new THREE.Sprite(mat); sp.visible = false; sp.frustumCulled = false; sp.renderOrder = 20; this.group.add(sp); puffs.push(Object.assign(o, { sp, mat })); };
     const hdir = th => this.e.clone().multiplyScalar(Math.cos(th)).addScaledVector(this.n, Math.sin(th));   // direction horizontale au sol
-    for (let i = 0; i < 100; i++) { const th = rnd() * 2 * Math.PI; mk({ kind: 'pad', b: Math.pow(rnd(), 1.6) * 14, org: base.clone().addScaledVector(hdir(th), rnd() * 35 * MU_M), dir: hdir(th), spd: 6 + rnd() * 28, up: 2 + rnd() * 9, s0: 30 + rnd() * 35, life: 38 + rnd() * 12, a0: 0.45 + rnd() * 0.2 }); }
-    const sc = [...S].filter(s => s.alt < 3000).map(s => s.t); const tTrail = sc.length ? sc[sc.length - 1] : 0, tmp = new THREE.Vector3();
-    for (let t = 0.5; t < tTrail; t += 0.5) { const st = this.stateAt(t), th = rnd() * 2 * Math.PI; this.toEF(st.x, st.y, t, tmp); mk({ kind: 'trail', b: t, org: tmp.clone(), dir: hdir(th), spd: 1 + rnd() * 4, up: 0.5 + rnd() * 1.5, s0: 14 + rnd() * 8, life: 24 + rnd() * 10, a0: 0.4 + rnd() * 0.15 }); }
+    for (let i = 0; i < 130; i++) { const th = rnd() * 2 * Math.PI; mk({ kind: 'pad', b: Math.pow(rnd(), 1.4) * 10, org: base.clone().addScaledVector(hdir(th), rnd() * 30 * MU_M), dir: hdir(th), spd: 8 + rnd() * 30, up: 2 + rnd() * 9, s0: 45 + rnd() * 45, life: 32 + rnd() * 10, a0: 0.55 + rnd() * 0.25 }); }
     this.smoke = { puffs, tex, tEnd: Math.max(...puffs.map(p => p.b + p.life)) + 1, off: false, tmp: new THREE.Vector3() };
   }
   updateSmoke(T) {
     const K = this.smoke; if (T > K.tEnd) { if (!K.off) { K.off = true; for (const p of K.puffs) p.sp.visible = false; } return; } K.off = false;
     for (const p of K.puffs) {
       const age = T - p.b; if (age < 0 || age > p.life) { p.sp.visible = false; continue; }
-      const pad = p.kind === 'pad', tau = pad ? 6 : 8, d = p.spd * tau * (1 - Math.exp(-age / tau)), h = (pad ? 6 : 2) + p.up * (pad ? 14 : 10) * (1 - Math.exp(-age / (pad ? 14 : 10))), size = p.s0 + (pad ? 5.5 : 3) * age;   // roule vers l'extérieur (freinée), monte, grossit
+      const tau = 6, d = p.spd * tau * (1 - Math.exp(-age / tau)), h = 6 + p.up * 14 * (1 - Math.exp(-age / 14)), size = p.s0 + 6 * age;   // roule vers l'extérieur (freinée), monte, grossit
       p.sp.position.copy(p.org).addScaledVector(p.dir, d * MU_M).addScaledVector(this.s, h * MU_M); p.sp.scale.setScalar(size * MU_M);
       const fin = Math.min(1, age / 0.6), fout = Math.min(1, (p.life - age) / (p.life * 0.55)), warm = Math.max(0, 1 - age / 5);   // apparition rapide, fondu progressif ; orangée juste après l'allumage
       p.mat.opacity = p.a0 * fin * Math.max(0, fout); p.mat.color.setRGB(0.86 + 0.14 * warm, 0.84 + 0.02 * warm, 0.82 - 0.22 * warm); p.sp.visible = true;

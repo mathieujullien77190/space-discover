@@ -47,8 +47,8 @@ console.log(vm.runInContext(`(() => {
   let bad = 0; for (let T = 0; T <= L.Tmax; T += 97) { L.T = T; L.playing = false; L.update(0.016, cam); if (![L.pos.x, L.pos.y, L.pos.z].every(Number.isFinite)) bad++; }
   out.push('lecture : ' + (bad ? bad + ' positions non finies' : 'positions finies, tout le vol') + ' ; boosters ' + g('eap').length + ', coiffe ' + g('fairing').length + ', étage principal ' + g('epcsep').length);
   // fumée au décollage : nuage au pas de tir puis traînée basse, qui disparaît ensuite
-  { const K = L.smoke, vis = T => { L.T = T; L.playing = false; L.update(0.016, cam); return K ? K.puffs.filter(p => p.sp.visible).length : -1; }, v5 = vis(5), v20 = vis(20), v100 = vis(100), ok = K && K.puffs.every(p => [p.sp.position.x, p.sp.position.y, p.sp.position.z, p.sp.scale.x].every(Number.isFinite) || !p.sp.visible);
-    out.push('fumée : ' + (K ? K.puffs.length + ' volutes (' + K.puffs.filter(p => p.kind === 'pad').length + ' au pas de tir, ' + K.puffs.filter(p => p.kind === 'trail').length + ' de traînée)' : 'absente') + ' ; visibles à T+5 : ' + v5 + ', T+20 : ' + v20 + ', T+100 : ' + v100 + ' ; positions finies : ' + !!ok); }
+  { const K = L.smoke, vis = T => { L.T = T; L.playing = false; L.update(0.016, cam); return K ? K.puffs.filter(p => p.sp.visible).length : -1; }, v5 = vis(5), v20 = vis(20), v100 = vis(100), rO = K && K.puffs.every(p => p.sp.renderOrder === 20), ok = K && K.puffs.every(p => [p.sp.position.x, p.sp.position.y, p.sp.position.z, p.sp.scale.x].every(Number.isFinite) || !p.sp.visible);
+    out.push('fumée : ' + (K ? K.puffs.length + ' volutes au pas de tir' : 'absente') + ' ; visibles à T+5 : ' + v5 + ', T+20 : ' + v20 + ', T+100 : ' + v100 + ' ; dessinée après la photo du sol (renderOrder 20) : ' + !!rO + ' ; positions finies : ' + !!ok); }
   // composants : suivi d'un booster, d'une coiffe, de l'étage ; poids de chacun
   const at = T => { L.T = T; L.playing = false; L.update(0.016, cam); };
   at(100); const m100 = L.tagMap.rocket.mass; at(200); const eap = L.tagMap.eap1, fa = L.tagMap.fairA, rk = L.tagMap.rocket;
