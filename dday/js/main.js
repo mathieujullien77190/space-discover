@@ -85,15 +85,87 @@
     fragmentShader: 'uniform vec3 uSun; uniform vec3 uHorizon; uniform vec3 uZenith; varying vec3 vDir; void main() { float t = clamp(vDir.y, 0.0, 1.0); vec3 c = mix(uHorizon, uZenith, pow(t, 0.6)); float s = max(dot(normalize(vDir), uSun), 0.0); c += vec3(1.0, 0.9, 0.65) * (pow(s, 600.0) * 4.0 + pow(s, 8.0) * 0.18); gl_FragColor = vec4(c, 1.0); }' })); dome.renderOrder = -1; scene.add(dome);
   // ---------- barge de débarquement (type Higgins, 11 m × 3,3 m) : proue vers +x local ----------
   const Mat = (c, o) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: 0.75, metalness: 0.15 }, o || {}));
-  const barge = new THREE.Group(), BL = 11, BW = 3.3, BH = 1.7;
-  { const sh = new THREE.Shape(); sh.moveTo(-BL / 2, -BW / 2); sh.lineTo(BL / 2 - 2.6, -BW / 2); sh.lineTo(BL / 2, -0.55); sh.lineTo(BL / 2, 0.55); sh.lineTo(BL / 2 - 2.6, BW / 2); sh.lineTo(-BL / 2, BW / 2); sh.closePath();
-    const hull = new THREE.Mesh(new THREE.ExtrudeGeometry(sh, { depth: BH, bevelEnabled: true, bevelSize: 0.12, bevelThickness: 0.12, bevelSegments: 2 }), Mat(0x5b6b56)); hull.rotation.x = -Math.PI / 2; hull.position.y = -0.55; barge.add(hull);   // coque (le plan est dans XY, extrudé en hauteur)
-    const inner = new THREE.Mesh(new THREE.BoxGeometry(BL - 2.2, 0.05, BW - 0.7), Mat(0x2f372d)); inner.position.set(-0.5, BH - 0.62, 0); barge.add(inner);   // fond de la cale
-    const rim = new THREE.Mesh(new THREE.BoxGeometry(BL - 1.8, 0.18, 0.18), Mat(0x3d4a3a)); for (const sgn of [-1, 1]) { const r = rim.clone(); r.position.set(-0.3, BH - 0.45, sgn * (BW / 2 - 0.1)); barge.add(r); }
-    const cock = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.1, 1.6), Mat(0x4a5a46)); cock.position.set(-BL / 2 + 1.2, BH - 0.1, 0); barge.add(cock);
-    const shield = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.7, 1.5), Mat(0x1d2a33, { roughness: 0.3 })); shield.position.set(-BL / 2 + 1.95, BH + 0.9, 0); barge.add(shield);
-    const gun = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.9, 6), Mat(0x222222)); gun.rotation.z = Math.PI / 2; gun.position.set(-BL / 2 + 1.0, BH + 1.15, 0.7); barge.add(gun); }
-  const ramp = new THREE.Group(); { const rm = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.12, 2.2), Mat(0x3d4a3a)); rm.position.set(1.3, 0, 0); ramp.add(rm); } ramp.position.set(BL / 2 - 0.05, BH - 0.5, 0); ramp.rotation.z = Math.PI / 2 - 0.04; barge.add(ramp);   // rampe relevée = verticale
+  const barge = new THREE.Group(), BL = 11, BW = 3.3, BH = 1.7, FLOOR = BH - 0.62, WALL = 2.35, RAMP_UP = Math.PI / 2 - 0.04, RAMP_DN = -0.22;
+  const ramp = new THREE.Group(), prop = new THREE.Group();
+  {
+    const rnd = Math.random;
+    // textures peintes (neutres, multipliées par la couleur du matériau) : tôle rivetée et rouillée, pont en planches, numéro de coque
+    const mkTex = (w, h, draw, rep) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); if (!g) return null; draw(g, w, h); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; if (rep) t.repeat.set(rep, rep); return t; };
+    const steelT = mkTex(256, 256, (g, w, h) => {
+      g.fillStyle = '#d4d4d4'; g.fillRect(0, 0, w, h);
+      for (let i = 0; i < 3000; i++) { g.fillStyle = (rnd() < 0.5 ? 'rgba(0,0,0,' : 'rgba(255,255,255,') + rnd() * 0.07 + ')'; g.fillRect(rnd() * w, rnd() * h, 1 + rnd() * 2, 1 + rnd() * 2); }
+      for (let i = 0; i < 16; i++) { g.fillStyle = 'rgba(95,55,28,' + (0.05 + rnd() * 0.1) + ')'; g.fillRect(rnd() * w, rnd() * h * 0.6, 1 + rnd() * 3, 30 + rnd() * 110); }
+      g.strokeStyle = 'rgba(0,0,0,0.5)'; g.lineWidth = 3; g.strokeRect(1, 1, w - 2, h - 2);
+      for (let k = 0; k < 10; k++) for (const [rx, ry] of [[10 + k * 25.5, 9], [10 + k * 25.5, h - 9], [9, 10 + k * 25.5], [w - 9, 10 + k * 25.5]]) { g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.arc(rx, ry, 2.3, 0, 7); g.fill(); g.fillStyle = 'rgba(255,255,255,0.35)'; g.beginPath(); g.arc(rx - 0.7, ry - 0.7, 1.1, 0, 7); g.fill(); }
+    }, 0.8);
+    const woodT = mkTex(256, 256, (g, w, h) => {
+      g.fillStyle = '#dcdcdc'; g.fillRect(0, 0, w, h);
+      for (let p = 0; p < 8; p++) {
+        const y = p * 32; g.fillStyle = 'rgba(0,0,0,' + rnd() * 0.12 + ')'; g.fillRect(0, y, w, 32);
+        for (let i = 0; i < 90; i++) { g.fillStyle = 'rgba(0,0,0,' + rnd() * 0.14 + ')'; g.fillRect(rnd() * w, y + 2 + rnd() * 28, 12 + rnd() * 60, 1); }
+        g.fillStyle = 'rgba(0,0,0,0.6)'; g.fillRect(0, y, w, 2); g.fillRect((p * 97) % w, y, 2, 32);
+        g.fillStyle = 'rgba(0,0,0,0.5)'; for (const nx of [6, w - 6]) { g.beginPath(); g.arc(nx, y + 16, 1.6, 0, 7); g.fill(); }
+      }
+    }, 0.5);
+    const numT = mkTex(256, 96, (g, w, h) => { g.clearRect(0, 0, w, h); g.font = 'bold 66px Arial, Helvetica, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = 'rgba(240,240,225,0.88)'; g.fillText('LCVP 18', w / 2, h / 2 + 3); for (let i = 0; i < 400; i++) g.clearRect(rnd() * w, rnd() * h, 2 + rnd() * 3, 1 + rnd() * 2); });
+    if (numT) numT.wrapS = numT.wrapT = THREE.ClampToEdgeWrapping;
+    const steelM = (c, o) => Mat(c, Object.assign({ map: steelT, roughness: 0.65 }, o || {}));
+    const redM = steelM(0x7a3a2e), hullM = steelM(0x667662), wallM = steelM(0x5b6b56), capM = steelM(0x3d4a3a), armM = steelM(0x4f5c4a), darkM = Mat(0x1d2a33, { roughness: 0.3 }), blackM = Mat(0x1a1a1a, { roughness: 0.5, metalness: 0.5 });
+    const deckM = Mat(0x8a7456, { map: woodT, roughness: 0.85, metalness: 0 });
+    const box = (w, h, d, x, y, z, m, parent) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); (parent || barge).add(o); return o; };
+    const cyl = (r, l, x, y, z, m, ax, parent, seg) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r, r, l, seg || 10), m); o.position.set(x, y, z); if (ax === 'x') o.rotation.z = Math.PI / 2; else if (ax === 'z') o.rotation.x = Math.PI / 2; (parent || barge).add(o); return o; };
+    // plan de la coque : bord droit sur 2/3 puis resserré vers la proue (ouverte : 2,6 m de large pour la rampe)
+    const HALF = x => { const s = Math.min(1, Math.max(0, (x - 1.2) / 4.3)); return 1.3 + 0.35 * (1 - s * s * (3 - 2 * s)); };
+    const edge = [[-BL / 2, 1.45]]; for (let i = 0; i <= 26; i++) { const x = -BL / 2 + 0.2 + (BL - 0.2) * i / 26; edge.push([x, HALF(x)]); }
+    const outline = d => { const s = new THREE.Shape(); edge.forEach(([x, z], i) => i ? s.lineTo(x, z - d) : s.moveTo(x, z - d)); for (let i = edge.length - 1; i >= 0; i--) s.lineTo(edge[i][0], -(edge[i][1] - d)); s.closePath(); return s; };
+    const strip = (sign, dOut, dIn) => { const s = new THREE.Shape(); edge.forEach(([x, z], i) => i ? s.lineTo(x, -sign * (z + dOut)) : s.moveTo(x, -sign * (z + dOut))); for (let i = edge.length - 1; i >= 0; i--) s.lineTo(edge[i][0], -sign * (edge[i][1] - dIn)); s.closePath(); return s; };   // le plan est dans XY, extrudé en hauteur : y du plan = −z du monde
+    const extr = (shape, y0, y1, m, b) => { b = b || 0; const o = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: y1 - y0 - 2 * b, bevelEnabled: b > 0, bevelSize: b, bevelThickness: b, bevelSegments: 2, curveSegments: 1 }), m); o.rotation.x = -Math.PI / 2; o.position.y = y0 + b; barge.add(o); return o; };
+    // coque : œuvres vives rouges (anti-salissures), flancs, pont en planches, bordés
+    extr(outline(0), -0.55, 0.18, redM, 0.03);
+    extr(outline(0), 0.18, FLOOR - 0.04, hullM, 0.03);
+    extr(outline(0.16), FLOOR - 0.04, FLOOR, deckM);
+    for (const sg of [1, -1]) { extr(strip(sg, 0, 0.16), FLOOR - 0.04, WALL, wallM, 0.025); extr(strip(sg, 0.03, 0.19), WALL, WALL + 0.06, capM); }
+    box(0.3, WALL - FLOOR, 2.9, -BL / 2 + 0.15, (FLOOR + WALL) / 2, 0, wallM);   // cloison arrière
+    // membrures et lisses à l'intérieur de la cale
+    for (const sg of [1, -1]) {
+      box(6.1, 0.1, 0.07, -1.6, FLOOR + 0.62, sg * (1.65 - 0.2), capM);
+      for (let x = -4.4; x <= 1.3; x += 1.2) box(0.1, WALL - FLOOR - 0.06, 0.1, x, (FLOOR + WALL) / 2, sg * (HALF(x) - 0.2), capM);
+    }
+    // bollards sur les bordés
+    for (const x of [3.4, -1.0, -3.0]) for (const sg of [1, -1]) { const z = sg * (HALF(x) - 0.08); box(0.34, 0.05, 0.12, x, WALL + 0.085, z, blackM); cyl(0.04, 0.13, x - 0.1, WALL + 0.15, z, blackM); cyl(0.04, 0.13, x + 0.1, WALL + 0.15, z, blackM); }
+    // numéro de coque sur les flancs
+    if (numT) for (const sg of [1, -1]) { const d = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.64), new THREE.MeshBasicMaterial({ map: numT, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })); d.position.set(0.1, 1.7, sg * (1.65 + 0.04)); if (sg < 0) d.rotation.y = Math.PI; barge.add(d); }
+    // poste du timonier : socle blindé à l'arrière, baquet ouvert, pare-brise incliné, siège, barre, antenne
+    box(1.3, WALL - FLOOR, 1.5, -4.55, (FLOOR + WALL) / 2, 0, armM);
+    box(0.06, 0.95, 1.5, -5.18, WALL + 0.47, 0, armM);
+    for (const sg of [1, -1]) box(1.3, 0.95, 0.06, -4.55, WALL + 0.47, sg * 0.72, armM);
+    const fp = box(0.06, 0.95, 1.5, -3.92, WALL + 0.47, 0, armM); fp.rotation.z = 0.12;
+    const sl = box(0.02, 0.16, 1.2, -3.9, WALL + 0.68, 0, darkM); sl.rotation.z = 0.12;
+    box(0.4, 0.3, 0.5, -4.7, WALL + 0.15, 0, Mat(0x2f372d));
+    cyl(0.025, 0.4, -4.2, WALL + 0.25, 0, blackM); { const w = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.018, 6, 16), blackM); w.position.set(-4.18, WALL + 0.5, 0); w.rotation.y = Math.PI / 2 - 0.5; barge.add(w); }
+    cyl(0.012, 2.2, -5.12, WALL + 1.1, 0.6, blackM, null, null, 5);
+    // deux mitrailleuses sur pivot (côtés), bouclier, caisse de munitions
+    for (const sg of [1, -1]) {
+      const gun = new THREE.Group(); gun.position.set(-2.9, WALL + 0.06, sg * 1.57);
+      cyl(0.045, 0.5, 0, 0.25, 0, blackM, null, gun, 8);
+      box(0.5, 0.1, 0.09, 0.12, 0.52, 0, blackM, gun);
+      cyl(0.035, 0.4, 0.5, 0.52, 0, blackM, 'x', gun, 8); cyl(0.018, 0.4, 0.88, 0.52, 0, blackM, 'x', gun, 6);
+      box(0.2, 0.14, 0.1, 0.0, 0.38, -sg * 0.13, capM, gun); box(0.12, 0.06, 0.05, -0.18, 0.45, 0, blackM, gun);
+      box(0.02, 0.34, 0.5, 0.32, 0.6, 0, armM, gun);
+      barge.add(gun);
+    }
+    // rampe articulée de proue : tôle, rails latéraux, nervures antidérapantes, charnière
+    box(2.6, 0.1, 2.2, 1.3, 0, 0, steelM(0x4a5a46), ramp);
+    for (const sg of [1, -1]) box(2.6, 0.16, 0.08, 1.3, 0.1, sg * 1.06, capM, ramp);
+    for (let x = 0.3; x < 2.6; x += 0.3) box(0.06, 0.04, 1.96, x, 0.07, 0, blackM, ramp);
+    cyl(0.07, 2.3, 0, 0, 0, blackM, 'z', ramp);
+    ramp.position.set(BL / 2 - 0.05, FLOOR, 0); ramp.rotation.z = RAMP_UP; barge.add(ramp);   // rampe relevée = verticale
+    // hélice (3 pales), safrans et aileron de quille à l'arrière (visibles à travers l'eau peu profonde)
+    box(0.9, 0.12, 0.3, -4.6, -0.6, 0, redM); for (const sg of [1, -1]) box(0.3, 0.55, 0.05, -5.75, -0.28, sg * 0.55, redM);
+    cyl(0.05, 0.3, 0, 0, 0, blackM, 'x', prop, 8);
+    for (let i = 0; i < 3; i++) { const arm = new THREE.Group(); box(0.05, 0.4, 0.14, 0.02, 0.2, 0, blackM, arm); arm.rotation.x = i * Math.PI * 2 / 3; prop.add(arm); }
+    prop.position.set(-5.75, -0.45, 0); barge.add(prop);
+  }
   const wake = (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 256; const g = c.getContext('2d'); let tex = null; if (g) { const gr = g.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, 'rgba(255,255,255,0.75)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.beginPath(); g.moveTo(32, 0); g.lineTo(0, 256); g.lineTo(64, 256); g.closePath(); g.fill(); tex = new THREE.CanvasTexture(c); }
     const m = new THREE.Mesh(new THREE.PlaneGeometry(10, 45), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0 })); m.rotation.x = -Math.PI / 2; m.rotation.z = -Math.PI / 2; m.renderOrder = 3; scene.add(m); return m; })();   // sillage
   scene.add(barge);
@@ -152,6 +224,8 @@
     const pitch = grounded ? 0 : Math.atan2(hB - hS, 10.4), roll = grounded ? 0 : Math.atan2(hSt - hP, 3.2);
     barge.position.set(bs.x, (grounded ? 0 : hC) + 0.05, bs.z); barge.rotation.order = 'YZX'; barge.rotation.set(0, Math.PI, 0);
     barge.rotation.z = pitch; barge.rotation.x = roll; ramp.rotation.z = bs.rampA;
+    ramp.scale.x = 0.5 + 0.5 * Math.min(1, Math.max(0, (RAMP_UP - bs.rampA) / (RAMP_UP - RAMP_DN)));   // relevée : affleure le bordé (1,3 m) ; abaissée : 2,6 m
+    prop.rotation.x += Math.abs(bs.speed) * dt * 2;
     // sillage : derrière la barge (côté +x), visible quand elle avance
     wake.position.set(bs.x + 26, 0.12, bs.z); wake.material.opacity = Math.min(1, Math.abs(bs.speed) / 8) * 0.9;
     for (const s of soldiers) { const y = s.state === 'hold' ? (grounded ? 0 : hC) + BH - 0.62 : Math.max(terrainH(s.x, s.z), -0.2); s.g.position.set(s.x, y, s.z); s.g.rotation.y = s.state === 'stand' ? Math.PI / 2 : Math.PI / 2 + Math.sin(T * 6 + s.row) * 0.03; if (s.state === 'walk') s.g.position.y += Math.abs(Math.sin(T * 7 + s.row * 2 + s.col)) * 0.05; }
