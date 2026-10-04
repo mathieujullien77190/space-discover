@@ -4,16 +4,21 @@ Projet 3D **à part** (créé le 2026-10-04) : JavaScript pur + three.js r160 (c
 
 ## Lancer
 
-`cd dday && npm start` → http://localhost:5180 (serveur statique `http-server`, sans cache). Depuis la racine du dépôt : `npm run dday`.
+`cd dday && npm start` → http://localhost:5180 (serveur statique `http-server`, sans cache). Depuis la racine du dépôt : `npm run dday`. Test sans navigateur : `node dday/test-boot.js` (vrai three.js, faux DOM et faux rendu, joue tout le scénario de la barge à ×10 sur 12 200 images).
 
-## Ce que fait la page pour l'instant
+## Ce que fait la page (à regarder dans un navigateur : rendu jamais vu)
 
-Un **bac à sable** pour tester des idées : une plage (x < 0), une mer qui ondule (x > 0), des falaises (blocs irréguliers) et 24 barges de débarquement qui avancent vers la plage par vagues, brouillard et soleil. Caméra orbitale (glisser = tourner, molette ou pincement = zoom, 15 à 3 000 m ; fonctionne au doigt). Bannière rouge (`#err`) si une erreur JavaScript survient.
+**Zone de 1 km × 1 km** : x de −300 à 700 (terre à x < 0, plage vers x = 0, mer à x > 0), z de −500 à 500, y = haut ; mer et terre lointaines (plates, dans le brouillard) au-delà.
+- **Plage et dunes** (`terrainH`) : terrain de 250 × 250 mailles (4 m), pente de 3,5 % sous l'eau (`SLOPE`) avec quelques bancs de sable, plage qui monte doucement puis dunes à partir de x = −150 ; couleurs de sommets (sable humide près de l'eau, sable sec, herbe sur les dunes) + grain de sable (`bumpMap` canvas).
+- **Eau** (`ShaderMaterial`) : 4 vagues sinusoïdales (hauteur par sommet pour les 2 grandes, normale analytique pour les 4 + ondulations bruitées dans le fragment), **amorties près du rivage**, couleur selon la profondeur (turquoise peu profond → bleu profond), **réflexion du ciel (Fresnel)**, reflet du soleil, **transparence selon la profondeur** (on voit le fond près de la plage), **écume** au rivage (qui avance et recule) et sur les crêtes, brouillard ; la profondeur vient de la pente connue du fond.
+- **Ciel** : dôme dégradé avec soleil bas et chaud (`SUN`), même direction que la lumière.
+- **Barge de débarquement** de type Higgins (11 m × 3,3 m, coque extrudée à proue pointue, cale, cabine du timonier avec pare-brise et mitrailleuse, **rampe articulée**) : elle arrive à 10 m/s (accélère), **flotte sur la houle** (hauteur de l'eau en 5 points → tangage et roulis), laisse un sillage, **s'échoue** quand la proue touche le fond (tirant d'eau 0,9 m → centre à x ≈ 31 m), **abaisse la rampe**, **16 soldats** (corps, tête, casque) descendent l'un après l'autre, traversent le bas-fond (0,9 m/s dans l'eau, 1,6 m/s à terre) et s'arrêtent sur la plage ; la rampe se relève et la barge repart (8 m/s) ; le cycle recommence (soldats remis dans la cale).
+- **Boutons** : « Vue d'ensemble » / « Suivre la barge », vitesse du scénario ×1 ×3 ×10 ; caméra orbitale (glisser = tourner, molette ou pincement = zoom, 4 à 2 500 m ; au doigt aussi). Bannière rouge (`#err`) si une erreur JavaScript survient.
 
 ## Structure
 
-`test-boot.js` (`node dday/test-boot.js` : démarre la page dans Node avec un faux rendu), `index.html` (page, bannière d'erreur), `css/style.css`, `js/main.js` (scène, caméra, boucle), `js/vendor/three.min.js`. Repère : x = vers la mer, y = haut, z = le long de la côte.
+`index.html` (page, boutons, bannière d'erreur), `css/style.css`, `js/main.js` (tout : bruit, terrain, eau, ciel, barge, soldats, scénario `stepBarge`, caméra, boucle), `js/vendor/three.min.js`, `test-boot.js`.
 
-## À faire / idées
+## Limites / idées
 
-À définir avec l'utilisateur (« on va créer un projet complètement différent mais toujours avec de la 3D, j'aimerais tester des trucs »). Mettre à jour ce fichier à chaque modification.
+Les vagues ne se brisent pas (écume seulement), pas de marée, pas de collision entre la barge et les vagues autres que la hauteur, soldats sans animation de jambes, une seule barge. Idées : flotte de barges, bruitage, fumée et explosions, obstacles (hérissons tchèques), falaises, caméra à la première personne. À définir avec l'utilisateur ; mettre à jour ce fichier à chaque modification.

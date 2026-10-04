@@ -13,6 +13,7 @@
   <b>D-Day</b> · bac à sable 3D<br>
   <span id="info">glisser = tourner · molette / pincement = zoom</span>
 </div>
+<div id="bar"><button id="bOver" class="on">🏖 Vue d’ensemble</button><button id="bFollow">🚤 Suivre la barge</button><span class="sp"><button id="bS1" class="on">×1</button><button id="bS3">×3</button><button id="bS10">×10</button></span></div>
 <div id="err" hidden></div>
 <script>addEventListener("error", function (e) { var d = document.getElementById("err"); if (!d) return; d.hidden = false; d.textContent += "Erreur : " + (e.message || "chargement") + (e.filename ? " (" + e.filename.split("/").pop() + ":" + e.lineno + ")" : "") + "\n"; });</script>
 <script src="js/vendor/three.min.js"></script>
