@@ -72,31 +72,18 @@
     if ((m === 'solar') !== (cam.mode === 'solar')) {   // changement de repère (Terre fixe ↔ inertiel) : on tourne la pose de la caméra de l'angle sidéral pour que l'image ne saute pas (sinon le Soleil ferait un tour autour de la Terre)
       const ang = m === 'solar' ? curGm : -curGm; cam.tgt.applyAxisAngle(Y_AXIS, ang); camera.position.applyAxisAngle(Y_AXIS, ang); cam.lon += ang / DEG; cam.goal.lon += ang / DEG; frameF = m === 'solar' ? 1 : 0;
     }
-    issGo = 0; cam.issLock = false; cam.anim = null;
-    cam.mode = m; cam.fly = 2.2; cam.tfly = 2.2;
+    cam.mode = m; cam.fly = cam.tfly = 0;   // changement de vue DIRECT : plus aucune transition (demande de l'utilisateur)
     syncView(m);
     if (m === 'launch') { cam.userDir = false; }   // caméra auto de la fusée (réglée dans la boucle)
-    if (m === 'iss' && iss) {   // on regarde l'ISS d'en haut, un peu de côté (la Terre en fond)
-      const side = new THREE.Vector3().crossVectors(iss.up, iss.vel).normalize(), v = iss.up.clone().addScaledVector(side, 0.55).normalize();
-      cam.goal.lat = Math.asin(v.y) / DEG; cam.goal.lon = Math.atan2(-v.z, v.x) / DEG; cam.goal.dist = 0.25 / R_KM;   // 250 m : la station (109 m) remplit bien l'écran
-    } else if (m === 'earth') {
-      if (iss) { cam.goal.lat = iss.lat * 0.7; cam.goal.lon = iss.lon; }
-      cam.goal.dist = 3.4;
-    }
+    if (m === 'iss' && iss) applyLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist, true);   // l'ISS : vue d'un peu derrière, tout de suite
+    else if (m === 'earth') { if (iss) { cam.goal.lat = iss.lat * 0.7; cam.goal.lon = iss.lon; } cam.goal.dist = 3.4; snapCam(); }
   }
-  /* vues Soleil / Lune : repère inertiel (la Terre tourne), cible = Soleil (orbite de la Terre en entier) ou Lune (avec sa trajectoire) */
-  /* changement de vue animé (toutes les vues) : de la pose actuelle (cible, distance, direction) vers la pose d'arrivée (cam.goal + cible du mode) ; la distance varie à vitesse régulière en échelle logarithmique,
-     la cible glisse, la direction tourne sur la fin, le tout lissé au départ et à l'arrivée ; durée selon l'écart d'échelle (3 à 12 s) ; un geste de l'utilisateur l'interrompt */
-  function animateTo() {
-    const l0 = Math.log(Math.max(1e-7, cam.dist)), l1 = Math.log(Math.max(1e-7, cam.goal.dist));
-    cam.anim = { t: 0, T: Math.min(12, 3 + 0.9 * Math.abs(l1 - l0)), l0, l1, lon0: cam.lon, lat0: cam.lat, lonG: cam.goal.lon, latG: cam.goal.lat, tgt0: cam.tgt.clone() };
-    cam.fly = cam.tfly = 0; cam.slow = false; cam.issLock = false;
-  }
-  const goEarth = () => { setMode('earth'); animateTo(); };
+  function snapCam() { cam.lon = cam.goal.lon; cam.lat = cam.goal.lat; cam.dist = cam.goal.dist; cam.fly = cam.tfly = 0; }   // la caméra prend la pose voulue d'un coup
+  /* vues Soleil / Lune : repère inertiel (la Terre tourne), cible = Soleil (orbite de la Terre en entier) ou Lune (avec sa trajectoire) ; changement de vue direct */
+  const goEarth = () => setMode('earth');
   function goSolar(target) {
-    solarTarget = target; setMode('solar'); cam.fly = cam.tfly = 3; cam.goal.dist = target === 'sun' ? 90000 : 4;
-    const d = ECLIPTIC_POLE.clone().add(tmp.set(0.35, 0, 0.1)).normalize(); cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG;
-    animateTo();
+    solarTarget = target; setMode('solar'); cam.goal.dist = target === 'sun' ? 90000 : 4;
+    const d = ECLIPTIC_POLE.clone().add(tmp.set(0.35, 0, 0.1)).normalize(); cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; snapCam();
   }
   cam.onEarth = () => goEarth();
   /* un seul sélecteur pour les vues (Terre, ISS, Lune, Soleil) ; l'interrupteur jour/nuit se comporte comme un « mode sombre » (réglage mémorisé) */
@@ -106,8 +93,7 @@
   viewSel.onchange = () => { const v = viewSel.value; if (v === 'earth') goEarth(); else goSolar(v); viewSel.blur(); };
 
   // caractéristiques de l'ISS affichées en 3D (cases à cocher ; définies dans ISS_FEATURES, js/iss.js)
-  const VIEW_ISS = { yaw: -38, pitch: 55.5, dist: 0.5 };   // vue quand on zoome sur l'ISS (yaw °, pitch °, distance km) — réglée par l'utilisateur
-  const VIEW_BEHIND = { yaw: 0, pitch: 25, dist: 1500 };   // vue « au-dessus, un peu derrière » (yaw °, pitch °, distance km à l'ISS)
+  const VIEW_ISS = { yaw: 0, pitch: 20, dist: 0.3 };   // accès DIRECT à l'ISS, sans transition : derrière elle (yaw 0), un peu au-dessus (pitch 20°), à 300 m (yaw °, pitch °, distance km)
   const viewTxt = document.getElementById('viewTxt'), viewJson = document.getElementById('viewJson');
   const scaleBar = document.getElementById('scaleBar'), scaleTxt = document.getElementById('scaleTxt');
   const featCb = {}, l3d = [], featOn = {}, featInst = {}, featPanel = document.createElement('div');
@@ -133,10 +119,10 @@
     const F = frameIss(), y = yaw * DEG, p = Math.max(-89.5, Math.min(89.5, pitch)) * DEG;
     const d = F.f.clone().multiplyScalar(-Math.cos(y) * Math.cos(p)).addScaledVector(F.s, Math.sin(y) * Math.cos(p)).addScaledVector(F.u, Math.sin(p));
     cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; cam.goal.dist = Math.max(0.1, distKm) / R_KM;
-    if (now) { cam.lon = cam.goal.lon; cam.lat = cam.goal.lat; cam.fly = 0; }
+    if (now) snapCam();
   }
   function setViewLocal(yaw, pitch, distKm) {
-    if (!iss) return; setMode('iss'); applyLocal(yaw, pitch, distKm, false);
+    if (!iss) return; setMode('iss'); applyLocal(yaw, pitch, distKm, true);
   }
   // réglage fin de la vue (boutons ◀ ▶ ▲ ▼ ＋ －, pas réglable, répétition en maintenant)
   const STEPS = [0.5, 1, 5, 15]; let stepI = 1;
@@ -165,11 +151,8 @@
     ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, () => { clearTimeout(tm); stop(); }));
   });
   const bStep = document.getElementById('bStep'); bStep.onclick = () => { stepI = (stepI + 1) % STEPS.length; bStep.textContent = STEPS[stepI] + '°'; };
-  /* bouton ISS : d'abord on tourne autour de la Terre pour se retrouver au-dessus de la station (vue d'ensemble), puis un zoom pas trop rapide jusqu'à elle */
-  const ISS_HOVER_KM = 3000;   // altitude de la caméra AU-DESSUS de l'ISS avant le zoom (2 000 à 4 000 km : on voit la Terre courbe et la station comme un point)
-  let issGo = 0, frameF = 0, curGm = 0;   // frameF : 0 = repère de la Terre fixe, 1 = repère inertiel (vues Soleil / Lune) ; curGm : temps sidéral courant (rad)
-
-  const goIss = () => { if (!iss) return; if (cam.mode === 'iss' && cam.dist * R_KM < 3000) { issGo = 0; setViewLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist); return; } setMode('earth'); cam.goal.lon = iss.lon; cam.goal.lat = iss.lat; cam.goal.dist = iss.pos.length() + ISS_HOVER_KM / R_KM; issGo = 1; cam.slow = true; cam.tfly = cam.fly = 8; };   /* étape 1 : on tourne autour de la Terre pour se placer à ISS_HOVER_KM au-dessus de la station ; étape 2 (dans la boucle) : descente animée */
+  let frameF = 0, curGm = 0;   // frameF : 0 = repère de la Terre fixe, 1 = repère inertiel (vues Soleil / Lune) ; curGm : temps sidéral courant (rad)
+  const goIss = () => { if (iss) setViewLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist); };   // accès DIRECT à l'ISS, vue d'un peu derrière, sans transition
   // ---------- lancement d'un satellite (js/launch-3d.js) ----------
   const KM_UA = 149597870.7, KM_AL = 9.4607304725808e12;
   const fmtBig = km => { const fr = (v, d) => v.toLocaleString('fr-FR', { maximumFractionDigits: d }); return km >= 0.1 * KM_AL ? fr(km / KM_AL, 2) + ' al' : km >= 1e7 ? fr(km / KM_UA, km / KM_UA < 10 ? 2 : 1) + ' UA' : null; };   // null : rester en km
@@ -295,7 +278,7 @@
       syncView('earth');
     }
     timeBar.hidden = !!launch;   // pendant une mission, le temps est celui de la mission
-    // caméra : la cible suit l'ISS ou reste au centre ; transitions douces
+    // caméra : la cible suit l'ISS ou reste au centre
     if (launch) { launch.update(dt, camera); tl.update(launch); }
     const goalTgt = solarMode ? (solarTarget === 'sun' ? sunAbs : solarTarget === 'moon' ? moonAbs : tmp.set(0, 0, 0)) : cam.mode === 'iss' && iss ? iss.pos : cam.mode === 'launch' && launch ? launch.focusPos : tmp.set(0, 0, 0);
     if (cam.mode === 'launch' && launch) {   // caméra auto : sur le côté de la trajectoire, de plus en plus loin ; le zoom manuel multiplie la distance
@@ -303,29 +286,13 @@
       const auto = launch.camDistKm / R_KM; if (cam.zoomFit) cam.launchK = (launch.zoomLenM || launch.rocketLen) * 1.5 / 1000 / launch.camDistKm; cam.launchK = Math.max(0.02 / launch.camDistKm, Math.min(cam.launchK, (launch.maxDistU || 41) / auto));   // de 20 m de la fusée (à toute altitude) jusqu'à la Terre entière
       cam.goal.dist = auto * cam.launchK;
     }
-    if (cam.tfly > 0 && !cam.issLock) { cam.tgt.lerp(goalTgt, 1 - Math.exp(-dt * (cam.slow ? 1.4 : 3.2))); cam.tfly -= dt; } else { cam.tgt.copy(goalTgt); if (cam.tfly > 0) cam.tfly -= dt; }
-    // zoom : toujours amorti (jamais de saut), en altitude pour la Terre (sinon l'amortissement ne bouge plus près du sol)
-    if (issGo === 1) { if (iss) { cam.goal.lon = iss.lon; cam.goal.lat = iss.lat; cam.goal.dist = iss.pos.length() + ISS_HOVER_KM / R_KM; } if (iss && Math.abs(angDiff(cam.lon, iss.lon)) < 1.5 && Math.abs(cam.lat - iss.lat) < 1.5 && Math.abs(cam.dist - cam.goal.dist) < 0.06 && frameF < 0.03) { issGo = 2; const st0 = camera.position.clone(); setViewLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist);
-      /* descente en ligne droite vers l'ISS : la cible colle à la station dès le départ (sinon la caméra traverserait la Terre), on part de la verticale de l'ISS et la direction tourne doucement vers la vue finale */
-      const dv = st0.clone().sub(iss.pos); cam.issLock = true; cam.tgt.copy(iss.pos); goalTgt.copy(iss.pos);   /* (goalTgt : calculée plus haut avec l'ancien mode, l'animation démarre dans cette même image) */ cam.dist = dv.length(); dv.normalize(); cam.lat = Math.asin(dv.y) / DEG; cam.lon = Math.atan2(-dv.z, dv.x) / DEG; cam.tfly = cam.fly = 0; cam.slow = false; cam.anim = { t: 0, T: 16, tgt0: iss.pos.clone(), l0: Math.log(cam.dist), l1: Math.log(cam.goal.dist), lon0: cam.lon, lat0: cam.lat, lonG: cam.goal.lon, latG: cam.goal.lat }; } }
-    if (cam.tfly <= 0) cam.slow = false;
-    if (cam.anim) {   // animation de vue (changements de vue, descente vers l'ISS) : la caméra décrit un arc AUTOUR DE LA CIBLE D'ARRIVÉE : distance à vitesse régulière en échelle logarithmique, direction qui tourne (slerp) sur la fin,
-      // regard qui glisse de l'ancienne cible vers la nouvelle ; tout lissé au départ et à l'arrivée. (Faire glisser la cible linéairement pendant que la distance décroît en log donnait une chute brutale à la fin.)
-      const A = cam.anim, ease = u => u * u * u * (u * (6 * u - 15) + 10);
-      if (!A.init) { A.init = true; const off = camera.position.clone().sub(goalTgt); A.m0 = Math.max(1e-7, off.length()); A.d0 = off.normalize(); A.dG = ll(A.lonG, A.latG, new THREE.Vector3()); A.q = new THREE.Quaternion().setFromUnitVectors(A.d0, A.dG); A.l0 = Math.log(A.m0); }
-      A.t += dt; const u = Math.min(1, A.t / A.T), e = ease(u), e2 = ease(Math.max(0, Math.min(1, (u - 0.15) / 0.85)));
-      const m = Math.exp(A.l0 + (A.l1 - A.l0) * e), dir = A.d0.clone().applyQuaternion(new THREE.Quaternion().slerp(A.q, e2)), P = goalTgt.clone().addScaledVector(dir, m);
-      cam.tgt.copy(A.tgt0).lerp(goalTgt, e2);
-      const v = P.clone().sub(cam.tgt), L = Math.max(1e-9, v.length()); v.divideScalar(L);
-      cam.dist = L; cam.lat = Math.asin(Math.max(-1, Math.min(1, v.y))) / DEG; cam.lon = Math.atan2(-v.z, v.x) / DEG; cam.goal.dist = cam.dist; cam.goal.lon = cam.lon; cam.goal.lat = cam.lat; cam.fly = 0;
-      if (u >= 1) { cam.anim = null; cam.issLock = false; cam.goal.dist = A.l1 === undefined ? cam.dist : Math.exp(A.l1); cam.dist = cam.goal.dist; cam.tgt.copy(goalTgt); cam.lon = cam.goal.lon = A.lonG; cam.lat = cam.goal.lat = A.latG; }
-    }
-    const kz = 1 - Math.exp(-dt * (cam.tfly > 0 ? (cam.slow ? 0.4 : 3.2) : 14)), base = cam.mode === 'earth' && cam.tfly <= 0 ? 1 : 0;
+    cam.tgt.copy(goalTgt);   // la cible est posée directement (plus de glissement entre les vues)
+    // zoom (molette) : amorti pour ne pas sauter, en altitude pour la Terre (sinon l'amortissement ne bouge plus près du sol)
+    const kz = 1 - Math.exp(-dt * 14), base = cam.mode === 'earth' ? 1 : 0;
     const cur = Math.max(1e-7, cam.dist - base), want = Math.max(1e-7, cam.goal.dist - base);
     cam.dist = base + Math.exp(Math.log(cur) + (Math.log(want) - Math.log(cur)) * kz);
     if (Math.abs(Math.log(cam.dist - base) - Math.log(want)) < 1e-3) cam.dist = cam.goal.dist;
-    if (cam.fly > 0) { const k = 1 - Math.exp(-dt * (cam.slow ? 0.7 : 3.2)); cam.lon += angDiff(cam.lon, cam.goal.lon) * k; cam.lat += (cam.goal.lat - cam.lat) * k; cam.fly -= dt; }
-    else { cam.lon = cam.goal.lon; cam.lat = cam.goal.lat; }
+    cam.lon = cam.goal.lon; cam.lat = cam.goal.lat;
     cam.goal.lon = ((cam.goal.lon + 540) % 360) - 180;
     ll(cam.lon, cam.lat, dirv);
     camera.position.copy(cam.tgt).addScaledVector(dirv, cam.dist);
