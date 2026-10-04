@@ -231,13 +231,14 @@ class Launch {
     this.smoke = null;
     const S = this.sim.samples; if (!S.length || S[0].alt > 200 || !S.some(s => s.t < 5 && s.F > 0)) return;
     let tex = null; try { const cv = document.createElement('canvas'); cv.width = cv.height = 64; const g = cv.getContext('2d'), gr = g.createRadialGradient(32, 32, 2, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,0.95)'); gr.addColorStop(0.45, 'rgba(255,255,255,0.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); tex = new THREE.CanvasTexture(cv); } catch (e) { tex = null; }
+    const DENS = 5;   // DENSITÉ de la fumée (demande de l'utilisateur : « 5 fois plus dense ») : 1 = 130 volutes au pas de tir + 4 par seconde de traînée ; à baisser si le rendu rame (téléphone)
     let seed = 12345; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };   // aléa fixe : la même fumée à chaque lecture
     const puffs = [], base = this.s.clone().multiplyScalar(PATCH_R), mk = (o) => { const mat = new THREE.SpriteMaterial({ map: tex, color: 0xffffff, transparent: true, depthWrite: false, opacity: 0 }), sp = new THREE.Sprite(mat); sp.visible = false; sp.frustumCulled = false; sp.renderOrder = 20; this.group.add(sp); puffs.push(Object.assign(o, { sp, mat })); };
     const hdir = th => this.e.clone().multiplyScalar(Math.cos(th)).addScaledVector(this.n, Math.sin(th));   // direction horizontale au sol
-    for (let i = 0; i < 130; i++) { const th = rnd() * 2 * Math.PI; mk({ kind: 'pad', b: Math.pow(rnd(), 1.4) * 10, org: base.clone().addScaledVector(hdir(th), rnd() * 30 * MU_M), dir: hdir(th), spd: 8 + rnd() * 30, up: 2 + rnd() * 9, s0: 45 + rnd() * 45, life: 32 + rnd() * 10, a0: 0.55 + rnd() * 0.25 }); }
-    // traînée : une volute toutes les 0,25 s à la base de la fusée tant qu'elle est sous 1 000 m d'altitude ; elle reste dans l'air (repère de la Terre) et s'estompe en ~30 s
+    for (let i = 0; i < 130 * DENS; i++) { const th = rnd() * 2 * Math.PI; mk({ kind: 'pad', b: Math.pow(rnd(), 1.4) * 10, org: base.clone().addScaledVector(hdir(th), rnd() * 30 * MU_M), dir: hdir(th), spd: 8 + rnd() * 30, up: 2 + rnd() * 9, s0: 45 + rnd() * 45, life: 32 + rnd() * 10, a0: 0.55 + rnd() * 0.25 }); }
+    // traînée : 4 volutes par seconde (× DENS) à la base de la fusée tant qu'elle est sous 1 000 m d'altitude ; elle reste dans l'air (repère de la Terre) et s'estompe en ~30 s
     const low = S.filter(s => s.alt < 1000).map(s => s.t), tTrail = low.length ? low[low.length - 1] : 0, tmp = new THREE.Vector3();
-    for (let t = 0.25; t < tTrail; t += 0.25) { const st = this.stateAt(t), th = rnd() * 2 * Math.PI; this.toEF(st.x, st.y, t, tmp); mk({ kind: 'trail', b: t, org: tmp.clone(), dir: hdir(th), spd: 1 + rnd() * 5, up: 0.5 + rnd() * 2, s0: 22 + rnd() * 14, life: 26 + rnd() * 10, a0: 0.5 + rnd() * 0.2 }); }
+    for (let t = 0.25 / DENS; t < tTrail; t += 0.25 / DENS) { const st = this.stateAt(t), th = rnd() * 2 * Math.PI; this.toEF(st.x, st.y, t, tmp); mk({ kind: 'trail', b: t, org: tmp.clone(), dir: hdir(th), spd: 1 + rnd() * 5, up: 0.5 + rnd() * 2, s0: 22 + rnd() * 14, life: 26 + rnd() * 10, a0: 0.5 + rnd() * 0.2 }); }
     this.smoke = { puffs, tex, tEnd: Math.max(...puffs.map(p => p.b + p.life)) + 1, off: false, tmp: new THREE.Vector3() };
   }
   updateSmoke(T) {
