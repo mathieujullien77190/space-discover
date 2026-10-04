@@ -285,7 +285,7 @@
     const goalTgt = solarMode ? (solarTarget === 'sun' ? sunAbs : solarTarget === 'moon' ? moonAbs : tmp.set(0, 0, 0)) : cam.mode === 'iss' && iss ? iss.pos : cam.mode === 'launch' && launch ? launch.focusPos : tmp.set(0, 0, 0);
     if (cam.mode === 'launch' && launch) {   // caméra auto : sur le côté de la trajectoire, de plus en plus loin ; le zoom manuel multiplie la distance
       if (!cam.userDir) { const d = launch.camDir; cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; }
-      const auto = launch.rocketLen * 1.6 / 1000 / R_KM; cam.launchK = Math.max(0.02 / (auto * R_KM), Math.min(cam.launchK, 41 / auto));   // caméra TOUT PRÈS de la fusée (1,6 fois sa longueur, toute la fusée visible), à toute altitude ; la molette ajuste (de 20 m à la Terre entière)
+      const auto = (launch.follow === 'pad' ? 500 : launch.rocketLen * 1.6) / 1000 / R_KM; cam.launchK = Math.max(0.02 / (auto * R_KM), Math.min(cam.launchK, 41 / auto));   // caméra TOUT PRÈS de la fusée (1,6 fois sa longueur, toute la fusée visible), à toute altitude ; vue « Pas de tir » : à 500 m du lieu de lancement ; la molette ajuste (de 20 m à la Terre entière)
       cam.goal.dist = auto * cam.launchK;
     }
     cam.tgt.copy(goalTgt);   // la cible est posée directement (plus de glissement entre les vues)

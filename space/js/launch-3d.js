@@ -39,7 +39,7 @@ class Launch {
     this.crossTau = 80; this.crossV = LCH.WE * LCH.RE * Math.cos(site.lat * DEG) * new THREE.Vector3(-Math.sin(site.lon * DEG), 0, -Math.cos(site.lon * DEG)).dot(this.n);   // vitesse transversale initiale du pas de tir (m/s), annulée en ~80 s
     if (o.object && objectStart(o.object, { date: o.date }).frame === 'inertial') this.crossV = 0;   // objet déjà en orbite : pas de pas de tir qui tourne avec la Terre, donc pas de décalage transversal
     this.Y = new THREE.Vector3(0, 1, 0);
-    this.wRot = LCH.WE - (sim.nodeRate || 0); this.satMassKg = (sim.plan && sim.plan.jettison && sim.plan.jettison.payload && sim.plan.jettison.payload.dryKg) || this.payloadUsed || 0;   // vitesse de rotation du plan par rapport au repère de la Terre : la Terre tourne (WE) et le plan d'un satellite dérive (précession J2 du nœud)
+    this.wRot = LCH.WE - (sim.nodeRate || 0); this.padPos = this.s.clone().multiplyScalar(PATCH_R).addScaledVector(this.s, 30 * MU_M); this.satMassKg = (sim.plan && sim.plan.jettison && sim.plan.jettison.payload && sim.plan.jettison.payload.dryKg) || this.payloadUsed || 0;   // vitesse de rotation du plan par rapport au repère de la Terre : la Terre tourne (WE) et le plan d'un satellite dérive (précession J2 du nœud)
     const S = sim.samples; this.last = S[S.length - 1]; this.tEnd = sim.tEnd; this.Tmax = (sim.ok ? sim.tEnd : this.last.t) + 900;
     this.ev = {}; for (const e of sim.events) this.ev[e.key] = e;
     this.pos = new THREE.Vector3(); this.center = new THREE.Vector3();   // pos = base du lanceur ; center = milieu (cible de la caméra)
@@ -81,7 +81,7 @@ class Launch {
     const V = () => new THREE.Vector3();
     { const nm = spec.names, bo = spec.model.boosters, tl = [{ id: 'rocket', text: spec.name + '', pos: V(), on: true }, { id: 'sat', text: 'Satellite', pos: V(), on: false }];
       if (bo) for (let k = 0; k < bo.n; k++) tl.push({ id: 'eap' + (k + 1), text: 'Booster' + (bo.n > 1 ? ' n°' + (k + 1) : ''), pos: V(), on: false, piece: true });
-      tl.push({ id: 'fairA', text: 'Coiffe n°1', pos: V(), on: false, piece: true }, { id: 'fairB', text: 'Coiffe n°2', pos: V(), on: false, piece: true }, { id: 'epc', text: nm.stage1, pos: V(), on: false, piece: true }); this.tagList = tl; }
+      tl.push({ id: 'fairA', text: 'Coiffe n°1', pos: V(), on: false, piece: true }, { id: 'fairB', text: 'Coiffe n°2', pos: V(), on: false, piece: true }, { id: 'epc', text: nm.stage1, pos: V(), on: false, piece: true }); if (S[0].alt < 200) tl.splice(1, 0, { id: 'pad', text: 'Pas de tir', pos: V(), on: true }); this.tagList = tl; }
     this.follow = 'rocket';   // élément suivi par la caméra : 'rocket', 'sat' ou l'id d'un débris (clic sur son nom)
     this.focusPos = new THREE.Vector3();
     this.tagMap = {}; for (const t of this.tagList) { t.base = t.text; this.tagMap[t.id] = t; }
@@ -233,9 +233,9 @@ class Launch {
     let tex = null; try { const cv = document.createElement('canvas'); cv.width = cv.height = 64; const g = cv.getContext('2d'), gr = g.createRadialGradient(32, 32, 2, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,0.95)'); gr.addColorStop(0.45, 'rgba(255,255,255,0.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); tex = new THREE.CanvasTexture(cv); } catch (e) { tex = null; }
     const DENS = 5;   // DENSITÉ de la fumée (demande de l'utilisateur : « 5 fois plus dense ») : 1 = 130 volutes au pas de tir + 4 par seconde de traînée ; à baisser si le rendu rame (téléphone)
     let seed = 12345; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };   // aléa fixe : la même fumée à chaque lecture
-    const puffs = [], base = this.s.clone().multiplyScalar(PATCH_R), mk = (o) => { const mat = new THREE.SpriteMaterial({ map: tex, color: 0xffffff, transparent: true, depthWrite: false, opacity: 0 }), sp = new THREE.Sprite(mat); sp.visible = false; sp.frustumCulled = false; sp.renderOrder = 20; this.group.add(sp); puffs.push(Object.assign(o, { sp, mat })); };
+    const puffs = [], base = this.s.clone().multiplyScalar(PATCH_R), mk = (o) => { const mat = new THREE.SpriteMaterial({ map: tex, color: 0xffffff, transparent: true, depthWrite: false, opacity: 0 }), sp = new THREE.Sprite(mat); sp.visible = false; sp.frustumCulled = false; sp.renderOrder = 20; this.group.add(sp); puffs.push(Object.assign(o, { sp, mat, ph: rnd() * 2 * Math.PI })); };
     const hdir = th => this.e.clone().multiplyScalar(Math.cos(th)).addScaledVector(this.n, Math.sin(th));   // direction horizontale au sol
-    for (let i = 0; i < 130 * DENS; i++) { const th = rnd() * 2 * Math.PI; mk({ kind: 'pad', b: Math.pow(rnd(), 1.4) * 10, org: base.clone().addScaledVector(hdir(th), rnd() * 30 * MU_M), dir: hdir(th), spd: 8 + rnd() * 30, up: 2 + rnd() * 9, s0: 45 + rnd() * 45, life: 32 + rnd() * 10, a0: 0.55 + rnd() * 0.25 }); }
+    for (let i = 0; i < 130 * DENS; i++) { const th = rnd() * 2 * Math.PI; mk({ kind: 'pad', b: Math.pow(rnd(), 1.4) * 10, org: base.clone().addScaledVector(hdir(th), rnd() * 90 * MU_M), dir: hdir(th), spd: 24 + rnd() * 90, up: 2 + rnd() * 9, s0: 110 + rnd() * 110, life: 34 + rnd() * 12, a0: 0.45 + rnd() * 0.2 }); }
     // traînée : 4 volutes par seconde (× DENS) à la base de la fusée tant qu'elle est sous 1 000 m d'altitude ; elle reste dans l'air (repère de la Terre) et s'estompe en ~30 s
     const low = S.filter(s => s.alt < 1000).map(s => s.t), tTrail = low.length ? low[low.length - 1] : 0, tmp = new THREE.Vector3();
     for (let t = 0.25 / DENS; t < tTrail; t += 0.25 / DENS) { const st = this.stateAt(t), th = rnd() * 2 * Math.PI; this.toEF(st.x, st.y, t, tmp); mk({ kind: 'trail', b: t, org: tmp.clone(), dir: hdir(th), spd: 1 + rnd() * 5, up: 0.5 + rnd() * 2, s0: 22 + rnd() * 14, life: 26 + rnd() * 10, a0: 0.5 + rnd() * 0.2 }); }
@@ -245,10 +245,13 @@ class Launch {
     const K = this.smoke; if (T > K.tEnd) { if (!K.off) { K.off = true; for (const p of K.puffs) p.sp.visible = false; } return; } K.off = false;
     for (const p of K.puffs) {
       const age = T - p.b; if (age < 0 || age > p.life) { p.sp.visible = false; continue; }
-      const pad = p.kind === 'pad', tau = pad ? 6 : 8, d = p.spd * tau * (1 - Math.exp(-age / tau)), h = (pad ? 6 : 2) + p.up * (pad ? 14 : 10) * (1 - Math.exp(-age / (pad ? 14 : 10))), size = p.s0 + (pad ? 6 : 3.5) * age;   // roule vers l'extérieur (freinée), monte, grossit
-      p.sp.position.copy(p.org).addScaledVector(p.dir, d * MU_M).addScaledVector(this.s, h * MU_M); p.sp.scale.setScalar(size * MU_M);
-      const fin = Math.min(1, age / 0.6), fout = Math.min(1, (p.life - age) / (p.life * 0.55)), warm = Math.max(0, 1 - age / 5);   // apparition rapide, fondu progressif ; orangée juste après l'allumage
-      p.mat.opacity = p.a0 * fin * Math.max(0, fout); p.mat.color.setRGB(0.86 + 0.14 * warm, 0.84 + 0.02 * warm, 0.82 - 0.22 * warm); p.sp.visible = true;
+      const pad = p.kind === 'pad', tau = pad ? 6 : 8, d = p.spd * tau * (1 - Math.exp(-age / tau)) + 3 * age, h = (pad ? 6 : 2) + p.up * (pad ? 14 : 10) * (1 - Math.exp(-age / (pad ? 14 : 10))), size0 = p.s0 + (pad ? 15 : 3.5) * age;   // roule vers l'extérieur (freinée) en dérivant au vent, monte, grossit
+      const fout = Math.max(0, Math.min(1, (p.life - age) / (p.life * 0.55))), dis = 1 - fout;   // dis : 0 → 1 pendant la désintégration (derniers 55 % de la vie)
+      // DÉSINTÉGRATION : la volute se disperse en vacillant (déplacements de plus en plus grands), rétrécit et s'éteint par à-coups
+      const wob = dis * dis * 70 * MU_M, size = size0 * (1 - 0.4 * dis);
+      p.sp.position.copy(p.org).addScaledVector(p.dir, d * MU_M + Math.sin(age * 1.7 + p.ph) * wob).addScaledVector(this.s, h * MU_M + Math.cos(age * 1.3 + p.ph) * wob * 0.6); p.sp.scale.setScalar(size * MU_M);
+      const fin = Math.min(1, age / 0.6), warm = Math.max(0, 1 - age / 5), flick = 1 - dis * 0.45 * (1 + Math.sin(age * 11 + p.ph * 3)) / 2;   // apparition rapide ; orangée juste après l'allumage ; scintillement croissant en fin de vie
+      p.mat.opacity = p.a0 * fin * fout * fout * flick; p.mat.color.setRGB(0.86 + 0.14 * warm, 0.84 + 0.02 * warm, 0.82 - 0.22 * warm); p.sp.visible = true;
     }
   }
   // ---------- mise à jour ----------
@@ -333,6 +336,7 @@ class Launch {
     const big = px(this.rocketLen, this.pos) >= 6; this.rocket.visible = big && !coreGone;
     this.dotRocket.visible = !big && !coreGone; this.dotRocket.geometry.attributes.position.setXYZ(0, this.pos.x, this.pos.y, this.pos.z); this.dotRocket.geometry.attributes.position.needsUpdate = true;
     this.dotSat.visible = false;
+    if (this.tagMap.pad) this.tagMap.pad.pos.copy(this.padPos);   // le pas de tir : point fixe au sol (30 m au-dessus : vue sur le pied de la fusée)
     // élément suivi : la fusée, le satellite largué ou un débris (si celui-ci a fini sa chute, retour à la fusée)
     let fpos = this.center, isRocket = true;
     if (this.follow === 'sat' && this.tagMap.sat.on) { fpos = this.tagMap.sat.pos; isRocket = false; }
