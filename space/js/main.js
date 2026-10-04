@@ -93,7 +93,7 @@
   viewSel.onchange = () => { const v = viewSel.value; if (v === 'earth') goEarth(); else goSolar(v); viewSel.blur(); };
 
   // caractéristiques de l'ISS affichées en 3D (cases à cocher ; définies dans ISS_FEATURES, js/iss.js)
-  const VIEW_ISS = { yaw: 0, pitch: 20, dist: 0.3 };   // accès DIRECT à l'ISS, sans transition : derrière elle (yaw 0), un peu au-dessus (pitch 20°), à 300 m (yaw °, pitch °, distance km)
+  const VIEW_ISS = { yaw: -28.8, pitch: 24.9, dist: 0.393 };   // accès DIRECT à l'ISS, sans transition : vue réglée par l'utilisateur (copiée depuis l'encadré « Vue »), un peu de derrière et au-dessus, à 393 m (yaw °, pitch °, distance km)
   const viewTxt = document.getElementById('viewTxt'), viewJson = document.getElementById('viewJson');
   const scaleBar = document.getElementById('scaleBar'), scaleTxt = document.getElementById('scaleTxt');
   const featCb = {}, l3d = [], featOn = {}, featInst = {}, featPanel = document.createElement('div');
