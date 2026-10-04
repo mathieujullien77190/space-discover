@@ -225,7 +225,7 @@ class Launch {
   }
 
   // ---------- FUMÉE AU DÉCOLLAGE (demande de l'utilisateur : « une masse de fumée au décollage ») ----------
-  // Seulement AU DÉCOLLAGE (demande de l'utilisateur : pas de traînée) : le NUAGE du pas de tir, calculé en fonction du temps de vol T (on peut rejouer ou sauter dans le vol) : 130 volutes crachées pendant les 10 premières secondes, qui roulent vers l'extérieur (freinées), montent et grossissent jusqu'à ~250 m avant de s'estomper (~40 s) ;
+  // AU DÉCOLLAGE : le NUAGE du pas de tir + une TRAÎNÉE qui suit la fusée sur ses 1 000 premiers mètres (demande de l'utilisateur) ; le nuage, calculé en fonction du temps de vol T (on peut rejouer ou sauter dans le vol) : 130 volutes crachées pendant les 10 premières secondes, qui roulent vers l'extérieur (freinées), montent et grossissent jusqu'à ~250 m avant de s'estomper (~40 s) ;
   // Des sprites (disques flous blancs-gris, orangés au début), posés dans le repère de la Terre et dessinés APRÈS la photo du sol (renderOrder 20) : la fumée ne suit pas la fusée. Seulement pour un départ du sol (altitude < 200 m, poussée dès le début).
   buildSmoke() {
     this.smoke = null;
@@ -235,13 +235,16 @@ class Launch {
     const puffs = [], base = this.s.clone().multiplyScalar(PATCH_R), mk = (o) => { const mat = new THREE.SpriteMaterial({ map: tex, color: 0xffffff, transparent: true, depthWrite: false, opacity: 0 }), sp = new THREE.Sprite(mat); sp.visible = false; sp.frustumCulled = false; sp.renderOrder = 20; this.group.add(sp); puffs.push(Object.assign(o, { sp, mat })); };
     const hdir = th => this.e.clone().multiplyScalar(Math.cos(th)).addScaledVector(this.n, Math.sin(th));   // direction horizontale au sol
     for (let i = 0; i < 130; i++) { const th = rnd() * 2 * Math.PI; mk({ kind: 'pad', b: Math.pow(rnd(), 1.4) * 10, org: base.clone().addScaledVector(hdir(th), rnd() * 30 * MU_M), dir: hdir(th), spd: 8 + rnd() * 30, up: 2 + rnd() * 9, s0: 45 + rnd() * 45, life: 32 + rnd() * 10, a0: 0.55 + rnd() * 0.25 }); }
+    // traînée : une volute toutes les 0,25 s à la base de la fusée tant qu'elle est sous 1 000 m d'altitude ; elle reste dans l'air (repère de la Terre) et s'estompe en ~30 s
+    const low = S.filter(s => s.alt < 1000).map(s => s.t), tTrail = low.length ? low[low.length - 1] : 0, tmp = new THREE.Vector3();
+    for (let t = 0.25; t < tTrail; t += 0.25) { const st = this.stateAt(t), th = rnd() * 2 * Math.PI; this.toEF(st.x, st.y, t, tmp); mk({ kind: 'trail', b: t, org: tmp.clone(), dir: hdir(th), spd: 1 + rnd() * 5, up: 0.5 + rnd() * 2, s0: 22 + rnd() * 14, life: 26 + rnd() * 10, a0: 0.5 + rnd() * 0.2 }); }
     this.smoke = { puffs, tex, tEnd: Math.max(...puffs.map(p => p.b + p.life)) + 1, off: false, tmp: new THREE.Vector3() };
   }
   updateSmoke(T) {
     const K = this.smoke; if (T > K.tEnd) { if (!K.off) { K.off = true; for (const p of K.puffs) p.sp.visible = false; } return; } K.off = false;
     for (const p of K.puffs) {
       const age = T - p.b; if (age < 0 || age > p.life) { p.sp.visible = false; continue; }
-      const tau = 6, d = p.spd * tau * (1 - Math.exp(-age / tau)), h = 6 + p.up * 14 * (1 - Math.exp(-age / 14)), size = p.s0 + 6 * age;   // roule vers l'extérieur (freinée), monte, grossit
+      const pad = p.kind === 'pad', tau = pad ? 6 : 8, d = p.spd * tau * (1 - Math.exp(-age / tau)), h = (pad ? 6 : 2) + p.up * (pad ? 14 : 10) * (1 - Math.exp(-age / (pad ? 14 : 10))), size = p.s0 + (pad ? 6 : 3.5) * age;   // roule vers l'extérieur (freinée), monte, grossit
       p.sp.position.copy(p.org).addScaledVector(p.dir, d * MU_M).addScaledVector(this.s, h * MU_M); p.sp.scale.setScalar(size * MU_M);
       const fin = Math.min(1, age / 0.6), fout = Math.min(1, (p.life - age) / (p.life * 0.55)), warm = Math.max(0, 1 - age / 5);   // apparition rapide, fondu progressif ; orangée juste après l'allumage
       p.mat.opacity = p.a0 * fin * Math.max(0, fout); p.mat.color.setRGB(0.86 + 0.14 * warm, 0.84 + 0.02 * warm, 0.82 - 0.22 * warm); p.sp.visible = true;
