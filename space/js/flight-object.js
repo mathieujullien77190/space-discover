@@ -6,6 +6,9 @@
 //   name                         nom affiché
 //   start { lat, lon, altitudeKm | altitudeM, azimuthDeg (0 = nord, 90 = est), elevationDeg (90 = vertical), speedMs, frame: "ground" | "inertial" }
 //         vitesse initiale par rapport au sol ("ground", défaut : la rotation de la Terre s'y ajoute) ou dans le repère inertiel ("inertial" : pour un objet déjà en orbite)
+//   OU, pour un SATELLITE, les paramètres d'une orbite (ceux d'un TLE) au lieu de lat / lon / vitesse :
+//   start { orbit { epoch (ISO UTC), inclinationDeg, raanDeg, eccentricity, argPerigeeDeg, meanAnomalyDeg, meanMotionRevDay }  |  tle: [ligne 1, ligne 2],
+//           at: "now" | date ISO (défaut : l'époque) }       l'objet part de sa position sur l'orbite à la date « at » ; position, vitesse, plan et phase sont déduits (voir objectStart)
 //   visual { name, lengthM, radiusM, color }         forme 3D (cylindre) ; facultatif
 //   dryKg                        masse en dessous de laquelle plus de poussée (réservoirs vides) ; défaut 0
 //   timeline [{ t (s), … }]      paliers triés par temps ; chaque clé n'est donnée QUE si elle change à cet instant, le reste garde sa valeur :
@@ -20,7 +23,7 @@
 // Sans DOM : fonctions pures, testées dans Node (tools/test/object.test.js).
 function validateObject(o) {
   if (!o || typeof o !== 'object') throw new Error('objet vide');
-  if (!o.start || o.start.lat == null || o.start.lon == null) throw new Error('« start » (lat, lon) manquant');
+  if (!o.start || (!o.start.orbit && !o.start.tle && (o.start.lat == null || o.start.lon == null))) throw new Error('« start » manquant (lat + lon, ou orbit, ou tle)');
   if (!Array.isArray(o.timeline) || !o.timeline.length) throw new Error('« timeline » manquante');
   if (o.timeline.every(k => k.massKg == null) && o.massKg == null) throw new Error('aucune masse (« massKg » dans un palier)');
   return o;
@@ -31,9 +34,36 @@ function objectPitch(pts, t) {   // direction (rad) interpolée entre les palier
   for (let i = 1; i < pts.length; i++) if (t <= pts[i][0]) return (pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * (t - pts[i - 1][0]) / Math.max(1e-12, pts[i][0] - pts[i - 1][0])) * Math.PI / 180;
   return pts[pts.length - 1][1] * Math.PI / 180;
 }
+// éléments d'un TLE (deux lignes) → { epoch, inclinationDeg, raanDeg, eccentricity, argPerigeeDeg, meanAnomalyDeg, meanMotionRevDay }
+function tleToOrbit(tle) {
+  const l1 = tle[0], l2 = tle[1], yy = +l1.substr(18, 2), day = +l1.substr(20, 12);
+  return { epoch: new Date(Date.UTC(yy < 57 ? 2000 + yy : 1900 + yy, 0, 1) + (day - 1) * 86400000).toISOString(), inclinationDeg: +l2.substr(8, 8), raanDeg: +l2.substr(17, 8), eccentricity: +('0.' + l2.substr(26, 7).trim()), argPerigeeDeg: +l2.substr(34, 8), meanAnomalyDeg: +l2.substr(43, 8), meanMotionRevDay: +l2.substr(52, 11) };
+}
+// temps sidéral de Greenwich (rad) à la date ms (UTC)
+function foGmst(ms) { const d = ms / 86400000 + 2440587.5 - 2451545, T = d / 36525, g = 280.46061837 + 360.98564736629 * d + 0.000387933 * T * T - T * T * T / 38710000; return (((g % 360) + 360) % 360) * Math.PI / 180; }
+// Départ résolu : si « start » donne une orbite (ou un TLE), calcule où est le satellite à la date voulue et renvoie le départ équivalent { lat, lon, altitudeM, azimuthDeg, elevationDeg, speedMs, frame: 'inertial' }
+// (le plan de Launch est celui de la verticale du lieu et de la direction de la vitesse inertielle ; la Terre tourne dessous). Éléments moyens + dérive séculaire J2 du nœud et du périgée entre l'époque et la date (pas de freinage).
+function objectStart(obj, opt) {
+  const S = obj.start; if (!S.orbit && !S.tle) return S;
+  const L = LCH, D = Math.PI / 180, O = S.orbit || tleToOrbit(S.tle), ms0 = Date.parse(O.epoch), now = opt && opt.date ? +opt.date : Date.now(), at = S.at === 'now' ? now : S.at ? Date.parse(S.at) : ms0, dt = (at - ms0) / 1000;
+  const n = O.meanMotionRevDay * 2 * Math.PI / 86400, e = O.eccentricity, i = O.inclinationDeg * D, J2 = 1.08262668e-3, a0 = Math.cbrt(L.MU / (n * n)), p0 = a0 * (1 - e * e), k = 1.5 * J2 * Math.pow(L.RE / p0, 2) * n;
+  const Mdot = n, wdot = 0.5 * k * (5 * Math.cos(i) ** 2 - 1), nEff = Mdot + wdot;   // le TLE donne déjà la cadence de l'anomalie (n) ; J2 fait dériver le nœud et le périgée ; l'argument de latitude avance à n + ωdot (mesuré contre SGP4)
+  const a = Math.cbrt(L.MU / (nEff * nEff)), p = a * (1 - e * e);   // demi-grand axe « effectif » : le vol képlérien de Launch (sans J2) garde ainsi la cadence réelle le long du plan
+  const raan = O.raanDeg * D - k * Math.cos(i) * dt, w = O.argPerigeeDeg * D + wdot * dt, M = O.meanAnomalyDeg * D + Mdot * dt;
+  let E = M; for (let j = 0; j < 12; j++) E -= (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+  const nu = 2 * Math.atan2(Math.sqrt(1 + e) * Math.sin(E / 2), Math.sqrt(1 - e) * Math.cos(E / 2)), r = a * (1 - e * Math.cos(E)), kv = Math.sqrt(L.MU / p);
+  const px = r * Math.cos(nu), py = r * Math.sin(nu), vx = -kv * Math.sin(nu), vy = kv * (e + Math.cos(nu));   // plan de l'orbite (périgée sur x)
+  const cO = Math.cos(raan), sO = Math.sin(raan), ci = Math.cos(i), si = Math.sin(i), cw = Math.cos(w), sw = Math.sin(w);
+  const eci = (x, y) => { const x1 = x * cw - y * sw, y1 = x * sw + y * cw; return [x1 * cO - y1 * ci * sO, x1 * sO + y1 * ci * cO, y1 * si]; };   // Rz(Ω) Rx(i) Rz(ω)
+  const g = foGmst(at), cg = Math.cos(g), sg = Math.sin(g), fix = v => [v[0] * cg + v[1] * sg, -v[0] * sg + v[1] * cg, v[2]];   // repère de la Terre à cet instant : Rz(−gmst)
+  const P = fix(eci(px, py)), V = fix(eci(vx, vy)), rr = Math.hypot(...P), lat = Math.asin(P[2] / rr), lon = Math.atan2(P[1], P[0]);
+  const up = P.map(c => c / rr), east = [-Math.sin(lon), Math.cos(lon), 0], north = [-Math.sin(lat) * Math.cos(lon), -Math.sin(lat) * Math.sin(lon), Math.cos(lat)], dot = (u, v) => u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
+  const vU = dot(V, up), vE = dot(V, east), vN = dot(V, north);
+  return { lat: lat / D, lon: lon / D, altitudeM: rr - L.RE, azimuthDeg: Math.atan2(vE, vN) / D, elevationDeg: Math.atan2(vU, Math.hypot(vE, vN)) / D, speedMs: Math.hypot(vE, vN, vU), frame: 'inertial', nodeRate: -k * Math.cos(i), date: new Date(at).toISOString() };   // nodeRate : précession du plan (rad/s, < 0 : le nœud recule), appliquée par Launch
+}
 function flyObject(obj, opt) {
   validateObject(obj);
-  const L = LCH, G0 = L.G0, D = Math.PI / 180, S0 = obj.start, tl = obj.timeline.slice().sort((a, b) => a.t - b.t), tLast = tl[tl.length - 1].t, dryKg = obj.dryKg || 0;
+  const L = LCH, G0 = L.G0, D = Math.PI / 180, S0 = objectStart(obj, opt), tl = obj.timeline.slice().sort((a, b) => a.t - b.t), tLast = tl[tl.length - 1].t, dryKg = obj.dryKg || 0;
   const az = (S0.azimuthDeg != null ? S0.azimuthDeg : 90) * D, el = (S0.elevationDeg != null ? S0.elevationDeg : 90) * D, sp0 = S0.speedMs || 0;
   const wEff = L.WE * Math.cos(S0.lat * D) * Math.sin(az);   // composante de la rotation de la Terre le long de la trajectoire
   const r0 = L.RE + (S0.altitudeKm != null ? S0.altitudeKm * 1000 : S0.altitudeM || 0);
@@ -82,7 +112,7 @@ function flyObject(obj, opt) {
   const message = ok ? 'Orbite atteinte : ' + km(orbit.rp - L.RE) + ' × ' + km(orbit.ra - L.RE) + ' km.'
     : crashed ? 'Trop lent : l\'objet retombe sur la Terre (impact après ' + Math.round(t) + ' s, apogée ' + km(Math.max(...samples.map(s => s.alt))) + ' km).'
     : reason === 'escape' ? 'Vitesse de libération dépassée : l\'objet quitte la Terre.' : 'Fin de la simulation sans orbite stable.';
-  return { target: ok ? (orbit.rp - L.RE) / 1000 : 0, samples, events, orbit, ok, crashed, reason, message, tEnd: t, state: { x, y, vx, vy }, maxQ, payload: 0, final: { alt: (r - L.RE) / 1000, v: Math.hypot(vx, vy) }, object: obj };
+  return { target: ok ? (orbit.rp - L.RE) / 1000 : 0, samples, events, orbit, ok, crashed, reason, message, tEnd: t, state: { x, y, vx, vy }, maxQ, payload: 0, nodeRate: S0.nodeRate || 0, final: { alt: (r - L.RE) / 1000, v: Math.hypot(vx, vy) }, object: obj };
 }
 
 // description 3D d'un objet (même forme que les fusées de js/rockets.js) : un simple cylindre, sans boosters ni coiffe ; visual { name, lengthM, radiusM, color }

@@ -31,13 +31,15 @@ class Launch {
   constructor(site, targetKm, payloadKg, satScale, opts) {
     const L = LCH, o = opts || {}; this.inertial = !!o.inertial; const spec = this.rocketSpec = o.object ? objectToSpec(o.object) : o.plan ? planToSpec(o.plan) : (o.rocketId && ROCKETS[o.rocketId]) || rocketOf(site), az = o.az != null ? o.az : Math.PI / 2;   // az : azimut de tir (π/2 = plein est)
     this.payloadUsed = Math.min(payloadKg || 9e3, spec.maxPayload * 0.9);   // charge limitée par la capacité de la fusée
-    const sim = this.sim = o.object ? flyObject(o.object) : o.plan ? flyPlan(o.plan) : simulateLaunch(targetKm, { lat: site.lat, payload: this.payloadUsed, az, rocket: spec, apoKm: o.apoKm });   // o.plan : plan de vol JSON (js/flight-plan.js), sans guidage
+    const sim = this.sim = o.object ? flyObject(o.object, { date: o.date }) : o.plan ? flyPlan(o.plan) : simulateLaunch(targetKm, { lat: site.lat, payload: this.payloadUsed, az, rocket: spec, apoKm: o.apoKm });   // o.plan : plan de vol JSON (js/flight-plan.js), sans guidage
     this.story = o.story || null; this.direct = !!(spec.phys && spec.phys.direct);   // story : mission historique (js/story.js) ; direct : le dernier étage met la charge en orbite
     this.opt = o.opt || launchOptDefault();   // options d'affichage (partagées entre les lancements)
     this.site = site; this.targetKm = targetKm; this.satScale = satScale || 1; this.T = 0; this.speed = 1; this.stepPause = true; this.stopT = null; this.effSpeed = 1; this.playing = true; this.userDir = false;
     this.s = ll(site.lon, site.lat); { const east = new THREE.Vector3(-Math.sin(site.lon * DEG), 0, -Math.cos(site.lon * DEG)), north = new THREE.Vector3(0, 1, 0).addScaledVector(this.s, -this.s.y).normalize(); this.e = east.multiplyScalar(Math.sin(az)).addScaledVector(north, Math.cos(az)).normalize(); } this.n = new THREE.Vector3().crossVectors(this.s, this.e);   // verticale, est, nord (plan : s, e)
     this.crossTau = 80; this.crossV = LCH.WE * LCH.RE * Math.cos(site.lat * DEG) * new THREE.Vector3(-Math.sin(site.lon * DEG), 0, -Math.cos(site.lon * DEG)).dot(this.n);   // vitesse transversale initiale du pas de tir (m/s), annulée en ~80 s
+    if (o.object && objectStart(o.object, { date: o.date }).frame === 'inertial') this.crossV = 0;   // objet déjà en orbite : pas de pas de tir qui tourne avec la Terre, donc pas de décalage transversal
     this.Y = new THREE.Vector3(0, 1, 0);
+    this.wRot = LCH.WE - (sim.nodeRate || 0);   // vitesse de rotation du plan par rapport au repère de la Terre : la Terre tourne (WE) et le plan d'un satellite dérive (précession J2 du nœud)
     const S = sim.samples; this.last = S[S.length - 1]; this.tEnd = sim.tEnd; this.Tmax = (sim.ok ? sim.tEnd : this.last.t) + 900;
     this.ev = {}; for (const e of sim.events) this.ev[e.key] = e;
     this.pos = new THREE.Vector3(); this.center = new THREE.Vector3();   // pos = base du lanceur ; center = milieu (cible de la caméra)
@@ -89,14 +91,14 @@ class Launch {
   zMain(T) { return this.crossV * this.crossTau * (1 - Math.exp(-T / this.crossTau)); }
   // plan inertiel (x vertical du site, y sens du tir) + décalage transversal z (m) -> repère de la Terre à l'instant T ; z : décalage de l'objet (par défaut celui du lanceur)
   toEF(x, y, T, out, z) {
-    const R = LCH.RE; return out.copy(this.s).multiplyScalar(x / R).addScaledVector(this.e, y / R).addScaledVector(this.n, (z != null ? z : this.zMain(T)) / R).applyAxisAngle(this.Y, this.inertial ? 0 : -LCH.WE * T).multiplyScalar(PATCH_R);   // inertial : repère inertiel (missions lunaires : c'est la Terre qui tourne, pas la scène)   // PATCH_R : le sol est la photo aérienne, posée un souffle au-dessus de la sphère
+    const R = LCH.RE; return out.copy(this.s).multiplyScalar(x / R).addScaledVector(this.e, y / R).addScaledVector(this.n, (z != null ? z : this.zMain(T)) / R).applyAxisAngle(this.Y, this.inertial ? 0 : -this.wRot * T).multiplyScalar(PATCH_R);   // inertial : repère inertiel (missions lunaires : c'est la Terre qui tourne, pas la scène)   // PATCH_R : le sol est la photo aérienne, posée un souffle au-dessus de la sphère
   }
   // direction de la poussée (angle phi au-dessus de l'horizontale locale) dans le repère de la Terre
   dirEF(x, y, phi, T, out) {
     const r = Math.hypot(x, y), ux = x / r, uy = y / r, c = Math.cos(phi), sn = Math.sin(phi);
     // û = ux·s + uy·e ; ê' = −uy·s + ux·e
     out.copy(this.s).multiplyScalar(ux * sn - uy * c).addScaledVector(this.e, uy * sn + ux * c);
-    return out.applyAxisAngle(this.Y, this.inertial ? 0 : -LCH.WE * T).normalize();
+    return out.applyAxisAngle(this.Y, this.inertial ? 0 : -this.wRot * T).normalize();
   }
   // état du plan à T : échantillon interpolé, ou orbite circulaire après la fin
   stateAt(T) {
@@ -252,7 +254,7 @@ class Launch {
     this.mBoost.forEach(m => m.visible = !past('eap')); this.mFair.visible = !past('fairing'); this.mEpc.visible = !past('epcsep') && !coreGone;
     this.fBoost.forEach(f => f.visible = !!st.eap && !past('eap')); this.fEpc.visible = !!st.epc; this.fEsc.visible = !!st.esc;
     const fk = 0.85 + 0.3 * Math.random(); for (const f of [...this.fBoost, this.fEpc, this.fEsc]) if (f.visible) f.userData.cone.scale.set(1, fk, 1);
-    this.plan.visible = this.opt.plan; this.trail.visible = this.opt.trail; this.markPts.visible = this.markDrops.visible = this.opt.markers; this.ring.visible = !!this.sim.ok && this.opt.plan; this.ring.rotation.y = this.inertial ? 0 : -LCH.WE * T; this.ring.children.forEach(c => { c.material.transparent = true; c.material.opacity = past('esc2end') ? 0.95 : 0.35; });   // orbite visée : pâle d'avance, vive une fois atteinte
+    this.plan.visible = this.opt.plan; this.trail.visible = this.opt.trail; this.markPts.visible = this.markDrops.visible = this.opt.markers; this.ring.visible = !!this.sim.ok && this.opt.plan; this.ring.rotation.y = this.inertial ? 0 : -this.wRot * T; this.ring.children.forEach(c => { c.material.transparent = true; c.material.opacity = past('esc2end') ? 0.95 : 0.35; });   // orbite visée : pâle d'avance, vive une fois atteinte
     // sillage
     const n = Math.min(this.trailN, st.idx + 1), tp = this.trailPos; tp.set([this.pos.x, this.pos.y, this.pos.z], 3 * n);
     this.trail.geometry.setDrawRange(0, n + 1); this.trail.geometry.attributes.position.needsUpdate = true;
@@ -266,7 +268,7 @@ class Launch {
     // débris
     const camP = camera ? camera.position : null;
     const px = (len, p) => camP ? (len / 1000 / Math.max(1e-9, camP.distanceTo(p) * R_KM)) / (2 * Math.tan(25 * DEG)) * innerHeightSafe() : 100;
-    const tmpP = new THREE.Vector3(), side = this.n.clone().applyAxisAngle(this.Y, this.inertial ? 0 : -LCH.WE * T);
+    const tmpP = new THREE.Vector3(), side = this.n.clone().applyAxisAngle(this.Y, this.inertial ? 0 : -this.wRot * T);
     for (const t of this.tagList) if (t.piece) { t.on = false; t.text = t.base; t.speed = null; t.alt = null; }
     for (const p of this.pieces) {
       const tau = T - p.e.t; p.g.visible = tau >= 0 && tau < p.path.length;
@@ -307,7 +309,7 @@ class Launch {
     const up = isRocket ? this.radial : fpos.clone().normalize(), nrm = side, along = new THREE.Vector3().crossVectors(nrm, up).normalize();   // nrm × û = est (ê') à droite
     this.camDir.copy(nrm).multiplyScalar(-0.9).addScaledVector(up, 0.22 + 0.4 * ramp).addScaledVector(along, -0.15).normalize();
     // vue de dessus (bouton) : caméra au-dessus du PLAN de la trajectoire (côté d'où l'on voit tourner la fusée dans le sens direct), la direction du vol en haut de l'écran
-    this.topUp = this.e.clone().applyAxisAngle(this.Y, this.inertial ? 0 : -LCH.WE * T);
+    this.topUp = this.e.clone().applyAxisAngle(this.Y, this.inertial ? 0 : -this.wRot * T);
     if (this.topView) { this.camDir.copy(nrm).normalize(); this.camDistKm = Math.max(1200, 1500 + 1.6 * Math.max(0, this.altM / 1000)); }
   }
 
