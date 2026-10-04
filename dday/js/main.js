@@ -169,6 +169,8 @@
   const wake = (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 256; const g = c.getContext('2d'); let tex = null; if (g) { const gr = g.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, 'rgba(255,255,255,0.75)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.beginPath(); g.moveTo(32, 0); g.lineTo(0, 256); g.lineTo(64, 256); g.closePath(); g.fill(); tex = new THREE.CanvasTexture(c); }
     const m = new THREE.Mesh(new THREE.PlaneGeometry(10, 45), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0 })); m.rotation.x = -Math.PI / 2; m.rotation.z = -Math.PI / 2; m.renderOrder = 3; scene.add(m); return m; })();   // sillage
   scene.add(barge);
+  // destroyer au mouillage au large (js/ship.js), bordée vers la plage
+  const ship = buildDestroyer(scene); ship.root.position.set(330, 0, -210); scene.add(ship.root);
   // soldats dans la cale : corps, tête, casque
   const SOLD = 16, soldiers = [];
   { const bodyM = Mat(0x5d6244), skin = Mat(0xd9a982), helm = Mat(0x4c5238);
@@ -208,8 +210,8 @@
   canvas.addEventListener('wheel', e => { e.preventDefault(); cam.dist = Math.max(4, Math.min(2500, cam.dist * Math.exp(e.deltaY * 0.0012))); }, { passive: false });
   // boutons : vue d'ensemble, suivre la barge, vitesse du scénario
   let tscale = 1; const btn = id => document.getElementById(id);
-  const setView = f => { cam.follow = f; if (f) { cam.dist = 40; cam.pitch = 0.3; } else { cam.dist = 420; cam.pitch = 0.3; cam.tgt.set(150, 4, 0); } btn('bFollow').classList.toggle('on', f); btn('bOver').classList.toggle('on', !f); };
-  btn('bOver').onclick = () => setView(false); btn('bFollow').onclick = () => setView(true);
+  const setView = v => { cam.follow = v === 'barge' ? barge : v === 'ship' ? ship.root : null; if (v === 'barge') { cam.dist = 40; cam.pitch = 0.3; } else if (v === 'ship') { cam.dist = 150; cam.pitch = 0.2; } else { cam.dist = 420; cam.pitch = 0.3; cam.tgt.set(150, 4, 0); } for (const [id, k] of [['bOver', 'over'], ['bFollow', 'barge'], ['bShip', 'ship']]) btn(id).classList.toggle('on', (v || 'over') === k); };
+  btn('bOver').onclick = () => setView(null); btn('bFollow').onclick = () => setView('barge'); btn('bShip').onclick = () => setView('ship');
   [['bS1', 1], ['bS3', 3], ['bS10', 10]].forEach(([id, v]) => { btn(id).onclick = () => { tscale = v; for (const [i2, v2] of [['bS1', 1], ['bS3', 3], ['bS10', 10]]) btn(i2).classList.toggle('on', v2 === v); }; });
   function resize() { const vv = window.visualViewport, w = Math.round(vv ? vv.width : innerWidth), h = Math.round(vv ? vv.height : innerHeight); renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
   addEventListener('resize', resize); if (window.visualViewport) visualViewport.addEventListener('resize', resize); resize();
@@ -217,7 +219,7 @@
   function frame(now) {
     const dtR = Math.min(0.1, (now - last) / 1000); last = now; T += dtR; const dt = dtR * tscale;
     waterMat.uniforms.uTime.value = T;
-    stepBarge(dt);
+    stepBarge(dt); ship.update(T, dtR, waveH);
     // barge : flotte sur la houle (hauteurs en 4 points → tangage et roulis), posée sur le fond une fois échouée
     const hC = waveH(bs.x, bs.z, T), hB = waveH(bs.x - 5.2, bs.z, T), hS = waveH(bs.x + 5.2, bs.z, T), hP = waveH(bs.x, bs.z - 1.6, T), hSt = waveH(bs.x, bs.z + 1.6, T);
     const grounded = bs.phase === 'beached' || bs.phase === 'unload' || (bs.phase === 'leave' && bs.speed < 0.5);
@@ -229,7 +231,7 @@
     // sillage : derrière la barge (côté +x), visible quand elle avance
     wake.position.set(bs.x + 26, 0.12, bs.z); wake.material.opacity = Math.min(1, Math.abs(bs.speed) / 8) * 0.9;
     for (const s of soldiers) { const y = s.state === 'hold' ? (grounded ? 0 : hC) + BH - 0.62 : Math.max(terrainH(s.x, s.z), -0.2); s.g.position.set(s.x, y, s.z); s.g.rotation.y = s.state === 'stand' ? Math.PI / 2 : Math.PI / 2 + Math.sin(T * 6 + s.row) * 0.03; if (s.state === 'walk') s.g.position.y += Math.abs(Math.sin(T * 7 + s.row * 2 + s.col)) * 0.05; }
-    if (cam.follow) cam.tgt.lerp(barge.position, 1 - Math.exp(-dtR * 3));
+    if (cam.follow) cam.tgt.lerp(cam.follow.position, 1 - Math.exp(-dtR * 3));
     place(); renderer.render(scene, camera); requestAnimationFrame(frame);
     infoT -= dtR; if (infoT <= 0) { infoT = 0.3; const lab = { approach: 'la barge approche', beached: 'échouée, la rampe s’abaisse', unload: 'débarquement', leave: 'la barge repart' }[bs.phase]; info.textContent = 'zone 1 km × 1 km · ' + lab + ' · ' + Math.round(Math.max(0, bs.x - X_BEACH)) + ' m de la plage · ×' + tscale; }
   }

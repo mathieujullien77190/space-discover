@@ -8,6 +8,7 @@ const sb = { console, Math, Date, JSON, Float32Array, Float64Array, Uint8Array, 
 sb.window = sb; vm.createContext(sb);
 vm.runInContext(fs.readFileSync(path.join(__dirname, 'js/vendor/three.min.js'), 'utf8'), sb);
 vm.runInContext('THREE.WebGLRenderer = class { setPixelRatio() {} setSize() {} render() {} };', sb);
+vm.runInContext(fs.readFileSync(path.join(__dirname, 'js/ship.js'), 'utf8'), sb, { filename: 'js/ship.js' });
 vm.runInContext(fs.readFileSync(path.join(__dirname, 'js/main.js'), 'utf8'), sb, { filename: 'js/main.js' });
 let t = 0; const run = n => { for (let i = 0; i < n; i++) { const fs_ = frames; frames = []; t += 16; for (const f of fs_) f(t); } };
 run(200); els.bS10.onclick();   // scénario à ×10 : arrivée, échouage, rampe, débarquement, départ, nouvelle arrivée
