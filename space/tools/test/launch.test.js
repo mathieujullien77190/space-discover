@@ -43,7 +43,7 @@ console.log(vm.runInContext(`(() => {
   const L = new Launch(site, 0, 0, 1, { opt: launchOptDefault(), object: O, az: Math.PI / 2 }), o = L.sim.orbit, N = String.fromCharCode(10), g = k => L.pieces.filter(q => q.key === k);
   const out = ['Ariane 5 objet : orbite ' + Math.round((o.rp - 6378137) / 1000) + ' x ' + Math.round((o.ra - 6378137) / 1000) + ' km, ok ' + L.sim.ok + ', ' + L.sim.events.map(e => e.key).join(' ')];
   out.push('pièces : ' + L.pieces.map(q => q.tagKey + ' (' + q.model.dry + ' kg, ' + q.path.length + ' s, ' + q.endText + ')').join(' ; '));
-  out.push('étiquettes : ' + L.tagList.map(t => t.id).join(' '));
+  out.push('étiquettes : ' + L.tagList.map(t => t.id).join(' ') + ' (1re = ' + L.tagList[0].id + ')');
   let bad = 0; for (let T = 0; T <= L.Tmax; T += 97) { L.T = T; L.playing = false; L.update(0.016, cam); if (![L.pos.x, L.pos.y, L.pos.z].every(Number.isFinite)) bad++; }
   out.push('lecture : ' + (bad ? bad + ' positions non finies' : 'positions finies, tout le vol') + ' ; boosters ' + g('eap').length + ', coiffe ' + g('fairing').length + ', étage principal ' + g('epcsep').length);
   // fumée au décollage : nuage au pas de tir puis traînée basse, qui disparaît ensuite

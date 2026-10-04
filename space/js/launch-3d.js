@@ -77,11 +77,11 @@ class Launch {
     if (o.story === 'sputnik') this.buildSputnik();
     this.buildPieces();
     this.buildSmoke();   // fumée au décollage (nuage au pas de tir + traînée basse)
-    // noms affichés sur les éléments (étiquettes posées par main.js) : fusée, satellite, boosters, coiffe, étage principal
+    // noms affichés sur les éléments (étiquettes posées par main.js) ; le « Pas de tir » est en tête de liste (1re ligne du panneau « Composants »), puis la fusée : fusée, satellite, boosters, coiffe, étage principal
     const V = () => new THREE.Vector3();
     { const nm = spec.names, bo = spec.model.boosters, tl = [{ id: 'rocket', text: spec.name + '', pos: V(), on: true }, { id: 'sat', text: 'Satellite', pos: V(), on: false }];
       if (bo) for (let k = 0; k < bo.n; k++) tl.push({ id: 'eap' + (k + 1), text: 'Booster' + (bo.n > 1 ? ' n°' + (k + 1) : ''), pos: V(), on: false, piece: true });
-      tl.push({ id: 'fairA', text: 'Coiffe n°1', pos: V(), on: false, piece: true }, { id: 'fairB', text: 'Coiffe n°2', pos: V(), on: false, piece: true }, { id: 'epc', text: nm.stage1, pos: V(), on: false, piece: true }); if (S[0].alt < 200) tl.splice(1, 0, { id: 'pad', text: 'Pas de tir', pos: V(), on: true }); this.tagList = tl; }
+      tl.push({ id: 'fairA', text: 'Coiffe n°1', pos: V(), on: false, piece: true }, { id: 'fairB', text: 'Coiffe n°2', pos: V(), on: false, piece: true }, { id: 'epc', text: nm.stage1, pos: V(), on: false, piece: true }); if (S[0].alt < 200) tl.unshift({ id: 'pad', text: 'Pas de tir', pos: V(), on: true }); this.tagList = tl; }
     this.follow = 'rocket';   // élément suivi par la caméra : 'rocket', 'sat' ou l'id d'un débris (clic sur son nom)
     this.focusPos = new THREE.Vector3();
     this.tagMap = {}; for (const t of this.tagList) { t.base = t.text; this.tagMap[t.id] = t; }
