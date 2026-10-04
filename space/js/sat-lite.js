@@ -35,7 +35,7 @@ function buildSatPanel(box, hooks) {
       const evs = [{ t: 0, label: 'Décollage' }].concat(launch.sim.events.map(e => ({ t: e.t, label: e.label })), (launch.extraEvents || []).map(e => ({ t: e.t, label: e.label }))).sort((a, b) => a.t - b.t);
       evs.forEach(e => { const d = el('div', { className: 'lev', textContent: e.label }); d.dataset.t = e.t; items.push(d); list.append(d); });
       // composants : la fusée, ses boosters, la coiffe, l'étage principal, le satellite — un clic sur le nom zoome dessus (caméra), le bouton ℹ affiche d'un coup trajectoire, vitesse et poids
-      comps.innerHTML = ''; rows = launch.tagList.map(t => {
+      comps.innerHTML = ''; rows = launch.tagList.filter(t => !t.absent).map(t => {
         const nameB = el('button', { className: 'cname', title: t.id === 'pad' ? 'Voir le lieu de lancement (la caméra reste au pas de tir)' : 'Zoomer sur ce composant (la caméra le suit)', onclick: () => hooks.follow(t.id) }), val = el('div', { className: 'cval' });
         const optB = el('button', { className: 'copt', textContent: 'ℹ', title: 'Afficher la trajectoire, la vitesse et le poids de ce composant', onclick: () => { const eo = launch.elOpt(t.id), v = !(eo.traj && eo.speed && eo.mass); for (const k of ['traj', 'speed', 'mass']) hooks.setOpt(t.id, k, v); } });   // UN seul bouton : tout afficher / tout masquer
         comps.append(el('div', { className: 'crow' }, el('div', { className: 'chead' }, ...(t.id === 'pad' ? [nameB] : [nameB, optB])), val));
@@ -57,5 +57,6 @@ function buildSatPanel(box, hooks) {
       spB.forEach(([b, v]) => b.classList.toggle('on', launch.playing ? v === launch.speed : v === 0));
     },
     hide() { running = false; syncGo(); run.hidden = true; },
+    loading(on) { go.disabled = !!on; go.textContent = on ? '⏳ Chargement des modèles 3D…' : (running ? '⏹ Arrêter' : '🚀 Lancer'); },   // le lancement attend les modèles glTF (quelques Mo)
   };
 }

@@ -27,6 +27,14 @@ check(ms(129) - ms(131) > 60000 && ms(131) - ms(131.5) < 500, 'masse : −' + Ma
 const slow = JSON.parse(JSON.stringify(A)); slow.timeline.find(e => e.key === 'esc2end').t = 3262; slow.timeline.find(e => e.release && e.release[0].part === 'satellite').t = 3262.1; r = fly(slow);
 check(!r.ok || (r.orbit.rp - RE) / 1000 < 450, 'même fusée, 2e poussée écourtée : ' + (r.ok ? 'orbite basse ' + orb(r) : r.message));
 const noPart = JSON.parse(JSON.stringify(A)); delete noPart.parts.booster; let ep = null; try { fly(noPart); } catch (x) { ep = x; } check(!!ep, 'pièce absente refusée : ' + (ep && ep.message));
+// Navette spatiale : orbite basse, 2 SRB puis réservoir externe larguables, pas de coiffe ni de satellite
+const SH = loadFull('shuttle'); r = fly(SH);
+check(r.ok && (r.orbit.rp - RE) / 1000 > 190 && (r.orbit.ra - RE) / 1000 < 260, 'Navette (objet JSON) : orbite ' + orb(r) + ', ' + SH.timeline.length + ' paliers, ' + Object.keys(SH.parts).length + ' pièces, ' + r.events.map(e => e.key + '@' + e.t.toFixed(0)).join(' '));
+check(!r.events.some(e => e.key === 'fairing' || e.key === 'sat') && Object.keys(r.plan.jettison).join() === 'boosters,stage1', 'largages : boosters (' + r.plan.jettison.boosters.count + ' × ' + r.plan.jettison.boosters.dryKg + ' kg) puis réservoir (' + r.plan.jettison.stage1.dryKg + ' kg + ' + r.plan.jettison.stage1.residualPropKg + ' kg de reste), disintegrates ' + r.plan.jettison.stage1.disintegrates);
+let gm = 0; for (const s of r.samples) gm = Math.max(gm, s.acc); const m1 = t => r.samples.find(s => s.t >= t).m;
+check(gm < 3.05 && gm > 2.5 && m1(0) > 2.0e6 && m1(0) < 2.1e6, 'accélération max ' + gm.toFixed(2) + ' g (limite des 3 g), masse au décollage ' + Math.round(m1(0)) + ' kg, poussée/poids au départ ' + (r.samples[1].F / (r.samples[1].m * 9.80665)).toFixed(2));
+const early = JSON.parse(JSON.stringify(SH)); early.timeline.find(e => e.key === 'esc2end').t = 1380; early.timeline.find(e => e.key === 'esc2').t = 1361; r = fly(early);
+check(!r.ok || (r.orbit.rp - RE) / 1000 < 150, 'même navette, circularisation écourtée à 19 s : ' + (r.ok ? 'orbite ' + orb(r) : r.message));
 // entrées invalides
 for (const [name, o] of [['sans start', { timeline: [{ t: 0, massKg: 1 }] }], ['sans timeline', { start: { lat: 0, lon: 0 } }], ['sans masse', { start: { lat: 0, lon: 0 }, timeline: [{ t: 0 }] }]]) { let e = null; try { fly(o); } catch (x) { e = x; } check(!!e, 'objet invalide (' + name + ') refusé : ' + (e && e.message)); }
 if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }

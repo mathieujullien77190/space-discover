@@ -27,7 +27,8 @@
 //                    est simulée à part (elle retombe, se désintègre ou reste en orbite) à partir de l'état de l'objet à cet instant
 //   parts { nom: "fichier.json" }   les pièces larguables, chacune dans son JSON du même dossier : { name, role: "booster" | "fairing" | "stage" | "payload", massKg (par pièce), residualPropKg, visual { radiusM, lengthM, noseM, cylM, coneM,
 //                    nozzleM, color, bandColor }, dragCoefficient, separationSpeedMs (m/s le long de la trajectoire, négatif = vers l'arrière), disintegrates, disintegrationAltitudeKm }
-//   visual.stack { core: nom d'une pièce, boosters { part, count, radialM }, upper { radiusM, lengthM, color, nozzleM, name }, fairing: nom d'une pièce }   fusée dessinée à partir des pièces (voir objectToSpec)
+//   visual.stack { core: nom d'une pièce, boosters { part, count, radialM }, upper { radiusM, lengthM, color, nozzleM, name, stackHeightM, model }, fairing: nom d'une pièce (facultatif), heightM, flames { core | upper { xM, yM, zM, radiusM, lengthM } } }
+//                    fusée dessinée à partir des pièces (voir objectToSpec) ; chaque pièce peut avoir un modèle 3D `visual.model { file, scale, rotate, align, offsetM }` (js/stack-models.js)
 //     le DERNIER palier marque la fin de la poussée : ensuite l'objet vole sans moteur (orbite ou chute).
 // Sans DOM : fonctions pures, testées dans Node (tools/test/object.test.js).
 function validateObject(o) {
@@ -174,12 +175,12 @@ function objectToSpec(obj) {
 
 // fusée dessinée à partir de ses pièces : visual.stack { core: pièce, boosters { part, count, radialM }, upper { … }, fairing: pièce } → même description que js/rockets.js
 function stackToSpec(obj) {
-  const st = obj.visual.stack, P = obj.parts, col = c => (typeof c === 'string' ? parseInt(c.replace('#', ''), 16) : c), core = P[st.core], cv = core.visual, up = st.upper, fa = P[st.fairing], fv = fa.visual, bo = st.boosters && P[st.boosters.part], bv = bo && bo.visual;
+  const st = obj.visual.stack, P = obj.parts, col = c => (typeof c === 'string' ? parseInt(c.replace('#', ''), 16) : c), core = P[st.core], cv = core.visual, up = st.upper, fa = st.fairing ? P[st.fairing] : null, fv = fa ? fa.visual : { radiusM: 0.01, cylM: 0.01, coneM: 0.01, color: '#ffffff' }, bo = st.boosters && P[st.boosters.part], bv = bo && bo.visual;
   return { name: obj.visual.name || obj.name, short: obj.visual.short || obj.visual.name || obj.name, maxPayload: 1e12,
-    phys: { eap: { dry: bo ? bo.massKg : 0 }, epc: { dry: core.massKg, prop: core.residualPropKg || 0 }, fairing: (fa.massKg || 0) * (st.fairingPieces || 2), direct: false },
+    phys: { eap: { dry: bo ? bo.massKg : 0 }, epc: { dry: core.massKg, prop: core.residualPropKg || 0 }, fairing: fa ? (fa.massKg || 0) * (st.fairingPieces || 2) : 0, direct: false },
     names: { booster: bo ? bo.name : '', stage1: core.name, stage2: up.name || 'Étage supérieur' },
     model: { core: { r: cv.radiusM, h: cv.lengthM, color: col(cv.color) },
       boosters: bo ? { n: st.boosters.count, r: bv.radiusM, h: bv.lengthM, nose: bv.noseM || 0, R: st.boosters.radialM, color: col(bv.color), band: col(bv.bandColor != null ? bv.bandColor : bv.color) } : null,
-      upper: { r: up.radiusM, h: up.lengthM, color: col(up.color) }, fairing: { r: fv.radiusM, cyl: fv.cylM, cone: fv.coneM, color: col(fv.color) },
-      noz: { epc: cv.nozzleM || 0, eap: bv ? bv.nozzleM || 0 : 0, esc: up.nozzleM || 0 } }, tower: false, sepDv: {} };
+      upper: { r: up.radiusM, h: up.stackHeightM != null ? up.stackHeightM : up.lengthM, color: col(up.color) }, fairing: { r: fv.radiusM, cyl: fv.cylM, cone: fv.coneM, color: col(fv.color) },
+      noz: { epc: cv.nozzleM || 0, eap: bv ? bv.nozzleM || 0 : 0, esc: up.nozzleM || 0 }, heightM: st.heightM, flames: st.flames }, tower: false, sepDv: {} };
 }

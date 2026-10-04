@@ -53,7 +53,7 @@ for (const sp of [1, 86400, 432000]) { spBtns.find(b => +b.dataset.sp === sp).on
 // lancement de satellite simple : Lancer, vitesses, vue de dessus, zoom fusée, caméra auto, arrêt (chaque base et type)
 const btn = txt => allEls.filter(e => e.textContent === txt && e.onclick).pop();
 (async () => {
-for (const key of [null, 'starship500', 'obj:fusee-orbite-500km', 'obj:fusee-trop-lente']) {
+for (const key of [null, 'starship500', 'obj:fusee-orbite-500km', 'obj:fusee-trop-lente', 'obj:shuttle']) {
   if (key) { const sel2 = allEls.filter(e => e.id === 'select').pop(); sel2.value = key; sel2.onchange && sel2.onchange(); }
   const nE0 = allEls.filter(e => e.className === 'l3d evl').length, nC0 = allEls.filter(e => e.className === 'cname').length, nO0 = allEls.filter(e => e.className === 'copt').length; btn('🚀 Lancer').onclick(); await new Promise(r => setImmediate(r)); sandbox.__log = []; step(60, 'lancement'); { const q = sandbox.__log[sandbox.__log.length - 1], d = Math.hypot(...q) * 6378.137; if (!(d > 0.02 && d < 0.4)) errors.push('lancement ' + key + ' : caméra à ' + d.toFixed(3) + ' km de la fusée (attendu : tout près, 20 à 400 m)'); }
   { const ev = allEls.filter(e => e.className === 'l3d evl').slice(nE0); if (ev.length < 4 || !ev.every(e => /^T+/.test(e.textContent))) errors.push('étapes sur la trajectoire ' + key + ' : ' + ev.length + ' étiquette(s) (attendu : au moins 4, de la forme « T+m:ss nom · altitude »)'); }

@@ -69,6 +69,18 @@ Boosters, coiffe, étage vidé, satellite… ne sont **pas** dans le JSON de la 
 - `separationSpeedMs` : vitesse de séparation le long de la trajectoire (négatif = vers l'arrière).
 - La fusée est dessinée à partir de ses pièces avec `visual.stack` dans `<nom>.json` (voir `ariane5/ariane5.json`).
 
+## Modèles 3D des pièces
+
+Chaque pièce (et la partie qui reste, `visual.stack.upper`) peut avoir un modèle glTF (`.glb`) posé dans le dossier de l'objet :
+
+```json
+"model": { "file": "solid-rocket-booster.glb", "scale": 0.0254, "rotate": [0, 0, 90], "align": ["center", "min", "center"], "offsetM": [0, 0, 0] }
+```
+
+- `scale` : mètres par unité du fichier (0,0254 pour un modèle en pouces) ; `rotate` : rotation d'Euler en degrés pour mettre le modèle **debout, nez vers le haut** ; `align` : par axe `min` (le bord bas va à 0), `center`, `max` ou `none` ; `offsetM` : décalage final (l'orbiteur de la navette est posé à côté du réservoir).
+- Sans modèle (ou si le fichier ne se charge pas), la pièce est un cylindre. Les modèles compressés en Draco ne sont pas lus : les décompresser avec `npx @gltf-transform/cli copy in.glb out.glb`.
+- Exemple complet : `shuttle/` (orbiteur, réservoir externe, 2 boosters ; modèles NASA).
+
 ## Un satellite : ses paramètres orbitaux
 
 ```json
@@ -81,6 +93,7 @@ Ce sont les champs d'un TLE (ou `"tle": ["ligne 1", "ligne 2"]`). L'objet part d
 ## Exemples
 
 - `ariane5/` : Ariane 5 ECA, 4 pièces larguables (boosters, coiffe, étage principal, satellite), orbite de 500 km.
+- `shuttle/` : la navette spatiale (modèles 3D NASA, 2 boosters + réservoir larguables, orbite de 215 × 225 km, pas l'ISS).
 - `fusee-orbite-500km/` : le plus petit exemple qui atteint l'orbite (deux étages, rallumage à l'apogée).
 - `fusee-trop-lente/` : la même fusée, moteur coupé trop tôt : elle retombe sur la Terre.
 - `iss/` : l'ISS (paramètres orbitaux + modèle 3D `iss-nasa.glb`).

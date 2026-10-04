@@ -1,0 +1,31 @@
+{
+  "name": "Booster à poudre (SRB)",
+  "role": "booster",
+  "massKg": 87000,
+  "residualPropKg": 0,
+  "visual": {
+    "radiusM": 1.85,
+    "lengthM": 45.2,
+    "noseM": 0,
+    "nozzleM": 0,
+    "color": "#f2f2f2",
+    "bandColor": "#f2f2f2",
+    "model": {
+      "file": "solid-rocket-booster.glb",
+      "scale": 0.0254,
+      "rotate": [
+        0,
+        0,
+        90
+      ],
+      "align": [
+        "center",
+        "min",
+        "center"
+      ]
+    }
+  },
+  "dragCoefficient": 1,
+  "separationSpeedMs": -2,
+  "disintegrates": false
+}

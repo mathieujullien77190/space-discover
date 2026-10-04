@@ -210,13 +210,16 @@
   const loadPlan = (key, custom) => custom ? Promise.resolve(custom) : (/^https?:/.test(location.protocol) && FLIGHT_PLAN_FILES[key] ? fetch(FLIGHT_PLAN_FILES[key] + '?t=' + Date.now(), { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }) : Promise.reject(new Error('file'))).catch(() => FLIGHT_PLANS[key]);
   // objet générique (js/flight-object.js) : le JSON est relu à chaque lancement sur http(s), sinon la copie embarquée
   const getJson = url => fetch(url + '?t=' + Date.now(), { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
-  const loadObject = (key, custom) => custom ? Promise.resolve(custom) : (/^https?:/.test(location.protocol) && FLIGHT_OBJECT_FILES[key] ? getJson(FLIGHT_OBJECT_FILES[key]).then(o => { const dir = FLIGHT_OBJECT_FILES[key].replace(/[^/]*$/, ''), ps = Object.entries(o.parts || {}).filter(([, f]) => typeof f === 'string'); return Promise.all(ps.map(([n, f]) => getJson(dir + f).then(j => { o.parts[n] = j; }))).then(() => o); }) : Promise.reject(new Error('file'))).catch(() => FLIGHT_OBJECTS[key]);   // sur http : le JSON ET ses pièces sont relus à chaque lancement (on édite, on relance) ; sinon la copie embarquée
+  const loadObject = (key, custom) => custom ? Promise.resolve(custom) : (/^https?:/.test(location.protocol) && FLIGHT_OBJECT_FILES[key] ? getJson(FLIGHT_OBJECT_FILES[key]).then(o => { const dir = FLIGHT_OBJECT_FILES[key].replace(/[^/]*$/, ''), ps = Object.entries(o.parts || {}).filter(([, f]) => typeof f === 'string'); o._dir = dir; return Promise.all(ps.map(([n, f]) => getJson(dir + f).then(j => { o.parts[n] = j; }))).then(() => o); }) : Promise.reject(new Error('file'))).catch(() => Object.assign({}, FLIGHT_OBJECTS[key], { _dir: (FLIGHT_OBJECT_FILES[key] || '').replace(/[^/]*$/, '') }));   // sur http : le JSON ET ses pièces sont relus à chaque lancement (on édite, on relance) ; sinon la copie embarquée
   function startSat(key, custom) { if (custom ? custom.timeline : key.startsWith('obj:')) loadObject(key.replace(/^obj:/, ''), custom).then(launchObject); else loadPlan(key, custom).then(launchPlan); }
-  function launchObject(obj) {
+  function launchObject(obj) {   // charge d'abord les modèles 3D des pièces (s'il y en a), puis crée le vol
+    sat.loading(true); (typeof loadStackModels === 'function' && obj._dir != null ? loadStackModels(obj, obj._dir) : Promise.resolve({})).catch(() => ({})).then(models => { sat.loading(false); launchObjectWith(obj, models); });
+  }
+  function launchObjectWith(obj, models) {
     if (launch) { launch.dispose(); launch = null; }
     optShared.markers = true; optShared.names = true;
     const date = new Date(), s0 = objectStart(obj, { date }), site = Object.assign({}, LAUNCH_SITES[0], { id: 'obj', name: obj.name, lat: s0.lat, lon: s0.lon });
-    launch = new Launch(site, 0, 0, 1, { opt: optShared, object: obj, date, az: (s0.azimuthDeg != null ? s0.azimuthDeg : 90) * Math.PI / 180 }); world.add(launch.group); makeTags(); makeEvLabels();
+    launch = new Launch(site, 0, 0, 1, { opt: optShared, object: obj, models, date, az: (s0.azimuthDeg != null ? s0.azimuthDeg : 90) * Math.PI / 180 }); world.add(launch.group); makeTags(); makeEvLabels();
     launch.stepPause = false; launch.preview = false; launch.playing = true; launch.speed = 1;   // lecture ×1 par défaut (demande de l'utilisateur)
     cam.launchK = 1; cam.userDir = false; setMode('launch'); sat.show(launch);
   }

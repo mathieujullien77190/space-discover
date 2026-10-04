@@ -1,0 +1,166 @@
+{
+  "name": "Navette spatiale (STS) — orbite basse",
+  "start": {
+    "lat": 28.609,
+    "lon": -80.6048,
+    "altitudeKm": 0,
+    "azimuthDeg": 90,
+    "elevationDeg": 90,
+    "speedMs": 0
+  },
+  "visual": {
+    "name": "Navette spatiale (STS)",
+    "short": "Navette",
+    "stack": {
+      "core": "et",
+      "boosters": {
+        "part": "srb",
+        "count": 2,
+        "radialM": 7.3
+      },
+      "heightM": 47.7,
+      "upper": {
+        "name": "Orbiteur",
+        "radiusM": 3,
+        "lengthM": 37.2,
+        "stackHeightM": 0.01,
+        "color": "#f0f0f0",
+        "nozzleM": 0,
+        "model": {
+          "file": "orbiter.glb",
+          "scale": 0.89,
+          "rotate": [
+            90,
+            0,
+            -90
+          ],
+          "align": [ "min", "min", "center" ],
+          "offsetM": [
+            5,
+            -1,
+            0
+          ]
+        }
+      },
+      "flames": {
+        "core": {
+          "xM": 10,
+          "yM": -1,
+          "zM": 0,
+          "radiusM": 1.7,
+          "lengthM": 32
+        },
+        "upper": {
+          "xM": 10,
+          "yM": -1,
+          "zM": 0,
+          "radiusM": 0.5,
+          "lengthM": 6
+        }
+      }
+    }
+  },
+  "parts": {
+    "srb": "srb.json",
+    "et": "et.json"
+  },
+  "timeline": [
+    { "t": 0, "burnKgS": 12128.7, "ispVac": 291.4, "ispSea": 257.8, "massKg": 2049500, "cdA": 60, "flames": [ "eap", "epc" ], "label": "Décollage", "key": "t0" },
+    { "t": 0, "pitch": 90 },
+    { "t": 2, "burnKgS": 12047.6, "ispVac": 291.6, "ispSea": 257.9 },
+    { "t": 4, "burnKgS": 11966.5, "ispVac": 291.7, "ispSea": 258 },
+    { "t": 6, "burnKgS": 11885.4, "ispVac": 291.9, "ispSea": 258.1 },
+    { "t": 7, "pitch": 90 },
+    { "t": 8, "burnKgS": 11804.2, "ispVac": 292.1, "ispSea": 258.2 },
+    { "t": 10, "burnKgS": 11723.1, "ispVac": 292.2, "ispSea": 258.3 },
+    { "t": 12, "burnKgS": 11642, "ispVac": 292.4, "ispSea": 258.4 },
+    { "t": 14, "burnKgS": 11560.8, "ispVac": 292.6, "ispSea": 258.5 },
+    { "t": 16, "burnKgS": 11479.7, "ispVac": 292.7, "ispSea": 258.6 },
+    { "t": 18, "burnKgS": 11398.6, "ispVac": 292.9, "ispSea": 258.8 },
+    { "t": 20, "burnKgS": 11317.5, "ispVac": 293.1, "ispSea": 258.9 },
+    { "t": 20, "pitch": 79.84 },
+    { "t": 22, "burnKgS": 11236.3, "ispVac": 293.3, "ispSea": 259 },
+    { "t": 24, "burnKgS": 11155.2, "ispVac": 293.5, "ispSea": 259.1 },
+    { "t": 26, "burnKgS": 11074.1, "ispVac": 293.7, "ispSea": 259.3 },
+    { "t": 28, "burnKgS": 10992.9, "ispVac": 293.8, "ispSea": 259.4 },
+    { "t": 30, "burnKgS": 10402.9, "ispVac": 286.3, "ispSea": 254.3 },
+    { "t": 32, "burnKgS": 10321.8, "ispVac": 286.4, "ispSea": 254.4 },
+    { "t": 34, "burnKgS": 10240.7, "ispVac": 286.6, "ispSea": 254.5 },
+    { "t": 36, "burnKgS": 10159.5, "ispVac": 286.7, "ispSea": 254.6 },
+    { "t": 38, "burnKgS": 10078.4, "ispVac": 286.9, "ispSea": 254.7 },
+    { "t": 40, "burnKgS": 9997.3, "ispVac": 287, "ispSea": 254.8 },
+    { "t": 40, "pitch": 67.36 },
+    { "t": 42, "burnKgS": 9916.2, "ispVac": 287.2, "ispSea": 254.9 },
+    { "t": 44, "burnKgS": 9835, "ispVac": 287.3, "ispSea": 255 },
+    { "t": 46, "burnKgS": 9753.9, "ispVac": 287.5, "ispSea": 255.1 },
+    { "t": 48, "burnKgS": 9672.8, "ispVac": 287.7, "ispSea": 255.2 },
+    { "t": 50, "burnKgS": 9591.6, "ispVac": 287.8, "ispSea": 255.3 },
+    { "t": 52, "burnKgS": 9510.5, "ispVac": 288, "ispSea": 255.5 },
+    { "t": 54, "burnKgS": 9429.4, "ispVac": 288.2, "ispSea": 255.6 },
+    { "t": 56, "burnKgS": 9348.2, "ispVac": 288.4, "ispSea": 255.7 },
+    { "t": 58, "burnKgS": 9267.1, "ispVac": 288.5, "ispSea": 255.8 },
+    { "t": 60, "burnKgS": 9186, "ispVac": 288.7, "ispSea": 255.9 },
+    { "t": 62, "burnKgS": 9613.7, "ispVac": 297.5, "ispSea": 261.9 },
+    { "t": 64, "burnKgS": 9532.6, "ispVac": 297.8, "ispSea": 262.1 },
+    { "t": 66, "burnKgS": 9451.5, "ispVac": 298.1, "ispSea": 262.2 },
+    { "t": 68, "burnKgS": 9370.4, "ispVac": 298.3, "ispSea": 262.4 },
+    { "t": 70, "burnKgS": 9289.2, "ispVac": 298.6, "ispSea": 262.6 },
+    { "t": 70, "pitch": 63.02 },
+    { "t": 72, "burnKgS": 9208.1, "ispVac": 298.9, "ispSea": 262.8 },
+    { "t": 74, "burnKgS": 9127, "ispVac": 299.1, "ispSea": 262.9 },
+    { "t": 76, "burnKgS": 9045.8, "ispVac": 299.4, "ispSea": 263.1 },
+    { "t": 78, "burnKgS": 8964.7, "ispVac": 299.7, "ispSea": 263.3 },
+    { "t": 80, "burnKgS": 8883.6, "ispVac": 300, "ispSea": 263.5 },
+    { "t": 82, "burnKgS": 8802.5, "ispVac": 300.3, "ispSea": 263.7 },
+    { "t": 84, "burnKgS": 8721.3, "ispVac": 300.6, "ispSea": 263.9 },
+    { "t": 86, "burnKgS": 8640.2, "ispVac": 300.9, "ispSea": 264.1 },
+    { "t": 88, "burnKgS": 8559.1, "ispVac": 301.2, "ispSea": 264.3 },
+    { "t": 90, "burnKgS": 8477.9, "ispVac": 301.5, "ispSea": 264.5 },
+    { "t": 92, "burnKgS": 8396.8, "ispVac": 301.8, "ispSea": 264.8 },
+    { "t": 94, "burnKgS": 8315.7, "ispVac": 302.2, "ispSea": 265 },
+    { "t": 96, "burnKgS": 8234.6, "ispVac": 302.5, "ispSea": 265.2 },
+    { "t": 98, "burnKgS": 8153.4, "ispVac": 302.8, "ispSea": 265.4 },
+    { "t": 100, "burnKgS": 8072.3, "ispVac": 303.2, "ispSea": 265.7 },
+    { "t": 102, "burnKgS": 7991.2, "ispVac": 303.5, "ispSea": 265.9 },
+    { "t": 104, "burnKgS": 7910, "ispVac": 303.9, "ispSea": 266.2 },
+    { "t": 106, "burnKgS": 7828.9, "ispVac": 304.3, "ispSea": 266.4 },
+    { "t": 108, "burnKgS": 7747.8, "ispVac": 304.7, "ispSea": 266.7 },
+    { "t": 110, "burnKgS": 7666.7, "ispVac": 305.1, "ispSea": 266.9 },
+    { "t": 112, "burnKgS": 7585.5, "ispVac": 305.5, "ispSea": 267.2 },
+    { "t": 114, "burnKgS": 7504.4, "ispVac": 305.9, "ispSea": 267.5 },
+    { "t": 116, "burnKgS": 7423.3, "ispVac": 306.3, "ispSea": 267.7 },
+    { "t": 118, "burnKgS": 7342.1, "ispVac": 306.7, "ispSea": 268 },
+    { "t": 120, "burnKgS": 7261, "ispVac": 307.1, "ispSea": 268.3 },
+    { "t": 122, "burnKgS": 7179.9, "ispVac": 307.6, "ispSea": 268.6 },
+    { "t": 124, "release": [ { "part": "srb", "count": 2 }
+      ],
+      "burnKgS": 1541.4,
+      "ispVac": 452.3,
+      "ispSea": 366,
+      "flames": [ "epc" ],
+      "label": "Séparation des boosters à poudre (SRB)"
+    },
+    { "t": 124, "pitch": 35.49 },
+    { "t": 200, "pitch": 30.57 },
+    { "t": 300, "pitch": 25.12 },
+    { "t": 400, "burnKgS": 1511.4 },
+    { "t": 400, "pitch": 7.35 },
+    { "t": 410, "burnKgS": 1451.2 },
+    { "t": 420, "burnKgS": 1391.1 },
+    { "t": 430, "burnKgS": 1331 },
+    { "t": 440, "burnKgS": 1270.9 },
+    { "t": 450, "burnKgS": 1210.8 },
+    { "t": 460, "burnKgS": 1150.6 },
+    { "t": 470, "burnKgS": 1090.5 },
+    { "t": 480, "burnKgS": 1030.4 },
+    { "t": 490, "burnKgS": 993.4 },
+    { "t": 492.3, "burnKgS": 0, "flames": [], "label": "Arrêt des moteurs principaux (MECO)", "key": "meco" },
+    { "t": 492.3, "pitch": -1.58 },
+    { "t": 510.3, "release": [ { "part": "et", "count": 1 }
+      ],
+      "label": "Séparation du réservoir externe"
+    },
+    { "t": 1361, "burnKgS": 17.23, "ispVac": 316, "ispSea": 316, "flames": [ "esc" ], "label": "Allumage OMS-2 à l’apogée (circularisation)", "key": "esc2", "phase": "circularisation" },
+    { "t": 1454.6, "burnKgS": 0, "flames": [], "label": "Extinction OMS-2 : orbite atteinte", "key": "esc2end", "phase": "en orbite" }
+  ]
+}

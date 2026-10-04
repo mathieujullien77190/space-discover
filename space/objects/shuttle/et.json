@@ -1,0 +1,30 @@
+{
+  "name": "Réservoir externe (ET)",
+  "role": "stage",
+  "massKg": 26500,
+  "residualPropKg": 16057,
+  "visual": {
+    "radiusM": 4.2,
+    "lengthM": 47.7,
+    "nozzleM": 0,
+    "color": "#d8883a",
+    "model": {
+      "file": "external-tank.glb",
+      "scale": 0.0254,
+      "rotate": [
+        0,
+        0,
+        90
+      ],
+      "align": [
+        "center",
+        "min",
+        "center"
+      ]
+    }
+  },
+  "dragCoefficient": 1,
+  "separationSpeedMs": -1,
+  "disintegrates": true,
+  "disintegrationAltitudeKm": 80
+}
