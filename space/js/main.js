@@ -50,12 +50,12 @@
 
   // ISS : modèle (agrandi quand on est loin, pour qu'on la voie) + repère
   const issModel = new THREE.Group(); world.add(issModel);
-  // modèle détaillé NASA (textures, ~14 Mo, data/iss-nasa.glb), chargé quand on s'approche ; remplace le modèle simple sous 400 km. Repli : on garde le modèle simple (file:// ou erreur).
+  // modèle détaillé NASA (textures, ~14 Mo, objects/iss/iss-nasa.glb : dossier de l'objet, fichier donné par `model.file` du JSON), chargé quand on s'approche ; remplace le modèle simple sous 400 km. Repli : on garde le modèle simple (file:// ou erreur).
   const issHi = new THREE.Group(); issModel.add(issHi);
   let hiState = 'idle';
   function loadHi() {
     hiState = 'loading';
-    loadGlb('data/iss-nasa.glb').then(root => {
+    loadGlb(ISS_MODEL).then(root => {
       const c = new THREE.Box3().setFromObject(root).getCenter(new THREE.Vector3()); root.position.sub(c);
       const w = new THREE.Group(); w.matrixAutoUpdate = false; w.matrix.set(0, 0, -1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1);   // (X, Y, Z) glTF -> (−Z, Y, X) : x = vol, y = haut, z = poutre
       w.add(root); issHi.add(w); hiState = 'ready';
@@ -224,7 +224,6 @@
     launch = new Launch(site, 0, 0, 1, { opt: optShared, object: obj, date, az: (s0.azimuthDeg != null ? s0.azimuthDeg : 90) * Math.PI / 180 }); world.add(launch.group);
     launch.stepPause = false; launch.preview = false; launch.playing = true; launch.speed = s0.date ? 1 : 5;   // objet calé sur l'heure réelle (satellite) : lecture ×1, sinon il s'éloigne de l'ISS réelle
     launch.topView = false;
-    if (s0.date && featCb.orbit && !featCb.orbit.checked) { featCb.orbit.checked = true; featCb.orbit.onchange(); }   // satellite : on allume aussi la trajectoire à l'avance de l'ISS réelle (jaune) pour la comparer à celle de l'objet JSON (cyan)
     cam.launchK = 1; cam.zoomFit = false; cam.userDir = false; setMode('launch'); sat.show(launch);
   }
   function launchPlan(plan) {

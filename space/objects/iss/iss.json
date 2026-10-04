@@ -1,0 +1,27 @@
+{
+  "name": "ISS",
+  "live": true,
+  "start": {
+    "orbit": { "epoch": "2026-10-01T11:56:31.238Z", "inclinationDeg": 51.6318, "raanDeg": 133.9648, "eccentricity": 0.0006934, "argPerigeeDeg": 209.9872, "meanAnomalyDeg": 150.072, "meanMotionRevDay": 15.4870385, "ndotRevDay2": 0.00003723, "bstar": 0.000076468 },
+    "at": "now"
+  },
+  "model": {
+    "file": "iss-nasa.glb"
+  },
+  "visual": {
+    "name": "ISS",
+    "lengthM": 73,
+    "widthM": 109,
+    "radiusM": 5,
+    "color": "#c8ccd4"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "massKg": 420000,
+      "cdA": 0,
+      "label": "L’ISS tourne sans moteur",
+      "key": "iss"
+    }
+  ]
+}

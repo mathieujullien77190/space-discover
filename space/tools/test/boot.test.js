@@ -41,7 +41,7 @@ for (const sp of [1, 86400, 432000]) { spBtns.find(b => +b.dataset.sp === sp).on
 // lancement de satellite simple : Lancer, vitesses, vue de dessus, zoom fusée, caméra auto, arrêt (chaque base et type)
 const btn = txt => allEls.filter(e => e.textContent === txt && e.onclick).pop();
 (async () => {
-for (const key of [null, 'starship500', 'obj:fusee-orbite-500km', 'obj:fusee-trop-lente', 'obj:iss']) {
+for (const key of [null, 'starship500', 'obj:fusee-orbite-500km', 'obj:fusee-trop-lente']) {
   if (key) { const sel2 = allEls.filter(e => e.id === 'select').pop(); sel2.value = key; sel2.onchange && sel2.onchange(); }
   btn('🚀 Lancer').onclick(); await new Promise(r => setImmediate(r)); step(60, 'lancement'); { const tel = allEls.filter(e => e.className === 'ltel').pop(); if (!tel || !/Altitude/.test(tel.textContent)) errors.push('lancement ' + key + ' : télémétrie absente (le vol n’a pas démarré)'); } for (const sp of ['×60', '×200']) { btn(sp).onclick(); step(300, 'vitesse ' + sp); }
   btn('⬆ Vue de dessus').onclick(); step(200, 'dessus'); btn('🔍 Zoom fusée').onclick(); step(200, 'zoom'); btn('🎥 Caméra auto').onclick(); step(100, 'auto'); btn('⬆ Vue de dessus').onclick(); btn('×200').onclick(); step(2500, 'vol complet'); btn('⏹ Arrêter').onclick(); step(30, 'arrêt'); }

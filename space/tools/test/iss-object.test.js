@@ -1,34 +1,28 @@
-// L'ISS décrite en JSON (data/objects/iss.json : paramètres orbitaux du TLE) doit suivre le même chemin que l'ISS réelle (SGP4, js/iss.js) : même plan, même phase, même trace au sol.
-// Construit un vrai Launch (three.js, faux canvas) et compare sa position à issState(date) à plusieurs instants. node tools/test/iss-object.test.js
+// L'ISS de la scène est UNE SEULE : celle du JSON (objects/iss/iss.json, dossier = JSON + modèle 3D). issState(date) (js/iss.js) doit donner pile la position SGP4 du TLE d'origine, et le dossier doit contenir le modèle.
+// node tools/test/iss-object.test.js   (ISS_DATE=2026-10-12T03:00:00Z pour une autre date)
 const fs = require('fs'), vm = require('vm'), path = require('path'), root = path.join(__dirname, '..', '..');
-const ctx2d = new Proxy({}, { get: (t, k) => (k === 'createLinearGradient' || k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : k in t ? t[k] : () => {}), set: (t, k, v) => { t[k] = v; return true; } });
-const sandbox = { console, Math, Date, JSON, Float32Array, Float64Array, Uint8Array, Uint16Array, Uint32Array, Int32Array, ArrayBuffer, Promise, setTimeout, performance: { now: () => Date.now() }, innerHeight: 900, innerWidth: 1400,
-  document: { createElement: () => ({ width: 0, height: 0, getContext: () => ctx2d, style: {}, addEventListener() {} }), createElementNS: () => ({ style: {}, addEventListener() {}, setAttribute() {} }), getElementById: () => null } };
+const sandbox = { console, Math, Date, JSON, Float32Array, Float64Array, Uint8Array, Uint16Array, Uint32Array, Int32Array, ArrayBuffer, Promise, setTimeout, document: { createElement: () => ({ getContext: () => ({}), style: {} }) }, innerHeight: 900, innerWidth: 1400 };
 sandbox.window = sandbox; sandbox.self = sandbox; vm.createContext(sandbox);
-for (const f of ['js/vendor/three.min.js', 'js/vendor/satellite.min.js', 'js/data/surface-earth.js', 'js/data/iss-data.js', 'js/earth.js', 'js/iss.js', 'js/physics.js', 'js/launch.js', 'js/rockets.js', 'js/story.js', 'js/flight-plan.js', 'js/flight-object.js', 'js/launch-3d.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), sandbox, { filename: f });
-sandbox.ISS_DATE = process.env.ISS_DATE || '2026-10-04T12:00:00Z'; sandbox.ISS_OBJ = JSON.parse(fs.readFileSync(path.join(root, 'data/objects/iss.json'), 'utf8'));
-const fails = [], res = vm.runInContext(`(() => {
-  const out = [], date = new Date(ISS_DATE), s0 = objectStart(ISS_OBJ, { date }), cam = { position: new THREE.Vector3(0, 0, 3) };
-  const site = Object.assign({}, LAUNCH_SITES[0], { id: 'obj', lat: s0.lat, lon: s0.lon });
-  const L = new Launch(site, 0, 0, 1, { opt: launchOptDefault(), object: ISS_OBJ, date, az: s0.azimuthDeg * Math.PI / 180 });
-  out.push({ txt: 'départ résolu : lat ' + s0.lat.toFixed(2) + '°, lon ' + s0.lon.toFixed(2) + '°, altitude ' + (s0.altitudeM / 1000).toFixed(1) + ' km, azimut ' + s0.azimuthDeg.toFixed(2) + '°, vitesse ' + s0.speedMs.toFixed(1) + ' m/s' });
-  for (const T of [0, 600, 1800, 2790, 5579, 11158, 43200]) {
-    L.T = T; L.playing = false; L.update(0.016, cam);
-    const real = issState(new Date(date.getTime() + T * 1000)), a = L.pos.clone().normalize(), b = real.pos.clone().normalize();
-    const ground = Math.acos(Math.max(-1, Math.min(1, a.dot(b)))) * R_KM, dh = (L.pos.length() - real.pos.length()) * R_KM;
-    out.push({ T, ground, dh, txt: 'T+' + String(T).padStart(5) + ' s : écart au sol ' + ground.toFixed(1) + ' km, écart de hauteur ' + dh.toFixed(1) + ' km (JSON ' + ((L.pos.length() - 1) * R_KM).toFixed(1) + ' km, SGP4 ' + real.alt.toFixed(1) + ' km), lat/lon JSON ' + (Math.asin(a.y) / DEG).toFixed(2) + ' / ' + (Math.atan2(-a.z, a.x) / DEG).toFixed(2) + ', SGP4 ' + real.lat.toFixed(2) + ' / ' + real.lon.toFixed(2) });
+for (const f of ['js/vendor/three.min.js', 'js/vendor/satellite.min.js', 'js/earth.js', 'js/physics.js', 'js/launch.js', 'js/flight-object.js', 'js/data/objects.js', 'js/iss.js']) { try { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), sandbox, { filename: f }); } catch (e) { if (f !== 'js/earth.js') throw e; } }
+// TLE d'origine de l'ISS (CelesTrak, 2026-10-01) : la vérité pour la comparaison
+sandbox.TLE = ["1 25544U 98067A   26274.49758378  .00003723  00000+0  76468-4 0  9991", "2 25544  51.6318 133.9648 0006934 209.9872 150.0720 15.48703850588231"];
+sandbox.ISS_DATE = process.env.ISS_DATE || '2026-10-04T12:00:00Z';
+const fails = [], check = (c, msg) => { console.log((c ? 'ok   ' : 'ÉCHEC ') + msg); if (!c) fails.push(msg); };
+const folder = path.join(root, 'objects', 'iss'), json = JSON.parse(fs.readFileSync(path.join(folder, 'iss.json'), 'utf8'));
+check(json.live === true && !!json.model && fs.existsSync(path.join(folder, json.model.file)), 'dossier objects/iss : iss.json (live) + modèle ' + json.model.file + ' (' + (fs.statSync(path.join(folder, json.model.file)).size / 1e6).toFixed(1) + ' Mo)');
+const G = e => vm.runInContext(e, sandbox);
+check(G('ISS_MODEL') === 'objects/iss/' + json.model.file && G('ISS_W') === json.visual.widthM, 'js/iss.js lit le modèle (' + G('ISS_MODEL') + ') et la largeur (' + G('ISS_W') + ' m) dans le JSON');
+const res = vm.runInContext(`(() => {
+  const rec = satellite.twoline2satrec(TLE[0], TLE[1]), base = new Date(ISS_DATE), out = [];
+  for (const T of [0, 600, 1800, 2790, 5579, 43200, 86400 * 3]) {
+    const d = new Date(base.getTime() + T * 1000), s = issState(d), pv = satellite.propagate(rec, d), gm = satellite.gstime(d), ecf = satellite.eciToEcf(pv.position, gm), geo = satellite.eciToGeodetic(pv.position, gm);
+    const truth = new THREE.Vector3(ecf.x, ecf.z, -ecf.y), g = Math.acos(Math.max(-1, Math.min(1, s.pos.clone().normalize().dot(truth.clone().normalize())))) * R_KM, dr = (s.pos.length() - truth.length() / R_KM) * R_KM;
+    out.push({ T, ground: g, dr, dalt: s.alt - geo.height, txt: 'T+' + String(T).padStart(6) + ' s : écart au sol ' + g.toFixed(2) + ' km, de rayon ' + dr.toFixed(2) + ' km, de hauteur géodésique ' + (s.alt - geo.height).toFixed(2) + ' km (' + s.alt.toFixed(1) + ' km, ' + s.speed.toFixed(2) + ' km/s)' });
   }
-  // trajectoire à l'avance sur un tour (cyan) contre celle de l'ISS réelle (jaune, même méthode que la case « Trajectoire future ») : points aux quarts et à la fin
-  L.T = 0; L.playing = false; L.update(0.016, cam); const f = L.fut, N = f.N;
-  for (const k of [45, 90, 135, 180]) {
-    const real = issState(new Date(date.getTime() + f.period * 1000 * k / N)), a = new THREE.Vector3(f.pos[3 * k], f.pos[3 * k + 1], f.pos[3 * k + 2]), g = Math.acos(Math.max(-1, Math.min(1, a.clone().normalize().dot(real.pos.clone().normalize())))) * R_KM;
-    out.push({ T: 'fut' + k, ground: g, txt: 'trajectoire à l’avance, point ' + k + '/' + N + ' (' + (f.period * k / N / 60).toFixed(1) + ' min) : écart avec l’ISS réelle ' + g.toFixed(1) + ' km' });
-  }
-  out.push({ txt: 'trajectoire : ' + (N + 1) + ' points, période ' + (f.period / 60).toFixed(2) + ' min, visible ' + f.line.visible });
   return out;
 })()`, sandbox);
-for (const r of res) { console.log(r.txt); if (r.T != null && (r.ground > (r.T === 0 ? 1 : 10))) fails.push('T+' + r.T + ' : écart au sol ' + r.ground.toFixed(1) + ' km (> ' + (r.T === 0 ? 1 : 10) + ' km)'); }
-// un TLE donne le même départ que les éléments écrits à la main
-const viaTle = vm.runInContext(`(() => { const a = objectStart(ISS_OBJ, { date: new Date(ISS_DATE) }), b = objectStart({ start: { tle: ISS_TLE, at: 'now' } }, { date: new Date(ISS_DATE) }); return Math.hypot(a.lat - b.lat, a.lon - b.lon) + Math.abs(a.speedMs - b.speedMs) / 1000; })()`, sandbox);
-console.log('TLE directement dans le JSON : écart avec les éléments saisis ' + viaTle.toExponential(1)); if (viaTle > 0.01) fails.push('start.tle différent de start.orbit');
-if (fails.length) { console.log('ÉCHEC : ' + fails.join(' ; ')); process.exit(1); } else console.log('ok : l\'ISS JSON suit l\'ISS SGP4');
+for (const r of res) { console.log(r.txt); if (r.ground > 1 || Math.abs(r.dr) > 1 || Math.abs(r.dalt) > 0.5) fails.push('T+' + r.T + ' : écart ' + r.ground.toFixed(2) + ' km au sol, ' + r.dr.toFixed(2) + ' km de rayon, ' + r.dalt.toFixed(2) + ' km de hauteur'); }
+const far = vm.runInContext('issState(new Date(Date.parse("2027-01-01T00:00:00Z")))', sandbox); check(far === null, 'au-delà de ±60 jours de l’époque : pas d’ISS (comme avant)');
+const dir = vm.runInContext(`(() => { const s = issState(new Date(ISS_DATE)); return Math.abs(s.vel.dot(s.up)) < 0.15 && Math.abs(s.vel.length() - 1) < 1e-6; })()`, sandbox); check(dir, 'direction de vol : unitaire et presque horizontale');
+console.log('période affichée : ' + (G('ISS_PERIOD_MS') / 60000).toFixed(2) + ' min');
+if (fails.length) { console.log('ÉCHEC : ' + fails.join(' ; ')); process.exit(1); } else console.log('ok : l’ISS de la scène (JSON) suit SGP4 à moins de 1 km');

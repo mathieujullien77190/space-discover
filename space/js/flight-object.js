@@ -2,14 +2,16 @@
 // il applique les paliers et intègre la physique (gravité en 1/r², traînée, poussée) ; si la vitesse donnée est trop faible, l'objet retombe sur la Terre, si elle est bonne il reste en orbite.
 // Une fusée, un satellite, l'ISS, un missile : même format. Résultat de la même forme que flyPlan (js/flight-plan.js) : `Launch` (js/launch-3d.js) l'affiche tel quel via `opts.object`.
 //
-// Format (data/objects/*.json, documenté dans CLAUDE.md) :
+// Format (objects/<nom>/<nom>.json, dossier = JSON + modèle 3D ; documenté dans CLAUDE.md) :
 //   name                         nom affiché
 //   start { lat, lon, altitudeKm | altitudeM, azimuthDeg (0 = nord, 90 = est), elevationDeg (90 = vertical), speedMs, frame: "ground" | "inertial" }
 //         vitesse initiale par rapport au sol ("ground", défaut : la rotation de la Terre s'y ajoute) ou dans le repère inertiel ("inertial" : pour un objet déjà en orbite)
 //   OU, pour un SATELLITE, les paramètres d'une orbite (ceux d'un TLE) au lieu de lat / lon / vitesse :
 //   start { orbit { epoch (ISO UTC), inclinationDeg, raanDeg, eccentricity, argPerigeeDeg, meanAnomalyDeg, meanMotionRevDay }  |  tle: [ligne 1, ligne 2],
 //           at: "now" | date ISO (défaut : l'époque) }       l'objet part de sa position sur l'orbite à la date « at » ; position, vitesse, plan et phase sont déduits (voir objectStart)
-//   visual { name, lengthM, radiusM, color }         forme 3D (cylindre) ; facultatif
+//   live: true                   objet PRÉSENT EN PERMANENCE dans la scène à l'heure réelle (l'ISS) : pas de bouton pour le lancer, il n'est pas dans le panneau « Satellite »
+//   model { file }               modèle 3D glTF (.glb) dans le même dossier que le JSON
+//   visual { name, lengthM, widthM, radiusM, color }  forme 3D (cylindre) ; facultatif
 //   dryKg                        masse en dessous de laquelle plus de poussée (réservoirs vides) ; défaut 0
 //   timeline [{ t (s), … }]      paliers triés par temps ; chaque clé n'est donnée QUE si elle change à cet instant, le reste garde sa valeur :
 //       massKg       masse totale (un largage = une baisse de masse)
@@ -56,6 +58,7 @@ function foGmst(ms) { const d = ms / 86400000 + 2440587.5 - 2451545, T = d / 365
 // (le plan de Launch est celui de la verticale du lieu et de la direction de la vitesse inertielle ; la Terre tourne dessous).
 // Position : si la bibliothèque SGP4 (satellite.js, js/vendor) est chargée, c'est l'état SGP4 EXACT à cette date (l'ISS JSON part pile de l'ISS réelle) ; sinon éléments moyens + dérive séculaire J2 du nœud et du périgée + freinage (ndot).
 // Dans les deux cas la vitesse est recalée pour que le vol képlérien de Launch ait la cadence moyenne réelle (argument de latitude : n + ωdot + 2·ndot·t), sinon la position osculatrice (± quelques km autour de la moyenne) ferait dériver de dizaines de km par tour.
+const FO_SATREC = {};   // cache : twoline2satrec est coûteux et issState() est appelé à chaque image
 function objectStart(obj, opt) {
   const S = obj.start; if (!S.orbit && !S.tle) return S;
   const L = LCH, D = Math.PI / 180, O = S.orbit || tleToOrbit(S.tle), ms0 = Date.parse(O.epoch), now = opt && opt.date ? +opt.date : Date.now(), at = S.at === 'now' ? now : S.at ? Date.parse(S.at) : ms0, days = (at - ms0) / 86400000, dt = days * 86400;
@@ -64,7 +67,7 @@ function objectStart(obj, opt) {
   let P, V;   // état dans le repère de la Terre figé à l'instant `at` (m, m/s) : position et vitesse INERTIELLE
   const sat = typeof satellite !== 'undefined' ? satellite : null;
   if (sat && sat.twoline2satrec) {
-    const tle = S.tle || orbitToTle(O), pv = sat.propagate(sat.twoline2satrec(tle[0], tle[1]), new Date(at));
+    const tle = S.tle || orbitToTle(O), key = tle[0] + tle[1], rec = FO_SATREC[key] || (FO_SATREC[key] = sat.twoline2satrec(tle[0], tle[1])), pv = sat.propagate(rec, new Date(at));
     if (pv.position) { const g = sat.gstime(new Date(at)), cg = Math.cos(g), sg = Math.sin(g), fix = v => [(v.x * cg + v.y * sg) * 1000, (-v.x * sg + v.y * cg) * 1000, v.z * 1000]; P = fix(pv.position); V = fix(pv.velocity); }
   }
   if (!P) {   // sans SGP4 : éléments moyens → position et vitesse képlériennes
@@ -81,7 +84,7 @@ function objectStart(obj, opt) {
   const vis = Math.sqrt(Math.max(1, L.MU * (2 / rr - 1 / aEff))), vs = vis / Math.hypot(...V); V = V.map(c => c * vs);   // vitesse recalée : le demi-grand axe du vol est aEff
   const up = P.map(c => c / rr), east = [-Math.sin(lon), Math.cos(lon), 0], north = [-Math.sin(lat) * Math.cos(lon), -Math.sin(lat) * Math.sin(lon), Math.cos(lat)], dot = (u, v) => u[0] * v[0] + u[1] * v[1] + u[2] * v[2];
   const vU = dot(V, up), vE = dot(V, east), vN = dot(V, north);
-  return { lat: lat / D, lon: lon / D, altitudeM: rr - L.RE, azimuthDeg: Math.atan2(vE, vN) / D, elevationDeg: Math.atan2(vU, Math.hypot(vE, vN)) / D, speedMs: Math.hypot(vE, vN, vU), frame: 'inertial', nodeRate: -k * Math.cos(i), date: new Date(at).toISOString() };   // nodeRate : précession du plan (rad/s, < 0 : le nœud recule), appliquée par Launch
+  return { lat: lat / D, lon: lon / D, altitudeM: rr - L.RE, azimuthDeg: Math.atan2(vE, vN) / D, elevationDeg: Math.atan2(vU, Math.hypot(vE, vN)) / D, speedMs: Math.hypot(vE, vN, vU), frame: 'inertial', ecef: P, velEcef: V, nodeRate: -k * Math.cos(i), date: new Date(at).toISOString() };   // nodeRate : précession du plan (rad/s, < 0 : le nœud recule), appliquée par Launch
 }
 // période affichée d'un satellite décrit par ses éléments (86400 / tours par jour), ou null : c'est celle du TLE, comme la « Trajectoire future » de l'ISS réelle
 function objectPeriodS(obj) { const S = obj.start, O = S && (S.orbit || (S.tle && tleToOrbit(S.tle))); return O ? 86400 / O.meanMotionRevDay : null; }

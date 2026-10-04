@@ -1,26 +1,21 @@
-// ISS : position réelle par SGP4 (satellite.js) d'après le TLE de js/data/iss-data.js, et modèle 3D simplifié (proportions réelles : 109 m × 73 m).
-const ISS_SATREC = satellite.twoline2satrec(ISS_TLE[0], ISS_TLE[1]);
-const ISS_W = 109, ISS_EPOCH = (() => {   // époque du TLE (jour de l'année 1 = 1er janv. 00:00 UTC)
-  const yy = +ISS_TLE[0].substr(18, 2), day = +ISS_TLE[0].substr(20, 12);
-  return Date.UTC(yy < 57 ? 2000 + yy : 1900 + yy, 0, 1) + (day - 1) * 86400000;
-})();
+// ISS : UNE SEULE ISS, celle du JSON (objects/iss/iss.json : paramètres orbitaux du TLE + modèle 3D `model.file` dans le même dossier). Sa position à la date d vient de `objectStart` (js/flight-object.js) :
+// état SGP4 exact à cette date. Pour la rafraîchir : coller dans le JSON les nouveaux paramètres orbitaux (ou `start.tle`) puis `node tools/make-objects.js`.
+const ISS_OBJ = FLIGHT_OBJECTS.iss, ISS_DIR = 'objects/iss/', ISS_MODEL = ISS_DIR + ISS_OBJ.model.file, ISS_W = ISS_OBJ.visual.widthM;
+const ISS_EPOCH = Date.parse((ISS_OBJ.start.orbit || tleToOrbit(ISS_OBJ.start.tle)).epoch);   // époque des paramètres orbitaux
+const ISS_PERIOD_MS = objectPeriodS(ISS_OBJ) * 1000;
 
-// état de l'ISS à la date d : position (unités de rayon terrestre, repère de la scène), hauteur (km), vitesse (km/s), direction de vol, lon/lat
+// état de l'ISS à la date d : position (unités de rayon terrestre, repère de la scène), hauteur géodésique (km), vitesse (km/s), direction de vol, lon/lat ; null au-delà de ±60 jours de l'époque
 function issState(d) {
-  const pv = satellite.propagate(ISS_SATREC, d);
-  if (!pv.position) return null;
-  const gm = satellite.gstime(d), ecf = satellite.eciToEcf(pv.position, gm), geo = satellite.eciToGeodetic(pv.position, gm);
-  const vel = satellite.eciToEcf(pv.velocity, gm);   // même rotation : direction du vol dans le repère terrestre
-  const toScene = (e, v) => v.set(e.x, e.z, -e.y);
-  const dirv = toScene(ecf, new THREE.Vector3()).normalize(), alt = geo.height;
+  if (Math.abs(d.getTime() - ISS_EPOCH) > 60 * 86400000) return null;
+  const s = objectStart(ISS_OBJ, { date: d }), P = s.ecef, V = s.velEcef, toScene = (e, v) => v.set(e[0], e[2], -e[1]);   // repère terrestre (x lon 0, y est, z pôle) → scène (x, z, −y)
+  const dirv = toScene(P, new THREE.Vector3()).normalize(), rr = Math.hypot(P[0], P[1], P[2]), sl = P[2] / rr, alt = (rr - 6378137 * (1 - sl * sl / 298.257223563)) / 1000;   // hauteur au-dessus de l'ellipsoïde
   return {
-    pos: dirv.clone().multiplyScalar(Math.hypot(ecf.x, ecf.y, ecf.z) / R_KM), up: dirv, vel: toScene(vel, new THREE.Vector3()).normalize(),
-    alt, speed: Math.hypot(pv.velocity.x, pv.velocity.y, pv.velocity.z),
-    lon: ((geo.longitude / DEG + 540) % 360) - 180, lat: geo.latitude / DEG,
+    pos: dirv.clone().multiplyScalar(rr / (R_KM * 1000)), up: dirv, vel: toScene(V, new THREE.Vector3()).normalize(),
+    alt, speed: s.speedMs / 1000, lon: s.lon, lat: s.lat,
   };
 }
 
-// Le modèle 3D (NASA, texturé) est chargé par js/main.js (data/iss-nasa.glb) ; repère du modèle en mètres : x = sens du vol, y = vers le haut (zénith), z = poutre (perpendiculaire à l'orbite).
+// Le modèle 3D (NASA, texturé) est chargé par js/main.js (ISS_MODEL, dans le dossier de l'objet) ; repère du modèle en mètres : x = sens du vol, y = vers le haut (zénith), z = poutre (perpendiculaire à l'orbite).
 
 // ---------- caractéristiques affichées en 3D sur l'ISS ----------
 // Chaque entrée : { id, label, build(ctx) -> { object3D (enfant du modèle ou de la scène), labels: [{ el, point(world Vector3) }], update(iss) } }.
@@ -60,7 +55,7 @@ const ISS_FEATURES = [
   { id: 'orbit', label: 'Trajectoire future (1 tour)', build(ctx) {
     const N = 180, pos = new Float32Array((N + 1) * 3), g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     const line = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xffe27a })); line.frustumCulled = false; ctx.scene.add(line);
-    let built = -1e12; const periodMs = 2 * Math.PI / ISS_SATREC.no * 60000;   // no : rad/min
+    let built = -1e12; const periodMs = ISS_PERIOD_MS;   // période du JSON (86400 / tours par jour)
     return {
       objects: [line], labels: [],
       update(iss, camera, date) {
