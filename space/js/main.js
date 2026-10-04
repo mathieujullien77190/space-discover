@@ -458,6 +458,7 @@
       // paramètres de la vue (à copier-coller pour les régler)
       const v = currentView();
       viewJson.textContent = JSON.stringify(v); viewTxt.dataset.json = viewJson.textContent;
+      { const r = timeBar.hidden ? null : timeBar.getBoundingClientRect(); viewTxt.style.bottom = r && r.height ? (innerHeight - r.top + 8) + 'px' : ''; }   // en bas à droite ; posé au-dessus de la barre de temps quand elle est affichée (sinon dans le coin)
     }
     // origine flottante : près de l'ISS, on recentre le monde sur elle pour rendre sans perte de précision
     const shift = cam.mode === 'launch' && launch ? launch.focusPos : iss && camera.position.distanceTo(iss.pos) * R_KM < 3000 ? iss.pos : null, saved = camera.position.clone();
