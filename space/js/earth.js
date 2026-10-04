@@ -1,6 +1,6 @@
 // Terre : sphère texturée (mers bleues, terres vertes, glaciers) + traits vectoriels nets (trait de côte, frontières) tracés en 3D.
 // Unité : 1 = rayon équatorial de la Terre (6378,137 km). Repère : x vers (lon 0, lat 0), y vers le nord, z vers 90° ouest (l'est tourne dans le sens direct autour de y).
-const R_KM = 6378.137, DEG = Math.PI / 180;
+const R_KM = FLIGHT_OBJECTS.earth.radiusKm, DEG = Math.PI / 180;   // rayon équatorial de la Terre : objects/earth/earth.json (js/data/objects.js doit être chargé avant)
 const SEA = '#1f63a8';
 
 // vecteur unitaire pour (longitude est °, latitude °)

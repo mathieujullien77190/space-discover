@@ -13,11 +13,7 @@
 <canvas id="gl"></canvas>
 <div id="hud">
   <div class="bar" id="bar">
-    <select id="viewSel" title="Vue">
-      <option value="earth">🌍 Terre</option>
-      <option value="moon">🌙 Lune</option>
-      <option value="sun">☀ Soleil</option>
-    </select>
+    <select id="viewSel" title="Vue"></select>
     <button id="bSats">🛰 <span>Satellites</span></button>
     <button id="bSat">🚀 <span>Fusées</span></button>
     <button id="bLaunch" hidden>🚀 <span>Lancement</span></button>
@@ -42,6 +38,9 @@
 <script src="js/vendor/satellite.min.js"></script>
 <script src="js/data/surface-earth.js"></script>
 <script src="js/data/earth-borders.js"></script>
+<script src="js/data/objects.js"></script>
+<script src="js/ephemeris.js"></script>
+<script src="js/bodies.js"></script>
 <script src="js/earth.js"></script>
 <script src="js/gltf-mini.js"></script>
 <script src="js/stack-models.js"></script>
@@ -49,10 +48,8 @@
 <script src="js/launch.js"></script>
 <script src="js/rockets.js"></script>
 <script src="js/flight-plan.js"></script>
-<script src="js/ephemeris.js"></script>
 <script src="js/flight-object.js"></script>
 <script src="js/data/plans.js"></script>
-<script src="js/data/objects.js"></script>
 <script src="js/iss.js"></script>
 <script src="js/story.js"></script>
 <script src="js/data/surface-moon.js"></script>

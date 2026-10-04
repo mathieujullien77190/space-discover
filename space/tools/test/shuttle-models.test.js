@@ -7,7 +7,7 @@ const sandbox = { console, Math, Date, JSON, Float32Array, Float64Array, Uint8Ar
   fetch: url => { const f = path.join(root, url); if (!fs.existsSync(f)) return Promise.resolve({ ok: false, status: 404 }); const b = fs.readFileSync(f); return Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)) }); },
   document: { createElement: () => ({ width: 0, height: 0, getContext: () => ctx2d, style: {}, addEventListener() {} }), createElementNS: () => ({ style: {}, addEventListener() {}, setAttribute() {} }), getElementById: () => null } };
 sandbox.window = sandbox; sandbox.self = sandbox; vm.createContext(sandbox);
-for (const f of ['js/vendor/three.min.js', 'js/data/surface-earth.js', 'js/earth.js', 'js/physics.js', 'js/launch.js', 'js/rockets.js', 'js/story.js', 'js/flight-plan.js', 'js/flight-object.js', 'js/data/objects.js', 'js/gltf-mini.js', 'js/stack-models.js', 'js/launch-3d.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), sandbox, { filename: f });
+for (const f of ['js/vendor/three.min.js', 'js/data/surface-earth.js', 'js/data/objects.js', 'js/ephemeris.js', 'js/bodies.js', 'js/earth.js', 'js/physics.js', 'js/launch.js', 'js/rockets.js', 'js/story.js', 'js/flight-plan.js', 'js/flight-object.js', 'js/gltf-mini.js', 'js/stack-models.js', 'js/launch-3d.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), sandbox, { filename: f });
 const fails = [], check = (c, m) => { console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if (!c) fails.push(m); };
 (async () => {
   const t0 = Date.now(), models = await vm.runInContext('loadStackModels(FLIGHT_OBJECTS.shuttle, "objects/shuttle/")', sandbox);

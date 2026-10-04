@@ -1,0 +1,51 @@
+{
+  "kind": "body",
+  "bodyType": "comet",
+  "name": "Comète de Halley",
+  "radiusKm": 5.5,
+  "massKg": 220000000000000,
+  "around": "sun",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "semiMajorAxisKm": 2667900000,
+    "eccentricity": 0.96714,
+    "inclinationDeg": 162.26,
+    "nodeDeg": 58.42,
+    "argPerigeeDeg": 111.33,
+    "meanAnomalyDeg": 0,
+    "epochD2000": -5074.5,
+    "periodDays": 27510
+  },
+  "appearance": {
+    "kind": "comet",
+    "color": "#d9e4ee",
+    "tail": {
+      "color": "#bfe3ff",
+      "lengthKmAt1AU": 30000000,
+      "widthKm": 3000000
+    }
+  },
+  "trace": {
+    "fullOrbit": true,
+    "color": "#9fd0ff"
+  },
+  "dot": {
+    "color": "#bfe3ff",
+    "minDistanceUnits": 0
+  },
+  "label": {
+    "text": "Comète de Halley",
+    "metricText": "Halley · noyau Ø {diameterKm} km",
+    "minDistanceUnits": 0.002
+  },
+  "menu": {
+    "order": 5,
+    "icon": "☄",
+    "view": {
+      "distanceUnits": 0.5,
+      "text": "Vue de la comète de Halley : orbite de 75 ans autour du Soleil (périhélie le 9 février 1986), queue tournée à l'opposé du Soleil"
+    }
+  },
+  "hitExtraPx": 4
+}

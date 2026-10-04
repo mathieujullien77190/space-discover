@@ -1,0 +1,45 @@
+{
+  "kind": "body",
+  "bodyType": "moon",
+  "name": "Lune",
+  "radiusKm": 1737.4,
+  "muM3S2": 4904869500000,
+  "massKg": 7.342e+22,
+  "around": "earth",
+  "thirdBody": true,
+  "motion": {
+    "frame": "geocentric",
+    "model": "meeus-moon",
+    "semiMajorAxisKm": 384400
+  },
+  "appearance": {
+    "kind": "painted",
+    "painter": "moon",
+    "baseColor": "#8f8c87"
+  },
+  "orientation": "tidal-lock",
+  "trace": {
+    "pastDays": 27.32,
+    "futureDays": 13.66
+  },
+  "dot": {
+    "color": "#dddddd",
+    "minDistanceUnits": 60,
+    "hideBelowUnits": 400
+  },
+  "label": {
+    "text": "Lune",
+    "metricText": "Lune · Ø {diameterKm} km",
+    "minDistanceUnits": 6
+  },
+  "info": true,
+  "menu": {
+    "order": 2,
+    "icon": "🌙",
+    "view": {
+      "distanceUnits": 4,
+      "text": "Vue de la Lune : la Terre tourne, la Lune lui présente toujours la même face"
+    }
+  },
+  "hitExtraPx": 4
+}

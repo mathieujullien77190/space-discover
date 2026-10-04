@@ -92,6 +92,32 @@ Chaque pièce (et la partie qui reste, `visual.stack.upper`) peut avoir un modè
 
 Ce sont les champs d'un TLE (ou `"tle": ["ligne 1", "ligne 2"]`). L'objet part de sa vraie position à la date `at` (`"now"` = maintenant). Avec `"live": true` il est présent en permanence dans la scène (liste « 🛰 Satellites ») ; `"model": { "file": "mon-modele.glb" }` donne son modèle 3D (le fichier est dans le même dossier ; `visual.widthM` = sa largeur réelle).
 
+## Un astre (étoile, planète, lune, comète)
+
+Un astre est aussi un dossier + un JSON, avec `"kind": "body"` : il n'a pas de poussée ni de paliers mais des constantes physiques, un mouvement et un aspect. Il apparaît tout seul dans le **sélecteur de vues** et dans la scène (sphère, étiquette, orbite, point lointain).
+
+```json
+{
+  "kind": "body", "bodyType": "planet",
+  "name": "Mars", "radiusKm": 3389.5, "muM3S2": 4.282837e13, "massKg": 6.4171e23,
+  "around": "sun",
+  "motion": { "frame": "heliocentric", "model": "kepler", "semiMajorAxisKm": 227939200, "eccentricity": 0.0934, "inclinationDeg": 1.85,
+             "nodeDeg": 49.558, "argPerigeeDeg": 286.502, "meanAnomalyDeg": 19.41, "epochD2000": 0, "periodDays": 686.98 },
+  "appearance": { "kind": "sphere", "color": "#c1440e" },
+  "trace": { "fullOrbit": true, "color": "#c1440e" },
+  "dot": { "color": "#e0623a", "minDistanceUnits": 300 },
+  "label": { "text": "Mars", "metricText": "Mars · Ø {diameterKm} km", "minDistanceUnits": 300 },
+  "menu": { "order": 4, "icon": "🔴", "view": { "distanceUnits": 3, "text": "Vue de Mars" } }
+}
+```
+
+- `bodyType` : `star` (Soleil), `planet`, `moon`, `comet` (+ `asteroid`, `dwarf`). `around` : le corps central (`sun`, `earth`).
+- `motion.model` : `kepler` (éléments orbitaux, écliptique J2000 : une planète, une comète, un astéroïde), `meeus-moon` / `meeus-sun` (formules précises de la Lune et du Soleil), `inverse` (la Terre vue du Soleil).
+- `appearance.kind` : `sphere` (couleur), `star` (étoile émissive avec halo), `comet` (noyau + `tail { color, lengthKmAt1AU, widthKm }` : queue à l'opposé du Soleil), `painted` (texture peinte par du code : la Lune), `earth`.
+- `trace` : `fullOrbit` (ellipse complète) ou `pastDays` / `futureDays` (trace derrière et devant, comme la Lune) ; `thirdBody: true` : l'astre attire les fusées (marée) ; `info: true` : sa distance est écrite dans l'info.
+- Les unités de distance (`distanceUnits`, `minDistanceUnits`) sont des **rayons terrestres**.
+- Exemples : `earth/`, `moon/`, `sun/`, `mars/` (planète), `halley/` (comète, e = 0,967).
+
 ## Exemples
 
 - `ariane5/` : Ariane 5 ECA, 4 pièces larguables (boosters, coiffe, étage principal, satellite), orbite de 500 km.

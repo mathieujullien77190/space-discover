@@ -1,0 +1,47 @@
+{
+  "kind": "body",
+  "bodyType": "planet",
+  "name": "Mars",
+  "radiusKm": 3389.5,
+  "muM3S2": 42828370000000,
+  "massKg": 6.4171e+23,
+  "around": "sun",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "semiMajorAxisKm": 227939200,
+    "eccentricity": 0.0934,
+    "inclinationDeg": 1.85,
+    "nodeDeg": 49.558,
+    "argPerigeeDeg": 286.502,
+    "meanAnomalyDeg": 19.41,
+    "epochD2000": 0,
+    "periodDays": 686.98
+  },
+  "appearance": {
+    "kind": "sphere",
+    "color": "#c1440e"
+  },
+  "trace": {
+    "fullOrbit": true,
+    "color": "#c1440e"
+  },
+  "dot": {
+    "color": "#e0623a",
+    "minDistanceUnits": 300
+  },
+  "label": {
+    "text": "Mars",
+    "metricText": "Mars · Ø {diameterKm} km",
+    "minDistanceUnits": 300
+  },
+  "menu": {
+    "order": 4,
+    "icon": "🔴",
+    "view": {
+      "distanceUnits": 3,
+      "text": "Vue de Mars : planète simple décrite par ses éléments orbitaux (objects/mars/mars.json)"
+    }
+  },
+  "hitExtraPx": 4
+}

@@ -3,7 +3,7 @@
 const fs = require('fs'), vm = require('vm'), path = require('path'), root = path.join(__dirname, '..', '..');
 const sandbox = { console, Math, Date, JSON, Float32Array, Float64Array, Uint8Array, Uint16Array, Uint32Array, Int32Array, ArrayBuffer, Promise, setTimeout, document: { createElement: () => ({ getContext: () => ({}), style: {} }) }, innerHeight: 900, innerWidth: 1400 };
 sandbox.window = sandbox; sandbox.self = sandbox; vm.createContext(sandbox);
-for (const f of ['js/vendor/three.min.js', 'js/vendor/satellite.min.js', 'js/earth.js', 'js/physics.js', 'js/launch.js', 'js/flight-object.js', 'js/data/objects.js', 'js/iss.js']) { try { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), sandbox, { filename: f }); } catch (e) { if (f !== 'js/earth.js') throw e; } }
+for (const f of ['js/vendor/three.min.js', 'js/vendor/satellite.min.js', 'js/data/objects.js', 'js/ephemeris.js', 'js/bodies.js', 'js/earth.js', 'js/physics.js', 'js/launch.js', 'js/flight-object.js', 'js/iss.js']) { try { vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), sandbox, { filename: f }); } catch (e) { if (f !== 'js/earth.js') throw e; } }
 // TLE d'origine de l'ISS (CelesTrak, 2026-10-01) : la vérité pour la comparaison
 sandbox.TLE = ["1 25544U 98067A   26274.49758378  .00003723  00000+0  76468-4 0  9991", "2 25544  51.6318 133.9648 0006934 209.9872 150.0720 15.48703850588231"];
 sandbox.ISS_DATE = process.env.ISS_DATE || '2026-10-04T12:00:00Z';

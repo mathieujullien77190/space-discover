@@ -12,25 +12,39 @@
   const inertial = new THREE.Group(); scene.add(inertial);   // missions lunaires : repère inertiel (la Terre tourne : world.rotation.y), décalé comme world   // tout ce qui est décalé à l'affichage (origine flottante près de l'ISS : précision au mètre)
   const earth = buildEarth(renderer); world.add(earth);
 
-  // espace inertiel : Soleil (taille réelle), Lune réelle, orbite de la Terre autour du Soleil, trajectoire de la Lune. Le groupe `solar` est tourné de −GMST dans les vues « Terre fixe » (le Soleil et la Lune font le tour en un jour)
-  // et pas tourné dans la vue « Soleil / Lune » (où c'est la Terre qui tourne : world.rotation.y = GMST). Créé peu après le démarrage (texture de la Lune ~0,3 s).
+  // ASTRES (objects/<astre>/<astre>.json, js/bodies.js : étoile, planète, lune naturelle, comète…) : chacun est dessiné d'après son JSON (aspect, trace d'orbite, point lointain, étiquette). La Terre est l'origine de la scène (son maillage est `earth`).
+  // Le groupe `solar` est tourné de −GMST dans les vues « Terre fixe » (le Soleil et la Lune font le tour en un jour) et pas tourné dans les vues d'astre (où c'est la Terre qui tourne : world.rotation.y = GMST). Créé peu après le démarrage (texture de la Lune ~0,3 s).
   const solar = new THREE.Group(); scene.add(solar);
-  let moonPast = null, moonFut = null, metric = false, moonMesh = null, sunMesh = null, orbitG = null, moonLoop = null, loopD = -1e9, earthDot = null, moonDot = null, solarTarget = 'earth';
+  let metric = false, solarTarget = 'earth', solarBuilt = false;
+  const STAR = (BODY.list().find(b => b.bodyType === 'star') || { id: 'sun' }).id, KMU = 1 / (R_KM * 1000);   // l'étoile du système (la queue des comètes lui tourne le dos) ;    // mètres → unités de la scène (rayon de la Terre = 1)
+  const bodyObjs = {}, bpos = {}, babs = {};   // bodyObjs[id] : objets 3D de l'astre ; bpos / babs : position géocentrique (inertielle / dans le repère tourné de `solar`), recalculées à chaque image
+  for (const b of BODY.list()) { bpos[b.id] = new THREE.Vector3(); babs[b.id] = new THREE.Vector3(); }
   const mkLabel = text => { const el = document.createElement('div'); el.className = 'l3d'; el.textContent = text; el.style.display = 'none'; document.body.appendChild(el); return el; };
-  const moonLabel = mkLabel('Lune'), sunLabel = mkLabel('Soleil (taille réelle)'), earthLabel = mkLabel('Terre');
   const dotOf = color => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3)); const p = new THREE.Points(g, new THREE.PointsMaterial({ color, size: 7, sizeAttenuation: false, depthWrite: false })); p.frustumCulled = false; solar.add(p); return p; };
+  const PAINTERS = { moon: r => buildMoonMesh(r) };   // sphères peintes (appearance.kind = "painted", appearance.painter) : à enrichir pour de nouveaux astres texturés
+  const mkTrail = (n, op) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); const l = new THREE.Line(g, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: op })); l.frustumCulled = false; return l; };
   function buildSolar() {
-    moonMesh = buildMoonMesh(renderer); solar.add(moonMesh);
-    sunMesh = new THREE.Mesh(new THREE.SphereGeometry(SUN_R_U, 64, 32), new THREE.MeshBasicMaterial({ color: 0xfff1c4 })); solar.add(sunMesh);
-    { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(255,230,160,0.9)'); gr.addColorStop(0.25, 'rgba(255,190,90,0.35)'); gr.addColorStop(1, 'rgba(255,160,60,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
-      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); sp.scale.setScalar(SUN_R_U * 7); sunMesh.add(sp); }
-    // orbite de la Terre autour du Soleil (ellipse réelle d'après la position du Soleil sur un an ; le groupe est posé sur le Soleil à chaque image)
-    { const D0 = astroD(new Date()), pts = []; for (let i = 0; i <= 365; i++) pts.push(sunGeo(D0 + i * 365.2422 / 365).negate());
-      orbitG = new THREE.Group(); const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x4a90e2, transparent: true, opacity: 0.9 })); l.frustumCulled = false; orbitG.add(l); solar.add(orbitG); }
-    moonLoop = new THREE.Group(); solar.add(moonLoop);   // trace de la Lune : le passé (un tour complet, s'estompe vers le début) et l'avenir (pâle)
-    const mkTrail = (n, op) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); const l = new THREE.Line(g, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: op })); l.frustumCulled = false; moonLoop.add(l); return l; };
-    moonPast = mkTrail(121, 1); moonFut = mkTrail(61, 0.45);
-    earthDot = dotOf(0x5ab0ff); moonDot = dotOf(0xdddddd);
+    const D0 = astroD(new Date());
+    for (const b of BODY.list()) {
+      const ap = b.appearance || {}, ru = BODY.radiusUnits(b.id), o = bodyObjs[b.id] = { b, id: b.id, screen: null, loopD: -1e9 };
+      if (ap.kind === 'painted') o.mesh = PAINTERS[ap.painter](renderer);   // (le maillage de la Lune est déjà à son rayon)
+      else if (ap.kind === 'star') { o.mesh = new THREE.Mesh(new THREE.SphereGeometry(ru, 64, 32), new THREE.MeshBasicMaterial({ color: new THREE.Color(ap.color || '#ffffff') }));
+        const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(255,230,160,0.9)'); gr.addColorStop(0.25, 'rgba(255,190,90,0.35)'); gr.addColorStop(1, 'rgba(255,160,60,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); sp.scale.setScalar(ru * (ap.glowRadii || 7)); o.mesh.add(sp); }
+      else if (ap.kind === 'sphere' || ap.kind === 'comet') o.mesh = new THREE.Mesh(new THREE.SphereGeometry(ru, 48, 24), new THREE.MeshStandardMaterial({ color: new THREE.Color(ap.color || '#cccccc'), roughness: 1, metalness: 0 }));
+      if (o.mesh) solar.add(o.mesh);
+      if (ap.kind === 'comet' && ap.tail) { const tg = new THREE.ConeGeometry(1, 1, 24, 1, true); tg.translate(0, 0.5, 0); o.tail = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ color: new THREE.Color(ap.tail.color || '#bfe3ff'), transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); o.tail.frustumCulled = false; solar.add(o.tail); }
+      if (b.dot) o.dot = dotOf(new THREE.Color(b.dot.color || '#ffffff'));
+      if (b.label) o.label = mkLabel(b.label.text);
+      const tr = b.trace;
+      if (tr && tr.fullOrbit && b.around) {   // orbite complète autour du corps central (la Terre autour du Soleil : l'ellipse réelle d'après la position du Soleil sur un an) ; le groupe est posé sur le corps central à chaque image
+        o.orbitG = new THREE.Group(); const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(BODY.orbitPoints(b.id, D0, 365).map(p => new THREE.Vector3(p[0] * KMU, p[1] * KMU, p[2] * KMU))), new THREE.LineBasicMaterial({ color: new THREE.Color(tr.color || '#4a90e2'), transparent: true, opacity: 0.9 })); l.frustumCulled = false; o.orbitG.add(l); solar.add(o.orbitG);
+      }
+      if (tr && tr.pastDays) {   // trace : le passé (un tour complet, s'estompe vers le début) et l'avenir (pâle)
+        o.loop = new THREE.Group(); solar.add(o.loop); o.past = mkTrail(121, 1); o.fut = mkTrail(61, 0.45); o.loop.add(o.past, o.fut);
+      }
+    }
+    solarBuilt = true;
   }
   setTimeout(buildSolar, 400);
 
@@ -82,15 +96,16 @@
   /* vues Soleil / Lune : repère inertiel (la Terre tourne), cible = Soleil (orbite de la Terre en entier) ou Lune (avec sa trajectoire) ; changement de vue direct */
   const goEarth = () => setMode('earth');
   function goSolar(target) {
-    solarTarget = target; setMode('solar'); cam.goal.dist = target === 'sun' ? 90000 : 4;
+    solarTarget = target; setMode('solar'); cam.goal.dist = BODY.get(target).menu.view.distanceUnits;   // distance de la vue d'un astre : son JSON
     const d = ECLIPTIC_POLE.clone().add(tmp.set(0.35, 0, 0.1)).normalize(); cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; snapCam();
   }
   cam.onEarth = () => goEarth();
   /* un seul sélecteur pour les vues (Terre, ISS, Lune, Soleil) ; l'interrupteur jour/nuit se comporte comme un « mode sombre » (réglage mémorisé) */
   const viewSel = document.getElementById('viewSel');
-  function syncView(m) { if (m === 'iss') viewSel.selectedIndex = -1; else viewSel.value = m === 'solar' ? (solarTarget === 'sun' ? 'sun' : 'moon') : 'earth'; }   // le sélecteur ne contient que les astres : en vue ISS (satellite) aucune entrée n'est choisie
+  viewSel.innerHTML = ''; for (const b of BODY.menu()) { const op = document.createElement('option'); op.value = b.id; op.textContent = (b.menu.icon ? b.menu.icon + ' ' : '') + b.name; viewSel.append(op); }   // le sélecteur est construit d'après les astres décrits en JSON (menu.order)
+  function syncView(m) { if (m === 'iss') viewSel.selectedIndex = -1; else viewSel.value = m === 'solar' ? solarTarget : 'earth'; }   // le sélecteur ne contient que les astres : en vue ISS (satellite) aucune entrée n'est choisie
   const mtChk = document.getElementById('mtChk'); try { metric = localStorage.getItem('metric') === '1'; } catch (e) {} mtChk.checked = metric; mtChk.onchange = () => { metric = mtChk.checked; try { localStorage.setItem('metric', metric ? '1' : '0'); } catch (e) {} };
-  viewSel.onchange = () => { const v = viewSel.value; if (v === 'earth') goEarth(); else goSolar(v); viewSel.blur(); };
+  viewSel.onchange = () => { const v = viewSel.value, b = BODY.get(v); if (b && b.menu.mode === 'earth') goEarth(); else goSolar(v); viewSel.blur(); };
 
   // caractéristiques de l'ISS affichées en 3D (cases à cocher ; définies dans ISS_FEATURES, js/iss.js)
   const VIEW_ISS = { yaw: -28.8, pitch: 24.9, dist: 0.393 };   // accès DIRECT à l'ISS, sans transition : vue réglée par l'utilisateur (copiée depuis l'encadré « Vue »), un peu de derrière et au-dessus, à 393 m (yaw °, pitch °, distance km)
@@ -252,10 +267,11 @@
   document.getElementById('bCopy').onclick = () => { const t = viewTxt.dataset.json || ''; try { navigator.clipboard.writeText(t); } catch (e) {} const r = document.createRange(); r.selectNodeContents(viewJson); getSelection().removeAllRanges(); getSelection().addRange(r); };
   bSats.onclick = () => { satsBox.hidden = !satsBox.hidden; bSats.classList.toggle('on', !satsBox.hidden); if (!satsBox.hidden) { satBox.hidden = true; document.getElementById('bSat').classList.remove('on'); } };   // un seul panneau à la fois (satellites / fusées)
 
-  let issScreen = null, moonScreen = null, sunScreen = null;   // positions écran de l'ISS, de la Lune et du Soleil si visibles (cliquables : ISS → vue ISS, Lune → vue Lune, Soleil → vue Soleil)
+  let issScreen = null;   // position écran de l'ISS si visible (cliquable : vue ISS) ; celles des astres sont dans bodyObjs[id].screen (clic → vue de l'astre)
   const touch = matchMedia('(pointer: coarse)').matches, HIT = touch ? 42 : 26, near = (p, r, x, y) => !!p && Math.hypot(x - p[0], y - p[1]) < r;
-  attachControls(canvas, cam, (x, y) => { if (near(issScreen, HIT, x, y)) goIss(); else if (near(moonScreen, HIT + 4, x, y)) goSolar('moon'); else if (near(sunScreen, HIT + 14, x, y)) goSolar('sun'); });
-  canvas.addEventListener('pointermove', e => canvas.classList.toggle('hand', near(issScreen, HIT, e.clientX, e.clientY) || near(moonScreen, HIT + 4, e.clientX, e.clientY) || near(sunScreen, HIT + 14, e.clientX, e.clientY)));
+  const bodyAt = (x, y) => { for (const id in bodyObjs) { const o = bodyObjs[id]; if (o.screen && o.b.menu && o.b.menu.view && near(o.screen, HIT + (o.b.hitExtraPx || 0), x, y)) return id; } return null; };
+  attachControls(canvas, cam, (x, y) => { if (near(issScreen, HIT, x, y)) goIss(); else { const id = bodyAt(x, y); if (id) goSolar(id); } });
+  canvas.addEventListener('pointermove', e => canvas.classList.toggle('hand', near(issScreen, HIT, e.clientX, e.clientY) || !!bodyAt(e.clientX, e.clientY)));
 
   function resize() { const vv = window.visualViewport, w = Math.round(vv ? vv.width : innerWidth), h = Math.round(vv ? vv.height : innerHeight); renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
   addEventListener('resize', resize); addEventListener('orientationchange', () => setTimeout(resize, 200)); if (window.visualViewport) visualViewport.addEventListener('resize', resize); resize();
@@ -274,8 +290,8 @@
     const realNow = Date.now(); simMs += (realNow - lastReal) * simSpeed; lastReal = realNow; const date = new Date(simMs);   // horloge simulée : temps réel par défaut, accélérable (boutons en bas à droite)
     iss = issState(date);
     frameF = cam.mode === 'solar' ? 1 : 0;
-    const Dd = astroD(date), gm = curGm = gmstOf(Dd), solarMode = cam.mode === 'solar', sunV = sunGeo(Dd), moonV = moonInertial(Dd).pos, rotS = -gm * (1 - frameF);
-    const sunAbs = sunV.clone().applyAxisAngle(Y_AXIS, rotS), moonAbs = moonV.clone().applyAxisAngle(Y_AXIS, rotS);
+    const Dd = astroD(date), gm = curGm = gmstOf(Dd), solarMode = cam.mode === 'solar', rotS = -gm * (1 - frameF);
+    for (const id in bpos) { const g = BODY.geo(id, Dd); bpos[id].set(g[0] * KMU, g[1] * KMU, g[2] * KMU); babs[id].copy(bpos[id]).applyAxisAngle(Y_AXIS, rotS); }   // position géocentrique de chaque astre (inertielle, puis dans le repère tourné de `solar`)
 
     // trop loin pour voir l'ISS (cachée) : on passe en vue « Terre » sans bouger la caméra (le bouton Terre s'allume)
     if (cam.mode === 'iss' && (camera.position.length() - 1) * R_KM > 20000) {
@@ -285,7 +301,7 @@
     timeBar.hidden = !!launch;   // pendant une mission, le temps est celui de la mission
     // caméra : la cible suit l'ISS ou reste au centre
     if (launch) { launch.update(dt, camera); tl.update(launch); }
-    const goalTgt = solarMode ? (solarTarget === 'sun' ? sunAbs : solarTarget === 'moon' ? moonAbs : tmp.set(0, 0, 0)) : cam.mode === 'iss' && iss ? iss.pos : cam.mode === 'launch' && launch ? launch.focusPos : tmp.set(0, 0, 0);
+    const goalTgt = solarMode ? (babs[solarTarget] || tmp.set(0, 0, 0)) : cam.mode === 'iss' && iss ? iss.pos : cam.mode === 'launch' && launch ? launch.focusPos : tmp.set(0, 0, 0);
     if (cam.mode === 'launch' && launch) {   // caméra auto : sur le côté de la trajectoire, de plus en plus loin ; le zoom manuel multiplie la distance
       if (!cam.userDir) { const d = launch.camDir; cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; }
       const auto = (launch.follow === 'pad' ? 500 : launch.rocketLen * 1.6) / 1000 / R_KM; cam.launchK = Math.max(0.02 / (auto * R_KM), Math.min(cam.launchK, 41 / auto));   // caméra TOUT PRÈS de la fusée (1,6 fois sa longueur, toute la fusée visible), à toute altitude ; vue « Pas de tir » : à 500 m du lieu de lancement ; la molette ajuste (de 20 m à la Terre entière)
@@ -306,26 +322,35 @@
     const closest = Math.max(1e-7, Math.min(cam.dist, camera.position.length() - 1) * 0.05);
     camera.near = Math.min(0.05, closest); camera.far = 4e6; camera.updateProjectionMatrix();
 
-    // Soleil et Lune réels (cachés pendant une mission lunaire : elle a les siens)
+    // astres : chacun d'après son JSON (position, orientation, queue de comète, orbite, trace, point lointain, étiquette) 
     solar.visible = true; solar.rotation.y = rotS;
-    if (sunMesh) {
-      sunMesh.position.copy(sunV); orbitG.position.copy(sunV); orbitG.visible = solarMode; moonMesh.position.copy(moonV); moonQuat(moonV.clone().normalize(), ECLIPTIC_POLE, moonMesh.quaternion);
-      moonDot.visible = cam.dist > 60 && !(solarMode && solarTarget === 'moon' && cam.dist < 400); earthDot.visible = solarMode && cam.dist > 300;
-      for (const [d, p] of [[moonDot, moonV], [earthDot, new THREE.Vector3()]]) { const at = d.geometry.attributes.position; at.setXYZ(0, p.x, p.y, p.z); at.needsUpdate = true; }
-      if (Math.abs(Dd - loopD) > 0.05) {
-        loopD = Dd; const P = moonPast.geometry.attributes, F = moonFut.geometry.attributes;
-        for (let k = 0; k <= 120; k++) { const q = moonInertial(Dd - 27.32 + k * 27.32 / 120).pos, f = 0.12 + 0.88 * k / 120; P.position.setXYZ(k, q.x, q.y, q.z); P.color.setXYZ(k, 0.62 * f, 0.78 * f, 1 * f); }
-        for (let k = 0; k <= 60; k++) { const q = moonInertial(Dd + k * 13.66 / 60).pos; F.position.setXYZ(k, q.x, q.y, q.z); F.color.setXYZ(k, 0.45, 0.5, 0.6); }
-        P.color.needsUpdate = true; F.color.needsUpdate = true; P.position.needsUpdate = true; F.position.needsUpdate = true;
+    if (solarBuilt) {
+      const fr = n => n.toLocaleString('fr-FR', { maximumFractionDigits: 0 }), proj = (el, P, on) => { const pp = P.clone().project(camera); if (on && pp.z < 1 && Math.abs(pp.x) < 1 && Math.abs(pp.y) < 1) { el.style.display = 'block'; el.style.transform = `translate(${(pp.x + 1) / 2 * innerWidth + 10}px,${(1 - pp.y) / 2 * innerHeight - 8}px)`; return [(pp.x + 1) / 2 * innerWidth, (1 - pp.y) / 2 * innerHeight]; } el.style.display = 'none'; return null; };
+      for (const id in bodyObjs) {
+        const o = bodyObjs[id], b = o.b, v = bpos[id], ab = babs[id], ru = BODY.radiusUnits(id), parent = b.around && bpos[b.around] ? bpos[b.around] : null, tr = b.trace || {};
+        if (o.mesh) { o.mesh.position.copy(v); if (b.orientation === 'tidal-lock' && parent) moonQuat(v.clone().sub(parent).normalize(), ECLIPTIC_POLE, o.mesh.quaternion); }   // rotation synchrone : toujours la même face vers le corps central
+        if (o.tail) {   // queue de comète : à l'opposé du Soleil, de plus en plus longue près de lui, invisible au-delà de ≈ 3,5 UA
+          const sv = bpos[STAR], rAU = Math.hypot(v.x - sv.x, v.y - sv.y, v.z - sv.z) / AU_U, tl = b.appearance.tail, k = Math.max(0, 1 - rAU / 3.5) / Math.pow(Math.max(0.3, rAU), 1.5), len = tl.lengthKmAt1AU / R_KM * k;
+          o.tail.visible = len > ru * 4; if (o.tail.visible) { const dir = v.clone().sub(sv).normalize(); o.tail.position.copy(v); o.tail.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir); const w = tl.widthKm / 2 / R_KM * Math.sqrt(Math.min(1, k)); o.tail.scale.set(Math.max(w, ru), len, Math.max(w, ru)); }
+        }
+        if (o.orbitG) { o.orbitG.position.copy(parent || bpos[BODY.origin()]); o.orbitG.visible = solarMode; }
+        if (o.dot) { const d = b.dot, shown = (!d.onlyInSolarView || solarMode) && cam.dist > (d.minDistanceUnits || 0) && !(solarMode && solarTarget === id && cam.dist < (d.hideBelowUnits || 0)); o.dot.visible = shown; const at = o.dot.geometry.attributes.position; at.setXYZ(0, v.x, v.y, v.z); at.needsUpdate = true; }
+        if (o.loop) {   // trace de la trajectoire autour du corps central : passé et avenir, recalculée tous les 0,05 jour, collée à l'astre à chaque image
+          const N = 120, NF = 60;
+          if (Math.abs(Dd - o.loopD) > 0.05) { o.loopD = Dd; const P = o.past.geometry.attributes, F = o.fut.geometry.attributes, pd = tr.pastDays, fd = tr.futureDays;
+            for (let k = 0; k <= N; k++) { const q = BODY.geo(id, Dd - pd + k * pd / N), f = 0.12 + 0.88 * k / N; P.position.setXYZ(k, q[0] * KMU, q[1] * KMU, q[2] * KMU); P.color.setXYZ(k, 0.62 * f, 0.78 * f, 1 * f); }
+            for (let k = 0; k <= NF; k++) { const q = BODY.geo(id, Dd + k * fd / NF); F.position.setXYZ(k, q[0] * KMU, q[1] * KMU, q[2] * KMU); F.color.setXYZ(k, 0.45, 0.5, 0.6); }
+            P.color.needsUpdate = true; F.color.needsUpdate = true; P.position.needsUpdate = true; F.position.needsUpdate = true; }
+          { const P = o.past.geometry.attributes.position; P.setXYZ(N, v.x, v.y, v.z); P.needsUpdate = true; const F = o.fut.geometry.attributes.position; F.setXYZ(0, v.x, v.y, v.z); F.needsUpdate = true; }
+          o.loop.visible = solarMode || camera.position.length() > 8;
+        }
+        if (o.label) {   // étiquette : nom (mesures : diamètre) ; la Terre n'est écrite que de loin ou en mode mesures
+          const lb = b.label, dKm = fr(2 * b.radiusKm), txt = metric && lb.metricText ? lb.metricText.replace('{diameterKm}', dKm).replace('{earths}', fr(2 * b.radiusKm / (2 * R_KM))) : lb.text; if (o.label.textContent !== txt) o.label.textContent = txt;
+          const on = b.sceneOrigin ? (solarMode && cam.dist > 300) || (metric && cam.mode === 'earth' && cam.dist > 6) : camera.position.distanceTo(ab) > (lb.minDistanceRadii != null ? lb.minDistanceRadii * ru : lb.minDistanceUnits || 0);
+          o.screen = proj(o.label, ab, on); if (b.sceneOrigin) o.screen = null;
+        }
       }
-      { const P = moonPast.geometry.attributes.position; P.setXYZ(120, moonV.x, moonV.y, moonV.z); P.needsUpdate = true; const F = moonFut.geometry.attributes.position; F.setXYZ(0, moonV.x, moonV.y, moonV.z); F.needsUpdate = true; }   // la trace colle à la Lune à chaque image
-      moonLoop.visible = solarMode || camera.position.length() > 8;
-      // mesures : seulement la taille (diamètre) dans les étiquettes
-      { const fr = n => n.toLocaleString('fr-FR', { maximumFractionDigits: 0 });
-        moonLabel.textContent = metric ? 'Lune · Ø ' + fr(2 * 1737.4) + ' km' : 'Lune'; sunLabel.textContent = metric ? 'Soleil · Ø ' + fr(2 * 695700) + ' km (' + fr(2 * 695700 / 12756) + ' Terres)' : 'Soleil (taille réelle)'; earthLabel.textContent = metric ? 'Terre · Ø 12 756 km' : 'Terre'; }
-      const proj = (el, P, on) => { const pp = P.clone().project(camera); if (on && pp.z < 1 && Math.abs(pp.x) < 1 && Math.abs(pp.y) < 1) { el.style.display = 'block'; el.style.transform = `translate(${(pp.x + 1) / 2 * innerWidth + 10}px,${(1 - pp.y) / 2 * innerHeight - 8}px)`; return [(pp.x + 1) / 2 * innerWidth, (1 - pp.y) / 2 * innerHeight]; } el.style.display = 'none'; return null; };
-      moonScreen = proj(moonLabel, moonAbs, camera.position.distanceTo(moonAbs) > 6); sunScreen = proj(sunLabel, sunAbs, camera.position.distanceTo(sunAbs) > 2 * SUN_R_U); proj(earthLabel, new THREE.Vector3(), solarMode && cam.dist > 300 || (metric && cam.mode === 'earth' && cam.dist > 6));
-    } else { moonLabel.style.display = sunLabel.style.display = earthLabel.style.display = 'none'; moonScreen = sunScreen = null; }
+    } else { for (const id in bodyObjs) { const o = bodyObjs[id]; if (o.label) o.label.style.display = 'none'; o.screen = null; } }
     // lumière
     sun.position.copy(cam.mode === 'solar' || (launch && launch.inertial) ? camera.position.clone().sub(cam.tgt).normalize() : camera.position.clone().normalize()).add(tmp.set(0.4, 0.5, 0.2)).multiplyScalar(10); amb.intensity = 0.55;   // toujours « jour » : la Terre et la Lune sont éclairées de face (pas de nuit)
 
@@ -458,8 +483,8 @@
       if (staleDays > 60) t += '\n(TLE ancien : position de l\'ISS imprécise)';
       if (hiState === 'loading') t += '\nChargement du modèle détaillé de l\'ISS…';
       if (cam.mode === 'iss') t += "\nÉchelle réelle : l'ISS (109 m) n'est visible qu'à moins de ~17 km.";
-      const dMoon = moonV.length() * R_KM, dSun = sunV.length() * R_KM; t += `\nLune à ${Math.round(dMoon).toLocaleString('fr-FR')} km · Soleil à ${fmtBig(dSun) || Math.round(dSun).toLocaleString('fr-FR') + ' km'}`;
-      if (solarMode) t += solarTarget === 'sun' ? '\nVue du Soleil : la Terre tourne sur elle-même et autour de lui (échelle réelle : Terre et Lune sont des points)' : '\nVue de la Lune : la Terre tourne, la Lune lui présente toujours la même face';
+      t += '\n' + BODY.list().filter(b => b.info).sort((a, b) => (a.menu ? a.menu.order : 99) - (b.menu ? b.menu.order : 99)).map(b => { const d = bpos[b.id].length() * R_KM; return `${b.name} à ${fmtBig(d) || Math.round(d).toLocaleString('fr-FR') + ' km'}`; }).join(' · ');   // distances des astres marqués "info" (Lune, Soleil)
+      if (solarMode && BODY.get(solarTarget) && BODY.get(solarTarget).menu.view) t += '\n' + BODY.get(solarTarget).menu.view.text;
       info.textContent = t;
       // paramètres de la vue (à copier-coller pour les régler)
       const v = currentView();

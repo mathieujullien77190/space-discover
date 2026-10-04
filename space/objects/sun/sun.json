@@ -1,0 +1,33 @@
+{
+  "kind": "body",
+  "bodyType": "star",
+  "name": "Soleil",
+  "radiusKm": 695700,
+  "muM3S2": 132712440018000000000,
+  "massKg": 1.98847e+30,
+  "thirdBody": true,
+  "motion": {
+    "frame": "geocentric",
+    "model": "meeus-sun"
+  },
+  "appearance": {
+    "kind": "star",
+    "color": "#fff1c4",
+    "glowRadii": 7
+  },
+  "label": {
+    "text": "Soleil (taille réelle)",
+    "metricText": "Soleil · Ø {diameterKm} km ({earths} Terres)",
+    "minDistanceRadii": 2
+  },
+  "info": true,
+  "menu": {
+    "order": 3,
+    "icon": "☀",
+    "view": {
+      "distanceUnits": 90000,
+      "text": "Vue du Soleil : la Terre tourne sur elle-même et autour de lui (échelle réelle : Terre et Lune sont des points)"
+    }
+  },
+  "hitExtraPx": 14
+}

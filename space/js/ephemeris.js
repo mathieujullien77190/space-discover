@@ -1,7 +1,8 @@
+// (nécessite js/data/objects.js : constantes des astres décrits en JSON, voir js/bodies.js)
 // Éphémérides du Soleil et de la Lune (formules approchées de Meeus, précision ≈ 0,3° pour la Lune) : fonctions PURES, sans three.js, partagées par la scène (js/moon.js) et par le moteur de vol (js/flight-object.js,
 // attraction de la Lune et du Soleil). Repère INERTIEL (équatorial) en axes de la scène : (X, Y, Z)équatorial → (X, Z, −Y) ; y = pôle nord ; mètres. Pour passer au repère de la Terre fixe : tourner de −GMST autour de y.
 const EPH = {
-  AU_M: 149597870700, MU_SUN: 1.32712440018e20, MU_MOON: 4.9048695e12, EPS: 23.4393 * Math.PI / 180,
+  AU_M: FLIGHT_OBJECTS.earth.motion.semiMajorAxisKm * 1000, MU_SUN: FLIGHT_OBJECTS.sun.muM3S2, MU_MOON: FLIGHT_OBJECTS.moon.muM3S2, EPS: FLIGHT_OBJECTS.earth.axialTiltDeg * Math.PI / 180,   // constantes lues dans objects/{earth,moon,sun}/*.json
   days: ms => ms / 86400000 + 2440587.5 - 2451545,                                       // jours depuis J2000 (ms : date en millisecondes UTC)
   gmst: D => (((280.46061837 + 360.98564736629 * D) % 360) + 360) % 360 * Math.PI / 180,   // temps sidéral de Greenwich (rad)
   sun(D) {                                                                               // Terre → Soleil, [x, y, z] en mètres
@@ -25,7 +26,7 @@ function ephThirdBody(latDeg, lonDeg, azDeg, date0) {
   const toPlane = v => { const w = [v[0] * cg + v[2] * sg, v[1], -v[0] * sg + v[2] * cg]; return [dot(w, s), dot(w, e), dot(w, n)]; };   // inertiel → repère de la Terre à l'instant de départ → (verticale, direction, hors plan)
   let tCache = -1e9, B = null;
   return (t, x, y) => {
-    if (t - tCache >= 60 || t < tCache) { tCache = t; const Dt = D0 + t / 86400; B = [[EPH.MU_MOON, toPlane(EPH.moon(Dt).pos)], [EPH.MU_SUN, toPlane(EPH.sun(Dt))]]; }
+    if (t - tCache >= 60 || t < tCache) { tCache = t; const Dt = D0 + t / 86400; B = BODY.list().filter(b => b.thirdBody).map(b => [b.muM3S2, toPlane(BODY.geo(b.id, Dt))]); }   // tous les astres marqués "thirdBody" dans leur JSON (Lune, Soleil…)
     let ax = 0, ay = 0;
     for (const [mu, d] of B) { const rx = d[0] - x, ry = d[1] - y, rz = d[2], r3 = Math.pow(rx * rx + ry * ry + rz * rz, 1.5), d3 = Math.pow(d[0] * d[0] + d[1] * d[1] + d[2] * d[2], 1.5); ax += mu * (rx / r3 - d[0] / d3); ay += mu * (ry / r3 - d[1] / d3); }
     return [ax, ay];

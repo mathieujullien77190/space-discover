@@ -1,7 +1,7 @@
 // La Lune en 3D : sphère texturée avec la carte géologique unifiée de l'USGS (même style que le projet « système solaire » archivé : mers sombres, hautes terres claires, cratères),
 // peinte À PLAT (équirectangulaire) avec les mêmes fonctions que la Terre (texRing). Unité de la scène : rayon de la Terre ; la Lune est à ≈ 60 unités.
 // Repère propre de la Lune (comme `ll` pour la Terre) : y = pôle nord, x = longitude 0 / latitude 0 (face visible, tournée vers la Terre), l'est tourne dans le sens direct autour de y.
-const MOON_R = 1737.4 / R_KM, MOON_BASE = '#8f8c87';
+const MOON_R = FLIGHT_OBJECTS.moon.radiusKm / R_KM, MOON_BASE = FLIGHT_OBJECTS.moon.appearance.baseColor;   // rayon et couleur de base : objects/moon/moon.json
 function paintMoonTexture(TW, TH) {
   const c = document.createElement('canvas'); c.width = TW; c.height = TH;
   const g = c.getContext('2d'); g.fillStyle = MOON_BASE; g.fillRect(0, 0, TW, TH);
@@ -30,7 +30,7 @@ function moonQuat(mhat, n, out) {
 
 // ---------- Soleil et Lune réels (formules approchées de Meeus) ----------
 // Repère INERTIEL (équatorial) en axes de la scène : (X, Y, Z)équatorial → (X, Z, −Y) ; unité = rayon de la Terre. Dans le repère de la Terre fixe (la scène normale) : tourner de −GMST autour de y.
-const AU_U = 149597870.7 / R_KM, SUN_R_U = 695700 / R_KM, EPS = EPH.EPS, KM = 1 / (R_KM * 1000);   // formules dans js/ephemeris.js (partagées avec le moteur de vol : attraction de la Lune et du Soleil)
+const AU_U = EPH.AU_M / 1000 / R_KM, SUN_R_U = FLIGHT_OBJECTS.sun.radiusKm / R_KM, EPS = EPH.EPS, KM = 1 / (R_KM * 1000);   // constantes : objects/{earth,moon,sun}/*.json   // formules dans js/ephemeris.js (partagées avec le moteur de vol : attraction de la Lune et du Soleil)
 const astroD = d => EPH.days(d.getTime());   // jours depuis J2000
 const gmstOf = EPH.gmst;   // temps sidéral de Greenwich (rad)
 const eqScene = (X, Y, Z, out) => (out || new THREE.Vector3()).set(X, Z, -Y);
