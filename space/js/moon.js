@@ -30,20 +30,12 @@ function moonQuat(mhat, n, out) {
 
 // ---------- Soleil et Lune réels (formules approchées de Meeus) ----------
 // Repère INERTIEL (équatorial) en axes de la scène : (X, Y, Z)équatorial → (X, Z, −Y) ; unité = rayon de la Terre. Dans le repère de la Terre fixe (la scène normale) : tourner de −GMST autour de y.
-const AU_U = 149597870.7 / R_KM, SUN_R_U = 695700 / R_KM, EPS = 23.4393 * Math.PI / 180;
-const astroD = d => d.getTime() / 86400000 + 2440587.5 - 2451545;   // jours depuis J2000
-const gmstOf = D => ((280.46061837 + 360.98564736629 * D) % 360) * Math.PI / 180;   // temps sidéral de Greenwich (rad)
+const AU_U = 149597870.7 / R_KM, SUN_R_U = 695700 / R_KM, EPS = EPH.EPS, KM = 1 / (R_KM * 1000);   // formules dans js/ephemeris.js (partagées avec le moteur de vol : attraction de la Lune et du Soleil)
+const astroD = d => EPH.days(d.getTime());   // jours depuis J2000
+const gmstOf = EPH.gmst;   // temps sidéral de Greenwich (rad)
 const eqScene = (X, Y, Z, out) => (out || new THREE.Vector3()).set(X, Z, -Y);
-function sunGeo(D) {   // Terre → Soleil (inertiel, unités)
-  const r = Math.PI / 180, M = (357.528 + 0.9856003 * D) * r, lam = (280.46 + 0.9856474 * D + 1.915 * Math.sin(M) + 0.02 * Math.sin(2 * M)) * r, R = 1.00014 - 0.01671 * Math.cos(M) - 0.00014 * Math.cos(2 * M);
-  return eqScene(R * Math.cos(lam), R * Math.sin(lam) * Math.cos(EPS), R * Math.sin(lam) * Math.sin(EPS)).multiplyScalar(AU_U);
-}
-function moonInertial(D) {   // Terre → Lune (inertiel) ; précision ≈ 0,3° (basse précision de Meeus)
-  const r = Math.PI / 180, L = 218.316 + 13.176396 * D, M = (134.963 + 13.064993 * D) * r, F = (93.272 + 13.22935 * D) * r;
-  const lon = (L + 6.289 * Math.sin(M)) * r, lat = 5.128 * Math.sin(F) * r, km = 385001 - 20905 * Math.cos(M);
-  const ra = Math.atan2(Math.sin(lon) * Math.cos(EPS) - Math.tan(lat) * Math.sin(EPS), Math.cos(lon)), dec = Math.asin(Math.sin(lat) * Math.cos(EPS) + Math.cos(lat) * Math.sin(EPS) * Math.sin(lon));
-  return { pos: eqScene(Math.cos(dec) * Math.cos(ra), Math.cos(dec) * Math.sin(ra), Math.sin(dec)).multiplyScalar(km / R_KM), km };
-}
+const sunGeo = D => { const v = EPH.sun(D); return new THREE.Vector3(v[0] * KM, v[1] * KM, v[2] * KM); };   // Terre → Soleil (inertiel, unités)
+const moonInertial = D => { const q = EPH.moon(D); return { pos: new THREE.Vector3(q.pos[0] * KM, q.pos[1] * KM, q.pos[2] * KM), km: q.km }; };   // Terre → Lune (inertiel) ; précision ≈ 0,3°
 const ECLIPTIC_POLE = eqScene(0, -Math.sin(EPS), Math.cos(EPS));   // axe de la Lune à ~1,5° près
 // la Lune dans le repère de la Terre fixe : { pos, km, pole }
 function moonNow(d) {

@@ -1,7 +1,7 @@
 // Objet générique décrit par un JSON minimal (js/flight-object.js, objects/*/*.json) : doit atteindre l'orbite si les paliers sont bons, retomber sinon, et l'ISS reste en orbite.
 // node tools/test/object.test.js
 const fs = require('fs'), vm = require('vm'), path = require('path'), root = path.join(__dirname, '..', '..'), ctx = { console, Math, Date, JSON }; vm.createContext(ctx);
-for (const f of ['js/physics.js', 'js/launch.js', 'js/flight-object.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f });
+for (const f of ['js/physics.js', 'js/launch.js', 'js/ephemeris.js', 'js/flight-object.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f });
 const load = n => JSON.parse(fs.readFileSync(path.join(root, 'objects', n, n + '.json'), 'utf8')), fails = [], RE = 6378137;
 const check = (c, msg) => { console.log((c ? 'ok   ' : 'ÉCHEC ') + msg); if (!c) fails.push(msg); };
 const fly = o => ctx.flyObject(JSON.parse(JSON.stringify(o)));
@@ -35,6 +35,14 @@ let gm = 0; for (const s of r.samples) gm = Math.max(gm, s.acc); const m1 = t =>
 check(gm < 3.05 && gm > 2.5 && m1(0) > 2.0e6 && m1(0) < 2.1e6, 'accélération max ' + gm.toFixed(2) + ' g (limite des 3 g), masse au décollage ' + Math.round(m1(0)) + ' kg, poussée/poids au départ ' + (r.samples[1].F / (r.samples[1].m * 9.80665)).toFixed(2));
 const early = JSON.parse(JSON.stringify(SH)); early.timeline.find(e => e.key === 'esc2end').t = 1380; early.timeline.find(e => e.key === 'esc2').t = 1361; r = fly(early);
 check(!r.ok || (r.orbit.rp - RE) / 1000 < 150, 'même navette, circularisation écourtée à 19 s : ' + (r.ok ? 'orbite ' + orb(r) : r.message));
+// attraction de la Lune et du Soleil (effet de marée), seulement si la date du départ est connue
+{ const date = new Date('2026-10-04T12:00:00Z'), tb = ctx.ephThirdBody(5.24, -52.77, 90, date), mag = (r, v) => Math.hypot(...tb(0, r, 0)), RE0 = 6378137;
+  const c0 = Math.hypot(...tb(0, 0, 0)), leo = mag(RE0 + 400e3), far = mag(60 * RE0), lun = mag(380e6);
+  check(c0 < 1e-12 && leo > 1e-7 && leo < 2e-6 && far > leo * 20 && lun > leo * 20, 'marée Lune + Soleil : nulle au centre de la Terre (' + c0.toExponential(1) + '), ' + leo.toExponential(2) + ' m/s² à 400 km, ' + far.toExponential(2) + ' à 60 rayons, ' + lun.toExponential(2) + ' à la distance de la Lune');
+  const base = fly(A), withB = ctx.flyObject(JSON.parse(JSON.stringify(A)), { date }), off = JSON.parse(JSON.stringify(A)); off.thirdBodies = false; const withoutB = ctx.flyObject(off, { date });
+  const d = (u, v) => Math.hypot(u.state.x - v.state.x, u.state.y - v.state.y) / 1000;
+  check(withB.thirdBodies && !withoutB.thirdBodies && !base.thirdBodies, 'Ariane 5 : attraction prise en compte avec une date (' + withB.thirdBodies + '), sans date (' + base.thirdBodies + '), désactivée par thirdBodies:false (' + withoutB.thirdBodies + ')');
+  check(d(withB, base) > 0.001 && d(withB, base) < 20 && d(withoutB, base) < 1e-9, 'effet sur la position finale : ' + d(withB, base).toFixed(3) + ' km (orbite ' + orb(withB) + ' au lieu de ' + orb(base) + '), 0 km avec thirdBodies:false'); }
 // entrées invalides
 for (const [name, o] of [['sans start', { timeline: [{ t: 0, massKg: 1 }] }], ['sans timeline', { start: { lat: 0, lon: 0 } }], ['sans masse', { start: { lat: 0, lon: 0 }, timeline: [{ t: 0 }] }]]) { let e = null; try { fly(o); } catch (x) { e = x; } check(!!e, 'objet invalide (' + name + ') refusé : ' + (e && e.message)); }
 if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }

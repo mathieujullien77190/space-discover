@@ -9,6 +9,7 @@
 //   OU, pour un SATELLITE, les paramètres d'une orbite (ceux d'un TLE) au lieu de lat / lon / vitesse :
 //   start { orbit { epoch (ISO UTC), inclinationDeg, raanDeg, eccentricity, argPerigeeDeg, meanAnomalyDeg, meanMotionRevDay }  |  tle: [ligne 1, ligne 2],
 //           at: "now" | date ISO (défaut : l'époque) }       l'objet part de sa position sur l'orbite à la date « at » ; position, vitesse, plan et phase sont déduits (voir objectStart)
+//   thirdBodies: false           désactive l'attraction de la Lune et du Soleil (par défaut elle est prise en compte dès que la date du départ est connue : js/ephemeris.js)
 //   live: true                   objet PRÉSENT EN PERMANENCE dans la scène à l'heure réelle (l'ISS) : pas de bouton pour le lancer, il n'est pas dans le panneau « Satellite »
 //   model { file }               modèle 3D glTF (.glb) dans le même dossier que le JSON
 //   visual { name, lengthM, widthM, radiusM, color }  forme 3D (cylindre) ; facultatif
@@ -108,6 +109,9 @@ function flyObject(obj, opt) {
   let m = obj.massKg || 1000, thrustN = 0, accel = null, isp = 0, burn = null, cdA = obj.cdA != null ? obj.cdA : 5, phase = 'vol', next = 0, t = 0;
   const events = [], samples = []; let nextSample = 0, maxQ = { q: 0, t: 0 }, ok = false, crashed = false, reason = 'time';
   const record = (e) => { events.push({ t, label: e.label || e.key, key: e.key || ('k' + events.length), x, y, vx, vy, alt: Math.hypot(x, y) - L.RE, v: Math.hypot(vx, vy) }); };
+  // attraction de la Lune et du Soleil (demande de l'utilisateur : « que le Soleil et la Lune aient un impact » ; les autres planètes ne sont pas simulées) : seulement si on connaît la date du départ (opt.date)
+  // et sauf si le JSON dit "thirdBodies": false ; plan du vol et repère figés à la date du départ (voir ephThirdBody, js/ephemeris.js)
+  const t0 = S0.date ? new Date(S0.date) : opt && opt.date ? new Date(opt.date) : null, third = typeof ephThirdBody === 'function' && t0 && obj.thirdBodies !== false ? ephThirdBody(S0.lat, S0.lon, S0.azimuthDeg != null ? S0.azimuthDeg : 90, t0) : null;
   const apply = k => {
     if (k.massKg != null) m = k.massKg;
     if (k.thrustN != null) { thrustN = k.thrustN; accel = null; byFlow = false; } if (k.accelMs2 != null) { accel = k.accelMs2; thrustN = 0; byFlow = false; }
@@ -133,7 +137,7 @@ function flyObject(obj, opt) {
     if (powered && byFlow) { md = burn || 0; F = md * (ispV - (ispV - ispS) * air) * G0; }   // poussée déduite du débit et de l'Isp (plus faible au sol)
     else if (powered) { F = accel != null ? accel * m : thrustN; md = burn != null ? burn : (isp > 0 ? F / (isp * G0) : 0); if (F > 0 && md * 0.1 > m - dryKg && md > 0) { const f = (m - dryKg) / (md * 0.1); F *= f; md *= f; } }
     const phi = objectPitch(pitchPts, t), tx = ux * Math.sin(phi) + ex * Math.cos(phi), ty = uy * Math.sin(phi) + ey * Math.cos(phi);
-    const fa = phAccel(x, y, vx, vy, m, F, tx, ty, cdA, wEff), q = fa.q, g = fa.g, ax = fa.ax, ay = fa.ay; if (q > maxQ.q) maxQ = { q, t };
+    const fa = phAccel(x, y, vx, vy, m, F, tx, ty, cdA, wEff), q = fa.q, g = fa.g; let ax = fa.ax, ay = fa.ay; if (third) { const tb = third(t, x, y); ax += tb[0]; ay += tb[1]; } if (q > maxQ.q) maxQ = { q, t };
     const dt = F > 0 || h < 120e3 ? 0.1 : 0.5;
     if (t >= nextSample - 1e-9) { samples.push({ t, x, y, vx, vy, m, F, phi: F > 0 ? phi : Math.atan2(vr, vt), phase, alt: h, v: Math.hypot(vx, vy), vr, vt, acc: Math.hypot(ax + g * ux, ay + g * uy) / G0, q, eap: F > 0 && !!flames && flames.includes('eap'), epc: F > 0 && (!flames || flames.includes('epc')), esc: F > 0 && !!flames && flames.includes('esc'), fairing: false, epcAttached: true, eapAttached: false }); nextSample += L.SAMPLE; }
     if (t >= tLast - 1e-9 && F === 0) {   // plus de moteur : l'orbite est-elle stable ? (périgée au-dessus de l'atmosphère)
@@ -159,7 +163,7 @@ function flyObject(obj, opt) {
   const message = ok ? 'Orbite atteinte : ' + km(orbit.rp - L.RE) + ' × ' + km(orbit.ra - L.RE) + ' km.'
     : crashed ? 'Trop lent : l\'objet retombe sur la Terre (impact après ' + Math.round(t) + ' s, apogée ' + km(Math.max(...samples.map(s => s.alt))) + ' km).'
     : reason === 'escape' ? 'Vitesse de libération dépassée : l\'objet quitte la Terre.' : 'Fin de la simulation sans orbite stable.';
-  return { target: ok ? (orbit.rp - L.RE) / 1000 : 0, samples, events, orbit, ok, crashed, reason, message, tEnd: t, state: { x, y, vx, vy }, maxQ, payload: 0, plan: released.length ? { jettison } : undefined, released, nodeRate: S0.nodeRate || 0, final: { alt: (r - L.RE) / 1000, v: Math.hypot(vx, vy) }, object: obj };
+  return { target: ok ? (orbit.rp - L.RE) / 1000 : 0, samples, events, orbit, ok, crashed, reason, message, tEnd: t, state: { x, y, vx, vy }, maxQ, payload: 0, thirdBodies: !!third, plan: released.length ? { jettison } : undefined, released, nodeRate: S0.nodeRate || 0, final: { alt: (r - L.RE) / 1000, v: Math.hypot(vx, vy) }, object: obj };
 }
 
 const FO_ROLE_KEY = { booster: 'eap', fairing: 'fairing', stage: 'epcsep', payload: 'sat' };   // rôle d'une pièce → clé d'étape lue par Launch (dessin et chute des débris)
