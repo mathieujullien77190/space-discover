@@ -1,0 +1,10 @@
+{
+  "name": "Satellite",
+  "role": "payload",
+  "massKg": 3000,
+  "visual": {
+    "radiusM": 1.2,
+    "lengthM": 3
+  },
+  "separationSpeedMs": -0.6
+}

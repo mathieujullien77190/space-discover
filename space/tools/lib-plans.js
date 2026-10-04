@@ -1,7 +1,7 @@
 // Écrit js/data/plans.js : copie embarquée de tous les plans de data/plans/*.json (la page s'ouvre aussi en file://, où fetch ne lit pas les fichiers locaux).
 // Ajouter un plan : poser son JSON dans data/plans/ et l'ajouter à PLAN_FILES (clé = nom utilisé dans FLIGHT_PLANS), puis `node tools/make-plan.js --wrap`.
 const fs = require('fs'), path = require('path');
-const PLAN_FILES = { kourou500: 'kourou-ariane5-500km.json', starship500: 'starbase-starship-500km.json' };
+const PLAN_FILES = { starship500: 'starbase-starship-500km.json' };   // (l'Ariane 5 est maintenant l'objet objects/ariane5/ ; l'ancien plan kourou-ariane5-500km.json reste comme référence des tests et de tools/make-ariane5.js)
 function writePlansJs(root) {
   const plans = {}, paths = {};
   for (const [k, f] of Object.entries(PLAN_FILES)) { const p = path.join(root, 'data', 'plans', f); if (fs.existsSync(p)) { plans[k] = JSON.parse(fs.readFileSync(p, 'utf8')); paths[k] = 'data/plans/' + f; } }

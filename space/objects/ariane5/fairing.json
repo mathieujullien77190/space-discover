@@ -1,0 +1,15 @@
+{
+  "name": "Coiffe (moitié)",
+  "role": "fairing",
+  "massKg": 1200,
+  "residualPropKg": 0,
+  "visual": {
+    "radiusM": 2.7,
+    "cylM": 12,
+    "coneM": 6,
+    "color": "#f2f2f2"
+  },
+  "dragCoefficient": 1,
+  "separationSpeedMs": 0.3,
+  "disintegrates": false
+}

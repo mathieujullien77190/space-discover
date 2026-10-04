@@ -5,7 +5,7 @@ const ctx2d = new Proxy({}, { get: (t, k) => (k === 'createLinearGradient' || k 
 const sandbox = { console, Math, Date, JSON, Float32Array, Float64Array, Uint8Array, Uint16Array, Uint32Array, Int32Array, ArrayBuffer, Promise, setTimeout, performance: { now: () => Date.now() }, innerHeight: 900, innerWidth: 1400,
   document: { createElement: () => ({ width: 0, height: 0, getContext: () => ctx2d, style: {}, addEventListener() {} }), createElementNS: () => ({ style: {}, addEventListener() {}, setAttribute() {} }), getElementById: () => null } };
 sandbox.window = sandbox; sandbox.self = sandbox; vm.createContext(sandbox);
-const scripts = ['js/vendor/three.min.js', 'js/data/surface-earth.js', 'js/earth.js', 'js/physics.js', 'js/launch.js', 'js/rockets.js', 'js/story.js', 'js/data/surface-moon.js', 'js/launch-3d.js', 'js/moon.js'];
+const scripts = ['js/vendor/three.min.js', 'js/data/surface-earth.js', 'js/earth.js', 'js/physics.js', 'js/launch.js', 'js/rockets.js', 'js/story.js', 'js/data/surface-moon.js', 'js/flight-object.js', 'js/data/objects.js', 'js/launch-3d.js', 'js/moon.js'];
 for (const f of scripts) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), sandbox, { filename: f });
 // non-régression : un lancement ordinaire (Kourou, Ariane 5) fonctionne toujours (repère de la Terre, options d'élément)
 console.log(vm.runInContext(`(() => { const L = new Launch(LAUNCH_SITES[0], 400, 9000, 1.4, {}); const cam = { position: new THREE.Vector3(0, 0, 3) }; L.T = 200; L.playing = false; L.update(0.016, cam); const o = L.elOpt('eap1'); return 'Launch ordinaire : inertial=' + L.inertial + ', alt ' + Math.round(L.altM / 1000) + ' km, trajectoire des boosters affichée : ' + o.traj + ', ' + L.pieces.length + ' débris'; })()`, sandbox));
@@ -35,4 +35,16 @@ console.log(vm.runInContext(`(() => {
   let flames = 0, steps = 0; for (let T = L.ev.epcsep.t; T < L.ev.epcsep.t + p.path.length + 5; T += 2) { L.T = T; L.playing = false; L.update(0.016, cam); steps++; if (p.ret.flame.visible) flames++; }
   o.push('flamme visible ' + flames + ' / ' + steps + ' images ; suivi du booster : ' + (L.follow = 'epc', L.update(0.016, cam), Number.isFinite(L.focusPos.x) && L.focusPos.length() > 0.9));
   return o.join(String.fromCharCode(10));
+})()`, sandbox));
+
+// Ariane 5 en objet JSON (objects/ariane5/ : ariane5.json + une pièce larguable par fichier) : orbite, pièces qui se détachent et retombent chacune avec ses propres paramètres
+console.log(vm.runInContext(`(() => {
+  const O = FLIGHT_OBJECTS.ariane5, site = Object.assign({}, LAUNCH_SITES[0], { id: 'obj', name: O.name, lat: O.start.lat, lon: O.start.lon }), cam = { position: new THREE.Vector3(0, 0, 3) };
+  const L = new Launch(site, 0, 0, 1, { opt: launchOptDefault(), object: O, az: Math.PI / 2 }), o = L.sim.orbit, N = String.fromCharCode(10), g = k => L.pieces.filter(q => q.key === k);
+  const out = ['Ariane 5 objet : orbite ' + Math.round((o.rp - 6378137) / 1000) + ' x ' + Math.round((o.ra - 6378137) / 1000) + ' km, ok ' + L.sim.ok + ', ' + L.sim.events.map(e => e.key).join(' ')];
+  out.push('pièces : ' + L.pieces.map(q => q.tagKey + ' (' + q.model.dry + ' kg, ' + q.path.length + ' s, ' + q.endText + ')').join(' ; '));
+  out.push('étiquettes : ' + L.tagList.map(t => t.id).join(' '));
+  let bad = 0; for (let T = 0; T <= L.Tmax; T += 97) { L.T = T; L.playing = false; L.update(0.016, cam); if (![L.pos.x, L.pos.y, L.pos.z].every(Number.isFinite)) bad++; }
+  out.push('lecture : ' + (bad ? bad + ' positions non finies' : 'positions finies, tout le vol') + ' ; boosters ' + g('eap').length + ', coiffe ' + g('fairing').length + ', étage principal ' + g('epcsep').length);
+  return out.join(N);
 })()`, sandbox));

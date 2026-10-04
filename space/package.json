@@ -4,6 +4,7 @@
   "description": "Terre 3D (three.js), ISS réelle et lancements de fusées simulés",
   "private": true,
   "scripts": {
+    "prestart": "node tools/make-objects.js",
     "start": "npx --yes http-server -p 5179 -c-1 -o",
     "test": "node tools/test/physics.test.js"
   },

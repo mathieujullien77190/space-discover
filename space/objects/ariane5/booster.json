@@ -1,0 +1,17 @@
+{
+  "name": "Booster à poudre (EAP)",
+  "role": "booster",
+  "massKg": 33000,
+  "residualPropKg": 0,
+  "visual": {
+    "radiusM": 1.5,
+    "lengthM": 31,
+    "noseM": 3.2,
+    "nozzleM": 3.5,
+    "color": "#f2f2f2",
+    "bandColor": "#b83030"
+  },
+  "dragCoefficient": 1,
+  "separationSpeedMs": -1.5,
+  "disintegrates": false
+}

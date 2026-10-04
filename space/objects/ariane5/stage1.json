@@ -1,0 +1,16 @@
+{
+  "name": "Étage principal (EPC)",
+  "role": "stage",
+  "massKg": 12200,
+  "residualPropKg": 5257,
+  "visual": {
+    "radiusM": 2.7,
+    "lengthM": 30.5,
+    "nozzleM": 5.5,
+    "color": "#d8b48a"
+  },
+  "dragCoefficient": 1,
+  "separationSpeedMs": -1,
+  "disintegrates": true,
+  "disintegrationAltitudeKm": 120
+}
