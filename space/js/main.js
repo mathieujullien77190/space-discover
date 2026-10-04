@@ -101,26 +101,32 @@
   cam.onEarth = () => goEarth();
   /* un seul sélecteur pour les vues (Terre, ISS, Lune, Soleil) ; l'interrupteur jour/nuit se comporte comme un « mode sombre » (réglage mémorisé) */
   const viewSel = document.getElementById('viewSel');
-  function syncView(m) { viewSel.value = m === 'solar' ? (solarTarget === 'sun' ? 'sun' : 'moon') : m === 'iss' ? 'iss' : 'earth'; }
+  function syncView(m) { if (m === 'iss') viewSel.selectedIndex = -1; else viewSel.value = m === 'solar' ? (solarTarget === 'sun' ? 'sun' : 'moon') : 'earth'; }   // le sélecteur ne contient que les astres : en vue ISS (satellite) aucune entrée n'est choisie
   const mtChk = document.getElementById('mtChk'); try { metric = localStorage.getItem('metric') === '1'; } catch (e) {} mtChk.checked = metric; mtChk.onchange = () => { metric = mtChk.checked; try { localStorage.setItem('metric', metric ? '1' : '0'); } catch (e) {} };
-  viewSel.onchange = () => { const v = viewSel.value; if (v === 'earth') goEarth(); else if (v === 'iss') goIss(); else goSolar(v); viewSel.blur(); };
+  viewSel.onchange = () => { const v = viewSel.value; if (v === 'earth') goEarth(); else goSolar(v); viewSel.blur(); };
 
   // caractéristiques de l'ISS affichées en 3D (cases à cocher ; définies dans ISS_FEATURES, js/iss.js)
   const VIEW_ISS = { yaw: -38, pitch: 55.5, dist: 0.5 };   // vue quand on zoome sur l'ISS (yaw °, pitch °, distance km) — réglée par l'utilisateur
   const VIEW_BEHIND = { yaw: 0, pitch: 25, dist: 1500 };   // vue « au-dessus, un peu derrière » (yaw °, pitch °, distance km à l'ISS)
   const viewTxt = document.getElementById('viewTxt'), viewJson = document.getElementById('viewJson');
   const scaleBar = document.getElementById('scaleBar'), scaleTxt = document.getElementById('scaleTxt');
-  const featCb = {}, l3d = [], featOn = {}, featInst = {}, featPanel = document.getElementById('feat');
+  const featCb = {}, l3d = [], featOn = {}, featInst = {}, featPanel = document.createElement('div');
   const fctx = { scene: world, model: issModel, label(text) { const el = document.createElement('div'); el.className = 'l3d'; el.textContent = text; document.body.appendChild(el); const l = { el, world: new THREE.Vector3(), needModel: false }; l3d.push(l); return l; } };
   for (const f of ISS_FEATURES) {
     const lab = document.createElement('label'), cb = document.createElement('input'); cb.type = 'checkbox';
     cb.onchange = () => {
-      featOn[f.id] = cb.checked;
+      featOn[f.id] = cb.checked; if (f.id === 'size' && cb.checked && cam.mode !== 'iss') goIss();   // « Dimensions » ne se voit que sur le satellite : on s'en approche
       if (cb.checked && !featInst[f.id]) { featInst[f.id] = f.build(fctx); }
       const inst = featInst[f.id]; if (inst) { inst.objects.forEach(o => o.visible = cb.checked); inst.labels.forEach(l => { if (!cb.checked) l.el.style.display = 'none'; }); }
     };
     featCb[f.id] = cb; lab.append(cb, ' ' + f.label); featPanel.append(lab);
   }
+  // panneau « 🛰 Satellites » : la liste des satellites (l'ISS pour l'instant : objets `live` du dossier objects/) puis leurs options (Dimensions, Trajectoire) ; remplace l'ancienne entrée « ISS » du sélecteur de vues (réservé aux astres) et le bouton « Détails ISS »
+  const satsBox = document.getElementById('satsPanel'), bSats = document.getElementById('bSats'), satItems = [];
+  { const mk = (tag, props, ...kids) => { const e = Object.assign(document.createElement(tag), props || {}); e.append(...kids); return e; }, list = mk('div', { className: 'slist' });
+    for (const k of Object.keys(FLIGHT_OBJECTS).filter(k => FLIGHT_OBJECTS[k].live)) { const b = mk('button', { className: 'sitem', textContent: '🛰 ' + FLIGHT_OBJECTS[k].name, title: 'Voir ' + FLIGHT_OBJECTS[k].name + ' de près', onclick: () => goIss() }); satItems.push(b); list.append(b); }
+    satsBox.append(mk('div', { className: 'ohead' }, mk('b', { textContent: '🛰 Satellites' }), mk('button', { textContent: '✖', title: 'Fermer', onclick: () => { satsBox.hidden = true; bSats.classList.remove('on'); } })), list, mk('div', { className: 'osub', textContent: 'Options' }), featPanel,
+      mk('div', { className: 'ldesc', textContent: 'Touche un satellite pour le voir de près. « Dimensions » affiche sa taille et sa hauteur, « Trajectoire » son prochain tour (une période, environ 93 min).' })); }
   // repère local de l'ISS : f = sens du vol (à l'horizontale), u = zénith, s = côté ; yaw 0 = derrière elle, pitch = hauteur de la caméra au-dessus de l'horizontale
   const frameIss = () => { const u = iss.up, f = iss.vel.clone().addScaledVector(u, -iss.vel.dot(u)).normalize(); return { f, u, s: new THREE.Vector3().crossVectors(u, f) }; };
   function applyLocal(yaw, pitch, distKm, now) {   // place la caméra autour de l'ISS (yaw, pitch en °, distance en km) ; now = sans transition
@@ -131,7 +137,6 @@
   }
   function setViewLocal(yaw, pitch, distKm) {
     if (!iss) return; setMode('iss'); applyLocal(yaw, pitch, distKm, false);
-    if (featCb.size && !featCb.size.checked) { featCb.size.checked = true; featCb.size.onchange(); }   // on affiche la hauteur
   }
   // réglage fin de la vue (boutons ◀ ▶ ▲ ▼ ＋ －, pas réglable, répétition en maintenant)
   const STEPS = [0.5, 1, 5, 15]; let stepI = 1;
@@ -242,7 +247,7 @@
     booster() { if (!launch || !launch.retResult) return; launch.topView = false; cam.zoomFit = false; cam.userDir = false; cam.launchK = 1; launch.follow = 'epc'; if (cam.mode !== 'launch') setMode('launch'); },
     cam() { if (!launch) return; launch.topView = false; cam.zoomFit = false; cam.userDir = false; cam.launchK = 1; launch.follow = 'rocket'; if (cam.mode !== 'launch') setMode('launch'); },
   });
-  document.getElementById('bSat').onclick = e => { satBox.hidden = !satBox.hidden; e.currentTarget.classList.toggle('on', !satBox.hidden); };
+  document.getElementById('bSat').onclick = e => { satBox.hidden = !satBox.hidden; e.currentTarget.classList.toggle('on', !satBox.hidden); if (!satBox.hidden) { satsBox.hidden = true; bSats.classList.remove('on'); } };
   const SITE_R = 1 + 1e-5;   // les points des sites sont posés AU SOL (64 m au-dessus de la sphère : pas de scintillement de profondeur)
   // sites de lancement sur la carte : points + noms cliquables (choisit le site dans le panneau)
   const sg2 = new THREE.BufferGeometry(), sp2 = new Float32Array(LAUNCH_SITES.length * 3), siteU = LAUNCH_SITES.map((s, i) => { const u = ll(s.lon, s.lat); sp2.set([u.x * SITE_R, u.y * SITE_R, u.z * SITE_R], 3 * i); return u; });
@@ -256,7 +261,7 @@
     else if (launch && launch.preview) { evLabels.forEach(x => x.remove()); evLabels = []; tagEls.forEach(x => x.remove()); tagEls = []; launch.dispose(); launch = null; hLabel.style.display = 'none'; vLabel.style.display = 'none'; lp.hide(); storyUI.hide(); tl.hide(); }   // fermeture : on retire l'aperçu
   };
   document.getElementById('bCopy').onclick = () => { const t = viewTxt.dataset.json || ''; try { navigator.clipboard.writeText(t); } catch (e) {} const r = document.createRange(); r.selectNodeContents(viewJson); getSelection().removeAllRanges(); getSelection().addRange(r); };
-  document.getElementById('bFeat').onclick = e => { featPanel.hidden = !featPanel.hidden; e.currentTarget.classList.toggle('on', !featPanel.hidden); };
+  bSats.onclick = () => { satsBox.hidden = !satsBox.hidden; bSats.classList.toggle('on', !satsBox.hidden); if (!satsBox.hidden) { satBox.hidden = true; document.getElementById('bSat').classList.remove('on'); } };   // un seul panneau à la fois (satellites / fusées)
 
   let issScreen = null, moonScreen = null, sunScreen = null;   // positions écran de l'ISS, de la Lune et du Soleil si visibles (cliquables : ISS → vue ISS, Lune → vue Lune, Soleil → vue Soleil)
   const touch = matchMedia('(pointer: coarse)').matches, HIT = touch ? 42 : 26, near = (p, r, x, y) => !!p && Math.hypot(x - p[0], y - p[1]) < r;
@@ -376,7 +381,7 @@
     }
 
     if (solarMode || (camera.position.length() - 1) * R_KM > 20000) { issScreen = null; label.style.display = 'none'; dot.visible = false; issModel.visible = false; }   // dézoomé : l'ISS est cachée (point, nom et modèle)
-    document.getElementById('issOnly').hidden = cam.mode !== 'iss';   // « Vue dessus » et « Détails ISS » seulement avec l'ISS
+    for (const b of satItems) b.classList.toggle('on', cam.mode === 'iss');   // le satellite regardé est surligné dans la liste
     // caractéristiques 3D : mise à jour puis étiquettes projetées à l'écran
     for (const f of ISS_FEATURES) {   // une caractéristique « onlyIss » (taille, hauteur) n'apparaît que sur la vue de l'ISS
       const inst = featInst[f.id]; if (!inst) continue;

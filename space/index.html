@@ -15,14 +15,12 @@
   <div class="bar" id="bar">
     <select id="viewSel" title="Vue">
       <option value="earth">🌍 Terre</option>
-      <option value="iss">🛰 ISS</option>
       <option value="moon">🌙 Lune</option>
       <option value="sun">☀ Soleil</option>
     </select>
-    <button id="bSat">🚀 <span>Satellite</span></button>
+    <button id="bSats">🛰 <span>Satellites</span></button>
+    <button id="bSat">🚀 <span>Fusées</span></button>
     <button id="bLaunch" hidden>🚀 <span>Lancement</span></button>
-    <span id="issOnly" hidden><button id="bFeat">📐 <span>Détails ISS</span></button></span>
-    <div id="feat" hidden></div>
   </div>
   <div id="info"></div>
 </div>
@@ -32,6 +30,7 @@
 <div id="timeBar"><span id="timeTxt"></span><span class="tb"><button data-sp="1" class="on">Temps réel</button><button data-sp="3600">1 h/s</button><button data-sp="21600">6 h/s</button><button data-sp="86400">1 j/s</button><button data-sp="432000">5 j/s</button><button id="bNow" title="Revenir à maintenant">⟳</button></span></div>
 <div id="launchPanel" hidden></div>
 <div id="satPanel" hidden></div>
+<div id="satsPanel" hidden></div>
 <div id="story" hidden></div>
 <div id="timeline" hidden></div>
 <div id="scale"><div id="scaleBar"></div><div id="scaleTxt"></div></div>

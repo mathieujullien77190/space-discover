@@ -30,14 +30,21 @@ const step = (n, label) => { for (let i = 0; i < n; i++) { const fs_ = frames; f
 const timers = () => { const t = sandbox.__timers.splice(0); for (const [f] of t) try { f(); } catch (e) { errors.push('minuterie : ' + e.message + '\n' + (e.stack || '').split('\n').slice(0, 4).join('\n')); } };
 step(3, 'premières images'); timers(); step(5, 'après création du Soleil et de la Lune');
 els.mtChk = els.mtChk || mkEl('mtChk'); els.dnChk = els.dnChk || mkEl('dnChk');
-const sel = els.viewSel;
+const sel = els.viewSel; const goView = v => { if (v === 'iss') { const it = allEls.find(e => e.className === 'sitem'); if (!it || !it.onclick) throw new Error('liste des satellites absente'); it.onclick(); } else { sel.value = v; sel.onchange(); } };
 for (const sp of [86400, 432000, 1]) { const b = (els.timeBar && els.timeBar.__btns || []).find(x => +x.dataset.sp === sp); } let ok = true;
-for (const mt of [false, true]) for (const dn of [false, true]) { els.mtChk.checked = mt; els.mtChk.onchange && els.mtChk.onchange(); els.dnChk.checked = dn; els.dnChk.onchange && els.dnChk.onchange(); for (const v of ['iss', 'moon', 'sun', 'earth']) { if (!els.viewSel.onchange) { errors.push('viewSel.onchange absent'); break; } sel.value = v; try { sel.onchange(); } catch (e) { errors.push('vue ' + v + ' : ' + e.message + '\n' + (e.stack || '').split('\n').slice(0, 3).join('\n')); } step(60, 'vue ' + v + ' mesures=' + mt + ' jour/nuit=' + dn); } }
+for (const mt of [false, true]) for (const dn of [false, true]) { els.mtChk.checked = mt; els.mtChk.onchange && els.mtChk.onchange(); els.dnChk.checked = dn; els.dnChk.onchange && els.dnChk.onchange(); for (const v of ['iss', 'moon', 'sun', 'earth']) { if (!els.viewSel.onchange) { errors.push('viewSel.onchange absent'); break; } try { goView(v); } catch (e) { errors.push('vue ' + v + ' : ' + e.message + '\n' + (e.stack || '').split('\n').slice(0, 3).join('\n')); } step(60, 'vue ' + v + ' mesures=' + mt + ' jour/nuit=' + dn); } }
 // trajectoire de la caméra pendant le zoom sur l'ISS : jamais sous la surface, jamais non finie
-if (process.argv[2] === 'iss') { sandbox.__log = []; sel.value = 'iss'; sel.onchange(); step(1500, 'zoom ISS'); const L = sandbox.__log, nan = L.filter(p => !p.every(Number.isFinite)).length, r = L.map(p => Math.hypot(...p)), pts = [0, 60, 120, 240, 480, 800, 1200, 1499].filter(i => i < L.length).map(i => (i + ': ' + ((r[i] - 1) * 6378).toFixed(0) + ' km au-dessus du centre-1')); console.log('zoom ISS : ' + L.length + ' images, non finies ' + nan + ', altitude mini ' + ((Math.min(...r) - 1) * 6378).toFixed(1) + ' km ; ' + pts.join(' | ')); }
+if (process.argv[2] === 'iss') { sandbox.__log = []; goView('iss'); step(1500, 'zoom ISS'); const L = sandbox.__log, nan = L.filter(p => !p.every(Number.isFinite)).length, r = L.map(p => Math.hypot(...p)), pts = [0, 60, 120, 240, 480, 800, 1200, 1499].filter(i => i < L.length).map(i => (i + ': ' + ((r[i] - 1) * 6378).toFixed(0) + ' km au-dessus du centre-1')); console.log('zoom ISS : ' + L.length + ' images, non finies ' + nan + ', altitude mini ' + ((Math.min(...r) - 1) * 6378).toFixed(1) + ' km ; ' + pts.join(' | ')); }
 // temps accéléré : 5 jours par seconde pendant 40 s simulées (> 60 jours : l'ISS sort de la validité du TLE), chaque vue
 if (errors.length) { console.log('ERREURS :' + String.fromCharCode(10) + errors.join(String.fromCharCode(10) + '---' + String.fromCharCode(10))); process.exit(1); }
-for (const sp of [1, 86400, 432000]) { spBtns.find(b => +b.dataset.sp === sp).onclick(); for (const v of ['earth', 'moon', 'sun', 'iss']) { sel.value = v; sel.onchange(); step(120, 'accéléré ×' + sp + ' vue ' + v); } }
+for (const sp of [1, 86400, 432000]) { spBtns.find(b => +b.dataset.sp === sp).onclick(); for (const v of ['earth', 'moon', 'sun', 'iss']) { goView(v); step(120, 'accéléré ×' + sp + ' vue ' + v); } }
+// panneau « Satellites » : la liste (l'ISS) et ses options (Dimensions, Trajectoire) ; le sélecteur de vues ne contient plus que les astres
+{ const items = allEls.filter(e => e.className === 'sitem'); if (items.length !== 1 || !/ISS/.test(items[0].textContent)) errors.push('liste des satellites : ' + items.length + ' entrée(s), attendu 1 (ISS)');
+  const cbs = []; const walk = e => { if (e && e.type === 'checkbox') cbs.push(e); for (const k of (e && e.kids) || []) walk(k); }; walk(els.satsPanel);
+  if (cbs.length !== 2) errors.push('options du satellite : ' + cbs.length + ' case(s), attendu 2 (Dimensions, Trajectoire)');
+  els.satsPanel.hidden = true; els.bSats.onclick(); if (els.satsPanel.hidden) errors.push('bouton Satellites : le panneau ne souvre pas');
+  goView('earth'); step(10, 'avant options'); for (const cb of cbs) { cb.checked = true; cb.onchange(); step(60, 'option satellite cochée'); } step(60, 'options cochées'); for (const cb of cbs) { cb.checked = false; cb.onchange(); } step(20, 'options décochées'); goView('earth'); step(20, 'retour Terre');
+}
 // lancement de satellite simple : Lancer, vitesses, vue de dessus, zoom fusée, caméra auto, arrêt (chaque base et type)
 const btn = txt => allEls.filter(e => e.textContent === txt && e.onclick).pop();
 (async () => {

@@ -145,3 +145,16 @@ button.on { border-color: #ffd54a; color: #ffd54a; }
 #satPanel .osub { color: #9fb0c8; font-weight: 600; margin: 14px 0 4px; }
 #satPanel .levs { max-height: 220px; overflow: auto; }
 @media (max-width: 700px), (pointer: coarse) { #satPanel { left: 8px; right: 8px; top: auto; bottom: calc(76px + env(safe-area-inset-bottom)); width: auto; max-height: 48%; } #satPanel button { min-height: 36px; font-size: 13px; } }
+
+/* panneau « Satellites » : liste des satellites + options (Dimensions, Trajectoire) */
+#satsPanel { position: fixed; right: calc(12px + env(safe-area-inset-right)); top: calc(60px + env(safe-area-inset-top)); width: 280px; max-height: calc(100% - 220px); overflow: auto; padding: 10px 12px; background: rgba(20, 30, 50, .88); border: 1px solid rgba(255, 255, 255, .25); border-radius: 8px; font-size: 13px; z-index: 5; }
+#satsPanel[hidden] { display: none; }
+#satsPanel .ohead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+#satsPanel .ohead button { padding: 2px 8px; }
+#satsPanel .slist { display: flex; flex-direction: column; gap: 6px; }
+#satsPanel .sitem { text-align: left; padding: 9px 10px; font-size: 14px; }
+#satsPanel .sitem.on { border-color: #ffd54a; color: #ffd54a; }
+#satsPanel .osub { color: #9fb0c8; font-weight: 600; margin: 16px 0 6px; }
+#satsPanel label { display: block; cursor: pointer; padding: 5px 0; font-size: 14px; }
+#satsPanel .ldesc { margin: 14px 0 2px; color: #b8c6dc; font-size: 12px; line-height: 1.6; }
+@media (max-width: 700px), (pointer: coarse) { #satsPanel { left: 8px; right: 8px; top: auto; bottom: calc(76px + env(safe-area-inset-bottom)); width: auto; max-height: 48%; } #satsPanel .sitem { min-height: 44px; } }
