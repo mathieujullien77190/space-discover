@@ -66,12 +66,12 @@ class Launch {
     this.markPts = new THREE.Points(mg, new THREE.PointsMaterial({ color: 0x7fe3ff, size: 9, sizeAttenuation: false })); this.markPts.frustumCulled = false; this.group.add(this.markPts);
     // orbite finale (cercle dans le plan inertiel, tournée avec la Terre)
     this.ring = new THREE.Group(); this.ring.visible = false; this.group.add(this.ring);
-    if (sim.ok) {
+    if (sim.ok && !sim.hyperbolic) {
       const pts = phOrbitPoints(sim.state, 180).map(p => this.s.clone().multiplyScalar(p[0] / L.RE).addScaledVector(this.e, p[1] / L.RE));   // orbite visée (ellipse képlérienne)
       const rl = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x7fe3ff })); rl.frustumCulled = false; this.ring.add(rl);
     }
     // objet JSON en orbite : trajectoire À L'AVANCE sur un tour (même méthode que la « Trajectoire future » de l'ISS réelle : positions dans le repère de la Terre qui tourne, de maintenant à maintenant + une période), en cyan
-    if (o.object && sim.ok) { const N = 180, pos = new Float32Array((N + 1) * 3), g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); const line = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0x4fe0ff })); line.frustumCulled = false; this.group.add(line); this.fut = { N, pos, g, line, period: objectPeriodS(o.object) || phElements(sim.state.x, sim.state.y, sim.state.vx, sim.state.vy).T, built: -1e12 }; }
+    if (o.object && sim.ok && !sim.hyperbolic) { const N = 180, pos = new Float32Array((N + 1) * 3), g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); const line = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0x4fe0ff })); line.frustumCulled = false; this.group.add(line); this.fut = { N, pos, g, line, period: objectPeriodS(o.object) || phElements(sim.state.x, sim.state.y, sim.state.vx, sim.state.vy).T, built: -1e12 }; }
     this.models = o.models || {};   // modèles 3D (glTF) des pièces, chargés avant le vol (js/stack-models.js) ; vide = cylindres
     this.buildModels();
     if (spec.tower) this.buildTower();
@@ -80,7 +80,7 @@ class Launch {
     this.buildSmoke();   // fumée au décollage (nuage au pas de tir + traînée basse)
     // noms affichés sur les éléments (étiquettes posées par main.js) ; le « Pas de tir » est en tête de liste (1re ligne du panneau « Composants »), puis la fusée : fusée, satellite, boosters, coiffe, étage principal
     const V = () => new THREE.Vector3();
-    { const nm = spec.names, bo = spec.model.boosters, tl = [{ id: 'rocket', text: spec.name + '', pos: V(), on: true }, { id: 'sat', text: 'Satellite', pos: V(), on: false, absent: !this.ev.sat }];
+    { const nm = spec.names, bo = spec.model.boosters, tl = [{ id: 'rocket', text: spec.name + '', pos: V(), on: true }, { id: 'sat', text: (spec.names && spec.names.payload) || 'Satellite', pos: V(), on: false, absent: !this.ev.sat }];
       if (bo) for (let k = 0; k < bo.n; k++) tl.push({ id: 'eap' + (k + 1), text: 'Booster' + (bo.n > 1 ? ' n°' + (k + 1) : ''), pos: V(), on: false, piece: true });
       tl.push({ id: 'fairA', text: 'Coiffe n°1', pos: V(), on: false, piece: true, absent: !this.ev.fairing }, { id: 'fairB', text: 'Coiffe n°2', pos: V(), on: false, piece: true, absent: !this.ev.fairing }, { id: 'epc', text: nm.stage1, pos: V(), on: false, piece: true }); if (S[0].alt < 200) tl.unshift({ id: 'pad', text: 'Pas de tir', pos: V(), on: true }); this.tagList = tl; }
     this.follow = 'rocket';   // élément suivi par la caméra : 'rocket', 'sat' ou l'id d'un débris (clic sur son nom)
@@ -108,7 +108,7 @@ class Launch {
   stateAt(T) {
     const S = this.sim.samples, sm = LCH.SAMPLE;
     if (T >= this.last.t) {
-      if (!this.sim.ok) return Object.assign({}, this.last);
+      if (!this.sim.ok || this.sim.hyperbolic) return Object.assign({}, this.last);   // trajectoire de libération : le vol simulé va jusqu'au bout, pas de prolongement képlérien
       const k = phKepler(this.sim.state, T - this.tEnd);   // orbite képlérienne (cercle ou ellipse) après l'insertion
       return Object.assign({}, this.last, { x: k.x, y: k.y, vx: k.vx, vy: k.vy, phi: 0, F: 0, eap: false, epc: false, esc: false, fairing: false, eapAttached: false, epcAttached: false, phase: 'en orbite', idx: S.length - 1 });
     }
@@ -124,7 +124,7 @@ class Launch {
     const M = (c, o) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: 0.6, metalness: 0.1 }, o || {}));
     const cyl = (r, h, c, y, o) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 20), M(c, o)); m.position.y = y + h / 2; return m; };
     const cone = (r0, r1, h, c, y) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, h, 20), M(c)); m.position.y = y + h / 2; return m; };
-    const NOZC = 0x3a3a3e, upBase = core.h, fairBase = core.h + up.h;
+    const NOZC = 0x3a3a3e, upBase = core.h, fairBase = mo.fairingBaseM != null ? mo.fairingBaseM : core.h + up.h;   // base de la coiffe : au-dessus de l'étage supérieur, ou à la hauteur donnée par le JSON si elle l'enveloppe (Centaur sous sa coiffe)
     // étage principal : cylindre + jupe + tuyère (l'origine du modèle est la base du lanceur : au décollage elle touche le sol)
     this.mEpc = new THREE.Group(); if (MD.core) this.mEpc.add(MD.core.clone()); else this.mEpc.add(cyl(core.r, core.h, core.color, 0), cyl(core.r + 0.05, 0.6, 0x555555, 0), cone(core.r * 0.48, core.r * 0.19, NZ.epc, NOZC, -NZ.epc));
     // boosters latéraux répartis autour du corps central

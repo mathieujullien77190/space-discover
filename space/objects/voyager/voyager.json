@@ -1,0 +1,152 @@
+{
+  "name": "Voyager 2 — Titan IIIE-Centaur, trajectoire de libération",
+  "maxDurationS": 200000,
+  "escapeDistanceM": 1000000000,
+  "start": {
+    "lat": 28.583,
+    "lon": -80.583,
+    "altitudeKm": 0,
+    "azimuthDeg": 90,
+    "elevationDeg": 90,
+    "speedMs": 0
+  },
+  "visual": {
+    "name": "Titan IIIE-Centaur",
+    "short": "Titan IIIE",
+    "stack": {
+      "core": "titan1",
+      "boosters": {
+        "part": "srm",
+        "count": 2,
+        "radialM": 3.3
+      },
+      "heightM": 48.5,
+      "fairingBaseM": 31.2,
+      "payloadName": "Sonde Voyager",
+      "upper": {
+        "name": "Étage Titan 2 + Centaur",
+        "radiusM": 1.52,
+        "lengthM": 19.5,
+        "color": "#d4d4d8",
+        "nozzleM": 0.8
+      },
+      "fairing": "fairing",
+      "fairingPieces": 2
+    }
+  },
+  "parts": {
+    "srm": "srm.json",
+    "titan1": "titan1.json",
+    "titan2": "titan2.json",
+    "centaur": "centaur.json",
+    "fairing": "fairing.json",
+    "probe": "probe.json"
+  },
+  "timeline": [
+    { "t": 0, "pitch": 90 },
+    { "t": 0, "burnKgS": 4378.9, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ], "massKg": 625895, "cdA": 14, "label": "Décollage", "key": "t0" },
+    { "t": 2, "burnKgS": 4342.8, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 4, "burnKgS": 4306.6, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 6, "burnKgS": 4270.4, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 7, "pitch": 90 },
+    { "t": 8, "burnKgS": 4234.2, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 10, "burnKgS": 4198, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 12, "burnKgS": 4161.8, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 14, "burnKgS": 4125.6, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 16, "burnKgS": 4089.4, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 18, "burnKgS": 4053.2, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 20, "pitch": 74.27 },
+    { "t": 20, "burnKgS": 4017, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 22, "burnKgS": 3980.8, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 24, "burnKgS": 3944.6, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 26, "burnKgS": 3908.5, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 28, "burnKgS": 3872.3, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 30, "burnKgS": 3836.1, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 32, "burnKgS": 3799.9, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 34, "burnKgS": 3763.7, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 36, "burnKgS": 3727.5, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 38, "burnKgS": 3691.3, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 40, "pitch": 60.48 },
+    { "t": 40, "burnKgS": 3655.1, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 42, "burnKgS": 3618.9, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 44, "burnKgS": 3582.7, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 46, "burnKgS": 3546.5, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 48, "burnKgS": 3510.3, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 50, "burnKgS": 3474.1, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 52, "burnKgS": 3438, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 54, "burnKgS": 3401.8, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 56, "burnKgS": 3365.6, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 58, "burnKgS": 3329.4, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 60, "burnKgS": 3293.2, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 62, "burnKgS": 3257, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 64, "burnKgS": 3220.8, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 66, "burnKgS": 3184.6, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 68, "burnKgS": 3148.4, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 70, "pitch": 41.88 },
+    { "t": 70, "burnKgS": 3112.2, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 72, "burnKgS": 3076, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 74, "burnKgS": 3039.8, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 76, "burnKgS": 3003.6, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 78, "burnKgS": 2967.5, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 80, "burnKgS": 2931.3, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 82, "burnKgS": 2895.1, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 84, "burnKgS": 2858.9, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 86, "burnKgS": 2822.7, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 88, "burnKgS": 2786.5, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 90, "burnKgS": 2750.3, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 92, "burnKgS": 2714.1, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 94, "burnKgS": 2677.9, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 96, "burnKgS": 2641.7, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 98, "burnKgS": 2605.5, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 100, "burnKgS": 2569.3, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 102, "burnKgS": 2533.2, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 104, "burnKgS": 2506, "ispVac": 276.2, "ispSea": 247.8, "flames": [ "eap" ] },
+    { "t": 105, "pitch": 23.03 },
+    { "t": 105, "burnKgS": 3247.6, "ispVac": 285.8, "ispSea": 253.5, "flames": [ "eap", "epc" ] },
+    { "t": 107, "burnKgS": 3211.4, "ispVac": 286, "ispSea": 253.6, "flames": [ "eap", "epc" ] },
+    { "t": 109, "burnKgS": 3175.2, "ispVac": 286.1, "ispSea": 253.6, "flames": [ "eap", "epc" ] },
+    { "t": 111, "burnKgS": 3139, "ispVac": 286.2, "ispSea": 253.7, "flames": [ "eap", "epc" ] },
+    { "t": 113, "burnKgS": 3102.8, "ispVac": 286.3, "ispSea": 253.8, "flames": [ "eap", "epc" ] },
+    { "t": 115, "burnKgS": 768.7, "ispVac": 317.1, "ispSea": 271.95, "flames": [ "epc" ] },
+    { "t": 120, "release": [ { "part": "srm", "count": 2 }
+      ],
+      "label": "Séparation des boosters à poudre"
+    },
+    { "t": 150, "pitch": 22.23 },
+    { "t": 200, "pitch": 22.19 },
+    { "t": 225, "release": [ { "part": "fairing", "count": 2 }
+      ],
+      "label": "Largage de la coiffe"
+    },
+    { "t": 252, "burnKgS": 0, "flames": [], "label": "Fin de poussée du 1er étage" },
+    { "t": 254, "release": [ { "part": "titan1", "count": 1 }
+      ],
+      "label": "Séparation du 1er étage Titan"
+    },
+    { "t": 255, "pitch": 14.57 },
+    { "t": 255, "burnKgS": 143.5, "ispVac": 331.8, "ispSea": 331.8, "flames": [ "esc" ], "label": "Allumage du 2e étage" },
+    { "t": 330, "pitch": 10.99 },
+    { "t": 400, "pitch": -3.41 },
+    { "t": 462, "pitch": -5.2 },
+    { "t": 462, "burnKgS": 0, "flames": [], "label": "Fin de poussée du 2e étage" },
+    { "t": 464, "release": [ { "part": "titan2", "count": 1 }
+      ],
+      "label": "Séparation du 2e étage Titan"
+    },
+    { "t": 470, "burnKgS": 30.64, "ispVac": 444, "ispSea": 444, "flames": [ "esc" ], "pitch": "prograde", "label": "Allumage du Centaur (1re poussée)", "key": "esc1" },
+    { "t": 503.9, "burnKgS": 0, "flames": [], "label": "Orbite de parking atteinte", "key": "esc1end" },
+    { "t": 2453.9, "burnKgS": 30.64, "flames": [ "esc" ], "pitch": "prograde", "label": "Allumage du Centaur (injection vers Jupiter)", "key": "esc2" },
+    { "t": 2844.5, "burnKgS": 0, "flames": [], "label": "Fin de poussée du Centaur", "key": "esc2end" },
+    { "t": 2849.5, "release": [ { "part": "centaur", "count": 1 }
+      ],
+      "label": "Séparation du Centaur"
+    },
+    { "t": 2969.5, "burnKgS": 24.05, "ispVac": 289, "ispSea": 289, "flames": [ "esc" ], "pitch": "prograde", "label": "Allumage du moteur Star-37E" },
+    { "t": 3011.5, "burnKgS": 0, "flames": [], "label": "Fin du moteur Star-37E" },
+    { "t": 3014.5, "release": [ { "part": "probe", "count": 1 }
+      ],
+      "label": "Voyager se sépare du moteur",
+      "phase": "en route"
+    }
+  ]
+}

@@ -18,7 +18,7 @@
 //       massKg       masse totale (un largage = une baisse de masse)
 //       thrustN      poussée en newtons                    | accelMs2 : accélération due à la poussée (m/s²), poussée = accelMs2 × masse
 //       isp          impulsion spécifique (s) : la masse diminue alors toute seule (débit = poussée / (isp·g0)) | burnKgS : débit imposé (kg/s)
-//       pitch        direction de la poussée, degrés au-dessus de l'horizontale locale (90 = vertical), interpolée linéairement d'un palier « pitch » au suivant
+//       pitch        direction de la poussée, degrés au-dessus de l'horizontale locale (90 = vertical), interpolée linéairement d'un palier « pitch » au suivant ; "prograde" = poussée le long de la vitesse (étages dans le vide : orbite, libération)
 //       speedMs      remet la vitesse par rapport au sol à cette valeur (direction conservée)
 //       cdA          surface × coefficient de traînée (m²)
 //       label, key, phase   texte de l'étape (liste des choses à faire), identifiant, nom de la phase qui commence
@@ -28,9 +28,9 @@
 //                    est simulée à part (elle retombe, se désintègre ou reste en orbite) à partir de l'état de l'objet à cet instant
 //   parts { nom: "fichier.json" }   les pièces larguables, chacune dans son JSON du même dossier : { name, role: "booster" | "fairing" | "stage" | "payload", massKg (par pièce), residualPropKg, visual { radiusM, lengthM, noseM, cylM, coneM,
 //                    nozzleM, color, bandColor }, dragCoefficient, separationSpeedMs (m/s le long de la trajectoire, négatif = vers l'arrière), disintegrates, disintegrationAltitudeKm }
-//   visual.stack { core: nom d'une pièce, boosters { part, count, radialM }, upper { radiusM, lengthM, color, nozzleM, name, stackHeightM, model }, fairing: nom d'une pièce (facultatif), heightM, flames { core | upper { xM, yM, zM, radiusM, lengthM } } }
+//   visual.stack { core: nom d'une pièce, boosters { part, count, radialM }, upper { radiusM, lengthM, color, nozzleM, name, stackHeightM, model }, fairing: nom d'une pièce (facultatif), heightM, fairingBaseM (hauteur de la base de la coiffe si elle enveloppe l'étage supérieur), payloadName, flames { core | upper { xM, yM, zM, radiusM, lengthM } } }
 //                    fusée dessinée à partir des pièces (voir objectToSpec) ; chaque pièce peut avoir un modèle 3D `visual.model { file, scale, rotate, align, offsetM }` (js/stack-models.js)
-//     le DERNIER palier marque la fin de la poussée : ensuite l'objet vole sans moteur (orbite ou chute).
+//     le DERNIER palier marque la fin de la poussée : ensuite l'objet vole sans moteur (orbite, chute, ou LIBÉRATION : l'objet quitte la Terre, le vol continue jusqu'à `escapeDistanceM` (défaut 10⁹ m) ; mettre `maxDurationS` assez grand).
 // Sans DOM : fonctions pures, testées dans Node (tools/test/object.test.js).
 function validateObject(o) {
   if (!o || typeof o !== 'object') throw new Error('objet vide');
@@ -104,7 +104,7 @@ function flyObject(obj, opt) {
   const wEff = L.WE * Math.cos(S0.lat * D) * Math.sin(az);   // composante de la rotation de la Terre le long de la trajectoire
   const r0 = L.RE + (S0.altitudeKm != null ? S0.altitudeKm * 1000 : S0.altitudeM || 0);
   let x = r0, y = 0, vx = sp0 * Math.sin(el), vy = sp0 * Math.cos(el) + (S0.frame === 'inertial' ? 0 : wEff * r0);
-  const pitchPts = tl.filter(k => k.pitch != null).map(k => [k.t, k.pitch]);
+  const pitchPts = tl.filter(k => typeof k.pitch === 'number').map(k => [k.t, k.pitch]); let prograde = false;
   const parts = obj.parts || {}, released = []; let ispV = 0, ispS = 0, byFlow = false, flames = null;
   let m = obj.massKg || 1000, thrustN = 0, accel = null, isp = 0, burn = null, cdA = obj.cdA != null ? obj.cdA : 5, phase = 'vol', next = 0, t = 0;
   const events = [], samples = []; let nextSample = 0, maxQ = { q: 0, t: 0 }, ok = false, crashed = false, reason = 'time';
@@ -116,7 +116,7 @@ function flyObject(obj, opt) {
     if (k.massKg != null) m = k.massKg;
     if (k.thrustN != null) { thrustN = k.thrustN; accel = null; byFlow = false; } if (k.accelMs2 != null) { accel = k.accelMs2; thrustN = 0; byFlow = false; }
     if (k.ispVac != null) { ispV = k.ispVac; ispS = k.ispSea != null ? k.ispSea : k.ispVac; byFlow = true; } else if (k.ispSea != null) ispS = k.ispSea;
-    if (k.flames) flames = k.flames;
+    if (k.flames) flames = k.flames; if (k.pitch != null) prograde = k.pitch === 'prograde';
     if (k.isp != null) isp = k.isp; if (k.burnKgS != null) burn = k.burnKgS; if (k.cdA != null) cdA = k.cdA; if (k.phase) phase = k.phase;
     if (k.speedMs != null) {   // vitesse par rapport au sol imposée, direction conservée
       const ax = vx + wEff * y, ay = vy - wEff * x, s = Math.hypot(ax, ay), f = s > 1e-9 ? k.speedMs / s : 0; vx = ax * f - wEff * y; vy = ay * f + wEff * x;
@@ -128,7 +128,7 @@ function flyObject(obj, opt) {
     } else if (k.label || k.key) record(k);
   };
   const tEnd = opt && opt.tmax ? opt.tmax : (obj.maxDurationS || 20000);
-  let orbit = null;
+  let orbit = null, escaping = false; const escapeR = obj.escapeDistanceM || 1e9;
   while (t < tEnd) {
     while (next < tl.length && t >= tl[next].t - 1e-6) apply(tl[next++]);
     const r = Math.hypot(x, y), ux = x / r, uy = y / r, ex = -uy, ey = ux, h = r - L.RE, vr = vx * ux + vy * uy, vt = vx * ex + vy * ey, air = Math.exp(-h / 7200);
@@ -136,15 +136,16 @@ function flyObject(obj, opt) {
     let F = 0, md = 0;
     if (powered && byFlow) { md = burn || 0; F = md * (ispV - (ispV - ispS) * air) * G0; }   // poussée déduite du débit et de l'Isp (plus faible au sol)
     else if (powered) { F = accel != null ? accel * m : thrustN; md = burn != null ? burn : (isp > 0 ? F / (isp * G0) : 0); if (F > 0 && md * 0.1 > m - dryKg && md > 0) { const f = (m - dryKg) / (md * 0.1); F *= f; md *= f; } }
-    const phi = objectPitch(pitchPts, t), tx = ux * Math.sin(phi) + ex * Math.cos(phi), ty = uy * Math.sin(phi) + ey * Math.cos(phi);
+    const phi = prograde ? Math.atan2(vr, vt) : objectPitch(pitchPts, t), tx = ux * Math.sin(phi) + ex * Math.cos(phi), ty = uy * Math.sin(phi) + ey * Math.cos(phi);
     const fa = phAccel(x, y, vx, vy, m, F, tx, ty, cdA, wEff), q = fa.q, g = fa.g; let ax = fa.ax, ay = fa.ay; if (third) { const tb = third(t, x, y); ax += tb[0]; ay += tb[1]; } if (q > maxQ.q) maxQ = { q, t };
-    const dt = F > 0 || h < 120e3 ? 0.1 : 0.5;
-    if (t >= nextSample - 1e-9) { samples.push({ t, x, y, vx, vy, m, F, phi: F > 0 ? phi : Math.atan2(vr, vt), phase, alt: h, v: Math.hypot(vx, vy), vr, vt, acc: Math.hypot(ax + g * ux, ay + g * uy) / G0, q, eap: F > 0 && !!flames && flames.includes('eap'), epc: F > 0 && (!flames || flames.includes('epc')), esc: F > 0 && !!flames && flames.includes('esc'), fairing: false, epcAttached: true, eapAttached: false }); nextSample += L.SAMPLE; }
+    const dt = F > 0 || h < 120e3 ? 0.1 : h < 5e6 ? 0.5 : Math.min(30, h / 2e7);   // pas de plus en plus grand loin de la Terre
+    if (t >= nextSample - 1e-9) { samples.push({ t, x, y, vx, vy, m, F, phi: F > 0 ? phi : Math.atan2(vr, vt), phase, alt: h, v: Math.hypot(vx, vy), vr, vt, acc: Math.hypot(ax + g * ux, ay + g * uy) / G0, q, eap: F > 0 && !!flames && flames.includes('eap'), epc: F > 0 && (!flames || flames.includes('epc')), esc: F > 0 && !!flames && flames.includes('esc'), fairing: false, epcAttached: true, eapAttached: false }); nextSample += h < 5e6 ? L.SAMPLE : Math.min(300, h / 2e6); }
     if (t >= tLast - 1e-9 && F === 0) {   // plus de moteur : l'orbite est-elle stable ? (périgée au-dessus de l'atmosphère)
       orbit = lchElements(r, vr, vt);
       if (orbit.rp > L.RE + 100e3 && orbit.e < 1 && t >= tLast + 1) { ok = true; reason = 'orbit'; break; }
-      if (orbit.e >= 1 && h > 2e6) { reason = 'escape'; break; }
+      if (orbit.e >= 1 && h > 2e6) escaping = true;   // vitesse de libération : l'objet quitte la Terre, on suit sa course jusqu'à escapeDistanceM
     }
+    if (escaping && r > escapeR) { ok = true; reason = 'escape'; break; }
     if (md > 0) m = Math.max(dryKg, m - md * dt);
     vx += ax * dt; vy += ay * dt; x += vx * dt; y += vy * dt; t += dt;
     if (Math.hypot(x, y) < L.RE - 1 && t > 5) { record({ label: 'Impact', key: 'crash' }); crashed = true; reason = 'impact'; break; }
@@ -152,18 +153,18 @@ function flyObject(obj, opt) {
   const r = Math.hypot(x, y), ux = x / r, uy = y / r, vr = vx * ux + vy * uy, vt = vx * -uy + vy * ux; orbit = lchElements(r, vr, vt);
   if (ok) {   // dernier échantillon = état final exact
     const last = samples[samples.length - 1];
-    if (t - last.t > 1e-6) samples.push(Object.assign({}, last, { t, x, y, vx, vy, m, F: 0, acc: 0, q: 0, alt: r - L.RE, v: Math.hypot(vx, vy), vr, vt, epc: false, phase: 'en orbite' }));
-    record({ label: 'En orbite', key: 'objectOrbit' });
+    if (t - last.t > 1e-6) samples.push(Object.assign({}, last, { t, x, y, vx, vy, m, F: 0, acc: 0, q: 0, alt: r - L.RE, v: Math.hypot(vx, vy), vr, vt, epc: false, phase: reason === 'escape' ? 'en route' : 'en orbite' }));
+    record(reason === 'escape' ? { label: 'Quitte la Terre', key: 'objectEscape' } : { label: 'En orbite', key: 'objectOrbit' });
   }
   // description des pièces largables au format « jettison » lu par Launch.buildPieces (masse, forme, vitesse de séparation, désintégration)
   const jettison = {}; for (const r of released) { const P = parts[r.part], v = P.visual || {}, e = { residualPropKg: P.residualPropKg || 0, radiusM: v.radiusM, lengthM: partLength(P), dragCoefficient: P.dragCoefficient != null ? P.dragCoefficient : 1, separationSpeedMs: P.separationSpeedMs || 0, disintegrates: !!P.disintegrates };
     if (P.disintegrationAltitudeKm != null) e.disintegrationAltitudeKm = P.disintegrationAltitudeKm;
     if (P.role === 'booster') jettison.boosters = Object.assign(e, { count: r.count, dryKg: P.massKg }); else if (P.role === 'fairing') jettison.fairing = Object.assign(e, { pieces: r.count, dryKgEach: P.massKg }); else if (P.role === 'stage') jettison.stage1 = Object.assign(e, { dryKg: P.massKg }); else if (P.role === 'payload') jettison.payload = { dryKg: P.massKg, separationSpeedMs: P.separationSpeedMs || 0 }; }
-  const km = v => Math.round(v / 1000);
-  const message = ok ? 'Orbite atteinte : ' + km(orbit.rp - L.RE) + ' × ' + km(orbit.ra - L.RE) + ' km.'
+  const km = v => Math.round(v / 1000), c3 = vx * vx + vy * vy - 2 * L.MU / r;   // C3 = v∞² (m²/s²)
+  const message = ok && reason === 'escape' ? 'Quitte la Terre : vitesse à l\'infini ' + (Math.sqrt(Math.max(0, c3)) / 1000).toFixed(2).replace('.', ',') + ' km/s (C3 = ' + (c3 / 1e6).toFixed(1).replace('.', ',') + ' km²/s²), à ' + Math.round(r / 1000).toLocaleString('fr-FR') + ' km de la Terre.' : ok ? 'Orbite atteinte : ' + km(orbit.rp - L.RE) + ' × ' + km(orbit.ra - L.RE) + ' km.'
     : crashed ? 'Trop lent : l\'objet retombe sur la Terre (impact après ' + Math.round(t) + ' s, apogée ' + km(Math.max(...samples.map(s => s.alt))) + ' km).'
     : reason === 'escape' ? 'Vitesse de libération dépassée : l\'objet quitte la Terre.' : 'Fin de la simulation sans orbite stable.';
-  return { target: ok ? (orbit.rp - L.RE) / 1000 : 0, samples, events, orbit, ok, crashed, reason, message, tEnd: t, state: { x, y, vx, vy }, maxQ, payload: 0, thirdBodies: !!third, plan: released.length ? { jettison } : undefined, released, nodeRate: S0.nodeRate || 0, final: { alt: (r - L.RE) / 1000, v: Math.hypot(vx, vy) }, object: obj };
+  return { target: ok ? (orbit.rp - L.RE) / 1000 : 0, samples, events, orbit, ok, crashed, reason, message, hyperbolic: ok && reason === 'escape', c3, vInf: Math.sqrt(Math.max(0, c3)), tEnd: t, state: { x, y, vx, vy }, maxQ, payload: 0, thirdBodies: !!third, plan: released.length ? { jettison } : undefined, released, nodeRate: S0.nodeRate || 0, final: { alt: (r - L.RE) / 1000, v: Math.hypot(vx, vy) }, object: obj };
 }
 
 const FO_ROLE_KEY = { booster: 'eap', fairing: 'fairing', stage: 'epcsep', payload: 'sat' };   // rôle d'une pièce → clé d'étape lue par Launch (dessin et chute des débris)
@@ -182,9 +183,9 @@ function stackToSpec(obj) {
   const st = obj.visual.stack, P = obj.parts, col = c => (typeof c === 'string' ? parseInt(c.replace('#', ''), 16) : c), core = P[st.core], cv = core.visual, up = st.upper, fa = st.fairing ? P[st.fairing] : null, fv = fa ? fa.visual : { radiusM: 0.01, cylM: 0.01, coneM: 0.01, color: '#ffffff' }, bo = st.boosters && P[st.boosters.part], bv = bo && bo.visual;
   return { name: obj.visual.name || obj.name, short: obj.visual.short || obj.visual.name || obj.name, maxPayload: 1e12,
     phys: { eap: { dry: bo ? bo.massKg : 0 }, epc: { dry: core.massKg, prop: core.residualPropKg || 0 }, fairing: fa ? (fa.massKg || 0) * (st.fairingPieces || 2) : 0, direct: false },
-    names: { booster: bo ? bo.name : '', stage1: core.name, stage2: up.name || 'Étage supérieur' },
+    names: { booster: bo ? bo.name : '', stage1: core.name, stage2: up.name || 'Étage supérieur', payload: st.payloadName },
     model: { core: { r: cv.radiusM, h: cv.lengthM, color: col(cv.color) },
       boosters: bo ? { n: st.boosters.count, r: bv.radiusM, h: bv.lengthM, nose: bv.noseM || 0, R: st.boosters.radialM, color: col(bv.color), band: col(bv.bandColor != null ? bv.bandColor : bv.color) } : null,
       upper: { r: up.radiusM, h: up.stackHeightM != null ? up.stackHeightM : up.lengthM, color: col(up.color) }, fairing: { r: fv.radiusM, cyl: fv.cylM, cone: fv.coneM, color: col(fv.color) },
-      noz: { epc: cv.nozzleM || 0, eap: bv ? bv.nozzleM || 0 : 0, esc: up.nozzleM || 0 }, heightM: st.heightM, flames: st.flames }, tower: false, sepDv: {} };
+      noz: { epc: cv.nozzleM || 0, eap: bv ? bv.nozzleM || 0 : 0, esc: up.nozzleM || 0 }, heightM: st.heightM, fairingBaseM: st.fairingBaseM, flames: st.flames }, tower: false, sepDv: {} };
 }

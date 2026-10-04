@@ -23,6 +23,8 @@ Un objet = **un dossier** `objects/<nom>/` qui contient `<nom>.json` (et, s'il e
 }
 ```
 
+**Trajectoire de libération** : si l'objet atteint la vitesse de libération il quitte la Terre (le vol est suivi jusqu'à `escapeDistanceM`, 10⁹ m par défaut ; mettre `maxDurationS` assez grand, ex. 200000). **La Lune et le Soleil attirent l'objet** (`"thirdBodies": false` pour l'éviter) ; les autres planètes ne sont pas simulées.
+
 Le moteur n'a **aucun objectif** : il applique les paliers puis la physique (gravité, air, poussée) décide. Bonne vitesse = orbite, vitesse insuffisante = l'objet retombe sur la Terre.
 
 ## Les paliers (`timeline`)
@@ -35,7 +37,7 @@ Chaque ligne a un temps `t` (secondes). **On n'écrit que ce qui change** à cet
 | `thrustN` ou `accelMs2` | poussée (N) ou accélération due à la poussée (m/s²) ; `0` = moteur éteint |
 | `isp` | impulsion spécifique (s) : la masse baisse toute seule |
 | `burnKgS` + `ispVac` + `ispSea` | débit (kg/s) et Isp dans le vide / au niveau de la mer : la poussée se déduit (plus faible au sol) |
-| `pitch` | direction de la poussée, ° au-dessus de l'horizontale (90 = vertical), interpolée entre deux paliers qui la donnent |
+| `pitch` | direction de la poussée, ° au-dessus de l'horizontale (90 = vertical), interpolée entre deux paliers qui la donnent ; `"prograde"` = le long de la vitesse (étages dans le vide) |
 | `speedMs` | remet la vitesse (par rapport au sol) à cette valeur |
 | `cdA` | traînée (surface × coefficient, m²) |
 | `flames` | flammes affichées : `["eap","epc","esc"]` (boosters, étage principal, étage supérieur) |
@@ -93,6 +95,7 @@ Ce sont les champs d'un TLE (ou `"tle": ["ligne 1", "ligne 2"]`). L'objet part d
 ## Exemples
 
 - `ariane5/` : Ariane 5 ECA, 4 pièces larguables (boosters, coiffe, étage principal, satellite), orbite de 500 km.
+- `voyager/` : Voyager 2 (Titan IIIE-Centaur, 3 étages + moteur à poudre, coiffe, trajectoire de libération C3 ≈ 102 km²/s²).
 - `shuttle/` : la navette spatiale (modèles 3D NASA, 2 boosters + réservoir larguables, orbite de 215 × 225 km, pas l'ISS).
 - `fusee-orbite-500km/` : le plus petit exemple qui atteint l'orbite (deux étages, rallumage à l'apogée).
 - `fusee-trop-lente/` : la même fusée, moteur coupé trop tôt : elle retombe sur la Terre.

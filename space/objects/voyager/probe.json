@@ -1,0 +1,10 @@
+{
+  "name": "Sonde Voyager",
+  "role": "payload",
+  "massKg": 825,
+  "visual": {
+    "radiusM": 1.8,
+    "lengthM": 2
+  },
+  "separationSpeedMs": 0.5
+}

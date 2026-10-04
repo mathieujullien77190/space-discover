@@ -1,0 +1,15 @@
+{
+  "name": "Coiffe Centaur (moitié)",
+  "role": "fairing",
+  "massKg": 1250,
+  "residualPropKg": 0,
+  "visual": {
+    "radiusM": 2.15,
+    "cylM": 11.8,
+    "coneM": 5.2,
+    "color": "#f2f2f2"
+  },
+  "dragCoefficient": 1,
+  "separationSpeedMs": 0.4,
+  "disintegrates": false
+}

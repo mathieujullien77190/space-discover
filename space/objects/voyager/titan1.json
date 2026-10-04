@@ -1,0 +1,15 @@
+{
+  "name": "Étage principal Titan (LR87)",
+  "role": "stage",
+  "massKg": 6000,
+  "residualPropKg": 0,
+  "visual": {
+    "radiusM": 1.52,
+    "lengthM": 21.3,
+    "nozzleM": 1,
+    "color": "#e4dfd2"
+  },
+  "dragCoefficient": 1,
+  "separationSpeedMs": -1,
+  "disintegrates": false
+}

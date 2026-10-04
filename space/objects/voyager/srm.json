@@ -1,0 +1,17 @@
+{
+  "name": "Booster à poudre (UA1205)",
+  "role": "booster",
+  "massKg": 33000,
+  "residualPropKg": 0,
+  "visual": {
+    "radiusM": 1.52,
+    "lengthM": 24.5,
+    "noseM": 1.4,
+    "nozzleM": 0,
+    "color": "#f2f2f2",
+    "bandColor": "#c83030"
+  },
+  "dragCoefficient": 1,
+  "separationSpeedMs": -2,
+  "disintegrates": false
+}
