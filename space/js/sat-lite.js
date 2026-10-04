@@ -7,10 +7,11 @@
 function buildSatPanel(box, hooks) {
   const el = (tag, props, ...kids) => { const e = Object.assign(document.createElement(tag), props || {}); e.append(...kids); return e; };
   const keys = Object.keys(FLIGHT_PLANS), planSel = el('select'), info = el('div', { className: 'ldesc' }), go = el('button', { className: 'go', textContent: '🚀 Lancer' });
-  keys.forEach(k => planSel.append(el('option', { value: k, textContent: FLIGHT_PLANS[k].name })));
   Object.keys(FLIGHT_OBJECTS).forEach(k => planSel.append(el('option', { value: 'obj:' + k, textContent: '🧪 ' + FLIGHT_OBJECTS[k].name })));   // objets génériques (js/flight-object.js)
+  keys.forEach(k => planSel.append(el('option', { value: k, textContent: FLIGHT_PLANS[k].name })));
+  const firstKey = Object.keys(FLIGHT_OBJECTS).map(k => 'obj:' + k)[0] || keys[0];   // choix par défaut : le premier objet JSON
   let custom = null;   // plan ou objet envoyé par l'utilisateur (fichier JSON)
-  const keyOf = () => (FLIGHT_PLANS[planSel.value] || FLIGHT_OBJECTS[planSel.value.replace(/^obj:/, '')] ? planSel.value : keys[0]), planOf = () => custom || (keyOf().startsWith('obj:') ? FLIGHT_OBJECTS[keyOf().slice(4)] : FLIGHT_PLANS[keyOf()]);
+  const keyOf = () => (FLIGHT_PLANS[planSel.value] || FLIGHT_OBJECTS[planSel.value.replace(/^obj:/, '')] ? planSel.value : firstKey), planOf = () => custom || (keyOf().startsWith('obj:') ? FLIGHT_OBJECTS[keyOf().slice(4)] : FLIGHT_PLANS[keyOf()]);
   const describeObj = O => { const k = O.timeline.slice().sort((a, b) => a.t - b.t), m0 = (k.find(x => x.massKg != null) || {}).massKg || O.massKg, s = O.start, v = s.speedMs || 0; return 'Objet : ' + ((O.visual && O.visual.name) || O.name) + '\nDépart : ' + s.lat + '°, ' + s.lon + '°, altitude ' + (s.altitudeKm || 0) + ' km, vitesse ' + Math.round(v) + ' m/s\nMasse de départ : ' + Math.round(m0 / 100) / 10 + ' t, ' + k.length + ' paliers jusqu’à T+' + k[k.length - 1].t + ' s, puis vol sans moteur.\nObjet décrit par un JSON minimal : une vitesse insuffisante et il retombe.'; };
   const describe = P => { if (P.timeline) return describeObj(P); const sp = planToSpec(P), ret = P.returns && P.returns.stage1; return 'Base : ' + P.site.name + '\nFusée : ' + sp.name + '\nSatellite de ' + (P.vehicle.payloadKg / 1000) + ' t sur une orbite circulaire de ' + P.target.altitudeKm + ' km (' + fmtPeriod(P.target.altitudeKm) + ' par tour).' + (ret ? '\nLe booster revient se poser sur la tour (boostback, atterrissage).' : '') + '\nPlan de vol : ' + (custom ? 'fichier envoyé' : (FLIGHT_PLAN_FILES[keyOf()] || 'embarqué')) + ' (direction, poussée et masses en fonction du temps)'; };
   const refresh = () => { info.textContent = describe(planOf()); };

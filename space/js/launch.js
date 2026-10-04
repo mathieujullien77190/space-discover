@@ -58,7 +58,7 @@ function simulateLaunch(targetKm, opt) {
     if (L.direct && tCut !== null && !done && t >= tCut + (L.satDelay || 10)) { done = true; phase = 'en orbite'; ev(N.esc2end, 'esc2end'); }   // insertion directe : pas d'étage supérieur, le satellite se sépare du dernier étage peu après l'arrêt du moteur
     // commande de poussée : angle de la poussée au-dessus de l'horizontale locale (φ)
     let phi = Math.PI / 2;
-    if (L.pitchProg && t < L.pitchEnd) phi = lchInterp(L.pitchProg, t) * Math.PI / 180;   // programme de tangage imposé (ex. Saturn V : le virage gravitationnel pur ne convient pas à un rapport poussée/poids de 1,1)
+    if (L.pitchProg && t < L.pitchEnd) phi = lchInterp(L.pitchProg, t) * Math.PI / 180;   // programme de tangage imposé (le virage gravitationnel pur ne convient pas à un rapport poussée/poids faible)
     else if (t >= L.kickAt && t < L.kickAt + L.kickDur) phi = Math.PI / 2 - L.kick * Math.PI / 180;
     else if (t >= L.kickAt + L.kickDur) {
       const gt = Math.atan2(vrx * ux + vry * uy, vrx * ex + vry * ey);   // angle de la vitesse relative à l'air

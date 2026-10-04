@@ -1,5 +1,5 @@
 (function () {
-  const MISSIONS = false;   // missions (lancements, Apollo 11) désactivées pour le moment : on améliore d'abord les vues Terre, Lune, Soleil et ISS (mobile et bureau). Mettre true pour les réactiver.
+  const MISSIONS = false;   // missions (lancements historiques) désactivées pour le moment : on améliore d'abord les vues Terre, Lune, Soleil et ISS (mobile et bureau). Mettre true pour les réactiver.
   const canvas = document.getElementById('gl'), msg = document.getElementById('msg'), info = document.getElementById('info'), label = document.getElementById('issLabel');
   let renderer;
   try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true }); }
@@ -188,7 +188,7 @@
   function makeLaunch(site, type, preview) {
     evLabels.forEach(e => e.remove()); tagEls.forEach(e => e.remove());
     if (launch) launch.dispose();
-    launch = type.mission === 'apollo11' ? new ApolloMission({ opt: optShared }) : new Launch(site, type.km, type.payload * 1000, type.scale, { az: type.az, rocketId: type.rocket, apoKm: type.apoKm, story: type.story, opt: optShared }); (launch.inertial ? inertial : world).add(launch.group);
+    launch = new Launch(site, type.km, type.payload * 1000, type.scale, { az: type.az, rocketId: type.rocket, apoKm: type.apoKm, story: type.story, opt: optShared }); world.add(launch.group);
     tagEls = launch.tagList.map(t => { const el = document.createElement('div'); el.className = 'l3d tag'; el.textContent = t.text; if (!t.piece) el.title = 'Cliquer pour suivre'; else el.style.cursor = 'default'; el.onclick = () => { if (!launch || launch.preview || t.piece) return; launch.follow = t.id; cam.userDir = false; cam.launchK = 1; setMode('launch'); }; document.body.appendChild(el); return el; });
     evLabels = launch.markers.map(mk => { const el = document.createElement('div'); el.className = 'l3d evl'; el.textContent = fmtT(mk.t) + ' ' + mk.label + ' · ' + fmtAlt(mk.altKm); document.body.appendChild(el); return el; });
     launch.stepPause = slowOn; launch.preview = !!preview; lastSel = { site, type };
@@ -279,7 +279,7 @@
     const realNow = Date.now(); simMs += (realNow - lastReal) * simSpeed; lastReal = realNow; const date = new Date(simMs);   // horloge simulée : temps réel par défaut, accélérable (boutons en bas à droite)
     iss = issState(date);
     frameF = cam.mode === 'solar' ? 1 : 0;
-    const Dd = astroD(date), gm = curGm = gmstOf(Dd), solarMode = cam.mode === 'solar', apolloMode = !!(launch && launch.inertial), sunV = sunGeo(Dd), moonV = moonInertial(Dd).pos, rotS = -gm * (1 - frameF);
+    const Dd = astroD(date), gm = curGm = gmstOf(Dd), solarMode = cam.mode === 'solar', sunV = sunGeo(Dd), moonV = moonInertial(Dd).pos, rotS = -gm * (1 - frameF);
     const sunAbs = sunV.clone().applyAxisAngle(Y_AXIS, rotS), moonAbs = moonV.clone().applyAxisAngle(Y_AXIS, rotS);
 
     // trop loin pour voir l'ISS (cachée) : on passe en vue « Terre » sans bouger la caméra (le bouton Terre s'allume)
@@ -328,8 +328,8 @@
     camera.near = Math.min(0.05, closest); camera.far = 4e6; camera.updateProjectionMatrix();
 
     // Soleil et Lune réels (cachés pendant une mission lunaire : elle a les siens)
-    solar.visible = !apolloMode; solar.rotation.y = rotS;
-    if (sunMesh && !apolloMode) {
+    solar.visible = true; solar.rotation.y = rotS;
+    if (sunMesh) {
       sunMesh.position.copy(sunV); orbitG.position.copy(sunV); orbitG.visible = solarMode; moonMesh.position.copy(moonV); moonQuat(moonV.clone().normalize(), ECLIPTIC_POLE, moonMesh.quaternion);
       moonDot.visible = cam.dist > 60 && !(solarMode && solarTarget === 'moon' && cam.dist < 400); earthDot.visible = solarMode && cam.dist > 300;
       for (const [d, p] of [[moonDot, moonV], [earthDot, new THREE.Vector3()]]) { const at = d.geometry.attributes.position; at.setXYZ(0, p.x, p.y, p.z); at.needsUpdate = true; }
@@ -486,7 +486,7 @@
     }
     // origine flottante : près de l'ISS, on recentre le monde sur elle pour rendre sans perte de précision
     const shift = cam.mode === 'launch' && launch ? launch.focusPos : iss && camera.position.distanceTo(iss.pos) * R_KM < 3000 ? iss.pos : null, saved = camera.position.clone();
-    world.rotation.y = apolloMode ? LCH.WE * launch.T : gm * frameF;   // missions lunaires : la Terre tourne dans l'espace inertiel
+    world.rotation.y = gm * frameF;
     if (shift) { world.position.copy(shift).negate(); camera.position.sub(shift); camera.updateMatrixWorld(); } else world.position.set(0, 0, 0);
     inertial.position.copy(world.position); solar.position.copy(world.position);
     renderer.render(scene, camera);
