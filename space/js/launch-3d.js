@@ -30,9 +30,9 @@ const SLOW_FLOOR = 0.3, SLOW_HOLD = 3, SLOW_K = 2;   // ralenti aux étapes : vi
 const MU_M = 1e-3 / R_KM;   // unités de la scène par mètre
 class Launch {
   constructor(site, targetKm, payloadKg, satScale, opts) {
-    const L = LCH, o = opts || {}; this.inertial = !!o.inertial; const spec = this.rocketSpec = o.plan ? planToSpec(o.plan) : (o.rocketId && ROCKETS[o.rocketId]) || rocketOf(site), az = o.az != null ? o.az : Math.PI / 2;   // az : azimut de tir (π/2 = plein est)
+    const L = LCH, o = opts || {}; this.inertial = !!o.inertial; const spec = this.rocketSpec = o.object ? objectToSpec(o.object) : o.plan ? planToSpec(o.plan) : (o.rocketId && ROCKETS[o.rocketId]) || rocketOf(site), az = o.az != null ? o.az : Math.PI / 2;   // az : azimut de tir (π/2 = plein est)
     this.payloadUsed = Math.min(payloadKg || 9e3, spec.maxPayload * 0.9);   // charge limitée par la capacité de la fusée
-    const sim = this.sim = o.plan ? flyPlan(o.plan) : simulateLaunch(targetKm, { lat: site.lat, payload: this.payloadUsed, az, rocket: spec, apoKm: o.apoKm });   // o.plan : plan de vol JSON (js/flight-plan.js), sans guidage
+    const sim = this.sim = o.object ? flyObject(o.object) : o.plan ? flyPlan(o.plan) : simulateLaunch(targetKm, { lat: site.lat, payload: this.payloadUsed, az, rocket: spec, apoKm: o.apoKm });   // o.plan : plan de vol JSON (js/flight-plan.js), sans guidage
     this.story = o.story || null; this.direct = !!(spec.phys && spec.phys.direct);   // story : mission historique (js/story.js) ; direct : le dernier étage met la charge en orbite
     this.opt = o.opt || launchOptDefault();   // options d'affichage (partagées entre les lancements)
     this.site = site; this.targetKm = targetKm; this.satScale = satScale || 1; this.T = 0; this.speed = 1; this.stepPause = true; this.stopT = null; this.effSpeed = 1; this.playing = true; this.userDir = false;

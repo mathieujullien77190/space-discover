@@ -214,7 +214,17 @@
   const stopSat = () => { if (launch) { launch.dispose(); launch = null; } hLabel.style.display = 'none'; vLabel.style.display = 'none'; cam.zoomFit = false; sat.hide(); if (cam.mode === 'launch') goEarth(); };
   // plan de vol : le JSON est relu à chaque lancement (on peut le modifier et recharger la page / relancer), sinon la copie embarquée
   const loadPlan = (key, custom) => custom ? Promise.resolve(custom) : (/^https?:/.test(location.protocol) && FLIGHT_PLAN_FILES[key] ? fetch(FLIGHT_PLAN_FILES[key] + '?t=' + Date.now(), { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }) : Promise.reject(new Error('file'))).catch(() => FLIGHT_PLANS[key]);
-  function startSat(key, custom) { loadPlan(key, custom).then(launchPlan); }
+  // objet générique (js/flight-object.js) : le JSON est relu à chaque lancement sur http(s), sinon la copie embarquée
+  const loadObject = (key, custom) => custom ? Promise.resolve(custom) : (/^https?:/.test(location.protocol) && FLIGHT_OBJECT_FILES[key] ? fetch(FLIGHT_OBJECT_FILES[key] + '?t=' + Date.now(), { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }) : Promise.reject(new Error('file'))).catch(() => FLIGHT_OBJECTS[key]);
+  function startSat(key, custom) { if (custom ? custom.timeline : key.startsWith('obj:')) loadObject(key.replace(/^obj:/, ''), custom).then(launchObject); else loadPlan(key, custom).then(launchPlan); }
+  function launchObject(obj) {
+    if (launch) { launch.dispose(); launch = null; }
+    optShared.markers = false; optShared.names = false;
+    const s0 = obj.start, site = Object.assign({}, LAUNCH_SITES[0], { id: 'obj', name: obj.name, lat: s0.lat, lon: s0.lon });
+    launch = new Launch(site, 0, 0, 1, { opt: optShared, object: obj, az: (s0.azimuthDeg != null ? s0.azimuthDeg : 90) * Math.PI / 180 }); world.add(launch.group);
+    launch.stepPause = false; launch.preview = false; launch.playing = true; launch.speed = 5; launch.topView = false;
+    cam.launchK = 1; cam.zoomFit = false; cam.userDir = false; setMode('launch'); sat.show(launch);
+  }
   function launchPlan(plan) {
     if (launch) { launch.dispose(); launch = null; }
     optShared.markers = false; optShared.names = false;

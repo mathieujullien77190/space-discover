@@ -1,0 +1,8 @@
+{
+  "name": "ISS — orbite de 420 km, inclinée de 51,6°",
+  "start": { "lat": 0, "lon": 0, "altitudeKm": 420, "azimuthDeg": 38.4, "elevationDeg": 0, "speedMs": 7657, "frame": "inertial" },
+  "visual": { "name": "ISS", "lengthM": 73, "radiusM": 5, "color": "#c8ccd4" },
+  "timeline": [
+    { "t": 0, "massKg": 420000, "cdA": 0, "label": "L’ISS tourne sans moteur", "key": "iss" }
+  ]
+}

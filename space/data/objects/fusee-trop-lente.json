@@ -1,0 +1,13 @@
+{
+  "name": "Fusée test — moteur coupé trop tôt, elle retombe",
+  "start": { "lat": 5.2408, "lon": -52.7688, "altitudeKm": 0, "azimuthDeg": 90, "elevationDeg": 90, "speedMs": 0 },
+  "visual": { "name": "Fusée test", "lengthM": 50, "radiusM": 2.5, "color": "#e8b8a0" },
+  "dryKg": 6000,
+  "timeline": [
+    { "t": 0,   "massKg": 500000, "thrustN": 8000000, "isp": 300, "pitch": 90, "cdA": 15, "label": "Décollage", "key": "liftoff" },
+    { "t": 10,  "pitch": 90 },
+    { "t": 30,  "pitch": 70 },
+    { "t": 130, "massKg": 60000, "thrustN": 1200000, "isp": 440, "pitch": 14.4, "label": "Largage du 1er étage, allumage du 2e", "key": "stage" },
+    { "t": 200, "thrustN": 0, "label": "Extinction du moteur : vitesse insuffisante", "key": "cutoff" }
+  ]
+}

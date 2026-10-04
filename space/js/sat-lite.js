@@ -8,14 +8,16 @@ function buildSatPanel(box, hooks) {
   const el = (tag, props, ...kids) => { const e = Object.assign(document.createElement(tag), props || {}); e.append(...kids); return e; };
   const keys = Object.keys(FLIGHT_PLANS), planSel = el('select'), info = el('div', { className: 'ldesc' }), go = el('button', { className: 'go', textContent: '🚀 Lancer' });
   keys.forEach(k => planSel.append(el('option', { value: k, textContent: FLIGHT_PLANS[k].name })));
-  let custom = null;   // plan envoyé par l'utilisateur (fichier JSON)
-  const keyOf = () => (FLIGHT_PLANS[planSel.value] ? planSel.value : keys[0]), planOf = () => custom || FLIGHT_PLANS[keyOf()];
-  const describe = P => { const sp = planToSpec(P), ret = P.returns && P.returns.stage1; return 'Base : ' + P.site.name + '\nFusée : ' + sp.name + '\nSatellite de ' + (P.vehicle.payloadKg / 1000) + ' t sur une orbite circulaire de ' + P.target.altitudeKm + ' km (' + fmtPeriod(P.target.altitudeKm) + ' par tour).' + (ret ? '\nLe booster revient se poser sur la tour (boostback, atterrissage).' : '') + '\nPlan de vol : ' + (custom ? 'fichier envoyé' : (FLIGHT_PLAN_FILES[keyOf()] || 'embarqué')) + ' (direction, poussée et masses en fonction du temps)'; };
+  Object.keys(FLIGHT_OBJECTS).forEach(k => planSel.append(el('option', { value: 'obj:' + k, textContent: '🧪 ' + FLIGHT_OBJECTS[k].name })));   // objets génériques (js/flight-object.js)
+  let custom = null;   // plan ou objet envoyé par l'utilisateur (fichier JSON)
+  const keyOf = () => (FLIGHT_PLANS[planSel.value] || FLIGHT_OBJECTS[planSel.value.replace(/^obj:/, '')] ? planSel.value : keys[0]), planOf = () => custom || (keyOf().startsWith('obj:') ? FLIGHT_OBJECTS[keyOf().slice(4)] : FLIGHT_PLANS[keyOf()]);
+  const describeObj = O => { const k = O.timeline.slice().sort((a, b) => a.t - b.t), m0 = (k.find(x => x.massKg != null) || {}).massKg || O.massKg, s = O.start, v = s.speedMs || 0; return 'Objet : ' + ((O.visual && O.visual.name) || O.name) + '\nDépart : ' + s.lat + '°, ' + s.lon + '°, altitude ' + (s.altitudeKm || 0) + ' km, vitesse ' + Math.round(v) + ' m/s\nMasse de départ : ' + Math.round(m0 / 100) / 10 + ' t, ' + k.length + ' paliers jusqu’à T+' + k[k.length - 1].t + ' s, puis vol sans moteur.\nObjet décrit par un JSON minimal : une vitesse insuffisante et il retombe.'; };
+  const describe = P => { if (P.timeline) return describeObj(P); const sp = planToSpec(P), ret = P.returns && P.returns.stage1; return 'Base : ' + P.site.name + '\nFusée : ' + sp.name + '\nSatellite de ' + (P.vehicle.payloadKg / 1000) + ' t sur une orbite circulaire de ' + P.target.altitudeKm + ' km (' + fmtPeriod(P.target.altitudeKm) + ' par tour).' + (ret ? '\nLe booster revient se poser sur la tour (boostback, atterrissage).' : '') + '\nPlan de vol : ' + (custom ? 'fichier envoyé' : (FLIGHT_PLAN_FILES[keyOf()] || 'embarqué')) + ' (direction, poussée et masses en fonction du temps)'; };
   const refresh = () => { info.textContent = describe(planOf()); };
   planSel.onchange = () => { custom = null; refresh(); }; refresh();
   const file = el('input', { type: 'file', accept: '.json,application/json', hidden: true }), msg0 = el('div', { className: 'lmsg' });
-  file.onchange = () => { const f = file.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => { try { const P = JSON.parse(rd.result); for (const k of ['site', 'vehicle', 'pitch', 'events', 'target']) if (!P[k]) throw new Error('champ « ' + k + ' » manquant'); custom = P; msg0.textContent = ''; refresh(); } catch (e) { msg0.textContent = 'Plan illisible : ' + e.message; } }; rd.readAsText(f); file.value = ''; };
-  const bFile = el('button', { textContent: '📂 Ouvrir un plan JSON', title: 'Envoie un plan de vol (même format que data/plans/*.json) : il se lance tel quel', onclick: () => file.click() });
+  file.onchange = () => { const f = file.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => { try { const P = JSON.parse(rd.result); if (P.timeline) validateObject(P); else for (const k of ['site', 'vehicle', 'pitch', 'events', 'target']) if (!P[k]) throw new Error('champ « ' + k + ' » manquant'); custom = P; msg0.textContent = ''; refresh(); } catch (e) { msg0.textContent = 'Plan illisible : ' + e.message; } }; rd.readAsText(f); file.value = ''; };
+  const bFile = el('button', { textContent: '📂 Ouvrir un plan JSON', title: 'Envoie un plan de vol (data/plans/*.json) ou un objet (data/objects/*.json) : il se lance tel quel', onclick: () => file.click() });
   const tel = el('pre', { className: 'ltel' }), list = el('div', { className: 'levs' }), msg = el('div', { className: 'lmsg' });
   const speeds = el('div'), spB = [];
   [['⏸', 0], ['×1', 1], ['×5', 5], ['×20', 20], ['×60', 60], ['×200', 200]].forEach(([n, v]) => { const b = el('button', { textContent: n, onclick: () => hooks.speed(v) }); spB.push([b, v]); speeds.append(b); });
@@ -32,7 +34,7 @@ function buildSatPanel(box, hooks) {
       const evs = [{ t: 0, label: 'Décollage' }].concat(launch.sim.events.map(e => ({ t: e.t, label: e.label })), (launch.extraEvents || []).map(e => ({ t: e.t, label: e.label }))).sort((a, b) => a.t - b.t);
       evs.forEach(e => { const d = el('div', { className: 'lev', textContent: e.label }); d.dataset.t = e.t; items.push(d); list.append(d); });
       bBoost.hidden = !launch.retResult;
-      msg.textContent = launch.sim.ok ? '' : 'Cette orbite est hors de portée de la fusée : elle retombe.';
+      msg.textContent = launch.sim.message || (launch.sim.ok ? '' : 'Cette orbite est hors de portée de la fusée : elle retombe.');
     },
     update(launch) {
       const t = launch.tel();
