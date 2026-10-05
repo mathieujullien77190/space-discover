@@ -55,23 +55,18 @@ describe('TopBar + SubMenu', () => {
     act(() => useStore.setState({ view: { mode: 'solar', selected: 'io' } }))   // une lune choisie : sa fratrie reste affichée
     expect(screen.getByText(/Callisto/)).toBeInTheDocument()
   })
-  it('Astres : trois catégories ; la Lune sous la Terre ; Halley dans Comètes ; le Soleil dans Étoiles', () => {
+  it('Astres : Planètes est un menu ; une catégorie à un seul astre (Soleil, Halley) est directement le bouton de l’astre', () => {
     render(<><TopBar /><SubMenu /></>)
     fireEvent.click(screen.getByText('🌌 Astres'))
     expect(screen.getByText('🪐 Planètes')).toBeInTheDocument()
-    expect(screen.getByText('☄ Comètes / météorites')).toBeInTheDocument()
-    expect(screen.getByText('☀ Étoiles')).toBeInTheDocument()
+    expect(screen.queryByText('☀ Étoiles')).toBeNull()   // pas de bouton « Étoiles » puis « Soleil »
+    expect(screen.queryByText(/Comètes/)).toBeNull()
     expect(screen.getByText(/Lune/)).toBeInTheDocument()
     expect(screen.getByText(/Mars/)).toBeInTheDocument()
-    expect(screen.queryByText(/Halley/)).toBeNull()
-    expect(screen.queryByText(/Soleil/)).toBeNull()
-    fireEvent.click(screen.getByText('☄ Comètes / météorites'))
+    fireEvent.click(screen.getByText(/^☀ Soleil$/))
+    expect(engine.selectView).toHaveBeenCalledWith('sun')
     fireEvent.click(screen.getByText(/Halley/))
     expect(engine.selectView).toHaveBeenCalledWith('halley')
-    expect(screen.queryByText(/Lune/)).toBeNull()
-    fireEvent.click(screen.getByText('☀ Étoiles'))
-    fireEvent.click(screen.getByText(/Soleil/))
-    expect(engine.selectView).toHaveBeenCalledWith('sun')
   })
   it('Astres : un clic sur la Lune change de vue', () => {
     render(<><TopBar /><SubMenu /></>)
