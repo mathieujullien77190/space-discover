@@ -67,6 +67,7 @@ export type Engine = {
   _featuresVisible: () => Record<string, boolean>
   _orbitsVisible: () => Record<string, boolean>
   _localOrbit: (id: string) => { visible: boolean; coarse: boolean; n: number; mid: number[]; pos: number[]; end: number[] } | null
+  _dotVisible: () => Record<string, boolean>
   _axisVisible: () => Record<string, boolean>
   _view: () => { up: number[]; dir: number[]; custom: boolean }
   _lod: () => { earth: number; bodies: Record<string, number>; ratio: number }

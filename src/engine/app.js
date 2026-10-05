@@ -370,7 +370,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     cam.goal.lon = ((cam.goal.lon + 540) % 360) - 180;
     ll(cam.lon, cam.lat, dirv);
     camera.position.copy(cam.tgt).addScaledVector(dirv, cam.dist);
-    camera.up.copy(cam.userUp || Y_AXIS);   // « haut » de l'écran : l'axe du monde, ou celui demandé (nord de l'astre, normale de son orbite) ; une rotation à la souris le remet à zéro
+    camera.up.copy(cam.userUp || Y_AXIS);   // « haut » de l'écran : l'axe du monde, ou celui demandé (nord de l'astre, normale de son orbite) ; la souris tourne autour de lui ; un changement de vue le remet à zéro
     camera.lookAt(cam.tgt); camera.updateMatrixWorld();
     const closest = Math.max(1e-7, Math.min(cam.dist, camera.position.length() - 1) * 0.05);
     pxScale = innerHeight / 2 / Math.tan(camera.fov * DEG / 2);   // pixels par unité de rayon vu à 1 unité de distance
@@ -392,8 +392,9 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       const masked = id => { const pr = bodyObjs[id].b.displayPriority || 0, s = scr[id]; if (!s) return false; for (const j in bodyObjs) { if (j !== bodyObjs[id].b.around || (bodyObjs[j].b.displayPriority || 0) <= pr || !scr[j] || !dotShown(j)) continue; if (Math.hypot(s[0] - scr[j][0], s[1] - scr[j][1]) < 18) return true; } return false; };
       for (const id in bodyObjs) {
         const o = bodyObjs[id], b = o.b, v = bpos[id], ab = babs[id], ru = BODY.radiusUnits(id), hid = masked(id) || (!!b.showWithinUnits && !!b.around && camera.position.distanceTo(babs[b.around]) > b.showWithinUnits), parent = b.around && bpos[b.around] ? bpos[b.around] : null, tr = b.trace || {};
+        o.px = o.mesh ? pxScale * ru * (b.appearance.rings ? 2.4 : 1) / Math.max(1e-9, camera.position.distanceTo(ab)) : 0;   // rayon apparent du maillage (pixels)
         if (o.mesh && o.lodHi) {   // niveau de détail de la sphère d'après sa taille à l'écran ; invisible sous 1 px (son point lointain la remplace)
-          const px = pxScale * ru * (b.appearance.rings ? 2.4 : 1) / Math.max(1e-9, camera.position.distanceTo(ab)), lv = lodLevel(px, o.lod || 0, BODY_LOD.T);
+          const px = o.px, lv = lodLevel(px, o.lod || 0, BODY_LOD.T);
           if (lv !== o.lod) { o.lod = lv; o.mesh.geometry = BODY_LOD.seg[lv] ? sphereLod(BODY_LOD.seg[lv]) : o.lodHi; }
           o.mesh.visible = px > 1;
         }
@@ -416,7 +417,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
         }
         if (o.orbitG) { o.orbitG.position.copy(parent || bpos[BODY.origin()]); const orbitOn = (solarMode || cam.mode === 'earth' || camera.position.length() > 300) && !hid, dCam = camera.position.distanceTo(ab), nearL = orbitOn && !!o.localLine && dCam < 3000 * ru; o.orbitG.visible = orbitOn && !nearL; if (o.localLine) { o.localLine.visible = nearL; if (nearL) updateLocalOrbit(o, id, b, Dd, dCam, ru, v); } }   // l'orbite de la Terre reste affichée en vue Terre (de près comme de loin), comme celle de Mars en vue Mars ; masquée seulement en vue ISS / fusée
 
-        if (o.dot) { const d = b.dot, shown = (!d.onlyInSolarView || solarMode) && cam.dist > (d.minDistanceUnits || 0) && !(solarMode && solarTarget === id && cam.dist < (d.hideBelowUnits || 0)); o.dot.visible = shown && !hid; const at = o.dot.geometry.attributes.position; at.setXYZ(0, v.x, v.y, v.z); at.needsUpdate = true; }
+        // le point lointain (carré de 7 px) disparaît dès que le maillage de l'astre est visible (> 5 px) : il clignotait sur le noyau (position 32 bits imprécise) et faisait doublon
+        if (o.dot) { const d = b.dot, shown = (!d.onlyInSolarView || solarMode) && cam.dist > (d.minDistanceUnits || 0) && !(solarMode && solarTarget === id && cam.dist < (d.hideBelowUnits || 0)); o.dot.visible = shown && !hid && !(o.px > 5); const at = o.dot.geometry.attributes.position; at.setXYZ(0, v.x, v.y, v.z); at.needsUpdate = true; }
         if (o.loop) {   // trace de la trajectoire autour du corps central : passé et avenir, recalculée tous les 0,05 jour, collée à l'astre à chaque image
           const N = 120, NF = 60;
           if (Math.abs(Dd - o.loopD) > 0.05) {
@@ -543,7 +545,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       t += '\n' + BODY.list().filter(b => b.info).sort((a, b) => (a.menu ? a.menu.order : 99) - (b.menu ? b.menu.order : 99)).map(b => { const d = bpos[b.id].length() * R_KM; return `${b.name} à ${fmtBig(d) || Math.round(d).toLocaleString('fr-FR') + ' km'}`; }).join(' · ');   // distances des astres marqués "info" (Lune, Soleil)
       if (solarMode && BODY.get(solarTarget) && BODY.get(solarTarget).menu.view) t += '\n' + BODY.get(solarTarget).menu.view.text;
       const fid = cam.mode === 'iss' ? 'iss' : cam.mode === 'earth' ? 'earth' : solarMode ? solarTarget : null, fb = fid && (BODY.get(fid) || FLIGHT_OBJECTS[fid]);   // astre regardé ; « proche » = à moins de 30 de ses rayons (ou card.nearUnits) : sa fiche s'affiche
-      const near = !!fb && !!fb.card && (fid === 'iss' || cam.dist < ((fb.card && fb.card.nearUnits) || 30 * BODY.radiusUnits(fid)));
+      const near = !!fb && !!fb.card;   // la fiche de l'astre choisi s'affiche toujours, de près comme de loin (demande de l'utilisateur)
       let cardId = near ? fid : null;
       if (!cardId && cam.mode !== 'iss') { let best = Infinity; for (const k in moonsShown) if (moonsShown[k] < best && BODY.get(k) && BODY.get(k).card) { best = moonsShown[k]; cardId = k; } }   // lunes affichées : fiche de la planète la plus proche
       publish({ info: t, viewJson: JSON.stringify(currentView()), focus: { id: cardId }, time: { simMs, speed: simSpeed, visible: !launch } });
@@ -568,6 +570,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   return {
     // pour les tests et l'interface : exécute une image sans requestAnimationFrame
     alignNorth, alignOrbit,
+    _dotVisible: () => Object.fromEntries(Object.entries(bodyObjs).filter(([, o]) => o.dot).map(([id, o]) => [id, o.dot.visible])),
     _axisVisible: () => Object.assign({ earth: earthAxis.visible }, Object.fromEntries(Object.entries(bodyObjs).filter(([, o]) => o.axisG).map(([id, o]) => [id, o.axisG.visible]))),
     _view: () => ({ up: camera.up.toArray(), dir: camera.position.clone().sub(cam.tgt).normalize().toArray(), custom: !!cam.userUp }),
     _frame: frame,

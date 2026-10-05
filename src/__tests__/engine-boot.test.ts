@@ -129,7 +129,7 @@ describe('createEngine (rendu factice)', () => {
       for (let i = 0; i < 4; i++) engine._frame(performance.now() + (t += 100))
       expect(state.view.selected, id).toBe(id)
       expect(state.status, id).toBe('ready')
-      expect(state.focus.id, id).toBe(id === 'sun' ? null : id)   // le Soleil se regarde de 90 000 unités : trop loin pour sa fiche
+      expect(state.focus.id, id).toBe(id)   // la fiche de l’astre choisi s’affiche toujours, même le Soleil regardé de 90 000 unités
     }
   })
   it('les lunes d’une planète ne sont dessinées que près d’elle : cachées en vue Soleil, nom affiché en vue Jupiter', async () => {
@@ -258,6 +258,43 @@ describe('createEngine (rendu factice)', () => {
     expect(engine._view().custom).toBe(true)
     engine.alignNorth('earth'); frames(3)
     expect(engine._view().up[1]).toBeGreaterThan(0.999)   // le pôle nord de la Terre est l'axe y de la scène
+  })
+  it('après « Nord en haut », glisser à la souris tourne AUTOUR de l’axe choisi : plus de saut vers l’ancienne vue', async () => {
+    await new Promise((r) => setTimeout(r, 450))
+    let t = 1000
+    const frames = (n: number) => { for (let i = 0; i < n; i++) engine._frame(performance.now() + (t += 100)) }
+    ;(canvas as unknown as { setPointerCapture: () => void }).setPointerCapture = () => {}
+    const fire = (type: string, x: number, y: number) => { const ev = new MouseEvent(type, { clientX: x, clientY: y, bubbles: true }); Object.assign(ev, { pointerId: 1 }); canvas.dispatchEvent(ev) }
+    const drag = (dx: number, dy: number) => { fire('pointerdown', 300, 300); fire('pointermove', 300 + dx / 2, 300 + dy / 2); fire('pointermove', 300 + dx, 300 + dy); fire('pointerup', 300 + dx, 300 + dy) }
+    const dot = (x: number[], y: number[]) => x[0] * y[0] + x[1] * y[1] + x[2] * y[2]
+    engine.selectView('jupiter'); frames(4)
+    engine.alignNorth('jupiter'); frames(3)
+    const before = engine._view()
+    drag(120, 0); frames(3)   // glisser horizontalement
+    const h = engine._view()
+    expect(h.custom).toBe(true)                                       // le « haut » choisi est conservé (pas de remise à la verticale du monde)
+    expect(h.up).toEqual(before.up)
+    expect(dot(h.dir, h.up)).toBeCloseTo(dot(before.dir, before.up), 6)   // même hauteur au-dessus de l’équateur : on a tourné autour du pôle
+    expect(dot(h.dir, before.dir)).toBeLessThan(0.99)                  // et la caméra a bien bougé
+    drag(0, 60); frames(3)    // glisser verticalement
+    const v = engine._view()
+    expect(v.custom).toBe(true)
+    expect(dot(v.dir, v.up)).not.toBeCloseTo(dot(h.dir, h.up), 2)       // la hauteur change
+    engine.selectView('saturn'); frames(3)
+    expect(engine._view().custom).toBe(false)                          // un changement de vue remet le « haut » du monde
+  })
+  it('le point lointain (carré) disparaît quand le modèle 3D est visible (Halley, Tchouri, planètes) et revient de loin', async () => {
+    await new Promise((r) => setTimeout(r, 450))
+    let t = 1000
+    const frames = (n: number) => { for (let i = 0; i < n; i++) engine._frame(performance.now() + (t += 100)) }
+    for (const id of ['halley', 'tchouri', 'mars', 'jupiter']) {
+      engine.selectView(id); frames(4)
+      expect(engine._dotVisible()[id], id).toBe(false)   // de près : pas de carré par-dessus le modèle
+    }
+    engine.selectView('sun'); frames(4)
+    const far = engine._dotVisible()
+    expect(far.halley).toBe(true)   // de loin le maillage est invisible : le point reste le repère
+    expect(far.mars).toBe(true)
   })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)

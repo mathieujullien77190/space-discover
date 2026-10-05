@@ -1,4 +1,5 @@
-import { DEG, R_KM } from './earth.js';
+import * as THREE from 'three';
+import { DEG, R_KM, ll } from './earth.js';
 
 // Contrôles : glisser = tourner autour de la cible, molette / pincement = zoom, clic sans bouger = onClick(x, y).
 export const EARTH_MAX_DIST = 1e10;   // zoom arrière maximal de la vue Terre (rayons terrestres) : pratiquement illimité (≈ 7 années-lumière ; 1 UA = 23 455 rayons)
@@ -15,8 +16,14 @@ export function attachControls(canvas, cam, onClick) {
   const rotate = (dx, dy) => {
     const alt = Math.max(1e-5, cam.mode === 'earth' ? cam.dist - 1 : 0);
     const k = cam.mode === 'earth' ? Math.min(alt, 3) * 2 * tanH() / canvas.clientHeight / DEG : 0.3;   // le sol suit le doigt à tout zoom
+    if (cam.userUp) {   // « haut » personnalisé (Nord en haut, Orbite à plat) : on tourne AUTOUR de cet axe (gauche-droite) et au-dessus / au-dessous de son plan (haut-bas), sans jamais remettre l'écran à la verticale du monde (ce qui faisait « sauter » la vue)
+      const u = cam.userUp, d = ll(cam.lon, cam.lat, new THREE.Vector3()).applyAxisAngle(u, -dx * k * DEG), right = new THREE.Vector3().crossVectors(u, d).normalize(), dn = d.clone().applyAxisAngle(right, -dy * k * DEG);
+      const e = Math.abs(dn.dot(u)) < Math.sin(89.5 * DEG) ? dn : d;   // pas au-delà des pôles de l'axe
+      cam.goal.lat = Math.asin(Math.max(-1, Math.min(1, e.y))) / DEG; cam.goal.lon = Math.atan2(-e.z, e.x) / DEG; cam.lon = cam.goal.lon; cam.lat = cam.goal.lat; cam.fly = 0;
+      return;
+    }
     cam.goal.lon -= dx * k; cam.goal.lat = Math.max(-89.5, Math.min(89.5, cam.goal.lat + dy * k));
-    cam.lon = cam.goal.lon; cam.lat = cam.goal.lat; cam.fly = 0; cam.userUp = null; if (cam.mode === 'launch') cam.userDir = true;   // l'utilisateur reprend la main
+    cam.lon = cam.goal.lon; cam.lat = cam.goal.lat; cam.fly = 0; if (cam.mode === 'launch') cam.userDir = true;   // l'utilisateur reprend la main
   };
   on(canvas, 'pointerdown', e => { canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); moved = 0; canvas.classList.add('drag'); if (ptrs.size === 2) pinch = 0; });
   on(canvas, 'pointermove', e => {
