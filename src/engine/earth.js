@@ -100,8 +100,7 @@ export function buildEarth(renderer) {
   }
   group.add(buildAtmosphere());   // halo bleu de l'atmosphère sur l'horizon
   group.add(linesMesh([2], 1.00003, 0xffffff, 0.85));        // trait de côte : contour net mer / continent
-  group.add(linesMesh([0], 1.00005, 0xfff3c4, 0.9));         // frontières
-  group.add(linesMesh([1], 1.00005, 0xffa566, 0.9));         // frontières contestées
+  // frontières des pays : NON affichées (demande de l'utilisateur : seulement les limites mer / lac / océan, c'est-à-dire le trait de côte) ; les données restent (linesMesh([0]) et linesMesh([1]))
   return group;
 }
 
