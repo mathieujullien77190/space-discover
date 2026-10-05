@@ -59,6 +59,13 @@ describe('TopBar + SubMenu', () => {
     fireEvent.click(screen.getByText(/Lune/))
     expect(engine.selectView).toHaveBeenCalledWith('moon')
   })
+  it('Satellites : les options Dimensions et Trajectoire sont surlignées quand le moteur les a allumées', () => {
+    useStore.setState({ features: { size: true, orbit: false } })
+    render(<><TopBar /><SubMenu /></>)
+    fireEvent.click(screen.getByText('🛰 Satellites'))
+    expect(screen.getByText(/Dimensions/).className).toMatch(/_on_/)
+    expect(screen.getByText(/Trajectoire/).className).not.toMatch(/_on_/)
+  })
   it('Satellites : l’ISS mène à la vue ISS', () => {
     render(<><TopBar /><SubMenu /></>)
     fireEvent.click(screen.getByText('🛰 Satellites'))
@@ -118,6 +125,15 @@ describe('ViewParams (juste au-dessus de la barre d’échelle)', () => {
 })
 
 describe('BodyCard (fiche de l’astre proche)', () => {
+  it('ISS : orbite calculée (altitude, période, inclinaison) et faits du JSON', () => {
+    useStore.setState({ ...initialEngineState, focus: { id: 'iss' } })
+    render(<BodyCard />)
+    expect(screen.getByText('Station spatiale')).toBeInTheDocument()
+    expect(screen.getByText(/93 min/)).toBeInTheDocument()
+    expect(screen.getByText('51,6°')).toBeInTheDocument()
+    expect(screen.getByText('109 × 73 m')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'ISS' }).getAttribute('src')).toBe('/objects/iss/card.png')
+  })
   it('rien quand on n’est proche d’aucun astre', () => {
     useStore.setState({ ...initialEngineState, focus: { id: null } })
     const { container } = render(<BodyCard />)

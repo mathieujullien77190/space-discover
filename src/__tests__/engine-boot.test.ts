@@ -95,6 +95,18 @@ describe('createEngine (rendu factice)', () => {
     for (let i = 0; i < 4; i++) engine._frame(performance.now() + 2000 + i * 100)
     expect(state.focus.id).toBeNull()
   })
+  it('choisir l’ISS : options allumées d’office (dimensions, trajectoire) et fiche de l’ISS ; une option peut ensuite être éteinte', () => {
+    engine._frame(performance.now() + 300)
+    expect(state.features).toEqual({})
+    engine.goIss()
+    expect(state.view).toEqual({ mode: 'iss', selected: null })
+    expect(state.features).toEqual({ size: true, orbit: true })
+    for (let i = 0; i < 4; i++) engine._frame(performance.now() + 1000 + i * 100)
+    expect(state.focus.id).toBe('iss')
+    engine.setFeature('orbit', false)
+    expect(state.features.orbit).toBe(false)
+    expect(state.features.size).toBe(true)
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)

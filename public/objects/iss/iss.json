@@ -2,7 +2,17 @@
   "name": "ISS",
   "live": true,
   "start": {
-    "orbit": { "epoch": "2026-10-01T11:56:31.238Z", "inclinationDeg": 51.6318, "raanDeg": 133.9648, "eccentricity": 0.0006934, "argPerigeeDeg": 209.9872, "meanAnomalyDeg": 150.072, "meanMotionRevDay": 15.4870385, "ndotRevDay2": 0.00003723, "bstar": 0.000076468 },
+    "orbit": {
+      "epoch": "2026-10-01T11:56:31.238Z",
+      "inclinationDeg": 51.6318,
+      "raanDeg": 133.9648,
+      "eccentricity": 0.0006934,
+      "argPerigeeDeg": 209.9872,
+      "meanAnomalyDeg": 150.072,
+      "meanMotionRevDay": 15.4870385,
+      "ndotRevDay2": 0.00003723,
+      "bstar": 0.000076468
+    },
     "at": "now"
   },
   "model": {
@@ -23,5 +33,32 @@
       "label": "L’ISS tourne sans moteur",
       "key": "iss"
     }
-  ]
+  ],
+  "card": {
+    "_note": "Fiche affichée en vue ISS. L'illustration est fabriquée par tools/make-body-cards.mjs ; altitude, vitesse, période et inclinaison sont CALCULÉES d'après start.orbit ; les faits ci-dessous sont écrits DE MÉMOIRE (à vérifier).",
+    "kind": "Station spatiale",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Nom",
+        "value": "Station spatiale internationale"
+      },
+      {
+        "label": "Taille",
+        "value": "109 × 73 m"
+      },
+      {
+        "label": "Masse",
+        "value": "≈ 420 tonnes"
+      },
+      {
+        "label": "Équipage",
+        "value": "7 personnes en général"
+      },
+      {
+        "label": "Premier module",
+        "value": "Zarya, novembre 1998"
+      }
+    ]
+  }
 }

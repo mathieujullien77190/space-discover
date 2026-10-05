@@ -30,6 +30,7 @@ export type EngineState = {
   time: TimeState
   scale: ScaleState
   rocket: RocketState
+  features: Record<string, boolean>   // options de l'ISS allumées (size, orbit)
   focus: { id: string | null }   // astre dont on est proche (sa fiche s'affiche), sinon null
 }
 

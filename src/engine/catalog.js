@@ -19,9 +19,17 @@ const SUP = { '-': '⁻', 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵
 const sci = v => { const e = Math.floor(Math.log10(v)); return fr(v / Math.pow(10, e), 2) + ' × 10' + String(e).split('').map(c => SUP[c]).join(''); };
 const fmtDuration = days => days < 2 ? Math.floor(days * 24) + ' h ' + String(Math.round((days * 24 % 1) * 60)).padStart(2, '0') + ' min' : days < 1000 ? fr(days, 1) + ' jours' : fr(days / 365.25, 1) + ' ans';
 const G = 6.6743e-11;
+// fiche d'un satellite (ISS) : orbite calculée d'après ses éléments (altitude moyenne, période, inclinaison) + faits du JSON
+const satelliteCard = (id, o) => {
+  const orb = o.start && o.start.orbit, facts = [];
+  if (orb) { const T = 86400 / orb.meanMotionRevDay, a = Math.cbrt(398600.4418 * T * T / (4 * Math.PI * Math.PI)); facts.push({ label: 'Altitude moyenne', value: '≈ ' + fr(a - 6378.137, 0) + ' km' }, { label: 'Vitesse', value: '≈ ' + fr(2 * Math.PI * a / T, 2) + ' km/s' }, { label: 'Période orbitale', value: fr(T / 60, 1) + ' min (' + fr(orb.meanMotionRevDay, 1) + ' tours par jour)' }, { label: 'Inclinaison', value: fr(orb.inclinationDeg, 1) + '°' }); }
+  for (const f of o.card.facts || []) facts.push({ label: f.label, value: f.value });
+  return { id, name: (o.visual && o.visual.name) || o.name, kind: o.card.kind || 'Satellite', image: 'objects/' + id + '/' + (o.card.image || 'card.png'), facts };
+};
 // fiche d'un astre : { id, name, kind, image (chemin relatif à la racine du site), facts [{ label, value }] } ; null si l'astre n'a pas de section « card » dans son JSON
 export const bodyCard = id => {
-  const b = BODY.get(id); if (!b || !b.card) return null;
+  const o = FLIGHT_OBJECTS[id], b = BODY.get(id) || (o && o.live ? o : null); if (!b || !b.card) return null;
+  if (b.live) return satelliteCard(id, b);
   const facts = [{ label: 'Diamètre', value: fr(2 * b.radiusKm, b.radiusKm < 100 ? 1 : 0) + ' km' }];
   if (b.massKg) { const mu = b.muM3S2 || G * b.massKg, g = mu / Math.pow(b.radiusKm * 1000, 2); facts.push({ label: 'Masse', value: sci(b.massKg) + ' kg' }, { label: 'Gravité en surface', value: fr(g, g < 0.01 ? 4 : 2) + ' m/s²' }); }
   const spin = b.rotationRadS ? 2 * Math.PI / b.rotationRadS / 86400 : b.rotation ? 360 / b.rotation.rateDegPerDay : 0;

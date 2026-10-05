@@ -52,3 +52,14 @@ save('mars', disc(await loadImage(fs.readFileSync(path.join(root, 'public', 'obj
   g.lineWidth = 2; g.strokeStyle = '#2a2622'; g.stroke();
   save('halley', c);
 }
+
+{ // ISS : poutre centrale, 4 paires de panneaux solaires, radiateurs, modules pressurisés (dessin plat)
+  const c = createCanvas(S, S), g = c.getContext('2d'), line = '#1c2430';
+  const rect = (x, y, w, h, fill) => { g.fillStyle = fill; g.fillRect(x, y, w, h); g.lineWidth = 2; g.strokeStyle = line; g.strokeRect(x, y, w, h); };
+  rect(14, 176, 332, 8, '#b9bec9');   // poutre
+  for (const x of [34, 84, 246, 296]) { for (const y of [28, 206]) { rect(x, y, 34, 126, '#2d5fa8'); for (let k = 1; k < 5; k++) { g.beginPath(); g.moveTo(x, y + k * 25); g.lineTo(x + 34, y + k * 25); g.strokeStyle = '#8fb6ea'; g.lineWidth = 1; g.stroke(); } } }
+  rect(150, 40, 18, 70, '#f1f3f6'); rect(150, 250, 18, 70, '#f1f3f6'); rect(192, 40, 18, 70, '#f1f3f6'); rect(192, 250, 18, 70, '#f1f3f6');   // radiateurs
+  rect(110, 168, 140, 24, '#d6d9df'); rect(104, 164, 10, 32, '#caa24a'); rect(246, 164, 10, 32, '#caa24a');   // modules
+  rect(168, 150, 24, 60, '#e4e6ea'); g.fillStyle = '#caa24a'; g.fillRect(172, 142, 16, 8); g.fillRect(172, 210, 16, 8);
+  save('iss', c);
+}

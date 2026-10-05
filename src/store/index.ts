@@ -9,7 +9,6 @@ export type UiState = {
   panel: PanelName | null
   bodyCategory: BodyCategory
   nudgeStep: number   // index dans NUDGE_STEPS
-  features: Record<string, boolean>
 }
 
 export type Store = EngineState &
@@ -20,7 +19,6 @@ export type Store = EngineState &
     togglePanel: (panel: PanelName) => void
     setBodyCategory: (category: BodyCategory) => void
     cycleNudgeStep: () => void
-    setFeatureFlag: (id: string, on: boolean) => void
   }
 
 const isPlainObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -41,11 +39,9 @@ export const useStore = create<Store>((set) => ({
   panel: null,
   bodyCategory: 'planets',
   nudgeStep: 1,
-  features: {},
   setEngine: (engine) => set({ engine }),
   applyPatch: (patch) => set((s) => mergePatch(s, patch)),
   togglePanel: (panel) => set((s) => ({ panel: s.panel === panel ? null : panel })),
   setBodyCategory: (bodyCategory) => set({ bodyCategory }),
   cycleNudgeStep: () => set((s) => ({ nudgeStep: (s.nudgeStep + 1) % NUDGE_STEPS.length })),
-  setFeatureFlag: (id, on) => set((s) => ({ features: { ...s.features, [id]: on } })),
 }))

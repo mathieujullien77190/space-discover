@@ -9,10 +9,7 @@ export const selectView = (id: string): void => engine()?.selectView(id)
 export const goIss = (): void => engine()?.goIss()
 export const setSimSpeed = (speed: number): void => engine()?.setSimSpeed(speed)
 export const resetTime = (): void => engine()?.resetTime()
-export const setFeature = (id: string, on: boolean): void => {
-  useStore.getState().setFeatureFlag(id, on)
-  engine()?.setFeature(id, on)
-}
+export const setFeature = (id: string, on: boolean): void => engine()?.setFeature(id, on)
 export const startRocket = (key: string): void => {
   void engine()?.startRocket(key)
 }

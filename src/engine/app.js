@@ -141,7 +141,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; cam.goal.dist = Math.max(0.1, distKm) / R_KM;
     if (now) snapCam();
   };
-  const goIss = () => { if (iss) { setMode('iss'); applyLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist, true); } };   // accès DIRECT à l'ISS, sans transition
+  const viewIss = () => { if (iss) { setMode('iss'); applyLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist, true); } };   // accès DIRECT à l'ISS, sans transition
+  const goIss = () => { viewIss(); for (const f of ISS_FEATURES) setFeature(f.id, true); };   // choisir l'ISS (menu ou clic) : vue directe + options allumées d'office (dimensions, hauteur, trajectoire)
   const currentView = () => {
     const rd = x => Math.round(x * 10) / 10, altCam = (camera.position.length() - 1) * R_KM;
     if (cam.mode === 'iss' && iss) { const F = frameIss(), d = camera.position.clone().sub(cam.tgt).normalize(); return { mode: 'iss', yaw: rd(Math.atan2(d.dot(F.s), -d.dot(F.f)) / DEG), pitch: rd(Math.asin(Math.max(-1, Math.min(1, d.dot(F.u)))) / DEG), distKm: Math.round(cam.dist * R_KM * 1000) / 1000, fov: camera.fov }; }
@@ -169,7 +170,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const fctx = { scene: world, model: issModel, label(text) { const l = { el: overlay.label(text), world: new THREE.Vector3(), needModel: false }; l3d.push(l); return l; } };
   const setFeature = (id, on) => {
     const f = ISS_FEATURES.find(x => x.id === id); if (!f) return;
-    featOn[id] = on; if (id === 'size' && on && cam.mode !== 'iss') goIss();   // « Dimensions » ne se voit que sur le satellite : on s'en approche
+    featOn[id] = on; publish({ features: { ...featOn } }); if (id === 'size' && on && cam.mode !== 'iss') viewIss();   // « Dimensions » ne se voit que sur le satellite : on s'en approche
     if (on && !featInst[id]) featInst[id] = f.build(fctx);
     const inst = featInst[id]; if (inst) { inst.objects.forEach(o => { o.visible = on; }); inst.labels.forEach(l => { if (!on) l.el.style.display = 'none'; }); }
   };
@@ -442,8 +443,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       if (cam.mode === 'iss') t += "\nÉchelle réelle : l'ISS (109 m) n'est visible qu'à moins de ~17 km.";
       t += '\n' + BODY.list().filter(b => b.info).sort((a, b) => (a.menu ? a.menu.order : 99) - (b.menu ? b.menu.order : 99)).map(b => { const d = bpos[b.id].length() * R_KM; return `${b.name} à ${fmtBig(d) || Math.round(d).toLocaleString('fr-FR') + ' km'}`; }).join(' · ');   // distances des astres marqués "info" (Lune, Soleil)
       if (solarMode && BODY.get(solarTarget) && BODY.get(solarTarget).menu.view) t += '\n' + BODY.get(solarTarget).menu.view.text;
-      const fid = cam.mode === 'earth' ? 'earth' : solarMode ? solarTarget : null, fb = fid && BODY.get(fid);   // astre regardé ; « proche » = à moins de 30 de ses rayons (ou card.nearUnits) : sa fiche s'affiche
-      const near = !!fb && !!fb.card && cam.dist < ((fb.card && fb.card.nearUnits) || 30 * BODY.radiusUnits(fid));
+      const fid = cam.mode === 'iss' ? 'iss' : cam.mode === 'earth' ? 'earth' : solarMode ? solarTarget : null, fb = fid && (BODY.get(fid) || FLIGHT_OBJECTS[fid]);   // astre regardé ; « proche » = à moins de 30 de ses rayons (ou card.nearUnits) : sa fiche s'affiche
+      const near = !!fb && !!fb.card && (fid === 'iss' || cam.dist < ((fb.card && fb.card.nearUnits) || 30 * BODY.radiusUnits(fid)));
       publish({ info: t, viewJson: JSON.stringify(currentView()), focus: { id: near ? fid : null }, time: { simMs, speed: simSpeed, visible: !launch } });
     }
     // origine flottante : près de l'ISS, on recentre le monde sur elle pour rendre sans perte de précision
