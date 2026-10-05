@@ -12,7 +12,7 @@ import { useStore } from '@/store'
 import { initialEngineState } from '@/store/initial'
 import type { Engine } from '@/types'
 
-const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn(), setBorders: vi.fn(), setCapitals: vi.fn(), setConstellations: vi.fn(), setDayNight: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
+const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn(), setBorders: vi.fn(), setCapitals: vi.fn(), setConstellations: vi.fn(), setDayNight: vi.fn(), setRealistic: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
 
 describe('TopBar + SubMenu', () => {
   let engine: ReturnType<typeof fakeEngine>
@@ -22,7 +22,7 @@ describe('TopBar + SubMenu', () => {
   })
   it('barre du haut : Astres, Terre, ISS, Nuages ; ni Histoires, ni Fusées, ni Satellites, aucun sous-menu au départ', () => {
     render(<><TopBar /><SubMenu /></>)
-    for (const l of ['🌌 Astres', '🌍 Terre', '🛰 ISS', '☁ Nuages']) expect(screen.getByText(l)).toBeInTheDocument()
+    for (const l of ['🌌 Astres', '🌍 Terre', '🛰 ISS', '☁ Nuages', '🎬 Vue réaliste']) expect(screen.getByText(l)).toBeInTheDocument()
     for (const l of [/Histoires/, /Fusées/, /Satellites/, /Engins/]) expect(screen.queryByText(l)).toBeNull()
     expect(screen.queryByText(/Lune/)).toBeNull()
   })
@@ -48,6 +48,14 @@ describe('TopBar + SubMenu', () => {
     expect(screen.getAllByText('👁 Vue depuis l’ISS')).toHaveLength(1)
     fireEvent.click(screen.getByText('👁 Vue depuis l’ISS'))
     expect(engine.setIssView).toHaveBeenCalledWith(true)
+  })
+  it('bouton « Vue réaliste » : retire trajectoires, noms et repères (à la demande)', () => {
+    useStore.setState({ realistic: false })
+    render(<TopBar />)
+    fireEvent.click(screen.getByText('🎬 Vue réaliste'))
+    expect(engine.setRealistic).toHaveBeenLastCalledWith(true)
+    fireEvent.click(screen.getByText('🎬 Vue réaliste'))
+    expect(engine.setRealistic).toHaveBeenLastCalledWith(false)
   })
   it('bouton « Nuages » : active la couverture nuageuse avec son crédit', () => {
     useStore.setState({ clouds: false })

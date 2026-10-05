@@ -35,3 +35,4 @@ export const MAP_OPTIONS = [
   { key: 'constellations', label: 'Constellations' },
   { key: 'dayNight', label: 'Jour / nuit' },
 ] as const   // chaque option est une case à cocher, éteinte par défaut
+export const REALISTIC_LABEL = '🎬 Vue réaliste'   // retire trajectoires, noms, repères et tout ce qui n'existe pas dans la réalité

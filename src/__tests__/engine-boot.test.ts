@@ -397,6 +397,26 @@ describe('createEngine (rendu factice)', () => {
     expect(v.distKm).toBeGreaterThanOrEqual(0.00009)                            // jamais en dessous de 10 cm
     engine.selectView('earth')
   })
+  it('vue réaliste : plus d’orbites, de noms, de repères, de cotes ni de limites ; retour à la demande', async () => {
+    await new Promise((r) => setTimeout(r, 450))
+    engine.selectView('earth'); engine.nudge('d+', 15)
+    for (let i = 0; i < 40; i++) engine.nudge('d+', 15)
+    for (let i = 0; i < 20; i++) engine._frame(performance.now() + 100 * i)
+    const names = () => [...overlay.querySelectorAll<HTMLElement>('.eng-l3d')].filter((e) => e.style.display === 'block')
+    expect(Object.values(engine._orbitsVisible()).some(Boolean)).toBe(true)      // vue éloignée : les orbites existent d’habitude
+    expect(names().length).toBeGreaterThan(0)                                   // et les noms aussi
+    engine.setBorders(true); engine.setCapitals(true); engine.setConstellations(true)
+    engine.setRealistic(true)
+    for (let i = 0; i < 5; i++) engine._frame(performance.now() + 5000 + 100 * i)
+    expect(Object.values(engine._orbitsVisible()).some(Boolean)).toBe(false)     // plus aucune orbite
+    expect(names()).toHaveLength(0)                                             // plus aucun nom
+    expect(engine._mapOptions()).toMatchObject({ borders: false, capitals: 0, constellations: false, realistic: true })
+    engine.setRealistic(false); engine.setBorders(false); engine.setCapitals(false); engine.setConstellations(false)
+    for (let i = 0; i < 5; i++) engine._frame(performance.now() + 9000 + 100 * i)
+    expect(Object.values(engine._orbitsVisible()).some(Boolean)).toBe(true)      // retour à la normale
+    expect(names().length).toBeGreaterThan(0)
+    engine.selectView('earth')
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)
