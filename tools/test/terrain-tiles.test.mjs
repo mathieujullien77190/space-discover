@@ -1,5 +1,5 @@
 // Relief + imagerie satellite : maths des tuiles Web Mercator, décodage Terrarium, interpolation, niveau de zoom, grille, rayon des sommets.
-import { DEM_URL, IMAGERY_URL, SEA_LEVEL_OFFSET, TERRAIN_EXAGGERATION, horizonKm, terrainLevels, sampleDem, terrainTiles, terrainZoom, terrariumElevation, tileAt, tileBounds, tileHeights, tileUrl, vertexRadius } from '../../src/engine/terrain-tiles.js';
+import { DEM_URL, IMAGERY_URL, SEA_LEVEL_OFFSET, TERRAIN_EXAGGERATION, horizonKm, terrainFallbacks, terrainLevels, sampleDem, terrainTiles, terrainZoom, terrariumElevation, tileAt, tileBounds, tileHeights, tileUrl, vertexRadius } from '../../src/engine/terrain-tiles.js';
 
 const fails = [], check = (c, m) => { console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if (!c) fails.push(m); };
 const p = tileAt(2.3522, 48.8566, 10);
@@ -36,4 +36,9 @@ const total = iss.reduce((a, l) => a + l.tiles.length, 0);
 check(total < 260 && iss[1].tiles.length < 49 && iss[1].tiles.length > 20, 'tuiles recouvertes par le niveau plus fin exclues : ' + iss.map(l => l.tiles.length).join(' + ') + ' = ' + total + ' (moins de 260)');
 const low = terrainLevels(2, 48, 20, 50, 1.8);
 check(low.length >= 2 && low.length <= 5 && low[0].z >= 11, 'très bas (20 km) : z ' + low[0].z + ' au plus fin puis des niveaux plus larges jusqu’à l’horizon de 160 km (' + low.length + ' niveaux)');
+const wantFb = [{ x: 10, y: 6, z: 5, key: '5/10/6', k: 0, d: 0 }, { x: 11, y: 6, z: 5, key: '5/11/6', k: 0, d: 1 }, { x: 12, y: 6, z: 5, key: '5/12/6', k: 0, d: 2 }];
+const fbs = terrainFallbacks(wantFb, key => key === '5/12/6');
+check(fbs.length === 1 && fbs[0].key === '4/5/3' && fbs[0].z === 4 && !fbs[0].dem && fbs[0].k === 1, 'tuiles de secours : les deux tuiles manquantes (5/10/6, 5/11/6) ont la même parente 4/5/3, la tuile prête n’en demande pas');
+check(terrainFallbacks(wantFb, () => true).length === 0, 'tout est prêt : aucune tuile de secours');
+check(terrainFallbacks([{ x: 0, y: 0, z: 3, key: '3/0/0' }], () => false).length === 0, 'au niveau de zoom minimal : pas de parente');
 if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }

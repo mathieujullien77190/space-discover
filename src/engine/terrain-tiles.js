@@ -93,3 +93,16 @@ export function terrainLevels(lon, lat, altKm, fovDeg, aspect) {
   }
   return levels;
 }
+
+// TUILES DE SECOURS : tant qu'une tuile voulue n'est pas arrivée, on affiche sa PARENTE, un niveau de zoom plus grossier (image seule, à plat), au lieu de la carte dessinée de la Terre.
+// want = tuiles voulues [{ x, y, z, key, k }] ; isReady(key) → vrai si la tuile est prête ; renvoie les parentes à charger / afficher (sans doublons, hors tuiles déjà voulues), plus proches du centre d'abord.
+export function terrainFallbacks(want, isReady) {
+  const wantKeys = new Set(want.map(t => t.key)), out = new Map();
+  for (const t of want) {
+    if (isReady(t.key) || t.z - 1 < TERRAIN_Z_MIN) continue;
+    const x = t.x >> 1, y = t.y >> 1, z = t.z - 1, key = z + '/' + x + '/' + y;
+    if (wantKeys.has(key) || out.has(key)) continue;
+    out.set(key, { x, y, z, key, k: (t.k || 0) + 1, dem: false, d: t.d || 0, fallback: true });
+  }
+  return [...out.values()].sort((a, b) => a.d - b.d);
+}

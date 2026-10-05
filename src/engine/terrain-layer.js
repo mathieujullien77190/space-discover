@@ -2,7 +2,7 @@
 // Visible sous TERRAIN_MAX_ALT_KM ; au-dessus (ou hors ligne) la carte dessinée de la Terre reste. Réseau nécessaire (http seulement). Mêmes principes que les photos aériennes de earth.js (rayon proche de 1, au-dessus du maillage de la Terre).
 import * as THREE from 'three';
 import { ll } from './earth.js';
-import { DEM_URL, IMAGERY_URL, SEA_LEVEL_OFFSET, TERRAIN_EXAGGERATION, TERRAIN_GLOW, TERRAIN_HYSTERESIS, TERRAIN_MAX_ALT_KM, mercY, terrainTiles, terrainLevels, tileBounds, tileHeights, tileUrl, vertexRadius } from './terrain-tiles.js';
+import { DEM_URL, IMAGERY_URL, SEA_LEVEL_OFFSET, TERRAIN_EXAGGERATION, TERRAIN_GLOW, TERRAIN_HYSTERESIS, TERRAIN_MAX_ALT_KM, mercY, terrainTiles, terrainFallbacks, terrainLevels, tileBounds, tileHeights, tileUrl, vertexRadius } from './terrain-tiles.js';
 
 const MAX_CACHED = 320;   // tuiles gardées en mémoire (≈ 320 × (image 350 Ko + relief) de mémoire graphique) : les plus anciennes sont libérées
 const MAX_LOADING = 16;   // images en cours de téléchargement
@@ -47,7 +47,7 @@ export function createTerrainLayer(parent, renderer, opts) {
     img.src = url;
   };
   const load = tl => {
-    const t = { state: 'loading', t: tick, mesh: null, img: null, dem: null }; tiles.set(tl.key, t);
+    const t = { state: 'loading', t: tick, mesh: null, img: null, dem: null, demWanted: !!tl.dem }; tiles.set(tl.key, t);
     const done = () => { if (t.img && (t.dem || !tl.dem) && !t.dead && t.state === 'loading') build(tl, t); };
     fetchImage(tileUrl(tl.z, tl.x, tl.y, IMAGERY_URL), img => { t.img = img; done(); }, t);
     if (tl.dem) fetchImage(tileUrl(tl.z, tl.x, tl.y, DEM_URL), img => { t.dem = img; done(); }, t);   // le relief n'est chargé que pour le niveau le plus fin
@@ -62,9 +62,11 @@ export function createTerrainLayer(parent, renderer, opts) {
       tick++;
       const levels = terrainLevels(co, cl, camAlt, fov, aspect), want = []; lastLevels = levels.length;
       levels.forEach(lv => lv.tiles.forEach(tl => want.push(Object.assign({}, tl, { k: lv.k, dem: lv.dem }))));   // niveaux emboîtés jusqu'à l'horizon
-      for (const tl of want) { const t = tiles.get(tl.key); if (t) t.t = tick; else if (loading < MAX_LOADING) load(tl); }
+      for (const tl of want) { const t = tiles.get(tl.key); if (t && tl.dem && !t.demWanted) { free(tl.key, t); if (loading < MAX_LOADING) load(tl); } else if (t) t.t = tick; else if (loading < MAX_LOADING) load(tl); }   // (une tuile de secours à plat devenue tuile fine est rechargée avec son relief)
+      const fb = terrainFallbacks(want, key => { const t = tiles.get(key); return !!t && t.state === 'ready'; });   // tuile pas encore arrivée : sa parente (un cran moins détaillé) la remplace en attendant
+      for (const tl of fb) { const t = tiles.get(tl.key); if (t) t.t = tick; else if (loading < MAX_LOADING) load(tl); }
       if (tiles.size > MAX_CACHED) for (const [k, t] of [...tiles].sort((a, b) => a[1].t - b[1].t)) { if (tiles.size <= MAX_CACHED) break; if (t.t !== tick) free(k, t); }
-      const wantKeys = new Set(want.map(t => t.key));
+      const wantKeys = new Set(want.concat(fb).map(t => t.key));
       for (const [k, t] of tiles) if (t.mesh) t.mesh.visible = wantKeys.has(k);   // seules les tuiles du niveau courant sont affichées (pas de mélange de niveaux)
       group.visible = true;
       return [...tiles.values()].some(t => t.state === 'ready' && t.mesh && t.mesh.visible);
