@@ -36,8 +36,9 @@ export function paintGlare(g, size) {
 const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 // opacité de l'éblouissement : sep = écart angulaire (rad) entre le Soleil et le centre de la Terre vus de la caméra, angEarth = rayon angulaire de la Terre
-// nulle si le Soleil est derrière le disque de la Terre, pleine un peu au-delà du bord (un peu de fuite au limbe : le lever de soleil éblouit avant d'apparaître)
-export const glareOpacity = (sep, angEarth) => smooth(angEarth * 0.9, angEarth * 1.05, sep);
+// nulle dès que le Soleil est ENTIÈREMENT sous l'horizon (centre à plus d'un rayon solaire derrière le limbe), moitié quand il est à moitié caché, pleine dès qu'il est entièrement au-dessus (demande : « on voit le Soleil sous l'horizon, c'est pas bon »)
+export const SUN_ANG_RADIUS = 0.00465;   // rayon apparent du Soleil (rad, 0,267°)
+export const glareOpacity = (sep, angEarth) => smooth(angEarth - SUN_ANG_RADIUS, angEarth + SUN_ANG_RADIUS, sep);
 
 // taille du sprite (pixels) selon la distance au Soleil (unités de la scène) : pleine à 1 UA, plus petite au loin (racine de la distance, au moins GLARE_MIN_SCALE), nulle dans le Soleil
 export const glarePixels = dist => (dist < SUN_HIDE_UNITS ? 0 : GLARE_PX * Math.max(GLARE_MIN_SCALE, Math.min(1, Math.sqrt(AU_UNITS / dist))));
