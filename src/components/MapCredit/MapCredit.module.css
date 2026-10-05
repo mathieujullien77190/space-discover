@@ -1,0 +1,1 @@
+.credit { position: fixed; right: calc(6px + env(safe-area-inset-right)); bottom: 2px; z-index: 3; margin: 0; padding: 1px 6px; font-size: 10px; color: #dfe8f5; background: rgba(10, 16, 30, 0.6); border-radius: 4px; pointer-events: none; }

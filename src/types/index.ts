@@ -51,6 +51,7 @@ export type EngineState = {
 }
 
 // Correctif envoyé par le moteur : chaque tranche peut être partielle (fusion superficielle dans le store).
+export type MapStyle = 'drawn' | 'street' | 'terrain'   // fond de carte : dessiné (Natural Earth), plan type Google Maps (CARTO / OpenStreetMap) ou relief (forêts, montagnes : OpenTopoMap)
 export type EnginePatch = {
   [K in keyof EngineState]?: EngineState[K] extends object ? Partial<EngineState[K]> : EngineState[K]
 } & { bigVehicles?: boolean; firstPerson?: boolean }   // le moteur peut aussi activer le mode engins géants (histoire : à 50 km d'altitude)
@@ -78,6 +79,8 @@ export type Engine = {
   setMetric: (on: boolean) => void
   setBigVehicles: (on: boolean) => void
   setFirstPerson: (on: boolean) => void
+  setMapStyle: (style: MapStyle) => void
+  _map: () => { style: MapStyle; shown: boolean; tiles: number; ready: number; loading: number }
   setViewInset: (right: number, bottom: number) => void
   setStorySlowMotion: (on: boolean) => void
   _fp: () => { yaw: number; pitch: number; fov: number; posErr: number | null; dir: number[]; up: number[]; radial: number[] | null; flight: number[] | null } | null

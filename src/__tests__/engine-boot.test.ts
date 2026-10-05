@@ -467,6 +467,14 @@ describe('createEngine (rendu factice)', () => {
     expect(engine._vehicle()!.vk).toBe(1)
     engine.stopRocket()
   })
+  it('fond de carte plan / relief : choix pris en compte (rien n’est chargé hors de 900 km)', () => {
+    engine.setMapStyle('street'); engine._frame(performance.now() + 100)
+    expect(engine._map()).toMatchObject({ style: 'street', shown: false, tiles: 0 })
+    engine.setMapStyle('terrain'); engine._frame(performance.now() + 200)
+    expect(engine._map().style).toBe('terrain')
+    engine.setMapStyle('drawn'); engine._frame(performance.now() + 300)
+    expect(engine._map().style).toBe('drawn')
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)

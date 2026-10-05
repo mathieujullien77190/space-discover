@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import BodyCard from '@/components/BodyCard'
+import MapCredit from '@/components/MapCredit'
 import DatePicker from '@/components/DatePicker'
 import RocketControls from '@/components/RocketControls'
 import SubMenu from '@/components/SubMenu'
@@ -10,7 +11,7 @@ import { useStore } from '@/store'
 import { initialEngineState } from '@/store/initial'
 import type { Engine } from '@/types'
 
-const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), startRocket: vi.fn(() => Promise.resolve()), stopRocket: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setRocketSpeed: vi.fn(), setBigVehicles: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
+const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), startRocket: vi.fn(() => Promise.resolve()), stopRocket: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setRocketSpeed: vi.fn(), setBigVehicles: vi.fn(), setMapStyle: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
 
 describe('TopBar + SubMenu', () => {
   let engine: ReturnType<typeof fakeEngine>
@@ -32,6 +33,20 @@ describe('TopBar + SubMenu', () => {
     expect(engine.setBigVehicles).toHaveBeenLastCalledWith(true)
     fireEvent.click(screen.getByText('🔭 Engins ×1000'))
     expect(engine.setBigVehicles).toHaveBeenLastCalledWith(false)
+  })
+  it('bouton fond de carte : dessiné → plan → relief → dessiné, avec crédit pour les fonds en ligne', () => {
+    useStore.setState({ mapStyle: 'drawn' })
+    render(<><TopBar /><MapCredit /></>)
+    expect(screen.queryByText(/OpenStreetMap/)).toBeNull()
+    fireEvent.click(screen.getByText('🗺 Carte dessinée'))
+    expect(engine.setMapStyle).toHaveBeenLastCalledWith('street')
+    expect(screen.getByText(/CARTO/)).toBeInTheDocument()
+    fireEvent.click(screen.getByText('🗺 Plan'))
+    expect(engine.setMapStyle).toHaveBeenLastCalledWith('terrain')
+    expect(screen.getByText(/OpenTopoMap/)).toBeInTheDocument()
+    fireEvent.click(screen.getByText('⛰ Relief'))
+    expect(engine.setMapStyle).toHaveBeenLastCalledWith('drawn')
+    expect(screen.queryByText(/OpenStreetMap/)).toBeNull()
   })
   it('Astres : la Lune n’est pas une planète : elle apparaît sous la Terre, pas sous Mars', () => {
     render(<><TopBar /><SubMenu /></>)

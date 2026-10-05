@@ -3,7 +3,8 @@
 import { create } from 'zustand'
 import { NUDGE_STEPS } from '@/constants'
 import { readAchievements, readCardCollapsed, writeAchievements, writeCardCollapsed } from '@/helpers'
-import type { BodyCategory, Engine, EnginePatch, EngineState, PanelName } from '@/types'
+import { nextMapStyle } from '@/helpers'
+import type { BodyCategory, Engine, EnginePatch, EngineState, MapStyle, PanelName } from '@/types'
 import { initialEngineState } from './initial'
 
 export type UiState = {
@@ -13,6 +14,7 @@ export type UiState = {
   cardCollapsed: boolean   // fiche d'astre réduite en mini bouton-icône (mémorisé)
   achievements: string[]   // hauts faits débloqués (mémorisés)
   slowMotion: boolean   // histoire : ralenti aux étapes (publié par le moteur)
+  mapStyle: MapStyle   // fond de carte de la Terre
   firstPerson: boolean   // vue à la première personne (publié par le moteur)
   bigVehicles: boolean   // mode « engins géants » : fusées, satellites et ISS 1 000 fois plus gros
   unlocked: string | null   // haut fait qu'on vient de débloquer (écran de déblocage)
@@ -30,6 +32,7 @@ export type Store = EngineState &
     unlockAchievement: (id: string) => void
     dismissUnlocked: () => void
     toggleBigVehicles: () => void
+    toggleMapStyle: () => void
   }
 
 const isPlainObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -55,6 +58,7 @@ export const useStore = create<Store>((set) => ({
   unlocked: null,
   bigVehicles: false,
   firstPerson: false,
+  mapStyle: 'drawn',
   slowMotion: true,
   setEngine: (engine) => set({ engine }),
   applyPatch: (patch) => set((s) => mergePatch(s, patch)),
@@ -71,6 +75,12 @@ export const useStore = create<Store>((set) => ({
       return { achievements, unlocked: id }
     }),
   dismissUnlocked: () => set({ unlocked: null }),
+  toggleMapStyle: () =>
+    set((s) => {
+      const mapStyle = nextMapStyle(s.mapStyle)
+      s.engine?.setMapStyle(mapStyle)
+      return { mapStyle }
+    }),
   toggleBigVehicles: () =>
     set((s) => {
       s.engine?.setBigVehicles(!s.bigVehicles)

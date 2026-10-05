@@ -1,3 +1,4 @@
+import MapCredit from '@/components/MapCredit'
 import BodyCard from '@/components/BodyCard'
 import EngineHost from '@/components/EngineHost'
 import InfoText from '@/components/InfoText'
@@ -26,6 +27,7 @@ export const App = () => (
       <ScaleBar />
     </div>
     <StatusMessage />
+    <MapCredit />
     <StoryPlayer />
     <AchievementScreen />
   </>

@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { BODY } from './bodies.js';
 import { ISS_FEATURES, ISS_EPOCH, ISS_FROM, ISS_MODEL, ISS_W, issState } from './iss.js';
+import { createMapLayer } from './map-layer.js';
 import { DEG, PHOTO_PATCHES, R_KM, buildEarth, earthGeometry, ll, loadPatch, unloadPatch } from './earth.js';
 import { loadGlb } from './gltf-mini.js';
 import { loadStackModels } from './stack-models.js';
@@ -52,6 +53,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const world = new THREE.Group(); scene.add(world);
   const inertial = new THREE.Group(); scene.add(inertial);
   const earth = buildEarth(renderer); world.add(earth);
+  const mapLayer = createMapLayer(earth, renderer); let mapStyle = 'drawn', mapShown = false;   // fond de carte « plan » (type Google Maps) : tuiles Web Mercator, option
   // NIVEAUX DE DÉTAIL selon la taille à l'écran (en pixels de rayon) : la Terre (1 048 576 triangles !) et les ~35 sphères d'astres (9 000 triangles chacune) n'étaient pas allégées quand elles ne font que quelques pixels.
   // Les géométries sont partagées (un cache par nombre de segments) ; une hystérésis (±15 %) évite de changer de niveau à chaque image.
   const LOCAL_N = 256, lodCache = {}, sphereLod = nx => lodCache[nx] || (lodCache[nx] = earthGeometry(nx, nx / 2));
@@ -635,8 +637,10 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     {
       const camE = launch && launch.inertial ? camera.position.clone().applyAxisAngle(Y_AXIS, -LCH.WE * launch.T) : camera.position, camAlt = (camE.length() - 1) * R_KM, cl = Math.asin(camE.y / camE.length()) / DEG, co = Math.atan2(-camE.z, camE.x) / DEG;
       let inside = false;
+      mapShown = mapLayer.update({ on: mapStyle !== 'drawn', style: mapStyle, camAlt, cl, co, fov: camera.fov, aspect: camera.aspect, http: isHttp() });   // le plan remplace la carte dessinée sous 900 km quand ses tuiles sont arrivées
       for (const p of PHOTO_PATCHES) {
         const [w, e, s, n] = p.bounds;
+        if (p.kind === 'tile' && mapShown) { if (p.mesh) p.mesh.visible = false; continue; }   // le plan est affiché : les tuiles dessinées se taisent
         if (p.kind === 'tile') {   // tuile de carte : selon la distance (en degrés) du point sous la caméra au rectangle de la tuile, et l'altitude
           const ang = (a, b) => Math.abs(((a - b + 540) % 360) - 180), dlon = co >= w && co <= e ? 0 : Math.min(ang(co, w), ang(co, e)) * Math.max(0.2, Math.cos(cl * DEG)), dd = Math.hypot(dlon, Math.max(0, s - cl, cl - n)), near = camAlt < p.loadKm && dd < 25 && isHttp();   // dd = distance en degrés (longitude corrigée de la latitude)
           if (near) loadPatch(p, renderer, earth);
@@ -649,7 +653,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
         if (p.mesh && dKm > 4000) unloadPatch(p, earth);
         if (p.mesh) { p.mesh.visible = dKm < p.hideKm; if (p.mesh.visible && camAlt < 60 && co > w && co < e && cl > s && cl < n) inside = true; }
       }
-      for (let k = 1; k < earth.children.length; k++) if (earth.children[k].isLineSegments) earth.children[k].visible = !inside && camAlt < 20000;   // dézoomé : plus de frontières ni de trait de côte
+      for (let k = 1; k < earth.children.length; k++) if (earth.children[k].isLineSegments) earth.children[k].visible = !inside && !mapShown && camAlt < 20000;   // dézoomé : plus de frontières ni de trait de côte
     }
     // échelle : longueur « ronde » (1, 2, 5 × 10^n) qui fait 70 à 170 px au point regardé
     {
@@ -715,6 +719,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     selectView,
     goIss, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
     setStorySpeed: v => { if (launch && Number.isFinite(v) && v > 0) launch.speed = v; },   // vitesse du temps pendant une histoire (ne relance pas une étape en pause)
+    setMapStyle: style => { mapStyle = style === 'street' || style === 'terrain' ? style : 'drawn'; },   // 'drawn' (Natural Earth), 'street' (plan type Google Maps) ou 'terrain' (relief, forêts, montagnes)
+    _map: () => Object.assign({ style: mapStyle, shown: mapShown }, mapLayer.stats()),
     setBigVehicles, setFirstPerson, setViewInset, setStorySlowMotion,
     _fp: () => cam.fp ? { yaw: cam.fp.yaw, pitch: cam.fp.pitch, fov: camera.fov, posErr: launch ? camera.position.distanceTo(launch.pos) * R_KM * 1000 : null, dir: new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray(), up: new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion).toArray(), radial: launch ? launch.radial.toArray() : null, flight: launch ? launch.dir.toArray() : null } : null,
 
@@ -725,6 +731,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     dispose() {
       stopped = true; cancelAnimationFrame(raf); clearTimeout(solarTimer); disposers.forEach(d => d()); clearLabels(); overlay.dispose();
       if (launch) launch.dispose();
+      mapLayer.dispose();
       if (renderer.dispose) renderer.dispose();
     },
   };
