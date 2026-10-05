@@ -386,6 +386,17 @@ describe('createEngine (rendu factice)', () => {
     expect(Math.abs(((b.lon - a.lon + 540) % 360) - 180 + 90)).toBeLessThan(2.5)   // 6 h plus tard : le Soleil est 90° plus à l'ouest
     engine.resetTime()
   })
+  it('ISS : on peut zoomer jusqu’à 10 cm de la station (plan proche de quelques millimètres)', () => {
+    engine.resetTime(); engine._frame(performance.now() + 100)
+    engine.goIss(); engine._frame(performance.now() + 200)
+    for (let i = 0; i < 400; i++) engine.nudge('d-', 15)                       // rapprocher au maximum
+    for (let i = 0; i < 40; i++) engine._frame(performance.now() + 300 + i * 100)
+    const v = JSON.parse(state.viewJson) as { mode: string; distKm: number }
+    expect(v.mode).toBe('iss')
+    expect(v.distKm).toBeLessThan(0.0002)                                       // moins de 20 cm
+    expect(v.distKm).toBeGreaterThanOrEqual(0.00009)                            // jamais en dessous de 10 cm
+    engine.selectView('earth')
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)

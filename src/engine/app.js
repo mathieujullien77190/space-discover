@@ -22,6 +22,7 @@ import { KM_AL, KM_UA, fmtBig } from './format.js';
 import { createOverlay } from './overlay.js';
 import { parseObj } from './obj-mini.js';
 
+export const ISS_MIN_DIST_KM = 0.0001;   // zoom minimal autour de l'ISS : 10 cm (c'était 100 m)
 const SUN_INTENSITY = 3.6, NIGHT_AMBIENT = 0.25;   // jour / nuit : éclairage PHYSIQUE de three.js (la BRDF de Lambert divise par π) : un Soleil d'intensité 1 ne donnait que 32 % de la couleur au zénith, donc « la nuit » partout, même sur la face éclairée ; ≈ π × 1,15 au zénith, ambiance 0,25 (≈ 8 % la nuit)
 const VIEW_ISS = { yaw: -28.8, pitch: 24.9, dist: 0.393 };   // accès DIRECT à l'ISS, sans transition : vue réglée par l'utilisateur, un peu de derrière et au-dessus, à 393 m (yaw °, pitch °, distance km)
 const Y_AXIS = new THREE.Vector3(0, 1, 0), KMU = 1 / (R_KM * 1000);
@@ -189,14 +190,14 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const applyLocal = (yaw, pitch, distKm, now) => {   // place la caméra autour de l'ISS (yaw, pitch en °, distance en km) ; now = sans transition
     const F = frameIss(), y = yaw * DEG, p = Math.max(-89.5, Math.min(89.5, pitch)) * DEG;
     const d = F.f.clone().multiplyScalar(-Math.cos(y) * Math.cos(p)).addScaledVector(F.s, Math.sin(y) * Math.cos(p)).addScaledVector(F.u, Math.sin(p));
-    cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; cam.goal.dist = Math.max(0.1, distKm) / R_KM;
+    cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; cam.goal.dist = Math.max(ISS_MIN_DIST_KM, distKm) / R_KM;
     if (now) snapCam();
   };
   const viewIss = () => { if (iss) { setMode('iss'); applyLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist, true); } };   // accès DIRECT à l'ISS, sans transition
   const goIss = () => { viewIss(); for (const f of ISS_FEATURES) setFeature(f.id, true); };   // choisir l'ISS (menu ou clic) : vue directe + options allumées d'office (dimensions, hauteur, trajectoire)
   const currentView = () => {
     const rd = x => Math.round(x * 10) / 10, altCam = (camera.position.length() - 1) * R_KM;
-    if (cam.mode === 'iss' && iss) { const F = frameIss(), d = camera.position.clone().sub(cam.tgt).normalize(); return { mode: 'iss', yaw: rd(Math.atan2(d.dot(F.s), -d.dot(F.f)) / DEG), pitch: rd(Math.asin(Math.max(-1, Math.min(1, d.dot(F.u)))) / DEG), distKm: Math.round(cam.dist * R_KM * 1000) / 1000, fov: camera.fov }; }
+    if (cam.mode === 'iss' && iss) { const F = frameIss(), d = camera.position.clone().sub(cam.tgt).normalize(); return { mode: 'iss', yaw: rd(Math.atan2(d.dot(F.s), -d.dot(F.f)) / DEG), pitch: rd(Math.asin(Math.max(-1, Math.min(1, d.dot(F.u)))) / DEG), distKm: Math.round(cam.dist * R_KM * 1e6) / 1e6, fov: camera.fov }; }
     if (cam.mode === 'solar') return { mode: 'solar', cible: solarTarget, lon: rd(cam.lon), lat: rd(cam.lat), distRayonsTerrestres: Math.round(cam.dist * 100) / 100, fov: camera.fov };   // Lune ou Soleil
     return { mode: 'earth', lon: rd(cam.lon), lat: rd(cam.lat), altKm: rd(altCam), fov: camera.fov };
   };
@@ -319,7 +320,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     cam.tgt.copy(goalTgt);   // la cible est posée directement (plus de glissement entre les vues)
     // zoom (molette) : amorti pour ne pas sauter, en altitude pour la Terre (sinon l'amortissement ne bouge plus près du sol)
     const kz = 1 - Math.exp(-dt * 14), base = cam.mode === 'earth' ? 1 : 0;
-    const cur = Math.max(1e-7, cam.dist - base), want = Math.max(1e-7, cam.goal.dist - base);
+    const cur = Math.max(1e-10, cam.dist - base), want = Math.max(1e-10, cam.goal.dist - base);
     cam.dist = base + Math.exp(Math.log(cur) + (Math.log(want) - Math.log(cur)) * kz);
     if (Math.abs(Math.log(cam.dist - base) - Math.log(want)) < 1e-3) cam.dist = cam.goal.dist;
     cam.lon = cam.goal.lon; cam.lat = cam.goal.lat;
@@ -330,7 +331,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     if (cam.fp && cam.mode === 'iss' && iss && issView) { issSrc.pos = iss.pos; issSrc.dir.copy(iss.vel).normalize(); issSrc.radial.copy(iss.pos).normalize(); placeFirstPerson(issSrc); }
     else { if (camera.fov !== cam.fov) camera.fov = cam.fov; camera.lookAt(cam.tgt); }
     camera.updateMatrixWorld();
-    const closest = Math.max(1e-7, Math.min(cam.dist, camera.position.length() - 1) * 0.05);
+    const closest = Math.max(1e-10, Math.min(cam.dist, camera.position.length() - 1) * 0.05);   // plan proche jusqu'à 6 mm (zoom de l'ISS à 10 cm)
     pxScale = innerHeight / 2 / Math.tan(camera.fov * DEG / 2);   // pixels par unité de rayon vu à 1 unité de distance
     { const lv = lodLevel(pxScale / Math.max(1e-6, camera.position.length()), earthLevel, EARTH_LOD.T); if (lv !== earthLevel) { earthLevel = lv; earthGlobe.geometry = EARTH_LOD.seg[lv] ? sphereLod(EARTH_LOD.seg[lv]) : earthGeoHi; } }
     earthAxis.visible = ((cam.mode === 'earth' && cam.dist > 1.6) || solarMode) && camera.position.length() < 40;   // équateur et pôle nord de la Terre quand on la regarde d'assez loin
