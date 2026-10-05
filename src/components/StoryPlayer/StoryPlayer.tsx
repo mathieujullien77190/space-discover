@@ -1,10 +1,12 @@
 import { useEffect, useRef } from 'react'
 import CabinView from '@/components/CabinView'
 import StorySpeed from '@/components/StorySpeed'
+import Button from '@/components/ui/Button'
 import { BASE_PATH } from '@/constants'
 import { storyOf } from '@/engine/catalog'
 import { useStore } from '@/store'
-import { quitStory, setStorySpeed, storyNext } from '@/store/commands'
+import { quitStory, setFirstPerson, setStorySpeed, storyNext } from '@/store/commands'
+import { FP_OFF_LABEL, FP_ON_LABEL } from './constants'
 import styles from './StoryPlayer.module.css'
 
 // Lecteur d'histoire : une étape = un grand texte, une image éventuelle, un gros bouton « Suivant ». La simulation est en pause pendant l'étape.
@@ -12,6 +14,8 @@ import styles from './StoryPlayer.module.css'
 export const StoryPlayer = () => {
   const story = useStore((s) => s.story)
   const speed = useStore((s) => s.rocket.speed)
+  const firstPerson = useStore((s) => s.firstPerson)
+  const fpButton = <Button label={firstPerson ? FP_OFF_LABEL : FP_ON_LABEL} active={firstPerson} title="Regarder autour de soi, comme depuis le satellite (glisser = tourner la tête)" onClick={() => setFirstPerson(!firstPerson)} />
   const unlockAchievement = useStore((s) => s.unlockAchievement)
   const done = useRef(false)
   const step = story.step
@@ -35,6 +39,7 @@ export const StoryPlayer = () => {
       <div className={styles.running} role="status">
         <span>🚀 Suivons la fusée…</span>
         <StorySpeed speed={speed} onChange={setStorySpeed} />
+        {fpButton}
         <button type="button" className={styles.close} aria-label="Quitter l’histoire" title="Quitter l’histoire" onClick={quitStory}>
           ✕
         </button>
@@ -68,6 +73,7 @@ export const StoryPlayer = () => {
       {step.source && <p className={styles.source}>Source : {step.source}</p>}
       <StorySpeed speed={speed} onChange={setStorySpeed} />
       <div className={styles.actions}>
+        {fpButton}
         <button type="button" className={styles.next} disabled={!story.canNext} onClick={storyNext}>
           {last ? 'Terminer ✓' : 'Suivant ▶'}
         </button>

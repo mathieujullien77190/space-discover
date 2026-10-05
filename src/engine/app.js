@@ -161,7 +161,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const solarTimer = setTimeout(buildSolar, 400);
 
   // fond d'étoiles (rayon 3 000 000 unités : au-delà de Neptune, à 704 000)
-  const sp = new Float32Array(3 * 3000), tmp = new THREE.Vector3();
+  const sp = new Float32Array(3 * 3000), tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3(), tmp3 = new THREE.Vector3(), tmp4 = new THREE.Vector3(), fpM = new THREE.Matrix4();
   for (let i = 0; i < 3000; i++) { tmp.set(Math.random() - .5, Math.random() - .5, Math.random() - .5).normalize(); sp.set([tmp.x, tmp.y, tmp.z], 3 * i); }
   const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3));
   const stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: 1.3, sizeAttenuation: false, depthWrite: false })); stars.frustumCulled = false; scene.add(stars);   // sphère de rayon 1, replacée sur la caméra et grossie à chaque image : le fond est toujours « à l'infini », quel que soit le zoom arrière
@@ -184,7 +184,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const dot = new THREE.Points(dg, new THREE.PointsMaterial({ color: 0xffd54a, size: 10, sizeAttenuation: false })); dot.frustumCulled = false; world.add(dot);
   const issLabel = overlay.label('ISS', 'iss');
 
-  const cam = { fov: 50, mode: 'earth', tgt: new THREE.Vector3(), lon: 0, lat: 50, dist: 3.4, fly: 0, tfly: 0, launchK: 1, userDir: false, upKind: 'north', goal: { lon: 0, lat: 50, dist: 3.4 } };   // départ : la Terre vue du nord (nord en haut), le méridien de Greenwich (0°) en face de la caméra
+  const cam = { fov: 50, mode: 'earth', tgt: new THREE.Vector3(), lon: 0, lat: 50, dist: 3.4, fly: 0, tfly: 0, launchK: 1, userDir: false, fp: null, fpUp: new THREE.Vector3(), upKind: 'north', goal: { lon: 0, lat: 50, dist: 3.4 } };   // départ : la Terre vue du nord (nord en haut), le méridien de Greenwich (0°) en face de la caméra
   let VK = 1;   // échelle des engins (1 = réel ; VEHICLE_SCALE_BIG = mode « engins géants »)
   const moonsShown = {};   // planète → distance de la caméra, pour les planètes dont les lunes sont affichées
   let poseStale = false;   // juste après un changement de vue la caméra garde l'ancienne position jusqu'à la prochaine image : on n'en déduit pas « trop loin de l'ISS »
@@ -292,7 +292,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   let curMission = null;   // mission historique en cours de lancement (id de la sonde) : « Voyager 2 — 1977 »
   const rocketBase = () => ({ mission: curMission, running: false, loading: false, message: '', steps: [], components: [], T: 0, playing: false, speed: 0, telemetry: { eff: 1, alt: 0, v: 0 } });
   const stopRocket = () => {
-    curMission = null;
+    curMission = null; if (cam.fp) { cam.fp = null; publish({ firstPerson: false }); }
     if (launch) { launch.dispose(); launch = null; }
     clearLabels(); rocketRows = [];
     publish({ rocket: rocketBase(), time: { visible: true } });
@@ -336,12 +336,24 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   // ---------- MODE HISTOIRE (src/engine/story.js, public/stories/) ----------
   // Une histoire lance un objet (fusée) à une date et met la simulation en PAUSE à chaque étape : texte court, cadrage de caméra, quiz éventuel. L'interface (React) affiche l'étape ; « Suivant » relance la simulation jusqu'à la suivante.
   const setBigVehicles = on => { const k = on ? VEHICLE_SCALE_BIG : 1, r = k / VK; VK = k; cam.vk = k; if (launch) launch.vk = k; if (cam.mode === 'iss') cam.goal.dist = Math.min(41 * k, Math.max(0.1 * k / R_KM, cam.goal.dist * r)); };   // fusées, satellites et ISS ×1 000 (ou taille réelle)
+  const FP_DEFAULT = { yaw: 0, pitch: -20, fov: 70 };   // vue à la première personne : on regarde un peu vers le bas (la Terre), champ de 70°
+  const setFirstPerson = on => { if (!launch) { publish({ firstPerson: false }); return; } if (on && !cam.fp) { cam.fp = { ...FP_DEFAULT }; cam.fpUp.set(0, 0, 0); } else if (!on) cam.fp = null; publish({ firstPerson: !!cam.fp }); };
+  const placeFirstPerson = () => {   // caméra sur la fusée : avant = sens du vol, haut = verticale du lieu ; yaw / pitch = la tête de celui qui regarde
+    const f = launch.dir, rad = launch.radial, u = tmp2.copy(rad).addScaledVector(f, -rad.dot(f));
+    if (u.lengthSq() > 0.0025) cam.fpUp.copy(u).normalize(); else if (cam.fpUp.lengthSq() < 0.5) cam.fpUp.copy(rad).cross(tmp3.set(0, 1, 0).cross(rad)).multiplyScalar(-1).normalize(); else cam.fpUp.addScaledVector(f, -cam.fpUp.dot(f)).normalize();   // près de la verticale : on garde le « haut » précédent
+    const up0 = cam.fpUp, right0 = tmp3.crossVectors(f, up0).normalize();
+    const yaw = -cam.fp.yaw * DEG, pit = cam.fp.pitch * DEG, d = tmp4.copy(f).applyAxisAngle(up0, yaw), r2 = right0.clone().applyAxisAngle(up0, yaw), u2 = up0.clone().applyAxisAngle(up0, yaw);
+    d.applyAxisAngle(r2, pit); u2.applyAxisAngle(r2, pit);
+    camera.position.copy(launch.pos); camera.quaternion.setFromRotationMatrix(fpM.makeBasis(r2, u2, d.clone().negate())); camera.fov = cam.fp.fov || 70;
+    launch.rocket.visible = false; launch.dotRocket.visible = false; launch.satG.visible = false;   // on est dedans : ni la fusée ni le satellite ne cachent la vue
+  };
   let story = null;   // { def, trig (instants de vol de chaque étape), index (étape affichée, −1 au départ), next (prochaine à afficher), phase: 'showing' (en pause) | 'running', finished }
   const STORY_OFF = { active: false, id: null, title: '', index: -1, total: 0, phase: 'running', finished: false, canNext: false, step: null };
   const publishStory = () => publish({ story: !story ? STORY_OFF : { active: true, id: story.def.id, title: story.def.title, index: story.index, total: story.def.steps.length, phase: story.phase, finished: story.finished, canNext: story.phase === 'showing', step: story.index >= 0 ? story.def.steps[story.index] : null } });
   const storyCamera = spec => {   // cadrage : composant suivi (pad, rocket, eap1, epc…) ; le zoom n'est jamais modifié par une histoire
     if (!spec || !launch) return;
     if (spec.follow) { launch.follow = spec.follow; cam.userDir = false; }
+    if (spec.firstPerson !== undefined) setFirstPerson(!!spec.firstPerson);   // « ce que voyait Laïka » : la caméra est SUR le point en mouvement, on regarde autour
     if (cam.mode !== 'launch') setMode('launch');
   };
   const storyShow = i => { const st = story.def.steps[i]; story.index = i; story.next = i + 1; storyCamera(st.camera); if (st.pause === false) { story.phase = 'running'; launch.playing = true; } else { story.phase = 'showing'; launch.playing = false; } publishStory(); };
@@ -455,7 +467,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     ll(cam.lon, cam.lat, dirv);
     camera.position.copy(cam.tgt).addScaledVector(dirv, cam.dist);
     camera.up.copy(cam.userUp || Y_AXIS);   // « haut » de l'écran : l'axe du monde, ou celui demandé (nord de l'astre, normale de son orbite) ; la souris tourne autour de lui ; un changement de vue le remet à zéro
-    camera.lookAt(cam.tgt); camera.updateMatrixWorld();
+    if (cam.fp && cam.mode === 'launch' && launch) placeFirstPerson(); else { if (camera.fov !== cam.fov) camera.fov = cam.fov; camera.lookAt(cam.tgt); }
+    camera.updateMatrixWorld();
     const closest = Math.max(1e-7, Math.min(cam.dist, camera.position.length() - 1) * 0.05);
     pxScale = innerHeight / 2 / Math.tan(camera.fov * DEG / 2);   // pixels par unité de rayon vu à 1 unité de distance
     { const lv = lodLevel(pxScale / Math.max(1e-6, camera.position.length()), earthLevel, EARTH_LOD.T); if (lv !== earthLevel) { earthLevel = lv; earthGlobe.geometry = EARTH_LOD.seg[lv] ? sphereLod(EARTH_LOD.seg[lv]) : earthGeoHi; } }
@@ -682,7 +695,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     selectView,
     goIss, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
     setStorySpeed: v => { if (launch && Number.isFinite(v) && v > 0) launch.speed = v; },   // vitesse du temps pendant une histoire (ne relance pas une étape en pause)
-    setBigVehicles,
+    setBigVehicles, setFirstPerson,
+    _fp: () => cam.fp ? { yaw: cam.fp.yaw, pitch: cam.fp.pitch, fov: camera.fov, posErr: launch ? camera.position.distanceTo(launch.pos) * R_KM * 1000 : null, dir: new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray(), up: new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion).toArray(), radial: launch ? launch.radial.toArray() : null, flight: launch ? launch.dir.toArray() : null } : null,
 
     startRocket, stopRocket, launchMission, followMission, startStory, storyNext, quitStory,
     _vehicle: () => launch ? { vk: launch.vk, scale: launch.rocket.scale.x, camKm: camera.position.distanceTo(launch.center) * R_KM, lenKm: launch.rocketLen * launch.vk / 1000 } : null,

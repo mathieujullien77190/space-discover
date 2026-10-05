@@ -421,6 +421,13 @@ describe('createEngine (rendu factice)', () => {
       expect(s.T).toBeGreaterThanOrEqual(s.trig[state.story.index] - 1e-6)
       expect(s.T).toBeLessThan(Math.max(s.trig[state.story.index], 0) + 60)
       seen.push(state.story.step!.id)
+      if (state.story.step!.id === 'tour') {   // « ce que voyait Laïka » : caméra SUR le satellite, on regarde dans le sens du vol, un peu vers le bas, la tête vers le haut
+        const fp = engine._fp()!
+        const dot = (a: number[], b: number[]) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+        expect(fp.posErr!).toBeLessThan(1)
+        expect(dot(fp.dir, fp.flight!)).toBeCloseTo(Math.cos(20 * Math.PI / 180), 1)
+        expect(dot(fp.up, fp.radial!)).toBeGreaterThan(0.5)
+      } else if (state.story.step!.id === 'adieu') expect(engine._fp()).toBeNull()
     }
     expect(seen).toEqual(['mouches', 'moscou', 'entrainement', 'decollage', 'boosters', 'orbite', 'tour', 'adieu', 'espoir', 'heritage'])
     expect(state.story.finished).toBe(true)

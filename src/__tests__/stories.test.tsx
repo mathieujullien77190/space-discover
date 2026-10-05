@@ -16,10 +16,10 @@ const step: StoryStep = {
 } as StoryStep
 
 describe('mode histoire (interface)', () => {
-  let engine: { startStory: ReturnType<typeof vi.fn>; setStorySpeed: ReturnType<typeof vi.fn>; storyNext: ReturnType<typeof vi.fn>; quitStory: ReturnType<typeof vi.fn> }
+  let engine: { startStory: ReturnType<typeof vi.fn>; setStorySpeed: ReturnType<typeof vi.fn>; setFirstPerson: ReturnType<typeof vi.fn>; storyNext: ReturnType<typeof vi.fn>; quitStory: ReturnType<typeof vi.fn> }
   beforeEach(() => {
     localStorage.clear()
-    engine = { startStory: vi.fn(() => Promise.resolve()), setStorySpeed: vi.fn(), storyNext: vi.fn(), quitStory: vi.fn() }
+    engine = { startStory: vi.fn(() => Promise.resolve()), setStorySpeed: vi.fn(), setFirstPerson: vi.fn(), storyNext: vi.fn(), quitStory: vi.fn() }
     useStore.setState({ ...initialEngineState, achievements: [], unlocked: null, engine: engine as unknown as Engine })
   })
   it('liste : la liste montre l’histoire de Laïka, un clic la lance', () => {
@@ -39,6 +39,12 @@ describe('mode histoire (interface)', () => {
     render(<StoryPlayer />)
     fireEvent.change(screen.getByLabelText('Vitesse du temps'), { target: { value: '100' } })
     expect(engine.setStorySpeed).toHaveBeenLastCalledWith(200)
+  })
+  it('bouton « Vue de Laïka » : active la vue à la première personne', () => {
+    useStore.setState({ firstPerson: false, story: { active: true, id: 'laika', title: 'Laïka', index: 0, total: 3, phase: 'showing', finished: false, canNext: true, step } })
+    render(<StoryPlayer />)
+    fireEvent.click(screen.getByText('👁 Vue de Laïka'))
+    expect(engine.setFirstPerson).toHaveBeenCalledWith(true)
   })
   it('cabine 3D : un chien dans une cabine, légende affichée même sans WebGL', () => {
     const cabin = buildCabin()

@@ -28,7 +28,7 @@ export type StoryStep = {
   title: string
   text: string
   pause?: boolean
-  camera?: { follow?: string }
+  camera?: { follow?: string; firstPerson?: boolean }
   scene?: 'cabin'   // illustration 3D affichée dans l'étape
   image?: { src: string; alt: string; credit: string; license: string }
   source?: string
@@ -53,7 +53,7 @@ export type EngineState = {
 // Correctif envoyé par le moteur : chaque tranche peut être partielle (fusion superficielle dans le store).
 export type EnginePatch = {
   [K in keyof EngineState]?: EngineState[K] extends object ? Partial<EngineState[K]> : EngineState[K]
-} & { bigVehicles?: boolean }   // le moteur peut aussi activer le mode engins géants (histoire : à 50 km d'altitude)
+} & { bigVehicles?: boolean; firstPerson?: boolean }   // le moteur peut aussi activer le mode engins géants (histoire : à 50 km d'altitude)
 
 export type BodyFact = { label: string; value: string }
 export type BodyCardData = { id: string; name: string; kind: string; canNorth: boolean; canOrbit: boolean; image: string; facts: BodyFact[] }   // canNorth / canOrbit : boutons « Nord en haut » / « Orbite à plat » de la fiche
@@ -77,6 +77,8 @@ export type Engine = {
   setFeature: (id: string, on: boolean) => void
   setMetric: (on: boolean) => void
   setBigVehicles: (on: boolean) => void
+  setFirstPerson: (on: boolean) => void
+  _fp: () => { yaw: number; pitch: number; fov: number; posErr: number | null; dir: number[]; up: number[]; radial: number[] | null; flight: number[] | null } | null
   setStorySpeed: (speed: number) => void
   startRocket: (key: string, custom?: unknown) => Promise<unknown>
   stopRocket: () => void

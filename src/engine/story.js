@@ -4,7 +4,7 @@
 // Étape : { id, at, offsetS?, title, text, pause? (défaut : true), camera?, scene?, image?, source? }
 //   at        événement de la frise auquel l'étape s'accroche : "before" (avant le départ), "t0" (décollage), "eap" (largage des boosters), "meco" (arrêt du moteur), "objectOrbit" (mise en orbite),
 //             "end" (fin du vol simulé, après extraS secondes d'orbite) ou toute clé d'événement de l'objet lancé ; offsetS décale l'instant (en secondes de vol)
-//   camera    cadrage : { follow: "pad" | "rocket" | "eap1" | "epc" | "sat"… ; pas de zoom : une histoire ne modifie jamais le zoom }
+//   camera    cadrage : { follow: "pad" | "rocket" | "eap1" | "epc" | "sat"… ; firstPerson: true = caméra SUR l'engin, on regarde autour ; pas de zoom : une histoire ne modifie jamais le zoom }
 //   scene     "cabin" : illustration 3D (chien dans sa cabine) affichée dans l'étape
 //   image     { src, alt, credit, license } (domaine public ou licence libre uniquement)
 //   source    OBLIGATOIRE dès que le texte ou le titre contient un chiffre (fait chiffré) : d'où vient l'information (NASA / NSSDC en priorité)

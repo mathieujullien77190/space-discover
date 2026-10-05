@@ -80,9 +80,10 @@
       "at": "objectOrbit",
       "offsetS": 1500,
       "title": "Un tour de la Terre",
-      "text": "De là-haut, Laïka passe au-dessus des océans et des continents. Un tour complet dure environ une heure et quarante-cinq minutes. C’est plus court qu’un film !",
+      "text": "De là-haut, Laïka passe au-dessus des océans et des continents. Glisse le doigt : voici ce qu’elle aurait pu voir autour d’elle. Un tour complet dure environ une heure et quarante-cinq minutes.",
       "camera": {
-        "follow": "rocket"
+        "follow": "rocket",
+        "firstPerson": true
       },
       "source": "NASA / NSSDCA Spoutnik 2 : période orbitale 103,7 minutes"
     },
@@ -92,7 +93,8 @@
       "title": "Un adieu plein de reconnaissance",
       "text": "Laïka n’est jamais revenue sur Terre. À cette époque, personne ne savait encore faire revenir un satellite en toute sécurité. Elle n’a vécu que quelques heures dans l’espace, et elle a rendu un immense service à toute l’humanité.",
       "camera": {
-        "follow": "rocket"
+        "follow": "rocket",
+        "firstPerson": false
       },
       "source": "NASA : Laïka n’a probablement survécu que quelques heures ; le satellite est retombé le 14 avril 1958"
     },
