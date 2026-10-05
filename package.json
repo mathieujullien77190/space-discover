@@ -1,12 +1,39 @@
 {
   "name": "space-discover",
-  "version": "1.0.0",
-  "description": "Terre 3D (three.js), ISS réelle et lancements de fusées simulés",
+  "version": "2.0.0",
+  "description": "Terre 3D, ISS, fusées, astres : moteur 3D en JS pur (src/engine) + interface React / Zustand / TypeScript (Next.js, export statique)",
   "private": true,
   "scripts": {
-    "prestart": "node tools/make-objects.js",
-    "start": "npx --yes http-server -p 5179 -c-1 -o",
-    "test": "node tools/test/physics.test.js"
+    "objects": "node tools/make-objects.js",
+    "predev": "npm run objects",
+    "dev": "next dev -p 5179",
+    "prebuild": "npm run objects",
+    "build": "next build",
+    "preview": "npx --yes http-server out -p 5179 -c-1 -o",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run test:engine && npm run test:ui",
+    "test:engine": "node tools/test/run-all.mjs",
+    "test:ui": "vitest run"
+  },
+  "dependencies": {
+    "next": "16.3.8",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "satellite.js": "5.0.0",
+    "three": "0.160.1",
+    "zustand": "5.0.15"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.0",
+    "@testing-library/react": "^16.1.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/three": "0.160.0",
+    "esbuild": "^0.28.2",
+    "jsdom": "^26.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "5.0.3"
   },
   "license": "MIT"
 }

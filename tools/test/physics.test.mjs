@@ -1,6 +1,7 @@
 // Moteur physique générique (js/physics.js) : trois objets décrits par leur seul modèle. Lancer : node tools/test/physics.test.js
-const fs = require('fs'), vm = require('vm'), ctx = { console, Math };
-vm.createContext(ctx); vm.runInContext(fs.readFileSync(__dirname + '/../../js/physics.js', 'utf8'), ctx);
+import fs from 'node:fs'; import vm from 'node:vm'; import path from 'node:path';
+import { loadEngine, loadEngineInto, root } from './engine-loader.mjs';
+const ctx = await loadEngine();
 const out = vm.runInContext(`(() => {
   const res = [], km = x => (x / 1000).toFixed(1);
   // 1. fusée-sonde : modèle + vitesse nulle, verticale au départ de Kourou

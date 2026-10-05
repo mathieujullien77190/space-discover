@@ -1,13 +1,14 @@
 // Les VRAIS modèles glTF de la navette (objects/shuttle/*.glb, NASA) passent dans le vrai chargeur (js/gltf-mini.js) et le placement (js/stack-models.js), avec fetch / Image simulés sur le disque :
 // on mesure la fusée assemblée (réservoir, 2 boosters, orbiteur) et on lance un Launch avec ces modèles. node tools/test/shuttle-models.test.js
-const fs = require('fs'), vm = require('vm'), path = require('path'), root = path.join(__dirname, '..', '..');
+import fs from 'node:fs'; import vm from 'node:vm'; import path from 'node:path';
+import { loadEngine, loadEngineInto, root } from './engine-loader.mjs';
 const ctx2d = new Proxy({}, { get: (t, k) => (k === 'createLinearGradient' || k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : k in t ? t[k] : () => {}), set: (t, k, v) => { t[k] = v; return true; } });
 class FakeImage { set src(v) { this._s = v; setTimeout(() => this.onload && this.onload(), 0); } get src() { return this._s; } }
 const sandbox = { console, Math, Date, JSON, Float32Array, Float64Array, Uint8Array, Uint16Array, Uint32Array, Int32Array, Int16Array, Int8Array, ArrayBuffer, DataView, TextDecoder, Blob, URL, Promise, setTimeout, performance: { now: () => Date.now() }, innerHeight: 900, innerWidth: 1400, Image: FakeImage,
-  fetch: url => { const f = path.join(root, url); if (!fs.existsSync(f)) return Promise.resolve({ ok: false, status: 404 }); const b = fs.readFileSync(f); return Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)) }); },
+  fetch: url => { const f = path.join(root, 'public', url); if (!fs.existsSync(f)) return Promise.resolve({ ok: false, status: 404 }); const b = fs.readFileSync(f); return Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)) }); },
   document: { createElement: () => ({ width: 0, height: 0, getContext: () => ctx2d, style: {}, addEventListener() {} }), createElementNS: () => ({ style: {}, addEventListener() {}, setAttribute() {} }), getElementById: () => null } };
-sandbox.window = sandbox; sandbox.self = sandbox; vm.createContext(sandbox);
-for (const f of ['js/vendor/three.min.js', 'js/data/surface-earth.js', 'js/data/objects.js', 'js/ephemeris.js', 'js/bodies.js', 'js/earth.js', 'js/physics.js', 'js/launch.js', 'js/rockets.js', 'js/story.js', 'js/flight-plan.js', 'js/flight-object.js', 'js/gltf-mini.js', 'js/stack-models.js', 'js/launch-3d.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), sandbox, { filename: f });
+sandbox.window = sandbox; sandbox.self = sandbox; 
+await loadEngineInto(sandbox);
 const fails = [], check = (c, m) => { console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if (!c) fails.push(m); };
 (async () => {
   const t0 = Date.now(), models = await vm.runInContext('loadStackModels(FLIGHT_OBJECTS.shuttle, "objects/shuttle/")', sandbox);

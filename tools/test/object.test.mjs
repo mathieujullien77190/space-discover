@@ -1,8 +1,9 @@
 // Objet générique décrit par un JSON minimal (js/flight-object.js, objects/*/*.json) : doit atteindre l'orbite si les paliers sont bons, retomber sinon, et l'ISS reste en orbite.
 // node tools/test/object.test.js
-const fs = require('fs'), vm = require('vm'), path = require('path'), root = path.join(__dirname, '..', '..'), ctx = { console, Math, Date, JSON }; vm.createContext(ctx);
-for (const f of ['js/physics.js', 'js/launch.js', 'js/data/objects.js', 'js/ephemeris.js', 'js/bodies.js', 'js/flight-object.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f });
-const load = n => JSON.parse(fs.readFileSync(path.join(root, 'objects', n, n + '.json'), 'utf8')), fails = [], RE = 6378137;
+import fs from 'node:fs'; import vm from 'node:vm'; import path from 'node:path';
+import { loadEngine, loadEngineInto, root } from './engine-loader.mjs';
+const ctx = await loadEngine();
+const load = n => JSON.parse(fs.readFileSync(path.join(root, 'public', 'objects', n, n + '.json'), 'utf8')), fails = [], RE = 6378137;
 const check = (c, msg) => { console.log((c ? 'ok   ' : 'ÉCHEC ') + msg); if (!c) fails.push(msg); };
 const fly = o => ctx.flyObject(JSON.parse(JSON.stringify(o)));
 const orb = r => ((r.orbit.rp - RE) / 1000).toFixed(0) + ' × ' + ((r.orbit.ra - RE) / 1000).toFixed(0) + ' km';
@@ -18,7 +19,7 @@ r = fly(load('iss')); check(r.ok && (r.orbit.rp - RE) / 1000 > 405 && (r.orbit.r
 r = fly(load('fusee-orbite-500km')); const m = t => r.samples.find(s => s.t >= t).m;
 check(m(129) > 100000 && m(131) < 60000 && m(250) < m(135), 'masse : ' + Math.round(m(129)) + ' kg avant le largage, ' + Math.round(m(131)) + ' kg après, ' + Math.round(m(250)) + ' kg à T+250');
 // Ariane 5 : objet JSON + pièces larguables (un JSON par pièce, dans le même dossier)
-const loadFull = n => { const o = load(n); for (const [k, f] of Object.entries(o.parts || {})) if (typeof f === 'string') o.parts[k] = JSON.parse(fs.readFileSync(path.join(root, 'objects', n, f), 'utf8')); return o; };
+const loadFull = n => { const o = load(n); for (const [k, f] of Object.entries(o.parts || {})) if (typeof f === 'string') o.parts[k] = JSON.parse(fs.readFileSync(path.join(root, 'public', 'objects', n, f), 'utf8')); return o; };
 const A = loadFull('ariane5'); r = fly(A);
 check(r.ok && Math.abs((r.orbit.rp - RE) / 1000 - 500) < 15 && Math.abs((r.orbit.ra - RE) / 1000 - 500) < 15, 'Ariane 5 (objet JSON) : orbite ' + orb(r) + ', ' + A.timeline.length + ' paliers, ' + Object.keys(A.parts).length + ' pièces');
 const ms = t => r.samples.find(s => s.t >= t).m, ev = k => r.events.find(e => e.key === k);

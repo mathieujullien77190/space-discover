@@ -1,12 +1,12 @@
 // Lancement 3D (Launch), Lune et Soleil réels, section « jettison » du plan JSON, Starship et son booster : construits avec le vrai three.js (sans WebGL ni DOM : faux canvas).
 // node tools/test/launch.test.js
-const fs = require('fs'), vm = require('vm'), path = require('path'), root = path.join(__dirname, '..', '..');
+import fs from 'node:fs'; import vm from 'node:vm'; import path from 'node:path';
+import { loadEngine, loadEngineInto, root } from './engine-loader.mjs';
 const ctx2d = new Proxy({}, { get: (t, k) => (k === 'createLinearGradient' || k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : k in t ? t[k] : () => {}), set: (t, k, v) => { t[k] = v; return true; } });
 const sandbox = { console, Math, Date, JSON, Float32Array, Float64Array, Uint8Array, Uint16Array, Uint32Array, Int32Array, ArrayBuffer, Promise, setTimeout, performance: { now: () => Date.now() }, innerHeight: 900, innerWidth: 1400,
   document: { createElement: () => ({ width: 0, height: 0, getContext: () => ctx2d, style: {}, addEventListener() {} }), createElementNS: () => ({ style: {}, addEventListener() {}, setAttribute() {} }), getElementById: () => null } };
-sandbox.window = sandbox; sandbox.self = sandbox; vm.createContext(sandbox);
-const scripts = ['js/vendor/three.min.js', 'js/data/surface-earth.js', 'js/data/objects.js', 'js/ephemeris.js', 'js/bodies.js', 'js/earth.js', 'js/physics.js', 'js/launch.js', 'js/rockets.js', 'js/story.js', 'js/data/surface-moon.js', 'js/flight-object.js', 'js/stack-models.js', 'js/launch-3d.js', 'js/moon.js'];
-for (const f of scripts) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), sandbox, { filename: f });
+sandbox.window = sandbox; sandbox.self = sandbox; 
+await loadEngineInto(sandbox);
 // non-régression : un lancement ordinaire (Kourou, Ariane 5) fonctionne toujours (repère de la Terre, options d'élément)
 console.log(vm.runInContext(`(() => { const L = new Launch(LAUNCH_SITES[0], 400, 9000, 1.4, {}); const cam = { position: new THREE.Vector3(0, 0, 3) }; L.T = 200; L.playing = false; L.update(0.016, cam); const o = L.elOpt('eap1'); return 'Launch ordinaire : inertial=' + L.inertial + ', alt ' + Math.round(L.altM / 1000) + ' km, trajectoire des boosters affichée : ' + o.traj + ', ' + L.pieces.length + ' débris'; })()`, sandbox));
 // la Lune réelle : distance et déclinaison plausibles, rotation d'un tour en ~24 h dans le repère de la Terre
@@ -17,15 +17,15 @@ console.log(vm.runInContext(`(() => { const D = astroD(new Date(Date.UTC(2026, 9
   const g = v => Math.atan2(-v.z, v.x) / DEG, e0 = s.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), -gmstOf(D)), e1 = sunGeo(D + 0.25).applyAxisAngle(new THREE.Vector3(0, 1, 0), -gmstOf(D + 0.25));
   return 'Soleil 2 oct. 2026 12 h UTC : ' + au.toFixed(4) + ' UA, déclinaison ' + dec.toFixed(1) + '°, point subsolaire ' + g(e0).toFixed(1) + '° E ; 6 h plus tard ' + g(e1).toFixed(1) + '° (attendu ≈ −90°) ; rayon du Soleil ' + SUN_R_U.toFixed(1) + ' rayons terrestres'; })()`, sandbox));
 // plan de vol : la section « jettison » du JSON pilote les débris (vitesse de séparation, désintégration, masse)
-sandbox.PLAN_JSON = JSON.parse(fs.readFileSync(path.join(root, 'data/plans/kourou-ariane5-500km.json'), 'utf8'));
-for (const f of ['js/flight-plan.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), sandbox, { filename: f });
+sandbox.PLAN_JSON = JSON.parse(fs.readFileSync(path.join(root, 'public', 'data', 'plans/kourou-ariane5-500km.json'), 'utf8'));
+await loadEngineInto(sandbox);
 console.log(vm.runInContext(`(() => {
   const mk = edit => { const p = JSON.parse(JSON.stringify(PLAN_JSON)); edit(p.jettison); const L = new Launch(Object.assign({}, LAUNCH_SITES[0], p.site), p.target.altitudeKm, p.vehicle.payloadKg, 1, { plan: p, rocketId: p.rocket, az: Math.PI / 2 }); const g = k => L.pieces.find(q => q.tagKey === k); return { eap: g('eap1'), epc: g('epc'), fa: g('fairA') }; };
   const base = mk(() => {}), fast = mk(j => { j.boosters.separationSpeedMs = -30; }), burn = mk(j => { j.boosters.disintegrates = true; j.boosters.disintegrationAltitudeKm = 30; j.stage1.disintegrates = false; });
   return 'JSON jettison : boosters tombent en ' + base.eap.path.length + ' s (' + base.eap.endText + '), avec séparation à −30 m/s : ' + fast.eap.path.length + ' s ; boosters désintégrés à 30 km : ' + burn.eap.path.length + ' s (' + burn.eap.endText + ') ; étage principal non désintégré : ' + burn.epc.path.length + ' s (' + burn.epc.endText + ')';
 })()`, sandbox));
 // Starship : plan JSON complet (visuel compris) + booster qui revient se poser sur la tour
-for (const f of ['js/data/plans.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), sandbox, { filename: f });
+await loadEngineInto(sandbox);
 console.log(vm.runInContext(`(() => {
   const P = FLIGHT_PLANS.starship500, site = Object.assign({}, LAUNCH_SITES[0], { id: 'plan', name: P.site.name, lat: P.site.lat, lon: P.site.lon });
   const L = new Launch(site, P.target.altitudeKm, P.vehicle.payloadKg, 1, { plan: P, az: Math.PI / 2 }), cam = { position: new THREE.Vector3(0, 0, 3) };

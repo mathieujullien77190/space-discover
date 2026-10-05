@@ -1,7 +1,8 @@
 // ASTRES décrits en JSON (objects/{earth,moon,sun,mars,halley}/*.json, js/bodies.js) : cohérence des constantes avec le moteur, positions de la Lune et du Soleil inchangées, éléments orbitaux de Mars et de Halley validés contre des faits connus.
 // node tools/test/bodies.test.js
-const fs = require('fs'), vm = require('vm'), path = require('path'), root = path.join(__dirname, '..', '..'), ctx = { console, Math, Date, JSON }; vm.createContext(ctx);
-for (const f of ['js/data/objects.js', 'js/ephemeris.js', 'js/bodies.js', 'js/physics.js', 'js/launch.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f });
+import fs from 'node:fs'; import vm from 'node:vm'; import path from 'node:path';
+import { loadEngine, loadEngineInto, root } from './engine-loader.mjs';
+const ctx = await loadEngine();
 const fails = [], check = (c, m) => { console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if (!c) fails.push(m); };
 const G = e => vm.runInContext(e, ctx), AU = 149597870700, dayOf = iso => G('EPH.days(' + Date.parse(iso) + ')'), geo = (id, iso) => G('BODY.geo("' + id + '", ' + dayOf(iso) + ')'), dist = (a, b, iso) => G('BODY.distance("' + a + '", "' + b + '", ' + dayOf(iso) + ')');
 // 1. schéma : chaque astre a ce qu'il faut ; menu ordonné

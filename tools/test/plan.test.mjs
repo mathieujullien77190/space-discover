@@ -1,7 +1,8 @@
 // Plan de vol (data/plans/kourou-ariane5-500km.json) rejoué SANS guidage par js/flight-plan.js : doit retrouver la trajectoire de la simulation avec guidage. node tools/test/plan.test.js
-const fs = require('fs'), vm = require('vm'), path = require('path'), root = path.join(__dirname, '..', '..'), ctx = { console, Math, Date, JSON }; vm.createContext(ctx);
-for (const f of ['js/physics.js', 'js/launch.js', 'js/rockets.js', 'js/flight-plan.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f });
-ctx.PLAN = JSON.parse(fs.readFileSync(path.join(root, 'data/plans/kourou-ariane5-500km.json'), 'utf8'));
+import fs from 'node:fs'; import vm from 'node:vm'; import path from 'node:path';
+import { loadEngine, loadEngineInto, root } from './engine-loader.mjs';
+const ctx = await loadEngine();
+ctx.PLAN = JSON.parse(fs.readFileSync(path.join(root, 'public', 'data', 'plans/kourou-ariane5-500km.json'), 'utf8'));
 console.log(vm.runInContext(`(() => {
   const NL = String.fromCharCode(10), rk = ROCKETS.ariane5, ref = simulateLaunch(500, { lat: 5.2408, payload: 3000, az: Math.PI / 2, rocket: rk }), pl = flyPlan(PLAN), out = [];
   out.push('guidage  : ' + ref.samples.length + ' échantillons, orbite ' + Math.round((ref.orbit.rp - 6378137) / 1000) + ' x ' + Math.round((ref.orbit.ra - 6378137) / 1000) + ' km, fin T+' + ref.tEnd.toFixed(1) + ' s, ok ' + ref.ok);

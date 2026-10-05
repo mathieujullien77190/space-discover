@@ -1,6 +1,12 @@
 node_modules/
 *.log
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
 # image haute resolution IGN/Pleiades du pas de tir de Kourou : licence a clarifier, non publiee
+public/data/photo-kourou-hi.jpg
 data/photo-kourou-hi.jpg
 
 # dépendances installées éventuelles
