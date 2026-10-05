@@ -407,6 +407,27 @@ describe('createEngine (rendu factice)', () => {
     engine.selectView('earth'); engine._frame(T + 1200)
     engine.resetTime()
   })
+  it('observatoire LUNAIRE (Apollo 15) : étiquette cliquable sur la Lune, fiche, vue debout sur le sol à 1,8 m, quitter', async () => {
+    await new Promise((r) => setTimeout(r, 500))
+    const T = performance.now() + 200000
+    engine.resetTime(); engine.setSimSpeed(1); engine.setObservatories(true); engine._frame(T + 100)
+    engine.goMoonSite('apollo-15'); for (let i = 0; i < 3; i++) engine._frame(T + 200 + i * 100)
+    expect(state.observatory).toEqual({ id: 'apollo-15', view: false })        // fiche du site
+    expect(state.view.mode).toBe('solar')                                      // on regarde la Lune
+    const lab = [...overlay.querySelectorAll<HTMLElement>('.eng-l3d.obssite')].find((e) => e.style.display === 'block' && /Apollo 15/.test(e.textContent ?? ''))
+    expect(lab).toBeTruthy()                                                   // l’étiquette du site est affichée sur la Lune
+    lab?.click(); engine._frame(T + 600)
+    expect(state.observatory.id).toBe('apollo-15')
+    engine.setObservatoryView(true); for (let i = 0; i < 4; i++) engine._frame(T + 700 + i * 100)
+    const m = engine._moonSite()
+    expect(m).toMatchObject({ id: 'apollo-15', view: true, group: true })      // sol, drapeau, module lunaire, rover
+    expect(m.eyeErrM!).toBeLessThan(1)                                         // la caméra est sur le site (1,8 m au-dessus du sol)
+    expect(m.near).toBeLessThan(1e-6)                                          // plan proche de quelques millimètres
+    expect(state.observatory.view).toBe(true)
+    engine.selectView('earth'); engine._frame(T + 1200); engine._frame(T + 1300)
+    expect(engine._moonSite()).toMatchObject({ id: null, view: false, group: false })   // changer de vue quitte le site
+    expect(state.observatory).toEqual({ id: null, view: false })
+  })
   it('infos étoiles : option, clic sur une étoile visible = sa fiche + anneau, fermeture', async () => {
     const T = performance.now() + 100000                                       // horloge des images toujours croissante : un dt négatif (temps plus petit que celui d'un test précédent) déplaçait la caméra
     await new Promise((r) => setTimeout(r, 500))                               // astres construits (400 ms) : la vue ne change plus en cours de test

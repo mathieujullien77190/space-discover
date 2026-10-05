@@ -1,6 +1,7 @@
 // Observatoires (comme l'ISS : un bouton pour s'y rendre et une « vue depuis » l'observatoire, où l'on regarde le ciel et l'horizon en glissant).
 // Position : latitude / longitude en degrés, altitude du sol en mètres ; `eyeM` = hauteur de la caméra au-dessus du sol (la caméra reste au-dessus du maillage du relief, dont les facettes font ≈ 75 m).
 // Valeurs de MÉMOIRE (à vérifier) : positions, altitudes et faits de tous les sites. `scene` = décor de l'illustration de la fiche (snow | desert | forest).
+import { moonSiteById } from './moon-sites.js';
 export const OBSERVATORIES = [
   {
     id: 'pic-du-midi',
@@ -225,7 +226,7 @@ export const OBSERVATORIES = [
   },
 ];
 
-export const observatoryById = id => OBSERVATORIES.find(o => o.id === id) || null;
+export const observatoryById = id => OBSERVATORIES.find(o => o.id === id) || moonSiteById(id);   // les sites lunaires (Apollo) partagent la fiche d'observatoire
 export const OBS_VIEW_ALT_KM = 40;      // la vue d'accès : à 40 km d'altitude à la verticale de l'observatoire (la boule, de près)
 export const OBS_VIEW_PITCH = 6;        // la vue « depuis » commence 6° au-dessus de l'horizon, plein sud
 export const OBS_VIEW_FOV = 50;       // champ de départ de la vue depuis l'observatoire (la molette le règle de 1° à 100°)

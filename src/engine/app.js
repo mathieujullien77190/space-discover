@@ -18,6 +18,7 @@ import { precessionQuaternion } from './precession.js';
 import { createMeteors } from './meteors.js';
 import { createAirliners } from './airliners.js';
 import { elevationFrom } from './airliner.js';
+import { MOON_SITES, buildMoonSite, moonSiteById, moonSiteFrame } from './moon-sites.js';
 import { createSunGlare } from './sun-glare.js';
 import { occludedBy } from './occlusion.js';
 import { createTerrainLayer } from './terrain-layer.js';
@@ -197,6 +198,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const syncView = m => publish({ view: { mode: m, selected: m === 'iss' ? null : m === 'solar' ? solarTarget : 'earth', align: cam.upKind } });   // en vue ISS (satellite) aucun astre n'est choisi
   const snapCam = () => { cam.lon = cam.goal.lon; cam.lat = cam.goal.lat; cam.dist = cam.goal.dist; cam.fly = cam.tfly = 0; };   // la caméra prend la pose voulue d'un coup
   const setMode = m => {
+    if (moonView) cam.fp = null; moonView = false; obsMoon = null; for (const k in moonGroups) moonGroups[k].visible = false;   // changer de vue quitte l'observatoire lunaire
     if (obsId) { if (obsView) cam.fp = null; obsId = null; obsView = false; obsDot.visible = false; obsLabel.style.display = 'none'; publish({ observatory: { id: null, view: false } }); }   // changer de vue quitte l'observatoire
     if (issView && m !== 'iss') { issView = false; cam.fp = null; publish({ issView: false }); }   // changer de vue coupe la vue depuis l'ISS
   
@@ -302,6 +304,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   let issView = false;
   // OBSERVATOIRE (comme l'ISS : aller dessus, puis « vue depuis ») : obsId = observatoire choisi, obsView = on regarde DEPUIS lui ; obsFrame = repère local (œil, haut, sud)
   let obsId = null, obsView = false, obsFrame = null, skyOn = false, obsDay = 0;
+  // OBSERVATOIRES LUNAIRES (sites Apollo) : on se tient debout sur la Lune (sol, drapeau, module lunaire, rover), ciel noir, la Terre dans le ciel ; obsMoon = le site choisi, moonView = on regarde DEPUIS lui
+  let obsMoon = null, moonView = false, moonGroup = null, moonLabels = null; const moonGroups = {}, moonObsPos = new THREE.Vector3(), moonSrc = { pos: moonObsPos, dir: new THREE.Vector3(), radial: new THREE.Vector3() };
   const obsPos = new THREE.Vector3(), obsSrc = { pos: obsPos, dir: new THREE.Vector3(), radial: new THREE.Vector3() }, skyCol = new THREE.Color(), tmpObs = new THREE.Vector3(), tmpObs2 = new THREE.Vector3();
   const obsDotG = new THREE.BufferGeometry(); obsDotG.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
   const obsDot = new THREE.Points(obsDotG, roundPointsMaterial({ color: 0xff7a45, size: 9, sizeAttenuation: false, depthTest: false })); obsDot.frustumCulled = false; obsDot.visible = false; obsDot.renderOrder = 30; earth.add(obsDot);
@@ -313,8 +317,24 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     obsDot.geometry.attributes.position.setXYZ(0, obsFrame.ground[0], obsFrame.ground[1], obsFrame.ground[2]); obsDot.geometry.attributes.position.needsUpdate = true; obsDot.visible = true;
     obsLabel.textContent = '▲ ' + o.short; publish({ observatory: { id, view: false } });
   };
+  // aller à un site lunaire : la vue de la Lune, du côté du site ; sa fiche s'ouvre ; « Vue depuis l'observatoire » pose la caméra debout sur le sol
+  const ensureMoonGroup = site => {
+    if (!moonGroups[site.id]) { const g = buildMoonSite(site); g.visible = false; solar.add(g); moonGroups[site.id] = g; }
+    moonGroup = moonGroups[site.id]; for (const k in moonGroups) moonGroups[k].visible = moonGroups[k] === moonGroup && moonView; return moonGroup;
+  };
+  const goMoonSite = id => {
+    const s = moonSiteById(id), mo = bodyObjs.moon; if (!s || !mo || !mo.mesh) return;
+    goSolar('moon');   // la vue de la Lune ; puis on se place au-dessus du site
+    mo.mesh.updateWorldMatrix(true, false); const fr = moonSiteFrame(s, mo.mesh.matrixWorld);
+    cam.goal.lat = Math.asin(Math.max(-1, Math.min(1, fr.up.y))) / DEG; cam.goal.lon = Math.atan2(-fr.up.z, fr.up.x) / DEG; cam.goal.dist = 1.1; snapCam();
+    obsMoon = s; obsId = s.id; obsView = false; moonView = false; publish({ observatory: { id: s.id, view: false } });
+  };
   const setObservatoryView = on => {   // « vue depuis l'observatoire » : la caméra est sur l'observatoire (œil à 120 m au-dessus du sol), plein sud, on regarde le ciel et l'horizon en glissant
     if (!obsId) return;
+    if (obsMoon && obsId === obsMoon.id) {   // observatoire LUNAIRE
+      moonView = !!on; if (on) { ensureMoonGroup(obsMoon); cam.fp = { yaw: 0, pitch: 2, fov: 60 }; cam.fpUp.set(0, 0, 0); } else { cam.fp = null; for (const k in moonGroups) moonGroups[k].visible = false; }
+      publish({ observatory: { id: obsId, view: moonView } }); return;
+    }
     if (on && airliners.count() === 0 && obsFrame) airliners.spawn({ frame: obsFrame, groundR: Math.hypot(...obsFrame.ground), eye: new THREE.Vector3().fromArray(obsFrame.eye) });   // un A320 apparaît au bon endroit, déjà dans le ciel de l'observatoire
     if (on) { const f = obsFrame; obsPos.set(f.eye[0], f.eye[1], f.eye[2]); obsSrc.dir.set(f.south[0], f.south[1], f.south[2]); obsSrc.radial.set(f.up[0], f.up[1], f.up[2]); cam.fp = { yaw: 0, pitch: OBS_VIEW_PITCH, fov: OBS_VIEW_FOV }; cam.fpUp.set(0, 0, 0); obsView = true; }
     else { obsView = false; cam.fp = null; }
@@ -375,6 +395,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const frame = now => {
     adaptRatio(now - last, now);
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
+    const userRealistic = realistic; if (moonView) realistic = true;   // debout sur la Lune : pas de noms, d'orbites ni de points lointains (restauré en fin d'image)
     const realNow = Date.now(); simMs += (realNow - lastReal) * simSpeed; lastReal = realNow; const date = new Date(simMs);   // horloge simulée : temps réel par défaut, accélérable
     iss = issState(date); hub = hubbleState(date);
     frameF = cam.mode === 'solar' ? 1 : 0;
@@ -485,6 +506,13 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     atmMat.uniforms.uOrange.value = obsView ? 1 : 0;
     { const E = obsFrame && obsFrame.east, sd = obsView && E ? tmpObs.copy(babs[STAR]).sub(obsPos).normalize() : null, ed = sd ? sd.x * E[0] + sd.y * E[1] + sd.z * E[2] : 0; atmMat.uniforms.uRise.value = Math.max(0, Math.min(1, (ed + 0.05) / 0.1)); }   // le Soleil à l'EST de l'observateur = le matin : le ciel du lever est ROSE (au lieu du rouge-orangé du coucher)   // le rougeoiement du coucher / lever n'existe que depuis un observatoire
 
+    // OBSERVATEUR LUNAIRE : le site suit la Lune (orbite, rotation synchrone) ; caméra debout sur le sol à 1,8 m, plan proche de 1 mm
+    if (moonView && obsMoon && bodyObjs.moon && bodyObjs.moon.mesh && moonGroup) {
+      const mm = bodyObjs.moon.mesh; mm.updateWorldMatrix(true, false);
+      const fr = moonSiteFrame(obsMoon, mm.matrixWorld); moonObsPos.copy(fr.eye); moonSrc.dir.copy(fr.south); moonSrc.radial.copy(fr.up);
+      moonGroup.visible = true; moonGroup.position.copy(fr.ground); moonGroup.quaternion.setFromRotationMatrix(basis.makeBasis(fr.east, fr.up, fr.south)); moonGroup.scale.setScalar(1e-3 / R_KM); moonGroup.updateMatrixWorld();
+      placeFirstPerson(moonSrc); camera.near = 1e-9; camera.updateProjectionMatrix(); camera.updateMatrixWorld();
+    }
     // ISS
     issScreen = null; issLabel.style.display = 'none';
     if (iss) {
@@ -586,7 +614,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       publish({ info: t, viewJson: JSON.stringify(currentView()), focus: { id: cardId }, time: { simMs, speed: simSpeed, visible: true } });
     }
     // origine flottante : près de l'ISS, on recentre le monde sur elle pour rendre sans perte de précision
-    const shift = obsView ? obsPos : fsat() && camera.position.distanceTo(fsat().pos) * R_KM < 3000 ? fsat().pos : null, saved = camera.position.clone();
+    const shift = obsView ? obsPos : moonView ? moonObsPos : fsat() && camera.position.distanceTo(fsat().pos) * R_KM < 3000 ? fsat().pos : null, saved = camera.position.clone();
     world.rotation.y = gm * frameF;
     if (shift) { world.position.copy(shift).negate(); camera.position.sub(shift); camera.updateMatrixWorld(); } else world.position.set(0, 0, 0);
     inertial.position.copy(world.position); solar.position.copy(world.position);
@@ -597,6 +625,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     { const sm = bodyObjs[STAR] && bodyObjs[STAR].mesh; if (sm && sm.material.color) sm.material.color.setRGB(1, 1 - (0.4 - 0.05 * atmMat.uniforms.uRise.value) * sunRed, 1 - (0.7 - 0.45 * atmMat.uniforms.uRise.value) * sunRed); }   // son disque aussi   // l'éclat est testé en PROFONDEUR : la Terre (et le relief) le cache, il est donc DERRIÈRE la Terre au lieu de s'affaiblir avant
     constellations.update({ on: constellationsOn && !realistic, camera, width: innerWidth, height: innerHeight, earthCenter: new THREE.Vector3().setFromMatrixPosition(earth.matrixWorld) });
     if (starSel >= 0 && starInfoOn) { stars.updateMatrixWorld(true); const p = starProject(STARS[starSel]); if (p) { starRing.style.display = 'block'; starRing.style.transform = `translate(${p[0] - 13}px,${p[1] - 13}px)`; } else starRing.style.display = 'none'; } else starRing.style.display = 'none';
+    if (!moonLabels && bodyObjs.moon && bodyObjs.moon.mesh) moonLabels = createCapitals(overlay, bodyObjs.moon.mesh, { radius: () => bodyObjs.moon.mesh.scale.x, data: MOON_SITES.map(s => [s.short, s.lat, s.lon, s.id]), cls: 'obssite', prefix: '🔭 ', onClick: id => goMoonSite(id) });   // sites Apollo : étiquettes cliquables sur la Lune
+    if (moonLabels) moonLabels.update({ on: observatoriesOn && !realistic && !obsView && !moonView, camera, width: innerWidth, height: innerHeight, hidden: () => false });
     obsSites.update({ on: observatoriesOn && !realistic && !obsView, camera, width: innerWidth, height: innerHeight, hidden: p => occludedBy(camera.position.toArray(), [p.x, p.y, p.z], lastOcc.filter(o => o.id !== 'earth'), 0, 0) !== null });
     capitals.update({ on: capitalsOn && !realistic, camera, width: innerWidth, height: innerHeight, hidden: p => occludedBy(camera.position.toArray(), [p.x, p.y, p.z], lastOcc.filter(o => o.id !== 'earth'), 0, 0) !== null });   // juste avant le rendu : pose de la Terre et de la caméra à jour (rotation du temps sidéral comprise) ; cachée par la Lune / une planète = pas de nom
     // ciel de l'observatoire : bleu le jour, noir étoilé la nuit (selon la hauteur du Soleil au-dessus de l'horizon de l'observatoire)
@@ -607,7 +637,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     // marqueur de l'observatoire (point + nom) quand on le regarde depuis l'extérieur, du côté visible de la Terre
     if (obsId) { const show = !obsView && !realistic && cam.mode === 'earth'; obsDot.visible = show; let on = false; if (show) { earth.updateWorldMatrix(true, false); const f = obsFrame, pw = tmpObs.set(f.ground[0], f.ground[1], f.ground[2]).applyMatrix4(earth.matrixWorld), c0 = tmpObs2.setFromMatrixPosition(earth.matrixWorld), nw = pw.clone().sub(c0).normalize(), v = camera.position.clone().sub(pw); if (nw.dot(v) > 0.02 * v.length()) { pw.project(camera); on = pw.z < 1 && Math.abs(pw.x) < 1 && Math.abs(pw.y) < 1; if (on) obsLabel.style.transform = 'translate(' + ((pw.x + 1) / 2 * innerWidth + 8) + 'px,' + ((1 - pw.y) / 2 * innerHeight - 8) + 'px)'; } } obsLabel.style.display = on ? 'block' : 'none'; }
     renderer.render(scene, camera);
-    camera.position.copy(saved); camera.updateMatrixWorld();
+    camera.position.copy(saved); camera.updateMatrixWorld(); realistic = userRealistic;
     if (!ready) { ready = true; publish({ status: 'ready' }); }
   };
   const loop = now => {
@@ -639,6 +669,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     setStarInfo: on => { starInfoOn = !!on; if (!starInfoOn) clearStar(); }, clearStar,
     _moonBright: () => (bodyObjs.moon && bodyObjs.moon.mesh && bodyObjs.moon.mesh.material.color ? bodyObjs.moon.mesh.material.color.r : 1),
     _moonBoost: () => (bodyObjs.moon && bodyObjs.moon.mesh ? bodyObjs.moon.mesh.scale.x / (bodyObjs.moon.baseScale || 1) : 1),
+    _moonSite: () => ({ id: obsMoon ? obsMoon.id : null, view: moonView, group: !!moonGroup && moonGroup.visible, eyeErrM: moonView ? camera.position.distanceTo(moonObsPos) * R_KM * 1000 : null, near: camera.near, labels: moonLabels ? moonLabels.count() : 0, realistic }),
     _airliner: () => { const p = airliners.list()[0]; return p ? { active: true, count: airliners.count(), t: p.t, elevation: elevationFrom(p.pos, p.eye, p.frame.up), model: p.model.visible, trail: p.trail.visible, lights: p.model.userData.lights.left.visible, strobe: p.model.userData.lights.strobes.some(l => l.visible), glow: p.glow.visible, strobeGlow: p.strobeGlow.visible, night: p.night, px: p.px } : { active: false, count: 0, t: 0, elevation: 0, model: false, trail: false, lights: false, strobe: false, glow: false, strobeGlow: false, night: false, px: 0 }; },
     _airlinerSkip: sec => airliners.skip(sec),
     _airlinerSpawnMore: () => (obsFrame ? airliners.spawn({ frame: obsFrame, groundR: Math.hypot(...obsFrame.ground), eye: new THREE.Vector3().fromArray(obsFrame.eye) }) : false),
@@ -647,7 +678,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _starInfo: () => ({ on: starInfoOn, hip: starSel >= 0 ? STARS[starSel][4] : null, ring: starRing.style.display }),
     _starsOnScreen: (n = 5) => { refreshBins(); const out = []; for (let i = 0; i < STARS.length && out.length < n; i++) { if (!starVisible(i)) continue; const p = starProject(STARS[i]); if (p) out.push({ hip: STARS[i][4], x: p[0], y: p[1] }); } return out; },
     _pickStarAt: pickStarAt,
-    goObservatory, setObservatoryView,
+    goObservatory, goMoonSite, setObservatoryView,
     _obs: () => ({ id: obsId, view: obsView, label: obsLabel.style.display, dot: obsDot.visible, camAltKm: (camera.position.length() - 1) * R_KM, posErr: obsView ? camera.position.distanceTo(obsPos) * R_KM * 1000 : null, day: obsDay, stars: stars.children.some(c => c.userData.bin !== undefined && c.visible && c.material.opacity > 0.4), starOpacity: stars.children.filter(c => c.userData.bin !== undefined).map(c => c.material.opacity), atmSun: atmMat.uniforms.uUseSun.value, orange: atmMat.uniforms.uOrange.value }),
     setRealistic: on => { realistic = !!on; },
     setConstellations: on => { constellationsOn = !!on; },
@@ -662,7 +693,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
 
     dispose() {
       stopped = true; cancelAnimationFrame(raf); clearTimeout(solarTimer); disposers.forEach(d => d()); overlay.dispose();
-      terrain.dispose(); clouds.dispose(); capitals.dispose(); obsSites.dispose(); meteors.dispose(); airliners.dispose(); constellations.dispose(); sunGlare.dispose();
+      terrain.dispose(); clouds.dispose(); capitals.dispose(); obsSites.dispose(); if (moonLabels) moonLabels.dispose(); meteors.dispose(); airliners.dispose(); constellations.dispose(); sunGlare.dispose();
       if (renderer.dispose) renderer.dispose();
     },
   };

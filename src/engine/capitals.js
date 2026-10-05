@@ -13,7 +13,7 @@ export const LABEL_H = 18, CHAR_W = 7;  // encombrement d'une étiquette : haute
 // vrai si deux rectangles [x, y, w, h] se chevauchent
 export const overlaps = (a, b) => a[0] < b[0] + b[2] && b[0] < a[0] + a[2] && a[1] < b[1] + b[3] && b[1] < a[1] + a[3];
 
-// opts : { data: [[nom, lat, lon, id?]…] (défaut : les capitales), cls: classe CSS, prefix: texte devant le nom, onClick(id) : étiquettes cliquables (observatoires) }
+// opts : { radius: rayon de l'astre porteur en unités de scène (nombre ou fonction ; défaut 1), data: [[nom, lat, lon, id?]…] (défaut : les capitales), cls: classe CSS, prefix: texte devant le nom, onClick(id) : étiquettes cliquables (observatoires) }
 export function createCapitals(overlay, earth, opts = {}) {
   const data = opts.data || CAPITALS, cls = opts.cls || 'cap', prefix = opts.prefix === undefined ? '• ' : opts.prefix;
   let items = null, shown = 0;
@@ -27,7 +27,7 @@ export function createCapitals(overlay, earth, opts = {}) {
       if (!items) build();
       earth.updateWorldMatrix(true, false);
       c.setFromMatrixPosition(earth.matrixWorld);
-      const d = camera.position.distanceTo(c), earthPx = height / (2 * d * Math.tan(camera.fov * Math.PI / 360));
+      const d = camera.position.distanceTo(c), rad = typeof opts.radius === 'function' ? opts.radius() : (opts.radius || 1), earthPx = rad * height / (2 * d * Math.tan(camera.fov * Math.PI / 360));   // rayon apparent de l'astre porteur (la Terre : 1 ; la Lune : son rayon en rayons terrestres)
       if (earthPx < MIN_EARTH_PX) { hideAll(); return 0; }
       const placed = []; let n = 0;
       for (const it of items) {
