@@ -631,7 +631,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _moonBright: () => (bodyObjs.moon && bodyObjs.moon.mesh && bodyObjs.moon.mesh.material.color ? bodyObjs.moon.mesh.material.color.r : 1),
     _moonBoost: () => (bodyObjs.moon && bodyObjs.moon.mesh ? bodyObjs.moon.mesh.scale.x / (bodyObjs.moon.baseScale || 1) : 1),
     _planes: () => ({ active: planes.count(), total: planes.total() }),
-    _spawnPlane: () => (obsFrame ? planes.spawn(obsFrame.up, obsFrame.east, obsFrame.north) : false),
+    _spawnPlane: () => (obsFrame ? planes.spawn() : false),
     _meteors: () => ({ active: meteors.count(), total: meteors.total() }),
     _spawnMeteor: () => (obsFrame ? meteors.spawn(obsFrame.up, obsFrame.east, obsFrame.north) : false),
     _starInfo: () => ({ on: starInfoOn, hip: starSel >= 0 ? STARS[starSel][4] : null, ring: starRing.style.display }),

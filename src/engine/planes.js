@@ -1,42 +1,53 @@
-// AVIONS DE NUIT (vue depuis un observatoire, ciel noir seulement) : de temps en temps un avion de ligne traverse le ciel, lentement (1,3 à 2,4° par seconde, 40 à 100 s pour traverser) :
-// un point lumineux dont le feu de navigation (rouge-orangé) reste allumé et dont le feu anticollision (flash blanc très bref) clignote toutes les 1,2 s environ.
-// Chemin = arc de grand cercle du ciel local entre deux points bas de l'horizon (il passe donc plus ou moins haut) ; fondu à l'arrivée et au départ près de l'horizon ; le relief le cache (profondeur testée).
-// Comme les étoiles filantes : seulement en vue depuis un observatoire, la nuit.
+// AVIONS DE NUIT (vue depuis un observatoire, ciel noir seulement) : un avion de ligne traverse le ciel, simulé PHYSIQUEMENT :
+// il vole à altitude constante (9 000 à 11 500 m) en ligne droite à 220–260 m/s (≈ 800 à 940 km/h) au-dessus de l'observateur (distance minimale de passage 0 à 45 km), cap au hasard ;
+// on le voit tant qu'il est à plus de 8° au-dessus de l'horizon (≈ 70 km de distance horizontale). Deux feux de position, comme sur un vrai avion : un point ROUGE au bout de l'aile gauche
+// et un point VERT au bout de l'aile droite (envergure 60 m, donc 2 à 5 px d'écart selon la distance) ; fondu près de l'horizon, plus pâles quand l'avion est loin ; le relief les cache.
+// Vitesse apparente réelle : jusqu'à ≈ 1,4°/s à la verticale, bien plus lent au loin (traversée complète du ciel : plusieurs minutes). Seulement en vue depuis un observatoire, la nuit.
 import * as THREE from 'three';
 
-export const PLANE_GAP_S = [45, 130], PLANE_FIRST_S = [8, 30];   // délai entre deux avions ; délai avant le premier
-export const PLANE_SPEED_DEG_S = [1.3, 2.4];                     // vitesse angulaire apparente
-export const PLANE_START_ELEVATION_DEG = [8, 22];                // hauteur des deux extrémités du chemin
-export const PLANE_AZIMUTH_SPAN_DEG = [100, 175];                // écart d'azimut entre l'entrée et la sortie (175° : presque à la verticale du lieu)
-export const PLANE_STROBE_PERIOD_S = 1.2, PLANE_STROBE_FLASH_S = 0.12;
+export const PLANE_GAP_S = [60, 180], PLANE_FIRST_S = [8, 30];   // délai entre deux avions ; délai avant le premier
+export const PLANE_ALTITUDE_M = [9000, 11500];                   // altitude de croisière
+export const PLANE_SPEED_MS = [220, 260];                        // vitesse sol (≈ 800 à 940 km/h)
+export const PLANE_CLOSEST_M = [0, 45000];                       // distance horizontale minimale de passage
+export const PLANE_MIN_ELEVATION_DEG = 8;                        // au-dessous : invisible (horizon, brume)
+export const PLANE_WINGSPAN_M = 60;
 export const PLANE_SLOTS = 2;
 const DEG = Math.PI / 180;
-
 const range = (r, [a, b]) => a + (b - a) * r;
-const slerp = (a, b, u, out) => { const w = Math.acos(Math.max(-1, Math.min(1, a.dot(b)))), s = Math.sin(w) || 1; return out.copy(a).multiplyScalar(Math.sin((1 - u) * w) / s).addScaledVector(b, Math.sin(u * w) / s); };
 
-// éclat du feu à l'instant t (s) : feu de navigation constant (0,3) + flash anticollision (1) pendant PLANE_STROBE_FLASH_S à chaque période
-export const planeLight = (t, phase = 0) => ((t + phase) % PLANE_STROBE_PERIOD_S) < PLANE_STROBE_FLASH_S ? 1 : 0.3;
+// trajectoire : le long de la route (cap h), à s = abscisse depuis le point de passage le plus proche ; départ à s0 (déjà visible) ; fin quand s dépasse S
+export function makeTrack(rand = Math.random) {
+  const H = range(rand(), PLANE_ALTITUDE_M), speed = range(rand(), PLANE_SPEED_MS), c = range(rand(), PLANE_CLOSEST_M);
+  const heading = rand() * 2 * Math.PI, side = rand() < 0.5 ? 1 : -1;
+  const hx = Math.sin(heading), hy = Math.cos(heading);                // cap (x = est, y = nord)
+  const nx = side * -hy, ny = side * hx;                               // direction du point de passage le plus proche (perpendiculaire à la route)
+  const Rvis = H / Math.tan(PLANE_MIN_ELEVATION_DEG * DEG), S = Math.sqrt(Math.max(1, Rvis * Rvis - c * c));   // distance horizontale maximale d'où il est visible
+  const s0 = -S * (0.35 + 0.65 * rand());                              // il apparaît déjà en vue, quelque part sur la première moitié
+  return { H, speed, c, hx, hy, nx, ny, S, s0 };
+}
+// position (m, repère local x = est, y = nord, z = haut) du centre de l'avion et de ses deux bouts d'aile après t secondes
+export function planeAt(tr, t) {
+  const s = tr.s0 + tr.speed * t, px = tr.c * tr.nx + s * tr.hx, py = tr.c * tr.ny + s * tr.hy, w = PLANE_WINGSPAN_M / 2;
+  return { s, done: s > tr.S, center: [px, py, tr.H], left: [px - tr.hy * w, py + tr.hx * w, tr.H], right: [px + tr.hy * w, py - tr.hx * w, tr.H] };   // gauche du cap = (−hy, hx)
+}
+export const elevationDeg = p => Math.atan2(p[2], Math.hypot(p[0], p[1])) / DEG;
+export const distanceM = p => Math.hypot(p[0], p[1], p[2]);
 
 export function createPlanes(scene, rand = Math.random) {
   const group = new THREE.Group(); group.frustumCulled = false; scene.add(group);
   const slots = [];
   for (let i = 0; i < PLANE_SLOTS; i++) {
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
-    const pts = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffd9c0, size: 3.2, sizeAttenuation: false, blending: THREE.AdditiveBlending, transparent: true, opacity: 0, depthWrite: false })); pts.frustumCulled = false; pts.visible = false;
-    group.add(pts); slots.push({ pts, active: false, u: 0, dur: 1, t: 0, phase: 0, a: new THREE.Vector3(), b: new THREE.Vector3() });
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3)); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array([1, 0.12, 0.1, 0.15, 1, 0.25]), 3));   // rouge puis vert
+    const pts = new THREE.Points(g, new THREE.PointsMaterial({ size: 3.4, sizeAttenuation: false, vertexColors: true, blending: THREE.AdditiveBlending, transparent: true, opacity: 0, depthWrite: false })); pts.frustumCulled = false; pts.visible = false;
+    group.add(pts); slots.push({ pts, active: false, t: 0, tr: null });
   }
   let wait = range(rand(), PLANE_FIRST_S), total = 0;
-  const U = new THREE.Vector3(), E = new THREE.Vector3(), N = new THREE.Vector3(), tmp = new THREE.Vector3();
-  const dir = (el, az) => new THREE.Vector3().copy(U).multiplyScalar(Math.sin(el)).addScaledVector(N, Math.cos(az) * Math.cos(el)).addScaledVector(E, Math.sin(az) * Math.cos(el)).normalize();
+  const E = new THREE.Vector3(), N = new THREE.Vector3(), U = new THREE.Vector3(), v = new THREE.Vector3();
+  const toScene = p => v.set(0, 0, 0).addScaledVector(E, p[0]).addScaledVector(N, p[1]).addScaledVector(U, p[2]).normalize();
 
-  const spawn = (up, east, north) => {
+  const spawn = () => {
     const s = slots.find(x => !x.active); if (!s) return false;
-    U.fromArray(up); E.fromArray(east); N.fromArray(north);
-    const az = rand() * 2 * Math.PI, span = range(rand(), PLANE_AZIMUTH_SPAN_DEG) * DEG * (rand() < 0.5 ? 1 : -1);
-    s.a.copy(dir(range(rand(), PLANE_START_ELEVATION_DEG) * DEG, az)); s.b.copy(dir(range(rand(), PLANE_START_ELEVATION_DEG) * DEG, az + span));
-    const angle = Math.acos(Math.max(-1, Math.min(1, s.a.dot(s.b)))) / DEG;
-    s.dur = angle / range(rand(), PLANE_SPEED_DEG_S); s.t = 0; s.phase = rand() * PLANE_STROBE_PERIOD_S; s.active = true; total++;
+    s.tr = makeTrack(rand); s.t = 0; s.active = true; total++;
     return true;
   };
 
@@ -45,15 +56,17 @@ export function createPlanes(scene, rand = Math.random) {
     // dt : secondes ; enabled : vue depuis un observatoire ET ciel noir ; camera : la caméra (le groupe la suit) ; R : distance de la sphère céleste ; up / east / north : repère local (tableaux)
     update({ dt, enabled, camera, R, up, east, north }) {
       group.position.copy(camera.position); group.scale.setScalar(R);
-      if (enabled && up) { wait -= dt; if (wait <= 0) { spawn(up, east, north); wait = range(rand(), PLANE_GAP_S); } }
+      if (enabled && up) { wait -= dt; if (wait <= 0) { spawn(); wait = range(rand(), PLANE_GAP_S); } }
+      if (up) { U.fromArray(up); E.fromArray(east); N.fromArray(north); }
       for (const s of slots) {
         if (!s.active) continue;
-        s.t += dt; const u = s.t / s.dur;
-        if (u >= 1 || !enabled) { s.active = false; s.pts.visible = false; continue; }
-        const p = slerp(s.a, s.b, u, tmp), pos = s.pts.geometry.attributes.position; pos.setXYZ(0, p.x, p.y, p.z); pos.needsUpdate = true;
-        const fade = Math.min(1, u / 0.08, (1 - u) / 0.08);   // fondu aux deux extrémités (près de l'horizon)
-        s.pts.material.opacity = fade * planeLight(s.t, s.phase); s.pts.visible = true;
-        s.pts.material.color.setHex(planeLight(s.t, s.phase) > 0.5 ? 0xffffff : 0xffb8a0);   // flash blanc, feu de navigation rougeâtre
+        s.t += dt;
+        const st = planeAt(s.tr, s.t);
+        if (st.done || !enabled || !up) { s.active = false; s.pts.visible = false; continue; }
+        const el = elevationDeg(st.center), pos = s.pts.geometry.attributes.position;
+        const l = toScene(st.left); pos.setXYZ(0, l.x, l.y, l.z); const r = toScene(st.right); pos.setXYZ(1, r.x, r.y, r.z); pos.needsUpdate = true;
+        const horizon = Math.max(0, Math.min(1, (el - PLANE_MIN_ELEVATION_DEG) / 8)), near = Math.max(0.35, Math.min(1, 40000 / distanceM(st.center)));   // fondu près de l'horizon ; plus pâles de loin
+        s.pts.material.opacity = 0.95 * horizon * near; s.pts.visible = horizon > 0;
       }
     },
     spawn,
