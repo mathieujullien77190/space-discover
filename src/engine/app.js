@@ -192,6 +192,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const applyLocal = (yaw, pitch, distKm, now) => {   // place la caméra autour de l'ISS (yaw, pitch en °, distance en km) ; now = sans transition
     const F = frameIss(), y = yaw * DEG, p = Math.max(-89.5, Math.min(89.5, pitch)) * DEG;
     const d = F.f.clone().multiplyScalar(-Math.cos(y) * Math.cos(p)).addScaledVector(F.s, Math.sin(y) * Math.cos(p)).addScaledVector(F.u, Math.sin(p));
+    cam.userUp = null;   // un réglage de la vue (boutons, vue d'accès) remet le haut du monde
     cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; cam.goal.dist = Math.max(ISS_MIN_DIST_KM, distKm) / R_KM;
     if (now) snapCam();
   };

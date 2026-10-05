@@ -18,6 +18,14 @@ export function attachControls(canvas, cam, onClick) {
     if (cam.fp) { cam.fp.yaw -= dx * 0.3; cam.fp.pitch = Math.max(-89, Math.min(89, cam.fp.pitch + dy * 0.3)); return; }   // vue à la première personne : on tourne la tête (le décor suit le doigt)
     const alt = Math.max(1e-5, cam.mode === 'earth' ? cam.dist - 1 : 0);
     const k = cam.mode === 'earth' ? Math.min(alt, 3) * 2 * tanH() / canvas.clientHeight / DEG : 0.3;   // le sol suit le doigt à tout zoom
+    if (cam.mode === 'iss') {   // AUTOUR DE L'ISS : rotation LIBRE (« tumble ») : le haut de l'écran tourne avec la caméra, donc on peut passer par-dessus et par-dessous la station sans jamais être bloqué (avec le haut du monde fixe, la vue butait aux pôles du monde, à ±89,5° : on ne pouvait pas faire le tour)
+      if (!cam.userUp) cam.userUp = new THREE.Vector3(0, 1, 0);
+      const u = cam.userUp, d = ll(cam.lon, cam.lat, new THREE.Vector3()).applyAxisAngle(u, -dx * k * DEG), right = new THREE.Vector3().crossVectors(u, d);
+      if (right.lengthSq() < 1e-10) right.crossVectors(new THREE.Vector3(1, 0, 0), d);
+      right.normalize(); const a = -dy * k * DEG; d.applyAxisAngle(right, a); u.applyAxisAngle(right, a); u.addScaledVector(d, -u.dot(d)).normalize();   // le haut reste perpendiculaire à la direction de la caméra
+      cam.goal.lat = Math.asin(Math.max(-1, Math.min(1, d.y))) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; cam.lon = cam.goal.lon; cam.lat = cam.goal.lat; cam.fly = 0;
+      return;
+    }
     if (cam.userUp) {   // « haut » personnalisé (Nord en haut, Orbite à plat) : on tourne AUTOUR de cet axe (gauche-droite) et au-dessus / au-dessous de son plan (haut-bas), sans jamais remettre l'écran à la verticale du monde (ce qui faisait « sauter » la vue)
       const u = cam.userUp, d = ll(cam.lon, cam.lat, new THREE.Vector3()).applyAxisAngle(u, -dx * k * DEG), right = new THREE.Vector3().crossVectors(u, d).normalize(), dn = d.clone().applyAxisAngle(right, -dy * k * DEG);
       const e = Math.abs(dn.dot(u)) < Math.sin(89.5 * DEG) ? dn : d;   // pas au-delà des pôles de l'axe
