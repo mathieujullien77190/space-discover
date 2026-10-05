@@ -15,6 +15,7 @@ export type UiState = {
   borders: boolean   // option de carte : limites de pays
   capitals: boolean   // option de carte : noms des capitales
   observatories: boolean   // option de carte : observatoires du monde (cliquables)
+  starInfo: boolean   // option de carte : clic sur une étoile = sa fiche
   constellations: boolean   // option de carte : constellations (traits entre les étoiles et noms)
   realistic: boolean   // vue réaliste : sans trajectoires, noms, repères ni rien de ce qui n'existe pas
   dayNight: boolean   // option de carte : jour / nuit (éclairage par le vrai Soleil)
@@ -35,6 +36,7 @@ export type Store = EngineState &
     toggleBorders: () => void
     toggleCapitals: () => void
     toggleObservatories: () => void
+    toggleStarInfo: () => void
     toggleConstellations: () => void
     toggleDayNight: () => void
     toggleRealistic: () => void
@@ -64,6 +66,7 @@ export const useStore = create<Store>((set) => ({
   borders: false,
   capitals: false,
   observatories: false,
+  starInfo: false,
   constellations: false,
   dayNight: true,
   realistic: false,
@@ -100,6 +103,11 @@ export const useStore = create<Store>((set) => ({
     set((s) => {
       s.engine?.setCapitals(!s.capitals)
       return { capitals: !s.capitals }
+    }),
+  toggleStarInfo: () =>
+    set((s) => {
+      s.engine?.setStarInfo(!s.starInfo)
+      return { starInfo: !s.starInfo }
     }),
   toggleObservatories: () =>
     set((s) => {

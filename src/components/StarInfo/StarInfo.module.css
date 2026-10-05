@@ -1,0 +1,8 @@
+.card { position: fixed; left: calc(12px + env(safe-area-inset-left)); top: 50%; transform: translateY(-50%); z-index: 3; width: min(320px, calc(100vw - 24px)); padding: 10px 12px; background: rgba(20, 30, 50, 0.85); border: 1px solid rgba(255, 213, 74, 0.6); border-radius: 8px; backdrop-filter: blur(4px); }
+.head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.name { margin: 0; font-size: 17px; line-height: 1.2; color: #ffe9a8; }
+.sub { margin-bottom: 6px; font-size: 12px; color: #9fb0c8; }
+.close { flex: 0 0 auto; border: 0; background: none; color: #cfd8e6; font-size: 16px; cursor: pointer; padding: 0 2px; }
+.text { margin: 6px 0 0; font-size: 13px; line-height: 1.4; }
+.note { margin: 8px 0 0; font-size: 11px; color: #8fa3bf; }
+@media (max-width: 700px), (pointer: coarse) { .card { top: auto; bottom: calc(80px + env(safe-area-inset-bottom)); transform: none; } }

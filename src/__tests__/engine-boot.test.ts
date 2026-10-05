@@ -365,6 +365,33 @@ describe('createEngine (rendu factice)', () => {
     expect(state.focus.id).toBe('iss')                                         // l’ISS reprend la main
     engine.selectView('earth'); engine._frame(performance.now() + 1100)
   })
+  it('la Lune est agrandie (×3) depuis l’observatoire et reprend sa taille ailleurs', async () => {
+    await new Promise((r) => setTimeout(r, 500))                               // les astres se construisent 400 ms après le démarrage
+    engine.resetTime(); engine._frame(performance.now() + 100)
+    expect(engine._moonBoost()).toBe(1)
+    engine.goObservatory('pic-du-midi'); engine.setObservatoryView(true)
+    for (let i = 0; i < 3; i++) engine._frame(performance.now() + 200 + i * 100)
+    expect(engine._moonBoost()).toBe(3)
+    engine.selectView('earth'); engine._frame(performance.now() + 700)
+    expect(engine._moonBoost()).toBe(1)
+  })
+  it('infos étoiles : option, clic sur une étoile visible = sa fiche + anneau, fermeture', async () => {
+    await new Promise((r) => setTimeout(r, 500))                               // astres construits (400 ms) : la vue ne change plus en cours de test
+    engine.resetTime(); engine.setSimSpeed(1); engine._frame(performance.now() + 100)
+    engine.selectView('earth'); engine.setObservatories(false); engine._frame(performance.now() + 150)
+    expect(engine._starInfo()).toMatchObject({ on: false, hip: null })
+    const list = engine._starsOnScreen(3)
+    expect(list.length).toBeGreaterThan(0)                                     // vue de départ : des étoiles brillantes visibles autour de la Terre
+    expect(engine._pickStarAt(list[0].x, list[0].y)).toBe(list[0].hip)         // la visée marche (même sans l'option, la fonction est testable)
+    engine.setStarInfo(true); engine._pickStarAt(list[0].x, list[0].y); engine._frame(performance.now() + 200)
+    expect(state.star.hip).toBe(list[0].hip)                                   // publié à l'interface
+    expect(engine._starInfo()).toMatchObject({ on: true, hip: list[0].hip, ring: 'block' })   // anneau jaune sur l'étoile
+    engine._pickStarAt(-500, -500); expect(state.star.hip).toBeNull()          // clic dans le vide : rien
+    engine._pickStarAt(list[0].x, list[0].y); engine.setStarInfo(false)        // option éteinte : tout disparaît
+    expect(state.star.hip).toBeNull()
+    engine._frame(performance.now() + 250)
+    expect(engine._starInfo().ring).toBe('none')
+  })
   it('nuages : option prise en compte (rien n’est chargé tant qu’elle est éteinte)', () => {
     engine._frame(performance.now() + 100)
     expect(engine._clouds()).toMatchObject({ on: false, state: null, visible: false })

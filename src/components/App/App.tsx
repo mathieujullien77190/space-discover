@@ -7,6 +7,7 @@ import EngineHost from '@/components/EngineHost'
 import InfoText from '@/components/InfoText'
 import ScaleBar from '@/components/ScaleBar'
 import StatusMessage from '@/components/StatusMessage'
+import StarInfo from '@/components/StarInfo'
 import SubMenu from '@/components/SubMenu'
 import TimeBar from '@/components/TimeBar'
 import TopBar from '@/components/TopBar'
@@ -22,6 +23,7 @@ export const App = () => (
     </div>
     <BodyCard />
     <ObservatoryCard />
+    <StarInfo />
     <TimeBar />
     <div className={styles.bottomLeft}>
       <MapOptions />

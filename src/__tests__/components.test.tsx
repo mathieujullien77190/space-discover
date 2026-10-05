@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import BodyCard from '@/components/BodyCard'
 import IssBadge from '@/components/IssBadge'
 import ObservatoryCard from '@/components/ObservatoryCard'
+import StarInfo from '@/components/StarInfo'
 import MapOptions from '@/components/MapOptions'
 import MapCredit from '@/components/MapCredit'
 import DatePicker from '@/components/DatePicker'
@@ -13,7 +14,7 @@ import { useStore } from '@/store'
 import { initialEngineState } from '@/store/initial'
 import type { Engine } from '@/types'
 
-const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), goHubble: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn(), setBorders: vi.fn(), setCapitals: vi.fn(), setObservatories: vi.fn(), setConstellations: vi.fn(), setDayNight: vi.fn(), goObservatory: vi.fn(), setObservatoryView: vi.fn(), setRealistic: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
+const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), goHubble: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn(), setBorders: vi.fn(), setCapitals: vi.fn(), setObservatories: vi.fn(), setStarInfo: vi.fn(), clearStar: vi.fn(), setConstellations: vi.fn(), setDayNight: vi.fn(), goObservatory: vi.fn(), setObservatoryView: vi.fn(), setRealistic: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
 
 describe('TopBar + SubMenu', () => {
   let engine: ReturnType<typeof fakeEngine>
@@ -57,6 +58,18 @@ describe('TopBar + SubMenu', () => {
     fireEvent.click(screen.getByText('🌗 Jour / nuit'))                                                    // ... mais jour / nuit reste disponible
     expect(engine.setDayNight).toHaveBeenLastCalledWith(false)
     expect(useStore.getState().dayNight).toBe(false)
+  })
+  it('infos étoiles : case à cocher et fiche de l’étoile choisie (Sirius), fermeture', () => {
+    useStore.setState({ ...initialEngineState, starInfo: false, star: { hip: null } })
+    render(<><MapOptions /><StarInfo /></>)
+    expect(screen.queryByText('Sirius')).toBeNull()
+    fireEvent.click(screen.getByLabelText('Infos étoiles (clic)'))
+    expect(engine.setStarInfo).toHaveBeenCalledWith(true)
+    act(() => useStore.setState({ star: { hip: 32349 } }))
+    expect(screen.getByText('Sirius')).toBeInTheDocument()
+    expect(screen.getByText('Grand Chien')).toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText('Fermer la fiche de l’étoile'))
+    expect(engine.clearStar).toHaveBeenCalled()
   })
   it('observatoire : fiche avec « Vue depuis l’observatoire »', () => {
     useStore.setState({ ...initialEngineState, observatory: { id: null, view: false }, cardCollapsed: false })

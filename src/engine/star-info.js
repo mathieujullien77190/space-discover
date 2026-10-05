@@ -88,7 +88,7 @@ export const FAMOUS = {
 export function starDetails(star) {
   const [, , mag, bv, hip] = star, nm = STAR_NAMES[hip], name = nm ? nm[0] : '', letter = nm ? nm[1] : '', con = nm ? constellationName(nm[2]) : '';
   const greek = letter ? (GREEK[letter.replace(/[0-9]/g, '')] || letter) : '', suffix = (letter.match(/[0-9]+/) || [''])[0];
-  const designation = letter ? greek + (suffix ? ' ' + suffix : '') + ' (' + letter + ')' + (con ? ' de ' + con : '') : '';
+  const designation = letter ? greek + (suffix ? ' ' + suffix : '') + ' (' + letter + ')' + (con ? ' · ' + con : '') : '';
   const cls = colorClass(bv), tempK = temperatureK(bv);
   const famous = name && FAMOUS[name] ? FAMOUS[name] : (name === 'Rigil Kentaurus' ? FAMOUS.Rigil : '');
   const base = 'Étoile ' + cls + ', de magnitude ' + fr(mag) + ' (' + brightness(mag) + '), température de surface ≈ ' + tempK.toLocaleString('fr-FR') + ' K' + (con ? ', dans la constellation ' + (/^[AEIOUYÂÊÎÔÛÉÈ]/.test(con) ? 'd’' : 'de ') + con : '') + '.';

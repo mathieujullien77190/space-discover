@@ -7,6 +7,7 @@ export const initialEngineState: EngineState = {
   info: '',
   viewJson: '',
   observatory: { id: null, view: false },
+  star: { hip: null },
   time: { simMs: 0, speed: 1, visible: true },
   scale: { widthPx: 100, label: '' },
   features: {},

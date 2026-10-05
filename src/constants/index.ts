@@ -34,6 +34,7 @@ export const MAP_OPTIONS = [
   { key: 'borders', label: 'Limites de pays' },
   { key: 'capitals', label: 'Capitales' },
   { key: 'observatories', label: 'Observatoires' },
+  { key: 'starInfo', label: 'Infos étoiles (clic)' },
   { key: 'constellations', label: 'Constellations' },
 ] as const   // chaque option est une case à cocher, éteinte par défaut
 export const REALISTIC_LABEL = '🎬 Vue réaliste'   // retire trajectoires, noms, repères et tout ce qui n'existe pas dans la réalité

@@ -11,6 +11,7 @@ export type EngineState = {
   error: string | null
   view: ViewState
   observatory: { id: string | null; view: boolean }   // observatoire choisi et vue « depuis » active
+  star: { hip: number | null }   // étoile sélectionnée (option « Infos étoiles ») : numéro Hipparcos
   info: string
   viewJson: string
   time: TimeState
@@ -48,6 +49,12 @@ export type Engine = {
   setBorders: (on: boolean) => void
   setCapitals: (on: boolean) => void
   setObservatories: (on: boolean) => void
+  setStarInfo: (on: boolean) => void
+  clearStar: () => void
+  _moonBoost: () => number
+  _starInfo: () => { on: boolean; hip: number | null; ring: string }
+  _starsOnScreen: (n?: number) => { hip: number; x: number; y: number }[]
+  _pickStarAt: (x: number, y: number) => number | null
   goObservatory: (id: string) => void
   setObservatoryView: (on: boolean) => void
   _obs: () => { id: string | null; view: boolean; label: string; dot: boolean; camAltKm: number; posErr: number | null; day: number; stars: boolean; starOpacity: number[]; atmSun: number; orange: number }

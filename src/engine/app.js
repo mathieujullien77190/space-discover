@@ -8,9 +8,11 @@ import { ISS_FEATURES, ISS_EPOCH, ISS_FROM, ISS_MODEL, ISS_MODEL_CFG, ISS_W, iss
 import { HUBBLE_LENGTH_M, buildHubble } from './hubble-model.js';
 import { createClouds } from './clouds.js';
 import { createCapitals } from './capitals.js';
-import { OBSERVATORIES, OBS_VIEW_ALT_KM, OBS_VIEW_FOV, OBS_VIEW_PITCH, observatoryById, observatoryFrame } from './observatories.js';
+import { OBSERVATORIES, OBS_MOON_BOOST, OBS_VIEW_ALT_KM, OBS_VIEW_FOV, OBS_VIEW_PITCH, observatoryById, observatoryFrame } from './observatories.js';
 import { createConstellations } from './constellations.js';
-import { createStars } from './stars.js';
+import { createStars, starBin, starVector } from './stars.js';
+import { STARS } from './data/stars.js';
+import { pickNearest } from './star-info.js';
 import { createSunGlare } from './sun-glare.js';
 import { occludedBy } from './occlusion.js';
 import { createTerrainLayer } from './terrain-layer.js';
@@ -307,7 +309,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   let issScreen = null;   // position écran de l'ISS si visible ; celles des astres sont dans bodyObjs[id].screen
   const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches, HIT = touch ? 42 : 26, near = (p, r, x, y) => !!p && Math.hypot(x - p[0], y - p[1]) < r;
   const bodyAt = (x, y) => { for (const id in bodyObjs) { const o = bodyObjs[id]; if (o.screen && o.b.menu && (o.b.menu.view || o.b.menu.mode === 'earth') && near(o.screen, HIT + (o.b.hitExtraPx || 0), x, y)) return id; } return null; };
-  disposers.push(attachControls(canvas, cam, (x, y) => { if (near(issScreen, HIT, x, y)) goIss(); else if (near(hubScreen, HIT, x, y)) goHubble(); else { const id = bodyAt(x, y); if (id) selectView(id); } }));
+  disposers.push(attachControls(canvas, cam, (x, y) => { if (near(issScreen, HIT, x, y)) goIss(); else if (near(hubScreen, HIT, x, y)) goHubble(); else { const id = bodyAt(x, y); if (id) selectView(id); else if (starInfoOn) pickStarAt(x, y); } }));
   const onMove = e => canvas.classList.toggle('hand', near(issScreen, HIT, e.clientX, e.clientY) || !!bodyAt(e.clientX, e.clientY));
   canvas.addEventListener('pointermove', onMove); disposers.push(() => canvas.removeEventListener('pointermove', onMove));
 
@@ -327,7 +329,16 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const dirv = new THREE.Vector3(), basis = new THREE.Matrix4(), fw = new THREE.Vector3(), zz = new THREE.Vector3();
 
   // la Terre cache-t-elle le point P vu de la caméra ?
-  const hiddenByEarth = P => { const d = P.clone().sub(camera.position), L = d.length(); d.divideScalar(L); const b = camera.position.dot(d), disc = b * b - (camera.position.lengthSq() - 1); return disc > 0 && -b - Math.sqrt(disc) > 0 && -b - Math.sqrt(disc) < L; };
+  // option « Infos étoiles » : un clic sur une étoile VISIBLE (pas masquée par la Terre, pas éteinte par le jour) la sélectionne : sa fiche (nom, constellation, descriptif) s'affiche (composant StarInfo) et un anneau jaune la repère
+  let starInfoOn = false, starSel = -1; const starRing = overlay.label('', 'starring'); starRing.style.display = 'none';
+  const starBins = STARS.map(s => starBin(s[2])), sv = new THREE.Vector3(), byBin = [];
+  let hiddenByEarth;
+  const starProject = s => { starVector(s[0], s[1], sv); sv.applyMatrix4(stars.matrixWorld); if (hiddenByEarth(sv)) return null; sv.project(camera); if (sv.z >= 1 || Math.abs(sv.x) > 1.05 || Math.abs(sv.y) > 1.05) return null; return [(sv.x + 1) / 2 * innerWidth, (1 - sv.y) / 2 * innerHeight]; };
+  const starVisible = i => { const c = byBin[starBins[i]]; return !!c && c.visible && c.material.opacity > 0.15; };
+  const refreshBins = () => { stars.children.forEach(c => { if (c.userData.bin !== undefined) byBin[c.userData.bin] = c; }); };
+  const pickStarAt = (x, y) => { refreshBins(); starSel = pickNearest(starProject, x, y, 14, starVisible); publish({ star: { hip: starSel >= 0 ? STARS[starSel][4] : null } }); return starSel >= 0 ? STARS[starSel][4] : null; };
+  const clearStar = () => { if (starSel >= 0) { starSel = -1; publish({ star: { hip: null } }); } };
+  hiddenByEarth = P => { const d = P.clone().sub(camera.position), L = d.length(); d.divideScalar(L); const b = camera.position.dot(d), disc = b * b - (camera.position.lengthSq() - 1); return disc > 0 && -b - Math.sqrt(disc) > 0 && -b - Math.sqrt(disc) < L; };
 
   // résolution ADAPTATIVE : si les images prennent plus de 30 ms en moyenne, la résolution du rendu baisse (jusqu'à 0,75) ; elle remonte quand la machine suit (images < 15 ms) ; délai entre deux changements
   const perf = { avg: 16, cool: 0 };
@@ -393,7 +404,9 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       const masked = id => maskedNear(id) || occludedBy(camA, babs[id].toArray(), occ.filter(o => o.id !== id), 0, BODY.radiusUnits(id)) !== null;
       for (const id in bodyObjs) {
         const o = bodyObjs[id], b = o.b, v = bpos[id], ab = babs[id], ru = BODY.radiusUnits(id), hid = masked(id) || (!!b.showWithinUnits && !!b.around && camera.position.distanceTo(babs[b.around]) > b.showWithinUnits), parent = b.around && bpos[b.around] ? bpos[b.around] : null, tr = b.trace || {};
-        o.px = o.mesh ? pxScale * ru * (b.appearance.rings ? 2.4 : 1) / Math.max(1e-9, camera.position.distanceTo(ab)) : 0;   // rayon apparent du maillage (pixels)
+        const boost = obsView && b.bodyType === 'moon' && b.around === 'earth' ? OBS_MOON_BOOST : 1;   // depuis un observatoire la Lune est agrandie (illusion lunaire)
+        if (o.mesh) { if (o.baseScale === undefined) o.baseScale = o.mesh.scale.x; o.mesh.scale.setScalar(o.baseScale * boost); }   // (les sphères « peintes » ont déjà leur rayon dans l'échelle du maillage)
+        o.px = o.mesh ? boost * pxScale * ru * (b.appearance.rings ? 2.4 : 1) / Math.max(1e-9, camera.position.distanceTo(ab)) : 0;   // rayon apparent du maillage (pixels)
         if (o.mesh && o.lodHi) {   // niveau de détail de la sphère d'après sa taille à l'écran ; invisible sous 1 px (son point lointain la remplace)
           const px = o.px, lv = lodLevel(px, o.lod || 0, BODY_LOD.T);
           if (lv !== o.lod) { o.lod = lv; o.mesh.geometry = BODY_LOD.seg[lv] ? sphereLod(BODY_LOD.seg[lv]) : o.lodHi; }
@@ -552,6 +565,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     sunGlare.update({ camera, sunPos: sunPoint.position, height: innerHeight, tint: sunRed, rise: atmMat.uniforms.uRise.value });
     { const sm = bodyObjs[STAR] && bodyObjs[STAR].mesh; if (sm && sm.material.color) sm.material.color.setRGB(1, 1 - (0.4 - 0.05 * atmMat.uniforms.uRise.value) * sunRed, 1 - (0.7 - 0.45 * atmMat.uniforms.uRise.value) * sunRed); }   // son disque aussi   // l'éclat est testé en PROFONDEUR : la Terre (et le relief) le cache, il est donc DERRIÈRE la Terre au lieu de s'affaiblir avant
     constellations.update({ on: constellationsOn && !realistic, camera, width: innerWidth, height: innerHeight, earthCenter: new THREE.Vector3().setFromMatrixPosition(earth.matrixWorld) });
+    if (starSel >= 0 && starInfoOn) { const p = starProject(STARS[starSel]); if (p) { starRing.style.display = 'block'; starRing.style.transform = `translate(${p[0] - 13}px,${p[1] - 13}px)`; } else starRing.style.display = 'none'; } else starRing.style.display = 'none';
     obsSites.update({ on: observatoriesOn && !realistic && !obsView, camera, width: innerWidth, height: innerHeight, hidden: p => occludedBy(camera.position.toArray(), [p.x, p.y, p.z], lastOcc.filter(o => o.id !== 'earth'), 0, 0) !== null });
     capitals.update({ on: capitalsOn && !realistic, camera, width: innerWidth, height: innerHeight, hidden: p => occludedBy(camera.position.toArray(), [p.x, p.y, p.z], lastOcc.filter(o => o.id !== 'earth'), 0, 0) !== null });   // juste avant le rendu : pose de la Terre et de la caméra à jour (rotation du temps sidéral comprise) ; cachée par la Lune / une planète = pas de nom
     // ciel de l'observatoire : bleu le jour, noir étoilé la nuit (selon la hauteur du Soleil au-dessus de l'horizon de l'observatoire)
@@ -588,6 +602,11 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     setBorders: on => { bordersOn = !!on; },
     setCapitals: on => { capitalsOn = !!on; },
     setObservatories: on => { observatoriesOn = !!on; },
+    setStarInfo: on => { starInfoOn = !!on; if (!starInfoOn) clearStar(); }, clearStar,
+    _moonBoost: () => (bodyObjs.moon && bodyObjs.moon.mesh ? bodyObjs.moon.mesh.scale.x / (bodyObjs.moon.baseScale || 1) : 1),
+    _starInfo: () => ({ on: starInfoOn, hip: starSel >= 0 ? STARS[starSel][4] : null, ring: starRing.style.display }),
+    _starsOnScreen: (n = 5) => { refreshBins(); const out = []; for (let i = 0; i < STARS.length && out.length < n; i++) { if (!starVisible(i)) continue; const p = starProject(STARS[i]); if (p) out.push({ hip: STARS[i][4], x: p[0], y: p[1] }); } return out; },
+    _pickStarAt: pickStarAt,
     goObservatory, setObservatoryView,
     _obs: () => ({ id: obsId, view: obsView, label: obsLabel.style.display, dot: obsDot.visible, camAltKm: (camera.position.length() - 1) * R_KM, posErr: obsView ? camera.position.distanceTo(obsPos) * R_KM * 1000 : null, day: obsDay, stars: stars.children.some(c => c.userData.bin !== undefined && c.visible && c.material.opacity > 0.5), starOpacity: stars.children.filter(c => c.userData.bin !== undefined).map(c => c.material.opacity), atmSun: atmMat.uniforms.uUseSun.value, orange: atmMat.uniforms.uOrange.value }),
     setRealistic: on => { realistic = !!on; },
