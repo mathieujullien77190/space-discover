@@ -4,9 +4,7 @@ import BodyCard from '@/components/BodyCard'
 import EngineHost from '@/components/EngineHost'
 import InfoText from '@/components/InfoText'
 import ScaleBar from '@/components/ScaleBar'
-import AchievementScreen from '@/components/AchievementScreen'
 import StatusMessage from '@/components/StatusMessage'
-import StoryPlayer from '@/components/StoryPlayer'
 import SubMenu from '@/components/SubMenu'
 import TimeBar from '@/components/TimeBar'
 import TopBar from '@/components/TopBar'
@@ -30,7 +28,5 @@ export const App = () => (
     <StatusMessage />
     <MapCredit />
     <IssBadge />
-    <StoryPlayer />
-    <AchievementScreen />
   </>
 )

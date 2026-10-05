@@ -1,5 +1,5 @@
 // Constantes partagées de l'interface : clés de stockage, vitesses, chemins.
-export const STORAGE_KEYS = { cardCollapsed: 'cardCollapsed', achievements: 'achievements' } as const
+export const STORAGE_KEYS = { cardCollapsed: 'cardCollapsed' } as const
 export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
 
 export const TIME_SPEEDS: ReadonlyArray<{ speed: number; label: string }> = [
@@ -12,20 +12,7 @@ export const TIME_SPEEDS: ReadonlyArray<{ speed: number; label: string }> = [
   { speed: 31557600, label: '1 an/s' },
   { speed: 315576000, label: '10 ans/s' },
 ]
-export const ROCKET_SPEEDS: ReadonlyArray<{ speed: number; label: string }> = [
-  { speed: 0, label: '⏸' },
-  { speed: 1, label: '×1' },
-  { speed: 5, label: '×5' },
-  { speed: 20, label: '×20' },
-  { speed: 60, label: '×60' },
-  { speed: 200, label: '×200' },
-]
-export const PANEL_BUTTONS: ReadonlyArray<{ panel: 'planets' | 'satellites' | 'rockets' | 'stories'; label: string }> = [
-  { panel: 'planets', label: '🌌 Astres' },
-  { panel: 'stories', label: '📖 Histoires' },
-  // « Satellites » et « Fusées » : retirés des boutons (demande de l'utilisateur : « on va faire autrement ») ; leurs composants (SatelliteMenu, RocketMenu, RocketControls), le moteur et les commandes sont CONSERVÉS : pour les remettre, ajouter
-  // { panel: 'satellites', label: '🛰 Satellites' } et { panel: 'rockets', label: '🚀 Fusées' } ici.
-]
+export const PANEL_BUTTONS: ReadonlyArray<{ panel: 'planets'; label: string }> = [{ panel: 'planets', label: '🌌 Astres' }]
 
 // catégories d'astres du sous-menu « Astres » : types (bodyType du JSON) regroupés par bouton
 export const BODY_CATEGORIES: ReadonlyArray<{ id: 'planets' | 'comets' | 'stars'; label: string; types: ReadonlyArray<string> }> = [
@@ -37,7 +24,6 @@ export const BODY_CATEGORIES: ReadonlyArray<{ id: 'planets' | 'comets' | 'stars'
 export const NUDGE_STEPS: ReadonlyArray<number> = [0.5, 1, 5, 15]   // pas de réglage fin de la vue (°)
 export const NUDGE_FIRST_DELAY_MS = 350   // délai avant la répétition en maintenant le bouton
 export const NUDGE_REPEAT_MS = 70
-export const BIG_VEHICLES_LABEL = '🔭 Engins ×1000'   // mode « engins géants » (fusées, satellites, ISS)
 export const ISS_VIEW_LABELS = { on: '👁 Vue depuis l’ISS', off: '↩ Quitter la vue ISS', go: '🛰 ISS' } as const   // bouton de la barre du haut
 export const CLOUDS_LABEL = '☁ Nuages'   // couverture nuageuse quasi temps réel
 export const EARTH_LABEL = '🌍 Terre'   // retour à la vue Terre, de n'importe quelle vue

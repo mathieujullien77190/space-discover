@@ -11,11 +11,6 @@ export const setSimSpeed = (speed: number): void => engine()?.setSimSpeed(speed)
 export const resetTime = (): void => engine()?.resetTime()
 export const setDate = (ms: number): void => engine()?.setDate(ms)
 export const setFeature = (id: string, on: boolean): void => engine()?.setFeature(id, on)
-export const startRocket = (key: string): void => {
-  void engine()?.startRocket(key)
-}
-export const stopRocket = (): void => engine()?.stopRocket()
-export const setRocketSpeed = (speed: number): void => engine()?.setRocketSpeed(speed)
 export const nudge = (kind: string): void => {
   const s = useStore.getState()
   s.engine?.nudge(kind, NUDGE_STEPS[s.nudgeStep])
@@ -23,18 +18,4 @@ export const nudge = (kind: string): void => {
 export const alignNorth = (id: string): void => engine()?.alignNorth(id)
 export const alignOrbit = (id: string): void => engine()?.alignOrbit(id)
 export const resetUp = (): void => engine()?.resetUp()
-export const launchMission = (id: string): void => {
-  void engine()?.launchMission(id)
-}
-export const followMission = (): void => engine()?.followMission()
-export const startStory = (id: string): void => {
-  void engine()?.startStory(id)
-}
-export const storyNext = (): void => engine()?.storyNext()
-export const storyPrev = (): void => engine()?.storyPrev()
-export const quitStory = (): void => engine()?.quitStory()
-export const setStorySpeed = (speed: number): void => engine()?.setStorySpeed(speed)
-export const setFirstPerson = (on: boolean): void => engine()?.setFirstPerson(on)
-export const setViewInset = (right: number, bottom: number): void => engine()?.setViewInset(right, bottom)
-export const setStorySlowMotion = (on: boolean): void => engine()?.setStorySlowMotion(on)
 export const setIssView = (on: boolean): void => engine()?.setIssView(on)

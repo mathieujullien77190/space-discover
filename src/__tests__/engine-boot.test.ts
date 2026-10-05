@@ -19,7 +19,7 @@ describe('createEngine (rendu factice)', () => {
     canvas = document.createElement('canvas')
     overlay = document.createElement('div')
     document.body.append(canvas, overlay)
-    const e = createEngine({ canvas, overlay, publish: (p: EnginePatch) => { state = { ...state, ...mergePatch(state, p) } }, createRenderer: fakeRenderer, showProbes: true })
+    const e = createEngine({ canvas, overlay, publish: (p: EnginePatch) => { state = { ...state, ...mergePatch(state, p) } }, createRenderer: fakeRenderer })
     if (!e) throw new Error('moteur non créé')
     engine = e
   })
@@ -334,139 +334,6 @@ describe('createEngine (rendu factice)', () => {
     engine.goIss()
     expect(state.view.mode).toBe('iss')
   })
-  it('sondes rejouées : position calculée à la date, vue de la sonde, absentes avant leur lancement', async () => {
-    await new Promise((r) => setTimeout(r, 450))
-    let t = 1000
-    const frames = (n: number) => { for (let i = 0; i < n; i++) engine._frame(performance.now() + (t += 100)) }
-    frames(4)
-    // aujourd'hui : Voyager 1 est à ≈ 168 UA du Soleil (1 UA = 23 455 rayons terrestres)
-    const sunDist = (id: string) => { const q = engine._probe(id)!; return Math.hypot(...(q.r as number[])) / 149597870700 }
-    expect(sunDist('voyager1')).toBeGreaterThan(150)
-    expect(sunDist('voyager1')).toBeLessThan(185)
-    expect(sunDist('newhorizons')).toBeGreaterThan(55)
-    expect(sunDist('newhorizons')).toBeLessThan(70)
-    engine.selectView('voyager2'); frames(4)
-    expect(state.view).toMatchObject({ mode: 'solar', selected: 'voyager2' })
-    expect(state.focus.id).toBe('voyager2')
-    expect(state.info).toMatch(/Voyager 2 : [0-9]+,[0-9] UA du Soleil · [0-9]+,[0-9] km[/]s/)
-    const q = engine._probe('voyager2')!
-    expect(q.shown).toBe(true)
-    expect(q.model).toBe(true)      // vue de la sonde (127 m) : son modèle 3D à l'échelle réelle (antenne de 3,7 m ≈ 24 px)
-    expect(q.dot).toBe(false)
-    expect(q.local).toBe(true)      // trace locale en double précision, passant par la sonde
-    expect(Math.abs(q.dist / q.camDist - 1)).toBeLessThan(0.01)   // la caméra est CENTRÉE sur la sonde à chaque image (16 km/s = 260 m par image : une caméra en retard d'une image la décentrerait)
-    engine.selectView('sun'); frames(4)
-    const far = engine._probe('voyager2')!
-    expect(far.dot).toBe(true)      // de loin : un point (le modèle ferait un millionième de pixel)
-    expect(far.model).toBe(false)
-    expect(far.path).toBe(true)     // et sa trajectoire entière
-    engine.selectView('voyager2'); frames(4)
-    // saut de date : en 1975 Voyager n'est pas encore parti, Pioneer 10 est en route
-    engine.setDate(Date.UTC(1975, 0, 1)); frames(3)
-    expect(engine._probe('voyager1')!.shown).toBe(false)
-    expect(engine._probe('voyager1')!.label).toBe('none')
-    expect(engine._probe('pioneer10')!.shown).toBe(true)
-    // 1979-07-09 : Voyager 2 passe près de Jupiter
-    engine.setDate(Date.UTC(1979, 6, 9, 22, 29)); frames(3)
-    const near = engine._probe('voyager2')!, jupiter = engine._probeDistance('voyager2', 'jupiter')
-    expect(jupiter).toBeLessThan(1e6 * 1.2)   // moins de 1,2 million de km de Jupiter (périgée ≈ 0,69 million)
-    expect(near.shown).toBe(true)
-  })
-  it('lancer Voyager 2 : saut à la date historique, fusée lancée à cette date ; « suivre la sonde » : 2 jours plus tard, sonde en vue, temps accéléré', async () => {
-    await new Promise((r) => setTimeout(r, 450))
-    let t = 1000
-    const frames = (n: number) => { for (let i = 0; i < n; i++) engine._frame(performance.now() + (t += 100)) }
-    frames(4)
-    await engine.launchMission('voyager2')
-    const launch = Date.UTC(1977, 7, 20, 14, 29)
-    expect(Math.abs(state.time.simMs - launch)).toBeLessThan(60000)   // saut de date : 20 août 1977, 14 h 29 UTC
-    expect(state.rocket.running).toBe(true)
-    expect(state.rocket.mission).toBe('voyager2')
-    expect(state.view.mode).toBe('launch')
-    frames(2)
-    expect(engine._probe('voyager2')!.shown).toBe(false)   // pendant le lancement c'est la fusée qui est simulée, pas la sonde rejouée
-    engine.followMission(); frames(4)
-    expect(state.rocket.running).toBe(false)
-    expect(state.rocket.mission).toBeNull()
-    expect(Math.abs(state.time.simMs - (launch + 2 * 86400000))).toBeLessThan(3600000)   // (le temps a déjà commencé à filer à 1 jour par seconde)
-    expect(state.time.speed).toBe(86400)
-    expect(state.view).toMatchObject({ mode: 'solar', selected: 'voyager2' })
-    expect(engine._probe('voyager2')!.shown).toBe(true)
-    // un an plus tard, la sonde est loin de la Terre (Jupiter n'est atteint qu'en 1979)
-    engine.setDate(launch + 365 * 86400000); frames(3)
-    expect(engine._probe('voyager2')!.r).not.toBeNull()
-  })
-  it('mode histoire : saut à la date, pause à chaque étape, « Suivant » relance jusqu’à la suivante, fin et sortie', async () => {
-    await new Promise((r) => setTimeout(r, 450))
-    let t = 1000
-    const frames = (n: number) => { for (let i = 0; i < n; i++) engine._frame(performance.now() + (t += 100)) }
-    frames(3)
-    await engine.startStory('laika')
-    frames(2)
-    expect(state.story).toMatchObject({ active: true, id: 'laika', index: 0, phase: 'showing', canNext: true, finished: false })
-    expect(state.story.step?.at).toBe('before')
-    expect(Math.abs(state.time.simMs - Date.UTC(1957, 10, 3, 2, 30, 42))).toBeLessThan(120000)   // saut dans le temps : 3 novembre 1957
-    expect(engine._story()).toMatchObject({ playing: false, T: 0 })           // en pause, rien n'a bougé
-    engine.setViewInset(420, 0); frames(60)                                    // un panneau de 420 px à droite : la scène est décalée pour se centrer sur le reste de l’écran
-    expect(engine._inset()).toMatchObject({ enabled: true, cr: 420, offsetX: 210 })
-    engine.setViewInset(0, 0); frames(120)
-    expect(engine._inset().enabled).toBe(false)
-    engine.setStorySpeed(50); frames(2)                                        // le curseur règle la vitesse sans relancer une étape en pause
-    expect(engine._story()).toMatchObject({ playing: false, speed: 50, T: 0 })
-    engine.setStorySpeed(12)
-    engine.setStorySlowMotion(false); expect(engine._story()).toBeTruthy(); engine.setStorySlowMotion(true)
-    // on clique « Suivant » à chaque étape : la simulation est en pause sur chaque texte, et chaque étape tombe juste après son événement
-    const seen: string[] = [state.story.step!.id]
-    for (let guard = 0; guard < 40 && !state.story.finished; guard++) {
-      engine.storyNext(); frames(1)
-      for (let i = 0; i < 6000 && !state.story.finished && state.story.phase === 'running'; i++) frames(1)
-      if (state.story.finished) break
-      expect(state.story.phase, JSON.stringify({ seen, idx: state.story.index, st: engine._story() })).toBe('showing')
-      const s = engine._story()!
-      expect(s.T).toBeGreaterThanOrEqual(s.trig[state.story.index] - 1e-6)
-      expect(s.T).toBeLessThan(Math.max(s.trig[state.story.index], 0) + 60)
-      seen.push(state.story.step!.id)
-      if (state.story.step!.id === 'boosters') {   // retour en arrière : l’étape précédente revient, le vol est rejoué depuis son instant, puis on reprend
-        const t1 = engine._story()!.T!
-        engine.storyPrev(); frames(1)
-        expect(state.story.step!.id).toBe('decollage')
-        expect(engine._story()!.T!).toBeLessThan(t1)
-        expect(state.story.canPrev).toBe(true)
-        engine.storyNext(); frames(1)
-        for (let i = 0; i < 6000 && state.story.phase === 'running'; i++) frames(1)
-        expect(state.story.step!.id).toBe('boosters')
-      }
-      if (state.story.step!.id === 'tour') {   // « ce que voyait Laïka » : caméra SUR le satellite, on regarde dans le sens du vol, un peu vers le bas, la tête vers le haut
-        const fp = engine._fp()!
-        const dot = (a: number[], b: number[]) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
-        expect(fp.posErr!).toBeLessThan(1)
-        expect(dot(fp.dir, fp.flight!)).toBeCloseTo(Math.cos(20 * Math.PI / 180), 1)
-        expect(dot(fp.up, fp.radial!)).toBeGreaterThan(0.5)
-      } else if (state.story.step!.id === 'adieu') expect(engine._fp()).toBeNull()
-    }
-    expect(seen).toEqual(['mouches', 'moscou', 'entrainement', 'decollage', 'boosters', 'orbite', 'tour', 'adieu', 'espoir', 'heritage'])
-    expect(state.story.finished).toBe(true)
-    expect(engine._vehicle()!.vk).toBe(1000)                                    // passé 50 km : engins × 1 000 d’office
-    engine.quitStory(); frames(2)
-    expect(state.story.active).toBe(false)
-    expect(state.rocket.running).toBe(false)
-  }, 180000)
-  it('mode engins géants : la fusée est 1 000 fois plus grosse et la caméra recule d’autant', async () => {
-    engine._frame(performance.now() + 300)
-    await engine.startRocket('obj:ariane5')
-    for (let i = 0; i < 40; i++) engine._frame(performance.now() + 300 + i * 100)
-    const a = engine._vehicle()!
-    engine.setBigVehicles(true)
-    for (let i = 0; i < 120; i++) engine._frame(performance.now() + 5000 + i * 100)
-    const b = engine._vehicle()!
-    expect(b.vk).toBe(1000)
-    expect(b.scale / a.scale).toBeCloseTo(1000, 3)
-    expect(b.camKm / a.camKm).toBeGreaterThan(300)
-    expect(b.camKm / b.lenKm).toBeLessThan(3)                                  // même cadrage : la fusée reste entière à l'écran
-    engine.setBigVehicles(false)
-    expect(engine._vehicle()!.vk).toBe(1)
-    engine.stopRocket()
-  })
   it('vue depuis l’ISS : caméra sur la station, tête vers le haut, coupée par un changement de vue', () => {
     engine.resetTime(); engine._frame(performance.now() + 350)               // la date a pu être changée par un test précédent (l’ISS n’existe qu’à partir de 1998)
     engine.setIssView(true)
@@ -513,24 +380,6 @@ describe('createEngine (rendu factice)', () => {
     expect(state.time.speed).toBe(3600)
     engine.resetTime()
     expect(state.time.speed).toBe(1)
-  })
-  it('lance Ariane 5 : étapes, composants, télémétrie ; puis arrêt', async () => {
-    engine._frame(performance.now() + 300)
-    await engine.startRocket('obj:ariane5')
-    expect(state.rocket.running).toBe(true)
-    expect(state.rocket.steps[0].label).toBe('Décollage')
-    expect(state.rocket.steps.length).toBeGreaterThan(5)
-    expect(state.rocket.components.map((c) => c.id)).toContain('rocket')
-    expect(state.view.mode).toBe('launch')
-    expect(state.time.visible).toBe(false)
-    engine.setRocketSpeed(60)
-    for (let i = 0; i < 20; i++) engine._frame(performance.now() + 300 + i * 250)
-    expect(state.rocket.T).toBeGreaterThan(0)
-    expect(state.rocket.telemetry.alt).toBeGreaterThan(0)
-    engine.stopRocket()
-    expect(state.rocket.running).toBe(false)
-    expect(state.time.visible).toBe(true)
-    expect(state.view.mode).toBe('earth')
   })
   it('les étiquettes 3D vivent dans le conteneur fourni et sont retirées à l’arrêt du moteur', () => {
     expect(overlay.querySelectorAll('.eng-l3d').length).toBeGreaterThan(0)

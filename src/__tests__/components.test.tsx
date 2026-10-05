@@ -4,7 +4,6 @@ import BodyCard from '@/components/BodyCard'
 import IssBadge from '@/components/IssBadge'
 import MapCredit from '@/components/MapCredit'
 import DatePicker from '@/components/DatePicker'
-import RocketControls from '@/components/RocketControls'
 import SubMenu from '@/components/SubMenu'
 import TopBar from '@/components/TopBar'
 import ViewParams from '@/components/ViewParams'
@@ -12,7 +11,7 @@ import { useStore } from '@/store'
 import { initialEngineState } from '@/store/initial'
 import type { Engine } from '@/types'
 
-const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), startRocket: vi.fn(() => Promise.resolve()), stopRocket: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setRocketSpeed: vi.fn(), setBigVehicles: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
+const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
 
 describe('TopBar + SubMenu', () => {
   let engine: ReturnType<typeof fakeEngine>
@@ -20,20 +19,11 @@ describe('TopBar + SubMenu', () => {
     engine = fakeEngine()
     useStore.setState({ ...initialEngineState, panel: null, bodyCategory: 'planets', features: {}, engine })
   })
-  it('un seul bouton en haut (Astres) : Satellites et Fusées sont retirés de l’interface, aucun sous-menu au départ', () => {
+  it('barre du haut : Astres, Terre, ISS, Vue depuis l’ISS, Nuages ; ni Histoires, ni Fusées, ni Satellites, aucun sous-menu au départ', () => {
     render(<><TopBar /><SubMenu /></>)
-    expect(screen.getByText('🌌 Astres')).toBeInTheDocument()
-    expect(screen.queryByText('🛰 Satellites')).toBeNull()
-    expect(screen.queryByText('🚀 Fusées')).toBeNull()
+    for (const l of ['🌌 Astres', '🌍 Terre', '🛰 ISS', '👁 Vue depuis l’ISS', '☁ Nuages']) expect(screen.getByText(l)).toBeInTheDocument()
+    for (const l of [/Histoires/, /Fusées/, /Satellites/, /Engins/]) expect(screen.queryByText(l)).toBeNull()
     expect(screen.queryByText(/Lune/)).toBeNull()
-  })
-  it('bouton « Engins ×1000 » : active puis désactive le mode engins géants', () => {
-    useStore.setState({ bigVehicles: false })
-    render(<TopBar />)
-    fireEvent.click(screen.getByText('🔭 Engins ×1000'))
-    expect(engine.setBigVehicles).toHaveBeenLastCalledWith(true)
-    fireEvent.click(screen.getByText('🔭 Engins ×1000'))
-    expect(engine.setBigVehicles).toHaveBeenLastCalledWith(false)
   })
   it('bouton « Terre » : revient à la vue Terre depuis n’importe quelle vue (ISS comprise)', () => {
     useStore.setState({ view: { ...initialEngineState.view, mode: 'iss' }, issView: false })
@@ -73,8 +63,8 @@ describe('TopBar + SubMenu', () => {
     expect(screen.getByText(/matteason/)).toBeInTheDocument()
   })
   it('Astres : la Lune n’est pas une planète : elle apparaît sous la Terre, pas sous Mars', () => {
-    render(<><TopBar /><SubMenu /></>)
-    fireEvent.click(screen.getByText('🌌 Astres'))
+    render(<SubMenu />)
+    act(() => useStore.setState({ panel: 'planets' }))
     expect(screen.getByText(/Terre/)).toBeInTheDocument()
     expect(screen.getByText(/Mars/)).toBeInTheDocument()
     expect(screen.getByText(/Lune/)).toBeInTheDocument()
@@ -84,8 +74,8 @@ describe('TopBar + SubMenu', () => {
     expect(screen.getByText(/Lune/)).toBeInTheDocument()
   })
   it('Astres : toutes les planètes, et les lunes de la planète choisie sous elle', () => {
-    render(<><TopBar /><SubMenu /></>)
-    fireEvent.click(screen.getByText('🌌 Astres'))
+    render(<SubMenu />)
+    act(() => useStore.setState({ panel: 'planets' }))
     for (const n of ['Mercure', 'Vénus', 'Terre', 'Mars', 'Jupiter', 'Saturne', 'Uranus', 'Neptune', 'Pluton']) expect(screen.getByText(new RegExp(n + "$"))).toBeInTheDocument()
     const moons = (planet: string, names: string[], absent: string[]) => {
       act(() => useStore.setState({ view: { mode: 'solar', selected: planet, align: null } }))
@@ -104,8 +94,8 @@ describe('TopBar + SubMenu', () => {
     expect(screen.getByText(/Callisto/)).toBeInTheDocument()
   })
   it('Astres : Planètes et Comètes sont des menus ; le Soleil (un seul astre) est directement un bouton', () => {
-    render(<><TopBar /><SubMenu /></>)
-    fireEvent.click(screen.getByText('🌌 Astres'))
+    render(<SubMenu />)
+    act(() => useStore.setState({ panel: 'planets' }))
     expect(screen.getByText('🪐 Planètes')).toBeInTheDocument()
     expect(screen.queryByText('☀ Étoiles')).toBeNull()   // pas de bouton « Étoiles » puis « Soleil »
     expect(screen.queryByText(/Halley/)).toBeNull()
@@ -118,51 +108,10 @@ describe('TopBar + SubMenu', () => {
     expect(engine.selectView).toHaveBeenCalledWith('halley')
   })
   it('Astres : un clic sur la Lune change de vue', () => {
-    render(<><TopBar /><SubMenu /></>)
-    fireEvent.click(screen.getByText('🌌 Astres'))
+    render(<SubMenu />)
+    act(() => useStore.setState({ panel: 'planets' }))
     fireEvent.click(screen.getByText(/Lune/))
     expect(engine.selectView).toHaveBeenCalledWith('moon')
-  })
-  it('Satellites : l’ISS et les sondes ; un objet pas encore lancé à la date choisie est grisé', () => {
-    render(<SubMenu />)
-    act(() => useStore.setState({ panel: 'satellites' }))   // panneau conservé dans le code, plus de bouton
-    for (const n of ['ISS', 'Voyager 1', 'Voyager 2', 'Pioneer 10', 'Pioneer 11', 'New Horizons']) expect(screen.getByText('🛰 ' + n)).toBeInTheDocument()
-    expect(screen.getByText('🛰 New Horizons')).toBeEnabled()   // date de départ : maintenant
-    act(() => useStore.setState({ time: { simMs: Date.UTC(1975, 0, 1), speed: 1, visible: true } }))
-    expect(screen.getByText('🛰 ISS')).toBeDisabled()           // pas d'ISS en 1975
-    expect(screen.getByText('🛰 Voyager 2')).toBeDisabled()     // Voyager 2 : 1977
-    expect(screen.getByText('🛰 Pioneer 10')).toBeEnabled()     // Pioneer 10 : 1972
-    fireEvent.click(screen.getByText('🛰 Pioneer 10'))
-    expect(engine.selectView).toHaveBeenCalledWith('pioneer10')
-    act(() => useStore.setState({ time: { simMs: Date.UTC(1999, 0, 1), speed: 1, visible: true } }))
-    expect(screen.getByText('🛰 ISS')).toBeEnabled()            // ISS : novembre 1998
-  })
-  it('Satellites : seulement le bouton de l’ISS (plus de boutons Dimensions ni Trajectoire)', () => {
-    render(<SubMenu />)
-    act(() => useStore.setState({ panel: 'satellites' }))   // panneau conservé dans le code, plus de bouton
-    expect(screen.getByText('🛰 ISS')).toBeInTheDocument()
-    expect(screen.queryByText(/Dimensions/)).toBeNull()
-    expect(screen.queryByText(/Trajectoire/)).toBeNull()
-  })
-  it('Satellites : l’ISS mène à la vue ISS', () => {
-    render(<SubMenu />)
-    act(() => useStore.setState({ panel: 'satellites' }))   // panneau conservé dans le code, plus de bouton
-    fireEvent.click(screen.getByText('🛰 ISS'))
-    expect(engine.goIss).toHaveBeenCalled()
-  })
-  it('Fusées : un clic sur une fusée la lance', () => {
-    render(<><TopBar /><SubMenu /></>)
-    act(() => useStore.setState({ panel: 'rockets' }))   // panneau conservé dans le code, plus de bouton
-    fireEvent.click(screen.getByText(/Ariane 5/))
-    expect(engine.startRocket).toHaveBeenCalledWith('obj:ariane5')
-  })
-  it('Fusées en vol : Arrêter et vitesses remplacent la liste', () => {
-    useStore.setState({ panel: 'rockets', rocket: { ...initialEngineState.rocket, running: true, T: 130, playing: true, speed: 5 } })
-    render(<SubMenu />)
-    fireEvent.click(screen.getByText('⏹ Arrêter'))
-    expect(engine.stopRocket).toHaveBeenCalled()
-    expect(screen.getByText('T+2:10')).toBeInTheDocument()
-    expect(screen.queryByText(/Ariane 5/)).toBeNull()
   })
   it('re-cliquer sur le bouton referme le sous-menu', () => {
     render(<><TopBar /><SubMenu /></>)
@@ -184,33 +133,6 @@ describe('DatePicker (saut de date)', () => {
     expect(input.value).toBe('2026-10-05T12:30')
     fireEvent.change(input, { target: { value: '1977-08-20T14:29' } })
     expect((engine as unknown as { setDate: ReturnType<typeof vi.fn> }).setDate).toHaveBeenCalledWith(Date.UTC(1977, 7, 20, 14, 29))
-  })
-})
-
-describe('Missions historiques (menu Fusées)', () => {
-  it('« 🚀 Voyager 2 — 20 août 1977 » lance la mission ; en vol, « Suivre la sonde » apparaît', () => {
-    const engine = fakeEngine()
-    ;(engine as unknown as Record<string, unknown>).launchMission = vi.fn(() => Promise.resolve())
-    ;(engine as unknown as Record<string, unknown>).followMission = vi.fn()
-    useStore.setState({ ...initialEngineState, panel: 'rockets', engine })
-    const { unmount } = render(<SubMenu />)
-    fireEvent.click(screen.getByText(/Voyager 2 — 20 août 1977/))
-    expect((engine as unknown as { launchMission: ReturnType<typeof vi.fn> }).launchMission).toHaveBeenCalledWith('voyager2')
-    unmount()
-    act(() => useStore.setState({ rocket: { ...initialEngineState.rocket, running: true, mission: 'voyager2', T: 10, playing: true, speed: 1 } }))
-    render(<SubMenu />)
-    fireEvent.click(screen.getByText('🛰 Suivre la sonde'))
-    expect((engine as unknown as { followMission: ReturnType<typeof vi.fn> }).followMission).toHaveBeenCalled()
-  })
-})
-
-describe('RocketControls (feuille : uniquement des props)', () => {
-  it('appelle onSpeed et surligne la vitesse courante', () => {
-    const onSpeed = vi.fn()
-    render(<RocketControls T={0} playing speed={20} onSpeed={onSpeed} onStop={() => {}} />)
-    fireEvent.click(screen.getByText('×60'))
-    expect(onSpeed).toHaveBeenCalledWith(60)
-    expect(screen.getByText('×20').className).toMatch(/on/)
   })
 })
 

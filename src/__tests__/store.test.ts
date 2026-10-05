@@ -10,10 +10,10 @@ describe('mergePatch', () => {
   it('remplace les valeurs simples', () => {
     expect(mergePatch(initialEngineState, { info: 'x', status: 'ready' })).toEqual({ info: 'x', status: 'ready' })
   })
-  it('remplace les tableaux entiers', () => {
-    const out = mergePatch(initialEngineState, { rocket: { steps: [{ t: 0, label: 'Décollage' }] } })
-    expect(out.rocket?.steps).toHaveLength(1)
-    expect(out.rocket?.running).toBe(false)
+  it('remplace les objets de la tranche view sans toucher aux autres tranches', () => {
+    const out = mergePatch(initialEngineState, { view: { mode: 'iss' } })
+    expect(out.view).toEqual({ ...initialEngineState.view, mode: 'iss' })
+    expect(out.time).toBeUndefined()
   })
 })
 
@@ -25,10 +25,9 @@ describe('store', () => {
     useStore.getState().togglePanel('planets')
     expect(useStore.getState().panel).toBeNull()
   })
-  it('un seul panneau à la fois', () => {
+  it('le panneau Astres est le seul panneau', () => {
     useStore.getState().togglePanel('planets')
-    useStore.getState().togglePanel('rockets')
-    expect(useStore.getState().panel).toBe('rockets')
+    expect(useStore.getState().panel).toBe('planets')
   })
   it('applyPatch met à jour l’état publié par le moteur', () => {
     useStore.getState().applyPatch({ view: { mode: 'iss', selected: null }, scale: { widthPx: 80, label: '10 km' } })

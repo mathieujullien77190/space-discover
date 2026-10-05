@@ -2,7 +2,7 @@
 // Le moteur n'importe jamais ce fichier : il reçoit `applyPatch` comme canal de publication, et l'interface le pilote par les commandes de `commands.ts`.
 import { create } from 'zustand'
 import { NUDGE_STEPS } from '@/constants'
-import { readAchievements, readCardCollapsed, writeAchievements, writeCardCollapsed } from '@/helpers'
+import { readCardCollapsed, writeCardCollapsed } from '@/helpers'
 import type { BodyCategory, Engine, EnginePatch, EngineState, PanelName } from '@/types'
 import { initialEngineState } from './initial'
 
@@ -11,13 +11,8 @@ export type UiState = {
   bodyCategory: BodyCategory
   nudgeStep: number   // index dans NUDGE_STEPS
   cardCollapsed: boolean   // fiche d'astre réduite en mini bouton-icône (mémorisé)
-  achievements: string[]   // hauts faits débloqués (mémorisés)
-  slowMotion: boolean   // histoire : ralenti aux étapes (publié par le moteur)
   clouds: boolean   // couverture nuageuse affichée
   issView: boolean   // vue depuis l'ISS (publié par le moteur)
-  firstPerson: boolean   // vue à la première personne (publié par le moteur)
-  bigVehicles: boolean   // mode « engins géants » : fusées, satellites et ISS 1 000 fois plus gros
-  unlocked: string | null   // haut fait qu'on vient de débloquer (écran de déblocage)
 }
 
 export type Store = EngineState &
@@ -29,9 +24,6 @@ export type Store = EngineState &
     setBodyCategory: (category: BodyCategory) => void
     cycleNudgeStep: () => void
     setCardCollapsed: (on: boolean) => void
-    unlockAchievement: (id: string) => void
-    dismissUnlocked: () => void
-    toggleBigVehicles: () => void
     toggleClouds: () => void
   }
 
@@ -54,13 +46,8 @@ export const useStore = create<Store>((set) => ({
   bodyCategory: 'planets',
   nudgeStep: 1,
   cardCollapsed: readCardCollapsed(),
-  achievements: readAchievements(),
-  unlocked: null,
-  bigVehicles: false,
-  firstPerson: false,
   issView: false,
   clouds: false,
-  slowMotion: true,
   setEngine: (engine) => set({ engine }),
   applyPatch: (patch) => set((s) => mergePatch(s, patch)),
   togglePanel: (panel) => set((s) => ({ panel: s.panel === panel ? null : panel })),
@@ -69,22 +56,10 @@ export const useStore = create<Store>((set) => ({
     writeCardCollapsed(cardCollapsed)
     set({ cardCollapsed })
   },
-  unlockAchievement: (id) =>
-    set((s) => {
-      const achievements = s.achievements.includes(id) ? s.achievements : [...s.achievements, id]
-      writeAchievements(achievements)
-      return { achievements, unlocked: id }
-    }),
-  dismissUnlocked: () => set({ unlocked: null }),
   toggleClouds: () =>
     set((s) => {
       s.engine?.setClouds(!s.clouds)
       return { clouds: !s.clouds }
-    }),
-  toggleBigVehicles: () =>
-    set((s) => {
-      s.engine?.setBigVehicles(!s.bigVehicles)
-      return { bigVehicles: !s.bigVehicles }
     }),
   cycleNudgeStep: () => set((s) => ({ nudgeStep: (s.nudgeStep + 1) % NUDGE_STEPS.length })),
 }))

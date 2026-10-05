@@ -9,10 +9,9 @@ export function attachControls(canvas, cam, onClick) {
   const zoom = f => {   // f > 1 = on s'éloigne
     if (cam.eg) { cam.eg.dist = Math.max(2 / R_KM, Math.min(40, cam.eg.dist * f)); return; }   // vue au sol : on se rapproche / s'éloigne de la cible
     if (cam.fp) { cam.fp.fov = Math.max(20, Math.min(100, (cam.fp.fov || 60) * (f > 1 ? 1.08 : 1 / 1.08))); return; }   // première personne : la molette règle l'ouverture du champ
-    if (cam.mode === 'launch') { cam.zoomFit = false; cam.launchK = Math.max(1e-7, Math.min(1e7, cam.launchK * f)); }   // zoom manuel sur la caméra auto de la fusée
-    else if (cam.mode === 'earth') cam.goal.dist = 1 + Math.min(EARTH_MAX_DIST, Math.max(2 / R_KM, (cam.goal.dist - 1) * f));   // on zoome sur l'altitude (min 2 km)
+    if (cam.mode === 'earth') cam.goal.dist = 1 + Math.min(EARTH_MAX_DIST, Math.max(2 / R_KM, (cam.goal.dist - 1) * f));   // on zoome sur l'altitude (min 2 km)
     else if (cam.mode === 'solar') cam.goal.dist = Math.min(EARTH_MAX_DIST, Math.max(cam.minDist || 1.5, cam.goal.dist * f));   // vue Soleil / Lune : de 1,5 rayon terrestre à 3·10⁵ (≈ 13 UA)
-    else cam.goal.dist = Math.min(41 * (cam.vk || 1), Math.max(0.1 * (cam.vk || 1) / R_KM, cam.goal.dist * f));                                    // autour de l'ISS (min 100 m)
+    else cam.goal.dist = Math.min(41, Math.max(0.1 / R_KM, cam.goal.dist * f));                                    // autour de l'ISS (min 100 m)
     
   };
   const rotate = (dx, dy) => {
@@ -27,7 +26,7 @@ export function attachControls(canvas, cam, onClick) {
       return;
     }
     cam.goal.lon -= dx * k; cam.goal.lat = Math.max(-89.5, Math.min(89.5, cam.goal.lat + dy * k));
-    cam.lon = cam.goal.lon; cam.lat = cam.goal.lat; cam.fly = 0; if (cam.mode === 'launch') cam.userDir = true;   // l'utilisateur reprend la main
+    cam.lon = cam.goal.lon; cam.lat = cam.goal.lat; cam.fly = 0;
   };
   on(canvas, 'pointerdown', e => { canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); moved = 0; canvas.classList.add('drag'); if (ptrs.size === 2) pinch = 0; });
   on(canvas, 'pointermove', e => {

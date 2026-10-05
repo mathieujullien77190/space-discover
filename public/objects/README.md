@@ -1,12 +1,14 @@
 # Ajouter un objet : un dossier, un JSON
 
+> **Archivage du 2026-10-05** : les fusées, sondes, navette et autres engins lançables (Ariane 5, navette, Voyager, Spoutnik 2…) sont archivés dans `_archive/fusees-histoires/public/objects/` ; le projet ne garde que les **astres** (`kind: "body"`) et l'**ISS** (`live: true`). Les sections de ce guide sur les paliers de poussée, les pièces larguées (`parts`, `release`) et le dessin d'une fusée (`visual.stack`) décrivent le format des objets archivés ; le moteur n'affiche plus de lancement. Le format « astre » et « satellite en orbite » (`start.orbit`) reste valable.
+
 Un objet = **un dossier** `objects/<nom>/` qui contient `<nom>.json` (et, s'il en a, son modèle 3D et ses pièces larguables). Aucun code à toucher.
 
 | Je veux… | Je fais |
 |---|---|
 | **modifier** un objet | j'édite son JSON, je recharge la page (sur http le JSON est relu à chaque lancement) |
 | **ajouter** un objet | je crée `objects/<nom>/<nom>.json`, puis `npm start` (il régénère la liste tout seul ; ou `node tools/make-objects.js`) |
-| le voir | bouton « 🚀 Fusées » (choisir l'objet, « Lancer ») — ou « 🛰 Satellites » si `"live": true` |
+| le voir | un astre : menu « 🌌 Astres » ; l'ISS : bouton « 🛰 ISS » |
 
 ## Le plus petit objet
 
