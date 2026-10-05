@@ -468,6 +468,7 @@ describe('createEngine (rendu factice)', () => {
     engine.stopRocket()
   })
   it('fond de carte plan / relief : choix pris en compte (rien n’est chargé hors de 900 km)', () => {
+    expect(engine._map().style).toBe('clean')                                   // par défaut : carte détaillée sans noms sous 400 km
     engine.setMapStyle('street'); engine._frame(performance.now() + 100)
     expect(engine._map()).toMatchObject({ style: 'street', shown: false, tiles: 0 })
     engine.setMapStyle('terrain'); engine._frame(performance.now() + 200)

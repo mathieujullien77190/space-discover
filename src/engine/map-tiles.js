@@ -4,14 +4,16 @@
 // Ce sont des SERVICES EN LIGNE tiers : il faut citer leurs crédits (MAP_STYLES[style].credit) et respecter leurs règles d'usage (usage raisonnable, pas de téléchargement en masse).
 export const MAP_STYLES = {
   street: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', credit: 'Esri, HERE, Garmin, USGS, NGA, © OpenStreetMap contributors', zMax: 17 },
-  clean: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}', credit: 'Esri, GEBCO, NOAA, National Geographic, DeLorme, HERE, Geonames.org, and other contributors', zMax: 10 },   // SANS noms de villes : relief, forêts, lacs et rivières, côtes (au-delà du niveau 10 : pas de données)
+  clean: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}', credit: 'Esri, GEBCO, NOAA, National Geographic, DeLorme, HERE, Geonames.org, and other contributors', zMax: 10, maxAltKm: 400 },   // SANS noms de villes : relief, forêts, lacs et rivières, côtes (au-delà du niveau 10 : pas de données)
   terrain: { url: 'https://a.tile.opentopomap.org/{z}/{x}/{y}.png', credit: '© OpenStreetMap contributors, SRTM · style © OpenTopoMap (CC-BY-SA)', zMax: 17 },
 };
 export const MAP_URL = MAP_STYLES.street.url;
 export const MAP_CREDIT = MAP_STYLES.street.credit;
 export const MAP_Z_MIN = 3, MAP_Z_MAX = 17;   // niveaux de zoom utilisés
 export const MAP_RADIUS = 3;                    // grille de (2 × 3 + 1)² = 49 tuiles autour du point regardé
-export const MAP_MAX_ALT_KM = 900;              // au-dessus : la carte dessinée de la Terre reste affichée
+export const MAP_MAX_ALT_KM = 900;              // au-dessus : la carte dessinée de la Terre reste affichée (un style peut fixer son propre `maxAltKm` : « clean » = 400 km)
+export const MAP_HYSTERESIS = 1.12;             // une fois affichée, la carte détaillée ne disparaît qu'à 12 % au-dessus du seuil (pas de clignotement)
+export const mapMaxAlt = style => (MAP_STYLES[style] && MAP_STYLES[style].maxAltKm) || MAP_MAX_ALT_KM;
 const R2D = 180 / Math.PI, EARTH_CIRC_KM = 40075.017;
 
 export const tileUrl = (z, x, y, template) => (template || MAP_URL).replace('{z}', z).replace('{x}', x).replace('{y}', y);

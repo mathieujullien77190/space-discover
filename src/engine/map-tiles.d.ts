@@ -1,10 +1,12 @@
-export const MAP_STYLES: Record<'street' | 'clean' | 'terrain', { url: string; credit: string; zMax: number }>
+export const MAP_STYLES: Record<'street' | 'clean' | 'terrain', { url: string; credit: string; zMax: number; maxAltKm?: number }>
 export const MAP_URL: string
 export const MAP_CREDIT: string
 export const MAP_Z_MIN: number
 export const MAP_Z_MAX: number
 export const MAP_RADIUS: number
 export const MAP_MAX_ALT_KM: number
+export const MAP_HYSTERESIS: number
+export function mapMaxAlt(style: string): number
 export function tileUrl(z: number, x: number, y: number, template?: string): string
 export function tilesAt(z: number): number
 export function tileLon(x: number, z: number): number

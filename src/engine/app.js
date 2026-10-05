@@ -54,7 +54,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const world = new THREE.Group(); scene.add(world);
   const inertial = new THREE.Group(); scene.add(inertial);
   const earth = buildEarth(renderer); world.add(earth);
-  const mapLayer = createMapLayer(earth, renderer); let mapStyle = 'drawn', mapShown = false;
+  const mapLayer = createMapLayer(earth, renderer); let mapStyle = 'clean', mapShown = false;   // par défaut : carte dessinée de loin, carte détaillée SANS noms sous 400 km
   const clouds = createClouds(earth, renderer); let cloudsOn = false;   // couverture nuageuse quasi temps réel (option)   // fond de carte « plan » (type Google Maps) : tuiles Web Mercator, option
   // NIVEAUX DE DÉTAIL selon la taille à l'écran (en pixels de rayon) : la Terre (1 048 576 triangles !) et les ~35 sphères d'astres (9 000 triangles chacune) n'étaient pas allégées quand elles ne font que quelques pixels.
   // Les géométries sont partagées (un cache par nombre de segments) ; une hystérésis (±15 %) évite de changer de niveau à chaque image.

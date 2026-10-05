@@ -1,5 +1,5 @@
 // Fond de carte « plan » : mathématiques des tuiles Web Mercator (pures) : tuile de Paris, bornes, zoom selon l'altitude, grille autour du point regardé.
-import { MAP_STYLES, mapTiles, mapZoom, mercY, tileAt, tileBounds, tileUrl } from '../../src/engine/map-tiles.js';
+import { MAP_STYLES, mapMaxAlt, mapTiles, mapZoom, mercY, tileAt, tileBounds, tileUrl } from '../../src/engine/map-tiles.js';
 
 const fails = [], check = (c, m) => { console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if (!c) fails.push(m); };
 const p = tileAt(2.3522, 48.8566, 10);
@@ -23,4 +23,5 @@ check(tileUrl(5, 1, 2, MAP_STYLES.street.url) === 'https://server.arcgisonline.c
 check(tileUrl(5, 1, 2, MAP_STYLES.terrain.url) === 'https://a.tile.opentopomap.org/5/1/2.png' && /\{z\}/.test(MAP_STYLES.street.url), 'URLs : remplacement de {z}/{x}/{y}');
 check(MAP_STYLES.street.credit.includes('Esri') && MAP_STYLES.terrain.credit.includes('OpenTopoMap'), 'crédits des deux fonds présents');
 check(MAP_STYLES.clean.zMax === 10 && MAP_STYLES.clean.url.includes('World_Ocean_Base'), 'fond sans noms : Esri World Ocean Base, niveau 10 au plus');
+check(mapMaxAlt('clean') === 400 && mapMaxAlt('street') === 900, 'seuil de la carte détaillée sans noms : 400 km (autres : 900 km)');
 if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }

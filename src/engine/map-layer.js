@@ -2,7 +2,7 @@
 // (même principe que les photos aériennes de earth.js : rayon PATCH_R, au-dessus du maillage de la Terre). Réseau nécessaire (http seulement) ; sans réseau la carte dessinée reste.
 import * as THREE from 'three';
 import { PATCH_R, ll } from './earth.js';
-import { MAP_MAX_ALT_KM, MAP_STYLES, mapTiles, mapZoom, mercY, tileBounds, tileUrl } from './map-tiles.js';
+import { MAP_HYSTERESIS, MAP_STYLES, mapMaxAlt, mapTiles, mapZoom, mercY, tileBounds, tileUrl } from './map-tiles.js';
 
 const MAX_CACHED = 140;   // tuiles gardées en mémoire (≈ 140 × 350 Ko de GPU) : les plus anciennes sont libérées
 const MAX_LOADING = 8;    // téléchargements simultanés
@@ -48,7 +48,8 @@ export function createMapLayer(parent, renderer) {
     // à chaque image : on = couche demandée ; camAlt (km), cl / co = latitude / longitude sous la caméra (°), fov (°), aspect ; renvoie vrai quand le plan est affiché
     update({ on, style: st, camAlt, cl, co, fov, aspect, http }) {
       if (st) setStyle(st);
-      enabled = !!on && !!http && camAlt < MAP_MAX_ALT_KM;
+      const lim = mapMaxAlt(style) * (enabled ? MAP_HYSTERESIS : 1);   // seuil d'affichage (hystérésis : pas de clignotement)
+      enabled = !!on && !!http && camAlt < lim;
       if (!enabled) { group.visible = false; if (!on || camAlt > 3000) for (const [k, t] of [...tiles]) free(k, t); return false; }
       tick++;
       const z = Math.min(mapZoom(camAlt, cl, fov, aspect), MAP_STYLES[style].zMax), want = mapTiles(co, cl, z);
