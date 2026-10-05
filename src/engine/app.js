@@ -125,6 +125,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     else if (m === 'earth') { if (iss) { cam.goal.lat = iss.lat * 0.7; cam.goal.lon = iss.lon; } cam.goal.dist = 3.4; snapCam(); }
   };
   const goEarth = () => setMode('earth');
+  const selectView = id => { const b = BODY.get(id); if (b && b.menu.mode === 'earth') goEarth(); else goSolar(id); };   // menu et clics sur la scène : la Terre ramène à la vue Terre, les autres astres à leur vue
   const goSolar = target => {   // vues Soleil / Lune : repère inertiel, cible = astre ; distance de la vue : son JSON
     solarTarget = target; setMode('solar'); cam.goal.dist = BODY.get(target).menu.view.distanceUnits;
     const d = ECLIPTIC_POLE.clone().add(tmp.set(0.35, 0, 0.1)).normalize(); cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; snapCam();
@@ -242,8 +243,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   // ---------- clics sur la scène : l'ISS et les astres sont cliquables ----------
   let issScreen = null;   // position écran de l'ISS si visible ; celles des astres sont dans bodyObjs[id].screen
   const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches, HIT = touch ? 42 : 26, near = (p, r, x, y) => !!p && Math.hypot(x - p[0], y - p[1]) < r;
-  const bodyAt = (x, y) => { for (const id in bodyObjs) { const o = bodyObjs[id]; if (o.screen && o.b.menu && o.b.menu.view && near(o.screen, HIT + (o.b.hitExtraPx || 0), x, y)) return id; } return null; };
-  disposers.push(attachControls(canvas, cam, (x, y) => { if (near(issScreen, HIT, x, y)) goIss(); else { const id = bodyAt(x, y); if (id) goSolar(id); } }));
+  const bodyAt = (x, y) => { for (const id in bodyObjs) { const o = bodyObjs[id]; if (o.screen && o.b.menu && (o.b.menu.view || o.b.menu.mode === 'earth') && near(o.screen, HIT + (o.b.hitExtraPx || 0), x, y)) return id; } return null; };
+  disposers.push(attachControls(canvas, cam, (x, y) => { if (near(issScreen, HIT, x, y)) goIss(); else { const id = bodyAt(x, y); if (id) selectView(id); } }));
   const onMove = e => canvas.classList.toggle('hand', near(issScreen, HIT, e.clientX, e.clientY) || !!bodyAt(e.clientX, e.clientY));
   canvas.addEventListener('pointermove', onMove); disposers.push(() => canvas.removeEventListener('pointermove', onMove));
 
@@ -314,7 +315,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
           const sv = bpos[STAR], rAU = Math.hypot(v.x - sv.x, v.y - sv.y, v.z - sv.z) / AU_U, tl = b.appearance.tail, k = Math.max(0, 1 - rAU / 3.5) / Math.pow(Math.max(0.3, rAU), 1.5), len = tl.lengthKmAt1AU / R_KM * k;
           o.tail.visible = len > ru * 4; if (o.tail.visible) { const dir = v.clone().sub(sv).normalize(); o.tail.position.copy(v); o.tail.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir); const w = tl.widthKm / 2 / R_KM * Math.sqrt(Math.min(1, k)); o.tail.scale.set(Math.max(w, ru), len, Math.max(w, ru)); }
         }
-        if (o.orbitG) { o.orbitG.position.copy(parent || bpos[BODY.origin()]); o.orbitG.visible = solarMode || camera.position.length() > 300; }   // l'orbite de la Terre se voit aussi en vue Terre, dézoomée
+        if (o.orbitG) { o.orbitG.position.copy(parent || bpos[BODY.origin()]); o.orbitG.visible = solarMode || cam.mode === 'earth' || camera.position.length() > 300; }   // l'orbite de la Terre reste affichée en vue Terre (de près comme de loin), comme celle de Mars en vue Mars ; masquée seulement en vue ISS / fusée
 
         if (o.dot) { const d = b.dot, shown = (!d.onlyInSolarView || solarMode) && cam.dist > (d.minDistanceUnits || 0) && !(solarMode && solarTarget === id && cam.dist < (d.hideBelowUnits || 0)); o.dot.visible = shown && !masked(id); const at = o.dot.geometry.attributes.position; at.setXYZ(0, v.x, v.y, v.z); at.needsUpdate = true; }
         if (o.loop) {   // trace de la trajectoire autour du corps central : passé et avenir, recalculée tous les 0,05 jour, collée à l'astre à chaque image
@@ -332,7 +333,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
         if (o.label) {   // étiquette : nom (mesures : diamètre) ; la Terre n'est écrite que de loin ou en mode mesures
           const lb = b.label, dKm = fr(2 * b.radiusKm), txt = metric && lb.metricText ? lb.metricText.replace('{diameterKm}', dKm).replace('{earths}', fr(2 * b.radiusKm / (2 * R_KM))) : lb.text; if (o.label.textContent !== txt) o.label.textContent = txt;
           const on = b.sceneOrigin ? ((solarMode || cam.mode === 'earth') && cam.dist > 300) || (metric && cam.mode === 'earth' && cam.dist > 6) : camera.position.distanceTo(ab) > (lb.minDistanceRadii != null ? lb.minDistanceRadii * ru : lb.minDistanceUnits || 0);
-          o.screen = proj(o.label, ab, on && !masked(id)); if (b.sceneOrigin) o.screen = null;
+          o.screen = proj(o.label, ab, on && !masked(id)); if (b.sceneOrigin && cam.mode === 'earth') o.screen = null;   // la Terre se touche (retour à la vue Terre) depuis les vues d'astre, pas depuis la vue Terre elle-même
         }
       }
     } else { for (const id in bodyObjs) { const o = bodyObjs[id]; if (o.label) o.label.style.display = 'none'; o.screen = null; } }
@@ -462,7 +463,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   return {
     // pour les tests et l'interface : exécute une image sans requestAnimationFrame
     _frame: frame,
-    selectView: id => { const b = BODY.get(id); if (b && b.menu.mode === 'earth') goEarth(); else goSolar(id); },
+    selectView,
     goIss, nudge, setSimSpeed, resetTime, setFeature, setMetric: v => { metric = !!v; },
     startRocket, stopRocket, setRocketSpeed, followComponent, toggleComponentInfo,
     dispose() {

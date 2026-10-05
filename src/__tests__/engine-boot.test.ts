@@ -59,6 +59,19 @@ describe('createEngine (rendu factice)', () => {
     const terre = [...overlay.querySelectorAll<HTMLElement>('.eng-l3d')].find((e) => e.textContent === 'Terre')
     expect(terre?.style.display).toBe('block')
   })
+  it('vue éloignée : un clic sur la Terre ramène à la vue Terre (comme Mars mène à sa vue)', async () => {
+    engine.selectView('sun')
+    await new Promise((r) => setTimeout(r, 450))
+    for (let i = 0; i < 3; i++) engine._frame(performance.now() + 1000 + i * 100)
+    const terre = [...overlay.querySelectorAll<HTMLElement>('.eng-l3d')].find((e) => e.textContent === 'Terre')
+    const m = /translate[(]([-0-9.]+)px,([-0-9.]+)px[)]/.exec(terre?.style.transform ?? '')
+    expect(m).not.toBeNull()
+    const x = Number(m?.[1]) - 10, y = Number(m?.[2]) + 8   // le nom est posé à (+10, −8) du point de l'astre
+    ;(canvas as unknown as { setPointerCapture: () => void }).setPointerCapture = () => {}
+    const fire = (type: string) => { const e = new MouseEvent(type, { clientX: x, clientY: y, bubbles: true }); Object.assign(e, { pointerId: 1 }); canvas.dispatchEvent(e) }
+    fire('pointerdown'); fire('pointerup')
+    expect(state.view).toEqual({ mode: 'earth', selected: 'earth' })
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)
