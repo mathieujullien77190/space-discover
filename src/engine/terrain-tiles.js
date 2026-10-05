@@ -106,3 +106,8 @@ export function terrainFallbacks(want, isReady) {
   }
   return [...out.values()].sort((a, b) => a.d - b.d);
 }
+
+// nombre de facettes par côté d'une tuile : la corde d'une facette plonge sous la sphère de R · θ² / 8 (θ = angle de la facette) ; pour que la tuile reste AU-DESSUS du maillage de la Terre (niveau de la mer à ≈ 50 m, SEA_LEVEL_OFFSET)
+// il faut θ ≤ 0,4° (flèche ≈ 39 m) : les grosses tuiles lointaines (45° au niveau 3) ont donc besoin de beaucoup de facettes, sinon la carte dessinée perce en dents de scie près de l'horizon.
+export const MAX_FACET_DEG = 0.4;
+export const tileSegments = (bounds, base, max = 96) => Math.max(base, Math.min(max, Math.ceil(Math.max(bounds[1] - bounds[0], bounds[3] - bounds[2]) / MAX_FACET_DEG)));

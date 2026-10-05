@@ -1,5 +1,5 @@
 // Relief + imagerie satellite : maths des tuiles Web Mercator, décodage Terrarium, interpolation, niveau de zoom, grille, rayon des sommets.
-import { DEM_URL, IMAGERY_URL, SEA_LEVEL_OFFSET, TERRAIN_EXAGGERATION, horizonKm, terrainFallbacks, terrainLevels, sampleDem, terrainTiles, terrainZoom, terrariumElevation, tileAt, tileBounds, tileHeights, tileUrl, vertexRadius } from '../../src/engine/terrain-tiles.js';
+import { DEM_URL, IMAGERY_URL, SEA_LEVEL_OFFSET, TERRAIN_EXAGGERATION, horizonKm, terrainFallbacks, terrainLevels, tileSegments, MAX_FACET_DEG, sampleDem, terrainTiles, terrainZoom, terrariumElevation, tileAt, tileBounds, tileHeights, tileUrl, vertexRadius } from '../../src/engine/terrain-tiles.js';
 
 const fails = [], check = (c, m) => { console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if (!c) fails.push(m); };
 const p = tileAt(2.3522, 48.8566, 10);
@@ -41,4 +41,8 @@ const fbs = terrainFallbacks(wantFb, key => key === '5/12/6');
 check(fbs.length === 1 && fbs[0].key === '4/5/3' && fbs[0].z === 4 && !fbs[0].dem && fbs[0].k === 1, 'tuiles de secours : les deux tuiles manquantes (5/10/6, 5/11/6) ont la même parente 4/5/3, la tuile prête n’en demande pas');
 check(terrainFallbacks(wantFb, () => true).length === 0, 'tout est prêt : aucune tuile de secours');
 check(terrainFallbacks([{ x: 0, y: 0, z: 3, key: '3/0/0' }], () => false).length === 0, 'au niveau de zoom minimal : pas de parente');
+const sag = (b, seg) => 6378137 * (1 - Math.cos((Math.max(b[1] - b[0], b[3] - b[2]) / seg / 2) * Math.PI / 180));
+const bz5 = tileBounds(16, 11, 5), bz3 = tileBounds(4, 2, 3), bz10 = tileBounds(518, 352, 10);
+check(sag(bz5, tileSegments(bz5, 12)) < 6378137 * SEA_LEVEL_OFFSET, 'tuile lointaine z5 : ' + tileSegments(bz5, 12) + ' facettes, la corde plonge de ' + sag(bz5, tileSegments(bz5, 12)).toFixed(0) + ' m < ' + Math.round(6378137 * SEA_LEVEL_OFFSET) + ' m de marge (sinon la carte dessinée perce)');
+check(tileSegments(bz3, 12) === 96 && tileSegments(bz10, 12) === 12 && tileSegments(bz10, 32) === 32 && MAX_FACET_DEG === 0.4, 'z3 : plafonné à 96 facettes ; z10 : le minimum demandé suffit');
 if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }

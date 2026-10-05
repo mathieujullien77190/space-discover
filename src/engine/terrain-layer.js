@@ -2,7 +2,7 @@
 // Visible sous TERRAIN_MAX_ALT_KM ; au-dessus (ou hors ligne) la carte dessinée de la Terre reste. Réseau nécessaire (http seulement). Mêmes principes que les photos aériennes de earth.js (rayon proche de 1, au-dessus du maillage de la Terre).
 import * as THREE from 'three';
 import { ll } from './earth.js';
-import { DEM_URL, IMAGERY_URL, SEA_LEVEL_OFFSET, TERRAIN_EXAGGERATION, TERRAIN_GLOW, TERRAIN_HYSTERESIS, TERRAIN_MAX_ALT_KM, mercY, terrainTiles, terrainFallbacks, terrainLevels, tileBounds, tileHeights, tileUrl, vertexRadius } from './terrain-tiles.js';
+import { DEM_URL, IMAGERY_URL, SEA_LEVEL_OFFSET, TERRAIN_EXAGGERATION, TERRAIN_GLOW, TERRAIN_HYSTERESIS, TERRAIN_MAX_ALT_KM, mercY, terrainTiles, terrainFallbacks, terrainLevels, tileBounds, tileSegments, tileHeights, tileUrl, vertexRadius } from './terrain-tiles.js';
 
 const MAX_CACHED = 320;   // tuiles gardées en mémoire (≈ 320 × (image 350 Ko + relief) de mémoire graphique) : les plus anciennes sont libérées
 const MAX_LOADING = 16;   // images en cours de téléchargement
@@ -32,7 +32,8 @@ export function createTerrainLayer(parent, renderer, opts) {
   const free = (key, t) => { if (t.mesh) { group.remove(t.mesh); if (t.mesh.material.map) t.mesh.material.map.dispose(); t.mesh.material.dispose(); t.mesh.geometry.dispose(); } t.dead = true; tiles.delete(key); };
   const build = (tl, t) => {   // imagerie ET relief reçus : on construit la tuile
     try {
-      const b = tileBounds(tl.x, tl.y, tl.z), seg = tl.dem ? TILE_SEGMENTS : FAR_SEGMENTS; let heights;
+      const b = tileBounds(tl.x, tl.y, tl.z), seg = tileSegments(b, tl.dem ? TILE_SEGMENTS : FAR_SEGMENTS); let heights;   // assez de facettes pour que la tuile reste au-dessus du maillage de la Terre
+
       if (tl.dem) { const w = t.dem.naturalWidth || 256, h = t.dem.naturalHeight || 256, c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.drawImage(t.dem, 0, 0, w, h); heights = tileHeights(g.getImageData(0, 0, w, h).data, w, h, seg, seg, b); }
       else heights = new Float32Array((seg + 1) * (seg + 1));   // tuiles lointaines : image seulement, niveau de la mer (le relief n'y serait pas visible)
       const tex = new THREE.Texture(t.img); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); tex.needsUpdate = true;

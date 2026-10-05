@@ -28,3 +28,5 @@ export const TERRAIN_FAR_RADIUS: number
 export function horizonKm(altKm: number): number
 export function terrainLevels(lon: number, lat: number, altKm: number, fovDeg: number, aspect: number): { k: number; z: number; dem: boolean; tiles: { x: number; y: number; z: number; key: string; d: number }[] }[]
 export function terrainFallbacks(want: { x: number; y: number; z: number; key: string; k?: number; d?: number }[], isReady: (key: string) => boolean): { x: number; y: number; z: number; key: string; k: number; dem: boolean; d: number; fallback: boolean }[]
+export const MAX_FACET_DEG: number
+export function tileSegments(bounds: [number, number, number, number], base: number, max?: number): number
