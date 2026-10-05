@@ -438,6 +438,7 @@ describe('createEngine (rendu factice)', () => {
     expect(day.day).toBeGreaterThan(0.9)                                      // midi : plein jour (le ciel bleu est celui de l’atmosphère)
     expect(day.atmSun).toBe(1)                                                // l’atmosphère tient compte du Soleil
     expect(day.stars).toBe(false)                                             // et pas d’étoiles
+    expect(day.starOpacity.every((o) => o < 0.1)).toBe(true)
     engine.setDate(Date.UTC(2026, 9, 5, 0, 0, 0)); for (let i = 0; i < 2; i++) engine._frame(performance.now() + 900 + i * 100)
     const night = engine._obs()
     expect(night.stars).toBe(true)                                            // minuit : ciel étoilé

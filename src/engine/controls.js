@@ -3,12 +3,13 @@ import { DEG, R_KM, ll } from './earth.js';
 
 // Contrôles : glisser = tourner autour de la cible, molette / pincement = zoom, clic sans bouger = onClick(x, y).
 export const ISS_MIN_KM = 0.001;   // zoom minimal autour de l'ISS : 1 m
+export const FP_FOV_MIN = 1;   // champ minimal de la vue depuis l'ISS / l'observatoire (zoom optique) : la Lune ne fait que 0,5°, à 70° de champ elle mesure 6 px, à 5° environ 80 px
 export const EARTH_MAX_DIST = 1e10;   // zoom arrière maximal de la vue Terre (rayons terrestres) : pratiquement illimité (≈ 7 années-lumière ; 1 UA = 23 455 rayons)
 export function attachControls(canvas, cam, onClick) {
   const ptrs = new Map(); let pinch = 0, moved = 0; const offs = [], on = (t, ev, fn, o) => { t.addEventListener(ev, fn, o); offs.push(() => t.removeEventListener(ev, fn, o)); };
   const tanH = () => Math.tan(cam.fov * DEG / 2);
   const zoom = f => {   // f > 1 = on s'éloigne
-    if (cam.fp) { cam.fp.fov = Math.max(20, Math.min(100, (cam.fp.fov || 60) * (f > 1 ? 1.08 : 1 / 1.08))); return; }   // première personne : la molette règle l'ouverture du champ
+    if (cam.fp) { cam.fp.fov = Math.max(FP_FOV_MIN, Math.min(100, (cam.fp.fov || 60) * (f > 1 ? 1.14 : 1 / 1.14))); return; }   // première personne : la molette règle l'ouverture du champ
     if (cam.mode === 'earth') cam.goal.dist = 1 + Math.min(EARTH_MAX_DIST, Math.max(2 / R_KM, (cam.goal.dist - 1) * f));   // on zoome sur l'altitude (min 2 km)
     else if (cam.mode === 'solar') cam.goal.dist = Math.min(EARTH_MAX_DIST, Math.max(cam.minDist || 1.5, cam.goal.dist * f));   // vue Soleil / Lune : de 1,5 rayon terrestre à 3·10⁵ (≈ 13 UA)
     else cam.goal.dist = Math.min(41, Math.max(ISS_MIN_KM / R_KM, cam.goal.dist * f));                                    // autour de l'ISS (min 1 m)

@@ -29,16 +29,30 @@ export const STAR_BINS = [
 ];
 export const starBin = mag => STAR_BINS.findIndex(b => mag < b.max);
 
+// SCINTILLEMENT : l'atmosphère fait vaciller la lumière des étoiles. `twinkle(timeS, amp)` module la luminosité de chaque étoile (phase et fréquence propres, 2,5 à 8 rad/s) de ± amp ; fonction pure de l'instant
+export const TWINKLE_MIN_RAD_S = 2.5, TWINKLE_MAX_RAD_S = 8;
+export const twinkleFactor = (timeS, phase, freq, amp) => 1 + amp * Math.sin(timeS * freq + phase) * (0.6 + 0.4 * Math.sin(timeS * freq * 0.37 + phase * 1.7));
+
+// DISPARITION AU LEVER / COUCHER : à mesure que le jour se lève (day de 0 à 1) les étoiles s'éteignent PEU À PEU, les plus faibles d'abord (les plus brillantes, comme Sirius ou Vénus, restent visibles jusqu'au jour franc)
+export const STAR_FADE_LIMITS = [0.9, 0.8, 0.65, 0.5, 0.38, 0.28];   // par classe d'éclat : valeur de `day` à laquelle la classe a complètement disparu
+export const starOpacity = (bin, day) => Math.max(0, Math.min(1, 1 - day / STAR_FADE_LIMITS[Math.min(bin, STAR_FADE_LIMITS.length - 1)]));
+
 // groupe de points (une classe d'éclat = un objet Points : PointsMaterial n'a qu'une taille) de rayon 1, à replacer sur la caméra et agrandir à chaque image
 export function createStars(scene) {
-  const group = new THREE.Group(), tmp = new THREE.Vector3(), bins = STAR_BINS.map(() => []);
+  const group = new THREE.Group(), tmp = new THREE.Vector3(), bins = STAR_BINS.map(() => []), tw = [];   // tw : une entrée par classe d'éclat { attr, base, phase, freq }
   for (const [ra, dec, mag, bv] of STARS) { const b = starBin(mag); starVector(ra, dec, tmp); const c = bvColor(bv), l = STAR_BINS[b].light; bins[b].push(tmp.x, tmp.y, tmp.z, c[0] * l, c[1] * l, c[2] * l); }
   bins.forEach((arr, i) => {
     const n = arr.length / 6, pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
     for (let k = 0; k < n; k++) { pos.set(arr.slice(6 * k, 6 * k + 3), 3 * k); col.set(arr.slice(6 * k + 3, 6 * k + 6), 3 * k); }
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    const p = new THREE.Points(g, new THREE.PointsMaterial({ size: STAR_BINS[i].size, sizeAttenuation: false, vertexColors: true, depthWrite: false })); p.frustumCulled = false; group.add(p);
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); const colA = new THREE.BufferAttribute(col, 3); g.setAttribute('color', colA);
+    const phase = new Float32Array(n), freq = new Float32Array(n); for (let k = 0; k < n; k++) { phase[k] = ((k * 2654435761) % 6283) / 1000; freq[k] = TWINKLE_MIN_RAD_S + (((k * 40503) % 1000) / 1000) * (TWINKLE_MAX_RAD_S - TWINKLE_MIN_RAD_S); }   // graines fixes : le scintillement est reproductible
+    tw.push({ attr: colA, base: col.slice(), phase, freq });
+    const p = new THREE.Points(g, new THREE.PointsMaterial({ size: STAR_BINS[i].size, sizeAttenuation: false, vertexColors: true, depthWrite: false, transparent: true })); p.userData.bin = i; p.frustumCulled = false; group.add(p);
   });
   group.frustumCulled = false; scene.add(group);
+  group.userData.twinkle = (timeS, amp) => {   // amp = 0 : étoiles fixes (dans l'espace) ; ≈ 0,2 : le scintillement de la nuit au sol (un peu, pas trop)
+    for (const t of tw) { const a = t.attr.array, n = t.phase.length; for (let k = 0; k < n; k++) { const f = amp > 0 ? twinkleFactor(timeS, t.phase[k], t.freq[k], amp) : 1; a[3 * k] = t.base[3 * k] * f; a[3 * k + 1] = t.base[3 * k + 1] * f; a[3 * k + 2] = t.base[3 * k + 2] * f; } t.attr.needsUpdate = true; }
+  };
+  group.userData.setDay = day => { for (const p of group.children) { if (p.userData.bin === undefined) continue; p.material.opacity = starOpacity(p.userData.bin, day); p.visible = p.material.opacity > 0.003; } };   // day : 0 = nuit (toutes les étoiles), 1 = plein jour (aucune)
   return group;
 }
