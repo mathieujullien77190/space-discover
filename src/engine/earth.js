@@ -82,6 +82,7 @@ export function linesMesh(kinds, radius, color, opacity) {
   m.frustumCulled = false; return m;
 }
 
+export const EARTH_MAP_URL = 'data/earth-drawn.jpg';   // fond de carte dessiné (tools/make-earth-map.mjs)
 export function buildEarth(renderer) {
   const group = new THREE.Group();
   const maxTex = renderer.capabilities.maxTextureSize, TW = Math.min(8192, maxTex), TH = TW / 2;
@@ -89,6 +90,13 @@ export function buildEarth(renderer) {
   tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy());
   const globe = new THREE.Mesh(earthGeometry(1024, 512), new THREE.MeshLambertMaterial({ map: tex }));
   group.add(globe);
+  // fond de carte DESSINÉ (Natural Earth I, domaine public : relief ombré, eau, glaciers) : remplace la peinture procédurale dès qu'il est chargé (http seulement) ; la peinture sert de repli
+  if (typeof Image !== 'undefined' && typeof document !== 'undefined') {
+    const img = new Image();
+    img.onload = () => { try { const t = new THREE.Texture(img); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = tex.anisotropy; t.needsUpdate = true; globe.material.map = t; globe.material.needsUpdate = true; tex.dispose(); } catch (e) { /* repli : la peinture reste */ } };
+    img.onerror = () => {};
+    img.src = assetUrl(EARTH_MAP_URL);
+  }
   group.add(linesMesh([2], 1.00003, 0xffffff, 0.85));        // trait de côte : contour net mer / continent
   group.add(linesMesh([0], 1.00005, 0xfff3c4, 0.9));         // frontières
   group.add(linesMesh([1], 1.00005, 0xffa566, 0.9));         // frontières contestées
