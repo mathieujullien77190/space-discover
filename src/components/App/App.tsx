@@ -15,9 +15,9 @@ export const App = () => (
     <div className={styles.hud}>
       <TopBar />
       <SubMenu />
-      <BodyCard />
       <InfoText />
     </div>
+    <BodyCard />
     <TimeBar />
     <div className={styles.bottomLeft}>
       <ViewParams />
