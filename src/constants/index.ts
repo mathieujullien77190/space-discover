@@ -38,5 +38,6 @@ export const NUDGE_STEPS: ReadonlyArray<number> = [0.5, 1, 5, 15]   // pas de r�
 export const NUDGE_FIRST_DELAY_MS = 350   // délai avant la répétition en maintenant le bouton
 export const NUDGE_REPEAT_MS = 70
 export const BIG_VEHICLES_LABEL = '🔭 Engins ×1000'   // mode « engins géants » (fusées, satellites, ISS)
-export const ISS_VIEW_LABELS = { on: '👁 Vue depuis l’ISS', off: '↩ Quitter la vue ISS', show: '🛰 Afficher l’ISS' } as const   // bouton de la barre du haut
+export const ISS_VIEW_LABELS = { on: '👁 Vue depuis l’ISS', off: '↩ Quitter la vue ISS', go: '🛰 ISS' } as const   // bouton de la barre du haut
 export const CLOUDS_LABEL = '☁ Nuages'   // couverture nuageuse quasi temps réel
+export const EARTH_LABEL = '🌍 Terre'   // retour à la vue Terre, de n'importe quelle vue

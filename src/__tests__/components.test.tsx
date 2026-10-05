@@ -12,7 +12,7 @@ import { useStore } from '@/store'
 import { initialEngineState } from '@/store/initial'
 import type { Engine } from '@/types'
 
-const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), startRocket: vi.fn(() => Promise.resolve()), stopRocket: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setRocketSpeed: vi.fn(), setBigVehicles: vi.fn(), setMapStyle: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn(), setIssShown: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
+const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), startRocket: vi.fn(() => Promise.resolve()), stopRocket: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setRocketSpeed: vi.fn(), setBigVehicles: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
 
 describe('TopBar + SubMenu', () => {
   let engine: ReturnType<typeof fakeEngine>
@@ -35,11 +35,16 @@ describe('TopBar + SubMenu', () => {
     fireEvent.click(screen.getByText('🔭 Engins ×1000'))
     expect(engine.setBigVehicles).toHaveBeenLastCalledWith(false)
   })
-  it('interrupteur « Afficher l’ISS » : cache ou montre la station, indépendamment de la vue depuis l’ISS', () => {
-    useStore.setState({ issShown: true })
+  it('bouton « Terre » : revient à la vue Terre depuis n’importe quelle vue (ISS comprise)', () => {
+    useStore.setState({ view: { ...initialEngineState.view, mode: 'iss' }, issView: false })
     render(<TopBar />)
-    fireEvent.click(screen.getByText('🛰 Afficher l’ISS'))
-    expect(engine.setIssShown).toHaveBeenLastCalledWith(false)
+    fireEvent.click(screen.getByText('🌍 Terre'))
+    expect(engine.selectView).toHaveBeenCalledWith('earth')
+  })
+  it('bouton « ISS » : va zoomer sur l’ISS', () => {
+    render(<TopBar />)
+    fireEvent.click(screen.getByText('🛰 ISS'))
+    expect(engine.goIss).toHaveBeenCalled()
   })
   it('bandeau « Vue depuis l’ISS » : le nom de la station en texte', () => {
     useStore.setState({ issView: true })
@@ -119,7 +124,7 @@ describe('TopBar + SubMenu', () => {
     expect(engine.selectView).toHaveBeenCalledWith('moon')
   })
   it('Satellites : l’ISS et les sondes ; un objet pas encore lancé à la date choisie est grisé', () => {
-    render(<><TopBar /><SubMenu /></>)
+    render(<SubMenu />)
     act(() => useStore.setState({ panel: 'satellites' }))   // panneau conservé dans le code, plus de bouton
     for (const n of ['ISS', 'Voyager 1', 'Voyager 2', 'Pioneer 10', 'Pioneer 11', 'New Horizons']) expect(screen.getByText('🛰 ' + n)).toBeInTheDocument()
     expect(screen.getByText('🛰 New Horizons')).toBeEnabled()   // date de départ : maintenant
@@ -133,14 +138,14 @@ describe('TopBar + SubMenu', () => {
     expect(screen.getByText('🛰 ISS')).toBeEnabled()            // ISS : novembre 1998
   })
   it('Satellites : seulement le bouton de l’ISS (plus de boutons Dimensions ni Trajectoire)', () => {
-    render(<><TopBar /><SubMenu /></>)
+    render(<SubMenu />)
     act(() => useStore.setState({ panel: 'satellites' }))   // panneau conservé dans le code, plus de bouton
     expect(screen.getByText('🛰 ISS')).toBeInTheDocument()
     expect(screen.queryByText(/Dimensions/)).toBeNull()
     expect(screen.queryByText(/Trajectoire/)).toBeNull()
   })
   it('Satellites : l’ISS mène à la vue ISS', () => {
-    render(<><TopBar /><SubMenu /></>)
+    render(<SubMenu />)
     act(() => useStore.setState({ panel: 'satellites' }))   // panneau conservé dans le code, plus de bouton
     fireEvent.click(screen.getByText('🛰 ISS'))
     expect(engine.goIss).toHaveBeenCalled()

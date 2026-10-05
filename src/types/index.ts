@@ -79,7 +79,6 @@ export type Engine = {
   setBigVehicles: (on: boolean) => void
   setFirstPerson: (on: boolean) => void
   setIssView: (on: boolean) => void
-  setIssShown: (on: boolean) => void
   setClouds: (on: boolean) => void
   _clouds: () => { on: boolean; state: string | null; level: string | null; visible: boolean; opacity: number }
   setViewInset: (right: number, bottom: number) => void

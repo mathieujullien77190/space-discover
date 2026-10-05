@@ -14,7 +14,6 @@ export type UiState = {
   achievements: string[]   // hauts faits débloqués (mémorisés)
   slowMotion: boolean   // histoire : ralenti aux étapes (publié par le moteur)
   clouds: boolean   // couverture nuageuse affichée
-  issShown: boolean   // l'ISS est affichée dans la scène
   issView: boolean   // vue depuis l'ISS (publié par le moteur)
   firstPerson: boolean   // vue à la première personne (publié par le moteur)
   bigVehicles: boolean   // mode « engins géants » : fusées, satellites et ISS 1 000 fois plus gros
@@ -34,7 +33,6 @@ export type Store = EngineState &
     dismissUnlocked: () => void
     toggleBigVehicles: () => void
     toggleClouds: () => void
-    toggleIssShown: () => void
   }
 
 const isPlainObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -61,7 +59,6 @@ export const useStore = create<Store>((set) => ({
   bigVehicles: false,
   firstPerson: false,
   issView: false,
-  issShown: true,
   clouds: false,
   slowMotion: true,
   setEngine: (engine) => set({ engine }),
@@ -79,11 +76,6 @@ export const useStore = create<Store>((set) => ({
       return { achievements, unlocked: id }
     }),
   dismissUnlocked: () => set({ unlocked: null }),
-  toggleIssShown: () =>
-    set((s) => {
-      s.engine?.setIssShown(!s.issShown)
-      return { issShown: !s.issShown }
-    }),
   toggleClouds: () =>
     set((s) => {
       s.engine?.setClouds(!s.clouds)

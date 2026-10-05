@@ -477,9 +477,8 @@ describe('createEngine (rendu factice)', () => {
     expect(dot(fp.up, fp.radial!)).toBeGreaterThan(0.5)
     engine.selectView('moon'); engine._frame(performance.now() + 1500)
     expect(engine._fp()).toBeNull()
-    engine.setIssShown(false); engine.goIss(); engine._frame(performance.now() + 1700)       // interrupteur « afficher l’ISS » éteint : ni modèle ni repère
-    expect(engine._dotVisible()).toBeTruthy()
-    engine.setIssShown(true)
+    engine.goIss(); engine._frame(performance.now() + 1700)                          // le bouton « ISS » zoome sur la station
+    expect(engine._fp()).toBeNull()
   })
   it('nuages : option prise en compte (rien n’est chargé tant qu’elle est éteinte)', () => {
     engine._frame(performance.now() + 100)
