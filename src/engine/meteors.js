@@ -27,7 +27,7 @@ export function createMeteors(scene, rand = Math.random) {
     const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(VERTS * 3), 3)); lg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(VERTS * 3), 3));
     const line = new THREE.Line(lg, new THREE.LineBasicMaterial({ vertexColors: true, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false })); line.frustumCulled = false; line.visible = false;
     const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
-    const head = new THREE.Points(pg, roundPointsMaterial({ color: 0xffffff, size: 4, sizeAttenuation: false, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false })); head.frustumCulled = false; head.visible = false;
+    const head = new THREE.Points(pg, roundPointsMaterial({ color: 0xffffff, size: 3.2, sizeAttenuation: false, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false })); head.frustumCulled = false; head.visible = false;
     group.add(line, head); slots.push({ line, head, active: false, t: 0, dur: 1, a: new THREE.Vector3(), b: new THREE.Vector3(), bright: 1 });
   }
   let wait = range(rand(), METEOR_GAP_S), total = 0;
@@ -68,7 +68,7 @@ export function createMeteors(scene, rand = Math.random) {
         pos.needsUpdate = col.needsUpdate = true;
         const h = slerp(s.a, s.b, hd, tmp); s.head.geometry.attributes.position.setXYZ(0, h.x, h.y, h.z); s.head.geometry.attributes.position.needsUpdate = true;
         const out = Math.max(0, Math.min(1, (u - METEOR_HEAD_SHARE) / METEOR_HEAD_FADE));   // à l'arrivée la boule ronde de la tête passe RAPIDEMENT de 100 % à 0 d'opacité (en 6 % de la durée) ; la traînée finit de s'effacer
-        s.head.material.opacity = f * (1 - out); s.line.visible = true; s.head.visible = out < 1;
+        s.head.material.opacity = (0.7 + 0.3 * s.bright) * Math.min(1, u / 0.04) * (1 - out); s.line.visible = true; s.head.visible = out < 1;   // petite BOULE ronde bien visible à la tête pendant toute la course (apparition en 4 % de la durée), puis extinction rapide
       }
     },
     spawn,
