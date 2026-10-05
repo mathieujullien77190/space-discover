@@ -2,7 +2,7 @@
 // Visible sous TERRAIN_MAX_ALT_KM ; au-dessus (ou hors ligne) la carte dessinée de la Terre reste. Réseau nécessaire (http seulement). Mêmes principes que les photos aériennes de earth.js (rayon proche de 1, au-dessus du maillage de la Terre).
 import * as THREE from 'three';
 import { ll } from './earth.js';
-import { DEM_URL, IMAGERY_URL, SEA_LEVEL_OFFSET, TERRAIN_GLOW, TERRAIN_HYSTERESIS, TERRAIN_MAX_ALT_KM, mercY, terrainTiles, terrainLevels, terrainOpacity, tileBounds, tileHeights, tileUrl, vertexRadius } from './terrain-tiles.js';
+import { DEM_URL, IMAGERY_URL, SEA_LEVEL_OFFSET, TERRAIN_EXAGGERATION, TERRAIN_GLOW, TERRAIN_HYSTERESIS, TERRAIN_MAX_ALT_KM, mercY, terrainTiles, terrainLevels, terrainOpacity, tileBounds, tileHeights, tileUrl, vertexRadius } from './terrain-tiles.js';
 
 const MAX_CACHED = 320;   // tuiles gardées en mémoire (≈ 320 × (image 350 Ko + relief) de mémoire graphique) : les plus anciennes sont libérées
 const MAX_LOADING = 16;   // images en cours de téléchargement
@@ -27,7 +27,7 @@ export function terrainTileGeometry(b, nx, ny, heights, exag) {
 
 export function createTerrainLayer(parent, renderer, opts) {
   const group = new THREE.Group(); group.visible = false; parent.add(group);
-  const tiles = new Map(), exag = (opts && opts.exaggeration) || 2;   // key → { state: 'loading' | 'ready' | 'error', t, mesh, img, dem }
+  const tiles = new Map(), exag = (opts && opts.exaggeration) || TERRAIN_EXAGGERATION;   // key → { state: 'loading' | 'ready' | 'error', t, mesh, img, dem }
   let loading = 0, tick = 0, enabled = false, opacityAlt = TERRAIN_MAX_ALT_KM, lastLevels = 0;   // opacityAlt : dernière altitude de caméra (pour les tuiles construites ensuite)
   const free = (key, t) => { if (t.mesh) { group.remove(t.mesh); if (t.mesh.material.map) t.mesh.material.map.dispose(); t.mesh.material.dispose(); t.mesh.geometry.dispose(); } t.dead = true; tiles.delete(key); };
   const build = (tl, t) => {   // imagerie ET relief reçus : on construit la tuile

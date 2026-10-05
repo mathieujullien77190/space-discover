@@ -25,7 +25,7 @@ check(a.some(t => t.x === 0) && a.some(t => t.x === 255), 'à l’antiméridien 
 check(terrainTiles(10, 84, 6).every(t => t.y >= 0 && t.y < 64), 'près du pôle : lignes limitées à la projection');
 check(vertexRadius(0) === 1 + SEA_LEVEL_OFFSET && vertexRadius(0) > 1 + 3e-6, 'niveau de la mer : au-dessus du maillage de la Terre (≈ 50 m)');
 const ev = vertexRadius(8848) - vertexRadius(0);
-check(Math.abs(ev - 8848 * TERRAIN_EXAGGERATION / 6378137) < 1e-12 && ev * 6378 > 17 && ev * 6378 < 18, 'Everest exagéré ×' + TERRAIN_EXAGGERATION + ' : ' + (ev * 6378).toFixed(1) + ' km au-dessus de la mer dans la scène');
+check(Math.abs(ev - 8848 * TERRAIN_EXAGGERATION / 6378137) < 1e-12 && ev * 6378 > 8 && ev * 6378 < 9.5, 'Everest ×' + TERRAIN_EXAGGERATION + ' : ' + (ev * 6378).toFixed(1) + ' km au-dessus de la mer dans la scène');
 check(tileUrl(5, 1, 2, IMAGERY_URL) === 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/5/2/1' && tileUrl(5, 1, 2, DEM_URL) === 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/5/1/2.png', 'URLs : ordre {z}/{y}/{x} (Esri) et {z}/{x}/{y} (Terrarium)');
 check(terrainOpacity(TERRAIN_MAX_ALT_KM) === 0 && terrainOpacity(5000) === 0, 'opacité nulle au seuil de 1 000 km et au-delà (pas de surgissement)');
 check(terrainOpacity(900) === TERRAIN_OPACITY && TERRAIN_OPACITY < 1, 'opacité pleine à 900 km : ' + TERRAIN_OPACITY + ' (< 1 : la carte dessinée éclaircit)');

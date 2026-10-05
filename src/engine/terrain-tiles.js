@@ -10,7 +10,7 @@ export const TERRAIN_Z_MIN = 3, TERRAIN_Z_MAX = 14;   // niveaux de zoom utilis�
 export const TERRAIN_RADIUS = 4;                       // grille de (2 × 4 + 1)² = 81 tuiles autour du point regardé (une couronne de plus : les côtés ne montraient que la carte floue)
 export const TERRAIN_MAX_ALT_KM = 1000;                // au-dessus : la carte dessinée de la Terre reste affichée (fondu entre 900 et 1 000 km : tuiles pleinement visibles à 900 km)
 export const TERRAIN_HYSTERESIS = 1.12;                // une fois affiché, le relief ne disparaît qu'à 12 % au-dessus du seuil
-export const TERRAIN_EXAGGERATION = 2;                 // relief exagéré ×2 (à 6 378 km de rayon, l'Everest ne fait que 0,14 % : invisible sinon)
+export const TERRAIN_EXAGGERATION = 1;                 // relief à l'échelle réelle ×1 (c'était ×2 : « les montagnes sont trop hautes ») (à 6 378 km de rayon, l'Everest ne fait que 0,14 % : invisible sinon)
 export const TERRAIN_OPACITY = 0.85;                   // opacité maximale des tuiles : la carte dessinée (claire) transparaît dessous et ÉCLAIRCIT l'imagerie satellite (souvent sombre)
 export const TERRAIN_GLOW = 0.3;                       // lumière propre ajoutée à l'imagerie (relève les ombres du relief : la face à l'ombre du Soleil n'est plus noire)
 export const TERRAIN_FADE_START = 0.9;                 // le fondu démarre à 900 km (90 % de 1 000 km) : l'imagerie apparaît en douceur au lieu de surgir
