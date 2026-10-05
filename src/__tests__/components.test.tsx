@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RocketControls from '@/components/RocketControls'
 import SubMenu from '@/components/SubMenu'
@@ -22,7 +22,18 @@ describe('TopBar + SubMenu', () => {
     expect(screen.getByText('🚀 Fusées')).toBeInTheDocument()
     expect(screen.queryByText(/Lune/)).toBeNull()
   })
-  it('Astres : trois catégories ; la Lune est dans Planètes ; Halley dans Comètes ; le Soleil dans Étoiles', () => {
+  it('Astres : la Lune n’est pas une planète : elle apparaît sous la Terre, pas sous Mars', () => {
+    render(<><TopBar /><SubMenu /></>)
+    fireEvent.click(screen.getByText('🌌 Astres'))
+    expect(screen.getByText(/Terre/)).toBeInTheDocument()
+    expect(screen.getByText(/Mars/)).toBeInTheDocument()
+    expect(screen.getByText(/Lune/)).toBeInTheDocument()
+    act(() => useStore.setState({ view: { mode: 'solar', selected: 'mars' } }))
+    expect(screen.queryByText(/Lune/)).toBeNull()
+    act(() => useStore.setState({ view: { mode: 'solar', selected: 'moon' } }))
+    expect(screen.getByText(/Lune/)).toBeInTheDocument()
+  })
+  it('Astres : trois catégories ; la Lune sous la Terre ; Halley dans Comètes ; le Soleil dans Étoiles', () => {
     render(<><TopBar /><SubMenu /></>)
     fireEvent.click(screen.getByText('🌌 Astres'))
     expect(screen.getByText('🪐 Planètes')).toBeInTheDocument()

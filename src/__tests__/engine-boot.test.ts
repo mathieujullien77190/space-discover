@@ -42,6 +42,14 @@ describe('createEngine (rendu factice)', () => {
     engine.selectView('earth')
     expect(state.view).toEqual({ mode: 'earth', selected: 'earth' })
   })
+  it('vue éloignée : la Terre est affichée en priorité, la Lune collée à elle est masquée', async () => {
+    engine.selectView('sun')
+    await new Promise((r) => setTimeout(r, 450))   // les astres sont construits 400 ms après le démarrage
+    for (let i = 0; i < 3; i++) engine._frame(performance.now() + 1000 + i * 100)
+    const label = (text: string) => [...overlay.querySelectorAll<HTMLElement>('.eng-l3d')].find((e) => e.textContent === text)
+    expect(label('Terre')?.style.display).toBe('block')
+    expect(label('Lune')?.style.display).toBe('none')
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)

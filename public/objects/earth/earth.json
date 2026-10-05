@@ -1,5 +1,6 @@
 {
   "kind": "body",
+  "displayPriority": 2,
   "bodyType": "planet",
   "name": "Terre",
   "radiusKm": 6378.137,

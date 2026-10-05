@@ -303,6 +303,10 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     solar.visible = true; solar.rotation.y = rotS;
     if (solarBuilt) {
       const fr = n => n.toLocaleString('fr-FR', { maximumFractionDigits: 0 }), proj = (el, P, on) => { const pp = P.clone().project(camera); if (on && pp.z < 1 && Math.abs(pp.x) < 1 && Math.abs(pp.y) < 1) { el.style.display = 'block'; el.style.transform = `translate(${(pp.x + 1) / 2 * innerWidth + 10}px,${(1 - pp.y) / 2 * innerHeight - 8}px)`; return [(pp.x + 1) / 2 * innerWidth, (1 - pp.y) / 2 * innerHeight]; } el.style.display = 'none'; return null; };
+      // priorité d'affichage (`displayPriority` du JSON : la Terre avant la Lune) : un astre dont le point tombe à moins de 18 px d'un astre plus prioritaire visible n'affiche ni son point ni son nom (de loin, la Lune se superposait à la Terre et la cachait)
+      const dotShown = id => { const o = bodyObjs[id]; if (!o.dot) return false; const d = o.b.dot; return (!d.onlyInSolarView || solarMode) && cam.dist > (d.minDistanceUnits || 0) && !(solarMode && solarTarget === id && cam.dist < (d.hideBelowUnits || 0)); };
+      const scr = {}; for (const id in bodyObjs) { const pp = babs[id].clone().project(camera); scr[id] = pp.z < 1 ? [(pp.x + 1) / 2 * innerWidth, (1 - pp.y) / 2 * innerHeight] : null; }
+      const masked = id => { const pr = bodyObjs[id].b.displayPriority || 0, s = scr[id]; if (!s) return false; for (const j in bodyObjs) { if (j === id || (bodyObjs[j].b.displayPriority || 0) <= pr || !scr[j] || !dotShown(j)) continue; if (Math.hypot(s[0] - scr[j][0], s[1] - scr[j][1]) < 18) return true; } return false; };
       for (const id in bodyObjs) {
         const o = bodyObjs[id], b = o.b, v = bpos[id], ab = babs[id], ru = BODY.radiusUnits(id), parent = b.around && bpos[b.around] ? bpos[b.around] : null, tr = b.trace || {};
         if (o.mesh) { o.mesh.position.copy(v); if (b.orientation === 'tidal-lock' && parent) moonQuat(v.clone().sub(parent).normalize(), ECLIPTIC_POLE, o.mesh.quaternion); else if (b.rotation) rotationQuat(b.rotation, Dd, o.mesh.quaternion); }   // rotation synchrone : toujours la même face vers le corps central
@@ -311,7 +315,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
           o.tail.visible = len > ru * 4; if (o.tail.visible) { const dir = v.clone().sub(sv).normalize(); o.tail.position.copy(v); o.tail.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir); const w = tl.widthKm / 2 / R_KM * Math.sqrt(Math.min(1, k)); o.tail.scale.set(Math.max(w, ru), len, Math.max(w, ru)); }
         }
         if (o.orbitG) { o.orbitG.position.copy(parent || bpos[BODY.origin()]); o.orbitG.visible = solarMode; }
-        if (o.dot) { const d = b.dot, shown = (!d.onlyInSolarView || solarMode) && cam.dist > (d.minDistanceUnits || 0) && !(solarMode && solarTarget === id && cam.dist < (d.hideBelowUnits || 0)); o.dot.visible = shown; const at = o.dot.geometry.attributes.position; at.setXYZ(0, v.x, v.y, v.z); at.needsUpdate = true; }
+        if (o.dot) { const d = b.dot, shown = (!d.onlyInSolarView || solarMode) && cam.dist > (d.minDistanceUnits || 0) && !(solarMode && solarTarget === id && cam.dist < (d.hideBelowUnits || 0)); o.dot.visible = shown && !masked(id); const at = o.dot.geometry.attributes.position; at.setXYZ(0, v.x, v.y, v.z); at.needsUpdate = true; }
         if (o.loop) {   // trace de la trajectoire autour du corps central : passé et avenir, recalculée tous les 0,05 jour, collée à l'astre à chaque image
           const N = 120, NF = 60;
           if (Math.abs(Dd - o.loopD) > 0.05) {
@@ -327,7 +331,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
         if (o.label) {   // étiquette : nom (mesures : diamètre) ; la Terre n'est écrite que de loin ou en mode mesures
           const lb = b.label, dKm = fr(2 * b.radiusKm), txt = metric && lb.metricText ? lb.metricText.replace('{diameterKm}', dKm).replace('{earths}', fr(2 * b.radiusKm / (2 * R_KM))) : lb.text; if (o.label.textContent !== txt) o.label.textContent = txt;
           const on = b.sceneOrigin ? (solarMode && cam.dist > 300) || (metric && cam.mode === 'earth' && cam.dist > 6) : camera.position.distanceTo(ab) > (lb.minDistanceRadii != null ? lb.minDistanceRadii * ru : lb.minDistanceUnits || 0);
-          o.screen = proj(o.label, ab, on); if (b.sceneOrigin) o.screen = null;
+          o.screen = proj(o.label, ab, on && !masked(id)); if (b.sceneOrigin) o.screen = null;
         }
       }
     } else { for (const id in bodyObjs) { const o = bodyObjs[id]; if (o.label) o.label.style.display = 'none'; o.screen = null; } }

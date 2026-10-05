@@ -25,7 +25,7 @@ export const PANEL_BUTTONS: ReadonlyArray<{ panel: 'planets' | 'satellites' | 'r
 
 // catégories d'astres du sous-menu « Astres » : types (bodyType du JSON) regroupés par bouton
 export const BODY_CATEGORIES: ReadonlyArray<{ id: 'planets' | 'comets' | 'stars'; label: string; types: ReadonlyArray<string> }> = [
-  { id: 'planets', label: '🪐 Planètes', types: ['planet', 'moon', 'dwarf'] },
+  { id: 'planets', label: '🪐 Planètes', types: ['planet', 'dwarf'] },
   { id: 'comets', label: '☄ Comètes / météorites', types: ['comet', 'asteroid'] },
   { id: 'stars', label: '☀ Étoiles', types: ['star'] },
 ]

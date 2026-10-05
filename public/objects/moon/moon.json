@@ -1,5 +1,6 @@
 {
   "kind": "body",
+  "displayPriority": 1,
   "bodyType": "moon",
   "name": "Lune",
   "radiusKm": 1737.4,

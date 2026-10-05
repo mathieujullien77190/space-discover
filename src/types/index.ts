@@ -37,7 +37,7 @@ export type EnginePatch = {
   [K in keyof EngineState]?: EngineState[K] extends object ? Partial<EngineState[K]> : EngineState[K]
 }
 
-export type MenuItem = { id: string; label: string; type: string }   // type : bodyType du JSON (planet, moon, comet, star…)
+export type MenuItem = { id: string; label: string; type: string; around: string | null }   // type : bodyType du JSON (planet, moon, comet, star…) ; around : corps central (une lune dépend de sa planète)
 export type FeatureItem = { id: string; label: string }
 export type SatelliteItem = { key: string; name: string }
 export type RocketOption = { key: string; label: string }
