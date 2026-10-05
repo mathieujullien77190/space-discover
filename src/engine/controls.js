@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import { DEG, R_KM, ll } from './earth.js';
 
-// Contrôles : glisser = tourner autour de la cible, molette / pincement = zoom, clic sans bouger = onClick(x, y).
+// Contrôles : glisser = tourner autour de la cible, molette / pincement = zoom, APPUI SUR LA MOLETTE (bouton du milieu) + glisser = monter / descendre la caméra, clic sans bouger = onClick(x, y).
 export const EARTH_MAX_DIST = 1e10;   // zoom arrière maximal de la vue Terre (rayons terrestres) : pratiquement illimité (≈ 7 années-lumière ; 1 UA = 23 455 rayons)
 export function attachControls(canvas, cam, onClick) {
-  const ptrs = new Map(); let pinch = 0, moved = 0; const offs = [], on = (t, ev, fn, o) => { t.addEventListener(ev, fn, o); offs.push(() => t.removeEventListener(ev, fn, o)); };
+  const ptrs = new Map(), mid = new Set(); let pinch = 0, moved = 0; const offs = [], on = (t, ev, fn, o) => { t.addEventListener(ev, fn, o); offs.push(() => t.removeEventListener(ev, fn, o)); };
   const tanH = () => Math.tan(cam.fov * DEG / 2);
   const zoom = f => {   // f > 1 = on s'éloigne
     if (cam.eg) { cam.eg.dist = Math.max(2 / R_KM, Math.min(40, cam.eg.dist * f)); return; }   // vue au sol : on se rapproche / s'éloigne de la cible
@@ -13,6 +13,16 @@ export function attachControls(canvas, cam, onClick) {
     else if (cam.mode === 'solar') cam.goal.dist = Math.min(EARTH_MAX_DIST, Math.max(cam.minDist || 1.5, cam.goal.dist * f));   // vue Soleil / Lune : de 1,5 rayon terrestre à 3·10⁵ (≈ 13 UA)
     else cam.goal.dist = Math.min(41, Math.max(0.1 / R_KM, cam.goal.dist * f));                                    // autour de l'ISS (min 100 m)
     
+  };
+  // MONTER / DESCENDRE (appui sur la molette + glisser vers le haut / le bas) : en vue au sol la caméra prend ou perd de la HAUTEUR en gardant sa distance horizontale à la cible (la visée se redresse en montant) ; ailleurs : l'altitude change comme au zoom
+  const lift = dy => {
+    const f = Math.exp(-dy * 0.008);   // glisser vers le haut (dy < 0) = monter
+    if (cam.eg) {
+      const g = cam.eg, th = g.pitch * DEG, h = g.dist * Math.sin(th), dh = g.dist * Math.cos(th), h2 = Math.max(3 / R_KM, h * f);
+      g.pitch = Math.max(4, Math.min(90, Math.atan2(h2, dh) / DEG)); g.dist = Math.max(2 / R_KM, Math.min(40, Math.hypot(h2, dh)));
+      return;
+    }
+    zoom(f);
   };
   const rotate = (dx, dy) => {
     if (cam.eg) { cam.eg.yaw -= dx * 0.3; cam.eg.pitch = Math.max(4, Math.min(90, cam.eg.pitch - dy * 0.3)); return; }   // vue au sol : glisser de côté = cap, en hauteur = inclinaison (le décor suit le doigt)
@@ -28,11 +38,11 @@ export function attachControls(canvas, cam, onClick) {
     cam.goal.lon -= dx * k; cam.goal.lat = Math.max(-89.5, Math.min(89.5, cam.goal.lat + dy * k));
     cam.lon = cam.goal.lon; cam.lat = cam.goal.lat; cam.fly = 0;
   };
-  on(canvas, 'pointerdown', e => { canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); moved = 0; canvas.classList.add('drag'); if (ptrs.size === 2) pinch = 0; });
+  on(canvas, 'pointerdown', e => { if (e.button === 1) { e.preventDefault(); mid.add(e.pointerId); } if (canvas.setPointerCapture) canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); moved = 0; canvas.classList.add('drag'); if (ptrs.size === 2) pinch = 0; });
   on(canvas, 'pointermove', e => {
     const p = ptrs.get(e.pointerId); if (!p) return;
     const dx = e.clientX - p[0], dy = e.clientY - p[1]; moved += Math.abs(dx) + Math.abs(dy);
-    if (ptrs.size === 1) rotate(dx, dy);
+    if (mid.has(e.pointerId)) lift(dy); else if (ptrs.size === 1) rotate(dx, dy);
     p[0] = e.clientX; p[1] = e.clientY;
     if (ptrs.size === 2) {
       const [a, b] = [...ptrs.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);
@@ -40,8 +50,8 @@ export function attachControls(canvas, cam, onClick) {
     }
   });
   const up = e => {
-    if (ptrs.has(e.pointerId) && ptrs.size === 1 && moved < 6 && e.type === 'pointerup') onClick(e.clientX, e.clientY);
-    ptrs.delete(e.pointerId); pinch = 0; if (!ptrs.size) canvas.classList.remove('drag');
+    if (ptrs.has(e.pointerId) && ptrs.size === 1 && moved < 6 && e.type === 'pointerup' && !mid.has(e.pointerId)) onClick(e.clientX, e.clientY);
+    ptrs.delete(e.pointerId); mid.delete(e.pointerId); pinch = 0; if (!ptrs.size) canvas.classList.remove('drag');
   };
   on(canvas, 'pointerup', up); on(canvas, 'pointercancel', up);
   on(canvas, 'wheel', e => { e.preventDefault(); zoom(Math.exp(Math.max(-200, Math.min(200, e.deltaY)) * (cam.mode === 'iss' ? (cam.goal.dist * R_KM < 30 ? 0.0009 : 0.0025) : 0.0015))); }, { passive: false });
