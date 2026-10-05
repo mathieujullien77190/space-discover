@@ -1,22 +1,17 @@
 import { useEffect, useRef } from 'react'
-import StoryQuiz from '@/components/StoryQuiz'
 import { BASE_PATH } from '@/constants'
-import { speak, speechAvailable, stopSpeech } from '@/helpers/speech'
 import { storyOf } from '@/engine/catalog'
 import { useStore } from '@/store'
 import { quitStory, storyNext } from '@/store/commands'
 import styles from './StoryPlayer.module.css'
 
-// Lecteur d'histoire : une étape = un grand texte, une image éventuelle, un quiz éventuel, un gros bouton « Suivant ». La simulation est en pause pendant l'étape.
-// Option « Lire à voix haute » (voix française, désactivée par défaut). À la dernière étape, « Terminer » débloque le haut fait.
+// Lecteur d'histoire : une étape = un grand texte, une image éventuelle, un gros bouton « Suivant ». La simulation est en pause pendant l'étape.
+// À la dernière étape, « Terminer » débloque le haut fait.
 export const StoryPlayer = () => {
   const story = useStore((s) => s.story)
-  const readAloud = useStore((s) => s.readAloud)
-  const setReadAloud = useStore((s) => s.setReadAloud)
   const unlockAchievement = useStore((s) => s.unlockAchievement)
   const done = useRef(false)
   const step = story.step
-  const stepId = step?.id
   const shown = story.active && !!step && (story.phase === 'showing' || step.pause === false)
 
   useEffect(() => {
@@ -30,12 +25,6 @@ export const StoryPlayer = () => {
   useEffect(() => {
     if (!story.active) done.current = false
   }, [story.active])
-
-  useEffect(() => {
-    if (readAloud && shown && step) speak(step.title + '. ' + step.text)
-    else stopSpeech()
-    return () => stopSpeech()
-  }, [readAloud, shown, stepId, step])
 
   if (!story.active) return null
   if (!shown || !step) {
@@ -71,14 +60,8 @@ export const StoryPlayer = () => {
         </figure>
       )}
       <p className={styles.text}>{step.text}</p>
-      {step.quiz && <StoryQuiz key={step.id} question={step.quiz.question} choices={step.quiz.choices} explain={step.quiz.explain} />}
       {step.source && <p className={styles.source}>Source : {step.source}</p>}
       <div className={styles.actions}>
-        {speechAvailable() && (
-          <button type="button" className={readAloud ? `${styles.aloud} ${styles.aloudOn}` : styles.aloud} aria-pressed={readAloud} onClick={() => setReadAloud(!readAloud)}>
-            🔊 Lire à voix haute
-          </button>
-        )}
         <button type="button" className={styles.next} disabled={!story.canNext} onClick={storyNext}>
           {last ? 'Terminer ✓' : 'Suivant ▶'}
         </button>

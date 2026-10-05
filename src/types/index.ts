@@ -28,8 +28,7 @@ export type StoryStep = {
   title: string
   text: string
   pause?: boolean
-  camera?: { follow?: string; zoom?: number | 'max' }
-  quiz?: { question: string; choices: { text: string; correct?: boolean }[]; explain: string }
+  camera?: { follow?: string }
   image?: { src: string; alt: string; credit: string; license: string }
   source?: string
 }

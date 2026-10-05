@@ -11,7 +11,6 @@ const step: StoryStep = {
   id: 's1',
   title: 'Le savais-tu ?',
   text: 'Des mouches ont voyagé dans l’espace.',
-  quiz: { question: 'Qui a voyagé ?', choices: [{ text: 'Des mouches', correct: true }, { text: 'Des girafes' }], explain: 'Ce sont les mouches.' },
 } as StoryStep
 
 describe('mode histoire (interface)', () => {
@@ -19,19 +18,17 @@ describe('mode histoire (interface)', () => {
   beforeEach(() => {
     localStorage.clear()
     engine = { startStory: vi.fn(() => Promise.resolve()), storyNext: vi.fn(), quitStory: vi.fn() }
-    useStore.setState({ ...initialEngineState, achievements: [], unlocked: null, readAloud: false, engine: engine as unknown as Engine })
+    useStore.setState({ ...initialEngineState, achievements: [], unlocked: null, engine: engine as unknown as Engine })
   })
   it('liste : la liste montre l’histoire de Laïka, un clic la lance', () => {
     render(<StoryList />)
     fireEvent.click(screen.getByText(/Laïka/))
     expect(engine.startStory).toHaveBeenCalledWith('laika')
   })
-  it('lecteur : texte, quiz, « Suivant », pas de lecture vocale sans demande', () => {
+  it('lecteur : texte et « Suivant »', () => {
     useStore.setState({ story: { active: true, id: 'laika', title: 'Laïka', index: 0, total: 3, phase: 'showing', finished: false, canNext: true, step } })
     render(<StoryPlayer />)
     expect(screen.getByText('Le savais-tu ?')).toBeInTheDocument()
-    fireEvent.click(screen.getByText('Des mouches'))
-    expect(screen.getByText(/Bravo/)).toBeInTheDocument()
     fireEvent.click(screen.getByText(/Suivant/))
     expect(engine.storyNext).toHaveBeenCalled()
   })

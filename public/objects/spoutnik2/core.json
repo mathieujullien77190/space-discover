@@ -1,7 +1,7 @@
 {
-  "name": "Bloc central (bloc A) + Spoutnik 2",
+  "name": "Bloc central (bloc A)",
   "role": "stage",
-  "massKg": 8008.3,
+  "massKg": 7708.3,
   "residualPropKg": 150,
   "visual": {
     "radiusM": 1.45,

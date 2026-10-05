@@ -47,19 +47,3 @@ export const writeAchievements = (ids: string[]): void => {
     /* stockage indisponible : le haut fait n'est pas mémorisé */
   }
 }
-
-export const readReadAloud = (): boolean => {
-  try {
-    return localStorage.getItem(STORAGE_KEYS.readAloud) === '1'
-  } catch {
-    return false
-  }
-}
-
-export const writeReadAloud = (on: boolean): void => {
-  try {
-    localStorage.setItem(STORAGE_KEYS.readAloud, on ? '1' : '0')
-  } catch {
-    /* stockage indisponible */
-  }
-}

@@ -19,6 +19,7 @@ export const LAUNCH_SITES = [
 // et dépose un satellite sur une orbite circulaire. La physique (js/launch.js) est calculée d'un coup dans un plan inertiel vers l'est ; ici on la replace sur la sphère :
 // plan défini par la verticale du site (s) et l'est local (e) à l'instant du décollage, puis rotation de −ω·T autour de l'axe des pôles pour passer dans le repère de la Terre (celui de la scène).
 // Classe Launch : sans DOM (testable dans Node).
+export const TRAIL_COAST_DT = 8, TRAIL_COAST_MAX = 2000;   // sillage après la fin des échantillons : un point toutes les 8 s, au plus 2 000 (≈ 4 h)
 export const SLOW_FLOOR = 0.3, SLOW_HOLD = 3, SLOW_K = 2;   // ralenti aux étapes : vitesse plancher, durée après l'événement (s de vol), raideur du freinage
 export const MU_M = 1e-3 / R_KM;   // unités de la scène par mètre
 export class Launch {
@@ -39,7 +40,7 @@ export class Launch {
     this.pos = new THREE.Vector3(); this.center = new THREE.Vector3();   // pos = base du lanceur ; center = milieu (cible de la caméra)
     this.dir = new THREE.Vector3(0, 1, 0); this.camDir = new THREE.Vector3(); this.camDistKm = 0.3; this.altM = 0;
     this.group = new THREE.Group();
-    this.trailN = S.length; this.trailPos = new Float32Array((S.length + 1) * 3);
+    this.trailN = S.length; this.trailT0 = S.length ? S[S.length - 1].t : 0; this.coastN = 0; this.trailPos = new Float32Array((S.length + TRAIL_COAST_MAX + 1) * 3);   // après la fin des échantillons (vol képlérien) le sillage continue par points ajoutés au fil du temps
     const tmp = new THREE.Vector3();
     S.forEach((p, i) => { this.toEF(p.x, p.y, p.t, tmp); this.trailPos.set([tmp.x, tmp.y, tmp.z], 3 * i); });
     const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.BufferAttribute(this.trailPos, 3)); tg.setDrawRange(0, 1);
@@ -286,7 +287,13 @@ export class Launch {
     const fk = 0.85 + 0.3 * Math.random(); for (const f of [...this.fBoost, this.fEpc, this.fEsc]) if (f.visible) f.userData.cone.scale.set(1, fk, 1);
     const rt = this.elOpt('rocket').traj; this.plan.visible = this.opt.plan && rt; this.trail.visible = this.opt.trail && rt; this.markPts.visible = this.markDrops.visible = this.opt.markers && rt; this.ring.visible = !!this.sim.ok && this.opt.plan && this.elOpt('sat').traj; this.ring.rotation.y = this.inertial ? 0 : -this.wRot * T; this.ring.children.forEach(c => { c.material.transparent = true; c.material.opacity = past('esc2end') ? 0.95 : 0.35; });   // orbite visée : pâle d'avance, vive une fois atteinte
     // sillage
-    const n = Math.min(this.trailN, st.idx + 1), tp = this.trailPos; tp.set([this.pos.x, this.pos.y, this.pos.z], 3 * n);
+    const tp = this.trailPos; let n = Math.min(this.trailN, st.idx + 1);
+    if (T > this.trailT0 && st.idx >= this.trailN - 1) {   // sillage du vol képlérien : un point tous les TRAIL_COAST_DT s (sinon un trait droit relie la fin des échantillons à la position actuelle)
+      const want = Math.min(TRAIL_COAST_MAX, Math.floor((T - this.trailT0) / TRAIL_COAST_DT)); if (this.coastN > want) this.coastN = want;
+      for (; this.coastN < want; this.coastN++) { const tt = this.trailT0 + (this.coastN + 1) * TRAIL_COAST_DT, q = this.stateAt(tt), v = q.ef || this.toEF(q.x, q.y, tt, new THREE.Vector3()); tp.set([v.x, v.y, v.z], 3 * (this.trailN + this.coastN)); }
+      n = this.trailN + this.coastN;
+    } else this.coastN = 0;
+    tp.set([this.pos.x, this.pos.y, this.pos.z], 3 * n);
     this.trail.geometry.setDrawRange(0, n + 1); this.trail.geometry.attributes.position.needsUpdate = true;
     if (this.fut) {   // trajectoire à l'avance : recalculée chaque seconde de vol, le départ colle à l'objet à chaque image
       const f = this.fut, tp = this._ft || (this._ft = new THREE.Vector3());

@@ -1,4 +1,4 @@
-// MODE HISTOIRE : valide chaque public/stories/<id>/<id>.json (objet lancé existant, événements existants, sources présentes pour les faits chiffrés, quiz à 2 choix, haut fait défini)
+// MODE HISTOIRE : valide chaque public/stories/<id>/<id>.json (objet lancé existant, événements existants, sources présentes pour les faits chiffrés, haut fait défini)
 // + l'index généré public/stories/index.json + les instants de déclenchement.
 import fs from 'node:fs';
 import path from 'node:path';

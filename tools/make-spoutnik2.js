@@ -15,7 +15,8 @@ const FB = B.prop / B.burn;   // débit d'un booster (kg/s)
 const m0 = tc => B.n * (B.dry + B.prop) + CORE.dry + CORE.flow * tc + 150 + SAT;   // 150 kg d'ergols de réserve dans le bloc central
 const parts = {
   booster: { name: 'Booster latéral (blocs B, V, G, D)', role: 'booster', massKg: B.dry, residualPropKg: Math.round(B.prop - FB * SEP), visual: { radiusM: 1.3, lengthM: 19, noseM: 3, nozzleM: 1.6, color: '#cfc8b8', bandColor: '#b8b0a0' }, dragCoefficient: 1, separationSpeedMs: -1.5, disintegrates: false },
-  core: { name: 'Bloc central (bloc A) + Spoutnik 2', role: 'stage', massKg: CORE.dry + SAT, residualPropKg: 150, visual: { radiusM: 1.45, lengthM: 26.5, nozzleM: 2, color: '#cfc8b8' }, dragCoefficient: 1, separationSpeedMs: 0, disintegrates: false },
+  fairing: { name: 'Couvercle de Spoutnik 2 (moitié)', role: 'fairing', massKg: 150, residualPropKg: 0, visual: { radiusM: 1.1, cylM: 2.2, coneM: 1.8, color: '#e6e6e6' }, dragCoefficient: 1, separationSpeedMs: 0.5, disintegrates: false },   // 2 × 150 kg, masse prise sur le bloc central (total inchangé)
+  core: { name: 'Bloc central (bloc A)', role: 'stage', massKg: CORE.dry + SAT - 300, residualPropKg: 150, visual: { radiusM: 1.45, lengthM: 26.5, nozzleM: 2, color: '#cfc8b8' }, dragCoefficient: 1, separationSpeedMs: 0, disintegrates: false },
 };
 const build = (knots, tc) => {
   const tl = [], STEP = 2;
@@ -26,6 +27,7 @@ const build = (knots, tc) => {
   }
   tl.push({ t: SEP, release: [{ part: 'booster', count: B.n }], burnKgS: r1(CORE.flow, 10), ispVac: CORE.ispV, ispSea: CORE.ispS, flames: ['epc'], label: 'Séparation des 4 boosters latéraux', key: 'eap' });
   tl.push({ t: r1(tc, 10), burnKgS: 0, flames: [], label: 'Arrêt du moteur central : Spoutnik 2 reste attaché au bloc central', key: 'meco' });
+  tl.push({ t: r1(tc, 10) + 8, release: [{ part: 'fairing', count: 2 }], label: 'Largage du couvercle de Spoutnik 2' });   // après l'arrêt du moteur : l'orbite ne change pas
   const T = [0, 8, 20, 40, 70, SEP, 180, 240, tc];   // programme de tangage : angle au-dessus de l'horizontale aux dates de T
   for (let i = 0; i < T.length; i++) tl.push({ t: r1(T[i], 10), pitch: r1(knots[i], 100) });
   return tl.sort((a, b) => a.t - b.t);
@@ -52,8 +54,8 @@ if (!res.ok) { console.log('ÉCHEC : orbite non atteinte'); process.exit(1); }
 const main = {
   name: 'Spoutnik 2 (R-7, 3 novembre 1957)',
   start: START,
-  visual: { name: 'R-7 + Spoutnik 2', short: 'Spoutnik 2', stack: { core: 'core', boosters: { part: 'booster', count: B.n, radialM: 2.45 }, heightM: 30.5, upper: { name: 'Spoutnik 2 (capsule de Laïka)', radiusM: 1.0, lengthM: 4, color: '#c8ccd2', nozzleM: 0 } } },
-  parts: { booster: 'booster.json', core: 'core.json' },
+  visual: { name: 'R-7 + Spoutnik 2', short: 'Spoutnik 2', stack: { core: 'core', boosters: { part: 'booster', count: B.n, radialM: 2.45 }, heightM: 30.5, fairing: 'fairing', fairingBaseM: 26.5, upper: { name: 'Spoutnik 2 (capsule de Laïka)', radiusM: 1.0, lengthM: 4, color: '#c8ccd2', nozzleM: 0 } } },
+  parts: { booster: 'booster.json', core: 'core.json', fairing: 'fairing.json' },
   timeline: build(best, bt),
 };
 const NL = String.fromCharCode(10), fmt = o => JSON.stringify(o, null, 2).replace(/\{\n\s+"t": ([\s\S]*?)\n\s+\}(?=,?\n\s+[\{\]])/g, m => m.replace(/\n\s+/g, ' ')).replace(/\[\n\s+("[^"]*"[^\]]*?)\n\s+\]/g, m => m.replace(/\n\s+/g, ' '));

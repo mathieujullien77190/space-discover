@@ -335,10 +335,9 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   let story = null;   // { def, trig (instants de vol de chaque étape), index (étape affichée, −1 au départ), next (prochaine à afficher), phase: 'showing' (en pause) | 'running', finished }
   const STORY_OFF = { active: false, id: null, title: '', index: -1, total: 0, phase: 'running', finished: false, canNext: false, step: null };
   const publishStory = () => publish({ story: !story ? STORY_OFF : { active: true, id: story.def.id, title: story.def.title, index: story.index, total: story.def.steps.length, phase: story.phase, finished: story.finished, canNext: story.phase === 'showing', step: story.index >= 0 ? story.def.steps[story.index] : null } });
-  const storyCamera = spec => {   // cadrage : composant suivi (pad, rocket, eap1, epc…) et zoom (nombre, ou "max" = la Terre entière)
+  const storyCamera = spec => {   // cadrage : composant suivi (pad, rocket, eap1, epc…) ; le zoom n'est jamais modifié par une histoire
     if (!spec || !launch) return;
     if (spec.follow) { launch.follow = spec.follow; cam.userDir = false; }
-    if (spec.zoom !== undefined) cam.launchK = spec.zoom === 'max' ? 1e9 : spec.zoom;
     if (cam.mode !== 'launch') setMode('launch');
   };
   const storyShow = i => { const st = story.def.steps[i]; story.index = i; story.next = i + 1; storyCamera(st.camera); if (st.pause === false) { story.phase = 'running'; launch.playing = true; } else { story.phase = 'showing'; launch.playing = false; } publishStory(); };
@@ -355,6 +354,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     setDate(Date.parse(def.date)); setSimSpeed(1);   // saut dans le temps : le jour du lancement
     return loadObject(def.launch).then(launchObject).then(() => {
       if (!launch) return;
+      launch.stepPause = true;   // ralenti extrême autour de chaque étape du vol (les boosters qui se détachent se voient au ralenti)
       launch.playing = false; launch.speed = def.playbackSpeed || 10; launch.Tmax = launch.tEnd + (def.extraS != null ? def.extraS : 900);   // en pause au départ ; on peut suivre l'orbite après l'insertion (extraS secondes)
       story = { def, trig: storyTriggers(def, launch.sim.events, launch.tEnd, def.extraS), index: -1, next: 0, phase: 'running', finished: false };
       storyTick();   // les étapes « avant le départ » s'affichent tout de suite

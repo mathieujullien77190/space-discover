@@ -2,7 +2,7 @@
 // Le moteur n'importe jamais ce fichier : il reçoit `applyPatch` comme canal de publication, et l'interface le pilote par les commandes de `commands.ts`.
 import { create } from 'zustand'
 import { NUDGE_STEPS } from '@/constants'
-import { readAchievements, readCardCollapsed, readReadAloud, writeAchievements, writeCardCollapsed, writeReadAloud } from '@/helpers'
+import { readAchievements, readCardCollapsed, writeAchievements, writeCardCollapsed } from '@/helpers'
 import type { BodyCategory, Engine, EnginePatch, EngineState, PanelName } from '@/types'
 import { initialEngineState } from './initial'
 
@@ -13,7 +13,6 @@ export type UiState = {
   cardCollapsed: boolean   // fiche d'astre réduite en mini bouton-icône (mémorisé)
   achievements: string[]   // hauts faits débloqués (mémorisés)
   unlocked: string | null   // haut fait qu'on vient de débloquer (écran de déblocage)
-  readAloud: boolean   // lire les histoires à voix haute (désactivé par défaut, mémorisé)
 }
 
 export type Store = EngineState &
@@ -27,7 +26,6 @@ export type Store = EngineState &
     setCardCollapsed: (on: boolean) => void
     unlockAchievement: (id: string) => void
     dismissUnlocked: () => void
-    setReadAloud: (on: boolean) => void
   }
 
 const isPlainObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -51,7 +49,6 @@ export const useStore = create<Store>((set) => ({
   cardCollapsed: readCardCollapsed(),
   achievements: readAchievements(),
   unlocked: null,
-  readAloud: readReadAloud(),
   setEngine: (engine) => set({ engine }),
   applyPatch: (patch) => set((s) => mergePatch(s, patch)),
   togglePanel: (panel) => set((s) => ({ panel: s.panel === panel ? null : panel })),
@@ -67,9 +64,5 @@ export const useStore = create<Store>((set) => ({
       return { achievements, unlocked: id }
     }),
   dismissUnlocked: () => set({ unlocked: null }),
-  setReadAloud: (readAloud) => {
-    writeReadAloud(readAloud)
-    set({ readAloud })
-  },
   cycleNudgeStep: () => set((s) => ({ nudgeStep: (s.nudgeStep + 1) % NUDGE_STEPS.length })),
 }))

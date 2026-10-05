@@ -25,12 +25,15 @@
         "lengthM": 4,
         "color": "#c8ccd2",
         "nozzleM": 0
-      }
+      },
+      "fairing": "fairing",
+      "fairingBaseM": 26.5
     }
   },
   "parts": {
     "booster": "booster.json",
-    "core": "core.json"
+    "core": "core.json",
+    "fairing": "fairing.json"
   },
   "timeline": [
     { "t": 0, "burnKgS": 1646.2, "ispVac": 313.6, "ispSea": 249.9, "massKg": 284035, "cdA": 10, "flames": [ "eap", "epc" ], "label": "Décollage", "key": "t0" },
@@ -101,7 +104,9 @@
       "burnKgS": 319.5,
       "ispVac": 316,
       "ispSea": 241,
-      "flames": [ "epc" ],
+      "flames": [
+        "epc"
+      ],
       "label": "Séparation des 4 boosters latéraux",
       "key": "eap"
     },
@@ -109,6 +114,10 @@
     { "t": 180, "pitch": 0 },
     { "t": 240, "pitch": 0 },
     { "t": 322, "burnKgS": 0, "flames": [], "label": "Arrêt du moteur central : Spoutnik 2 reste attaché au bloc central", "key": "meco" },
-    { "t": 322, "pitch": 0 }
+    { "t": 322, "pitch": 0 },
+    { "t": 330, "release": [ { "part": "fairing", "count": 2 }
+      ],
+      "label": "Largage du couvercle de Spoutnik 2"
+    }
   ]
 }

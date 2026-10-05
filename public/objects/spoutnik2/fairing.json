@@ -1,0 +1,15 @@
+{
+  "name": "Couvercle de Spoutnik 2 (moitié)",
+  "role": "fairing",
+  "massKg": 150,
+  "residualPropKg": 0,
+  "visual": {
+    "radiusM": 1.1,
+    "cylM": 2.2,
+    "coneM": 1.8,
+    "color": "#e6e6e6"
+  },
+  "dragCoefficient": 1,
+  "separationSpeedMs": 0.5,
+  "disintegrates": false
+}

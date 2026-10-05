@@ -1,11 +1,10 @@
 // MODE HISTOIRE (pour enfants, 7-10 ans) : format JSON d'une histoire, instants de déclenchement des étapes, validation. Module PUR (sans three.js ni DOM), testé dans Node (tools/test/story.test.mjs).
 // Une histoire (public/stories/<id>/<id>.json) lance un OBJET (une fusée de public/objects/) à une date, et met la simulation en PAUSE à chaque étape pour afficher un texte court :
 //   { id, title, year, icon, launch: "<objet>", date: "ISO UTC", playbackSpeed?, extraS?, steps: [ étape… ], achievement: { id, title, text, icon } }
-// Étape : { id, at, offsetS?, title, text, pause? (défaut : true), camera?, quiz?, image?, source? }
+// Étape : { id, at, offsetS?, title, text, pause? (défaut : true), camera?, image?, source? }
 //   at        événement de la frise auquel l'étape s'accroche : "before" (avant le départ), "t0" (décollage), "eap" (largage des boosters), "meco" (arrêt du moteur), "objectOrbit" (mise en orbite),
 //             "end" (fin du vol simulé, après extraS secondes d'orbite) ou toute clé d'événement de l'objet lancé ; offsetS décale l'instant (en secondes de vol)
-//   camera    cadrage : { follow: "pad" | "rocket" | "eap1" | "epc" | "sat"…, zoom: nombre | "max" (la Terre entière) }
-//   quiz      { question, choices: [{ text, correct? }, { text, correct? }] (exactement 2 choix, un seul correct), explain }
+//   camera    cadrage : { follow: "pad" | "rocket" | "eap1" | "epc" | "sat"… ; pas de zoom : une histoire ne modifie jamais le zoom }
 //   image     { src, alt, credit, license } (domaine public ou licence libre uniquement)
 //   source    OBLIGATOIRE dès que le texte ou le titre contient un chiffre (fait chiffré) : d'où vient l'information (NASA / NSSDC en priorité)
 export const STORY_PSEUDO = ['before', 'end'];
@@ -34,9 +33,8 @@ export function validateStory(story, ctx) {
     need(s.title && s.text, w + 'title et text sont obligatoires');
     need(sentences(s.text) >= 1 && sentences(s.text) <= 3, w + '2 ou 3 phrases courtes (' + sentences(s.text) + ' phrases)');
     need(!(hasDigit(s.text) || hasDigit(s.title)) || (s.source && String(s.source).trim().length > 3), w + 'fait chiffré : le champ « source » est obligatoire');
-    if (s.quiz) { const c = s.quiz.choices || []; need(s.quiz.question && c.length === 2 && c.filter(x => x.correct).length === 1 && c.every(x => x.text) && s.quiz.explain, w + 'quiz : question, 2 choix dont un seul « correct », et « explain »'); }
     if (s.image) need(s.image.src && s.image.alt && s.image.credit && s.image.license, w + 'image : src, alt, credit et license sont obligatoires');
-    if (s.camera) need(s.camera.follow || s.camera.zoom !== undefined, w + 'camera : follow et/ou zoom');
+    if (s.camera) need(s.camera.follow, w + 'camera : follow');
   });
   return bad;
 }

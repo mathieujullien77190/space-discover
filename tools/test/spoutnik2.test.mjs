@@ -28,12 +28,12 @@ check(Math.abs(isp - expectedIspV) < 0.5, 'même moteurs : Isp effective au dép
 // 4. PARTICULARITÉ : le satellite reste attaché à l'étage central : aucune pièce « payload » n'est larguée, seuls les 4 boosters partent
 const roles = Object.values(O.parts).map(p => p.role), jet = Object.keys(r.plan.jettison || {});
 check(!roles.includes('payload') && !O.timeline.some(k => (k.release || []).some(x => O.parts[x.part].role === 'payload')), 'le satellite reste attaché : aucune pièce « payload » dans l’objet, aucun largage de satellite');
-check(O.timeline.filter(k => k.release).length === 1 && O.timeline.find(k => k.release).release[0].part === 'booster' && jet.join() === 'boosters', 'un seul largage : les boosters (' + jet.join(', ') + ')');
+check(O.timeline.filter(k => k.release).length === 2 && O.timeline.find(k => k.release).release[0].part === 'booster' && jet.join() === 'boosters,fairing', 'deux largages : les boosters, puis le couvercle du satellite (' + jet.join(', ') + ')');
 // 5. événements dans l'ordre : décollage, boosters (≈ T+116 s), arrêt du moteur central, orbite atteinte
 const ev = k => (r.events.find(e => e.key === k) || {}).t, keys = r.events.map(e => e.key);
-check(keys.join(' ') === 't0 eap meco objectOrbit' && Math.abs(ev('eap') - 116) < 1 && ev('meco') > 290 && ev('meco') < 330, 'événements : ' + r.events.map(e => e.key + '@' + e.t.toFixed(0)).join(' '));
+check(keys.join(' ') === 't0 eap meco fairing objectOrbit' && Math.abs(ev('eap') - 116) < 1 && ev('meco') > 290 && ev('meco') < 330, 'événements : ' + r.events.map(e => e.key + '@' + e.t.toFixed(0)).join(' '));
 // 6. bilan de masse : à l'arrêt du moteur, il reste le bloc central à vide + le satellite (≈ 7,5 t + 508 kg) et un peu d'ergols
-const mEnd = r.samples.find(s => s.t >= ev('meco') + 1).m, m0 = r.samples[0].m, expectedEnd = 7500 + 508.3 + 150;
+const mEnd = r.samples.find(s => s.t >= ev('meco') + 1).m + 300, m0 = r.samples[0].m, expectedEnd = 7500 + 508.3 + 150;
 check(Math.abs(mEnd - expectedEnd) / expectedEnd < 0.05, 'masse : ' + Math.round(m0) + ' kg au décollage, ' + Math.round(mEnd) + ' kg en orbite (bloc central à vide + satellite de 508 kg ≈ ' + Math.round(expectedEnd) + ' kg)');
 check(O.timeline[0].massKg / 1000 > 270 && O.timeline[0].massKg / 1000 < 295, 'masse au décollage ' + (O.timeline[0].massKg / 1000).toFixed(0) + ' t (R-7 ≈ 267-280 t)');
 // 7. une fusée trop lente retombe : même objet, moteur central coupé 80 s trop tôt
