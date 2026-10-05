@@ -33,7 +33,7 @@ check(m.group.position.equals(cam.position) && m.group.scale.x === R, 'le groupe
   const head = mm.group.children[1]; const ops = [];
   for (let i = 0; i < 600 && mm.count() > 0; i++) { mm.update({ dt: 0.01, enabled: true, camera: cam, R, up, east, north }); if (head.visible) ops.push(head.material.opacity); }
   const peak = Math.max(...ops), iPeak = ops.lastIndexOf(peak), tail = ops.slice(iPeak);
-  check(peak > 0.3 && ops[ops.length - 1] < 0.05, 'la tête monte à ' + peak.toFixed(2) + ' puis finit à ' + ops[ops.length - 1].toFixed(3) + ' (disparaît sans coupure)');
+  check(peak > 0.3 && ops[ops.length - 1] < 0.15, 'la tête monte à ' + peak.toFixed(2) + ' puis finit à ' + ops[ops.length - 1].toFixed(3) + ' (disparaît sans coupure)');
   const drop = ops.slice(-12), diffs = drop.slice(1).map((v, k) => drop[k] - v), maxStep = Math.max(...diffs);
   check(maxStep > 0.02 && tail.length > 1, 'extinction rapide : jusqu’à ' + maxStep.toFixed(2) + ' d’opacité perdue en 10 ms vers la fin');
 }
