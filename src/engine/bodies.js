@@ -51,6 +51,8 @@ export const BODY = {
     const Ye = Y * Math.cos(eps) - Z * Math.sin(eps), Ze = Y * Math.sin(eps) + Z * Math.cos(eps);
     return [X, Ze, -Ye];
   },
+  // nombre de points de l'ellipse tracée : 2 048 pour une orbite presque ronde, davantage pour une orbite allongée (corde plus longue près de l'aphélie) : 2 048 / (1 − e), au plus 65 536 → Halley (e = 0,967) : 62 000 points, écart à la trajectoire de quelques km (2 750 km avec 2 048 points : la comète semblait « hors de sa trajectoire » quand on s'en approche)
+  orbitSamples(id) { const m = this.get(id).motion; return m.model === 'kepler' ? Math.min(65536, Math.max(2048, Math.round(2048 / (1 - m.eccentricity)))) : 365; },
   // points de l'orbite complète relativement au corps central (n + 1 points) : par anomalie excentrique pour un modèle képlérien (régulier même pour une comète), par le temps pour les autres (la Terre : une année)
   orbitPoints(id, D, n) {
     const b = this.get(id), m = b.motion, out = [];

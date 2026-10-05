@@ -41,10 +41,10 @@ let err = null; try { G('(() => { FLIGHT_OBJECTS.__x = { kind: "body", name: "x"
 check(!!err && /modèle de mouvement inconnu/.test(err.message), 'modèle de mouvement inconnu refusé : ' + (err && err.message));
 // 8. la trace d'un astre képlérien passe par l'astre : distance de Mars (rayon 3 390 km) à la polyligne de son orbite (2 048 points, comme app.js) < 1 000 km à plusieurs dates ; Halley : < 1 % de sa distance au Soleil
 { const segD = (p, a, b) => { const ab = b.map((v, i) => v - a[i]), ap = p.map((v, i) => v - a[i]); let t = (ab[0] * ap[0] + ab[1] * ap[1] + ab[2] * ap[2]) / (ab[0] ** 2 + ab[1] ** 2 + ab[2] ** 2); t = Math.max(0, Math.min(1, t)); return Math.hypot(...ap.map((v, i) => v - t * ab[i])); };
-  for (const [id, tol] of [['mars', 1000e3], ['halley', null]]) { let worst = 0, rel = 0;
-    for (const iso of ['2026-10-05', '2027-06-01', '2030-01-01', '2040-07-01']) { const D = dayOf(iso), m = G('BODY.geo("' + id + '", ' + D + ')'), sn = G('BODY.geo("sun", ' + D + ')'), r = m.map((v, i) => v - sn[i]), pts = G('BODY.orbitPoints("' + id + '", ' + D + ', 2048)');
+  for (const [id, tol] of [['mars', 1000e3], ['halley', 50e3]]) { let worst = 0, rel = 0;
+    for (const iso of ['2026-10-05', '2027-06-01', '2030-01-01', '2040-07-01']) { const D = dayOf(iso), m = G('BODY.geo("' + id + '", ' + D + ')'), sn = G('BODY.geo("sun", ' + D + ')'), r = m.map((v, i) => v - sn[i]), pts = G('BODY.orbitPoints("' + id + '", ' + D + ', ' + G('BODY.orbitSamples("' + id + '")') + ')');
       let best = 1e99; for (let i = 0; i < pts.length - 1; i++) best = Math.min(best, segD(r, pts[i], pts[i + 1])); worst = Math.max(worst, best); rel = Math.max(rel, best / Math.hypot(...r)); }
-    check(tol ? worst < tol : rel < 0.01, id + ' : la trace de l’orbite passe à ' + (worst / 1000).toFixed(0) + ' km de l’astre (' + (rel * 100).toFixed(4) + ' % de sa distance au Soleil)'); } }
+    check(worst < tol, id + ' : la trace de l’orbite passe à ' + (worst / 1000).toFixed(0) + ' km de l’astre (' + (rel * 100).toFixed(4) + ' % de sa distance au Soleil)'); } }
 // 9. Mars texturé et orienté : sa carte existe, le pôle nord du maillage pointe vers (α0, δ0), le méridien origine tourne de 350,89° par jour (sens direct autour du pôle), la carte a bien la taille annoncée
 { const mars = G('BODY.get("mars")'), q = d => G('(() => { const q = new THREE.Quaternion(); rotationQuat(BODY.get("mars").rotation, ' + d + ', q); return q; })()'), V = (x, y, z) => G('new THREE.Vector3(' + x + ',' + y + ',' + z + ')');
   const a = mars.rotation.poleRaDeg * Math.PI / 180, dd = mars.rotation.poleDecDeg * Math.PI / 180, poleEq = [Math.cos(dd) * Math.cos(a), Math.cos(dd) * Math.sin(a), Math.sin(dd)], poleScene = [poleEq[0], poleEq[2], -poleEq[1]];

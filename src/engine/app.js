@@ -19,7 +19,6 @@ import { assetUrl, setBaseUrl } from './config.js';
 import { KM_AL, KM_UA, fmtAlt, fmtBig, fmtMass } from './format.js';
 import { createOverlay } from './overlay.js';
 
-const ORBIT_POINTS_KEPLER = 2048;   // points de l'ellipse des astres képlériens : à 365 points la corde s'écartait de Mars de plus de 7 000 km (2 rayons de Mars)
 const VIEW_ISS = { yaw: -28.8, pitch: 24.9, dist: 0.393 };   // accès DIRECT à l'ISS, sans transition : vue réglée par l'utilisateur, un peu de derrière et au-dessus, à 393 m (yaw °, pitch °, distance km)
 const Y_AXIS = new THREE.Vector3(0, 1, 0), KMU = 1 / (R_KM * 1000), SITE_FALLBACK = LAUNCH_SITES[0];
 const defaultRenderer = canvas => new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true });
@@ -86,7 +85,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       if (b.label) o.label = overlay.label(b.label.text);
       const tr = b.trace;
       if (tr && tr.fullOrbit && b.around) {   // orbite complète autour du corps central (la Terre autour du Soleil : l'ellipse réelle sur un an) ; le groupe est posé sur le corps central à chaque image
-        o.orbitG = new THREE.Group(); const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(BODY.orbitPoints(b.id, D0, b.motion.model === 'kepler' ? ORBIT_POINTS_KEPLER : 365).map(p => new THREE.Vector3(p[0] * KMU, p[1] * KMU, p[2] * KMU))), new THREE.LineBasicMaterial({ color: new THREE.Color(tr.color || '#4a90e2'), transparent: true, opacity: 0.9 })); l.frustumCulled = false; o.orbitG.add(l); solar.add(o.orbitG);
+        o.orbitG = new THREE.Group(); const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(BODY.orbitPoints(b.id, D0, BODY.orbitSamples(b.id)).map(p => new THREE.Vector3(p[0] * KMU, p[1] * KMU, p[2] * KMU))), new THREE.LineBasicMaterial({ color: new THREE.Color(tr.color || '#4a90e2'), transparent: true, opacity: 0.9 })); l.frustumCulled = false; o.orbitG.add(l); solar.add(o.orbitG);
       }
       if (tr && tr.pastDays) { o.loop = new THREE.Group(); solar.add(o.loop); o.past = mkTrail(121, 1); o.fut = mkTrail(61, 0.45); o.loop.add(o.past, o.fut); }   // trace : le passé (un tour complet, s'estompe vers le début) et l'avenir (pâle)
     }
