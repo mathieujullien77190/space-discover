@@ -79,12 +79,12 @@ describe('TopBar + SubMenu', () => {
     fireEvent.click(screen.getByText(/Lune/))
     expect(engine.selectView).toHaveBeenCalledWith('moon')
   })
-  it('Satellites : les options Dimensions et Trajectoire sont surlignées quand le moteur les a allumées', () => {
-    useStore.setState({ features: { size: true, orbit: false } })
+  it('Satellites : seulement le bouton de l’ISS (plus de boutons Dimensions ni Trajectoire)', () => {
     render(<><TopBar /><SubMenu /></>)
     fireEvent.click(screen.getByText('🛰 Satellites'))
-    expect(screen.getByText(/Dimensions/).className).toMatch(/_on_/)
-    expect(screen.getByText(/Trajectoire/).className).not.toMatch(/_on_/)
+    expect(screen.getByText(/ISS/)).toBeInTheDocument()
+    expect(screen.queryByText(/Dimensions/)).toBeNull()
+    expect(screen.queryByText(/Trajectoire/)).toBeNull()
   })
   it('Satellites : l’ISS mène à la vue ISS', () => {
     render(<><TopBar /><SubMenu /></>)

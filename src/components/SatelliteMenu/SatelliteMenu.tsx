@@ -1,21 +1,17 @@
 import Button from '@/components/ui/Button'
-import { issFeatures, satellites } from '@/engine/catalog'
+import { satellites } from '@/engine/catalog'
 import { useStore } from '@/store'
-import { goIss, setFeature } from '@/store/commands'
+import { goIss } from '@/store/commands'
 
 const sats = satellites()
-const features = issFeatures()
 
+// Un bouton par satellite ; choisir l'ISS allume d'office ses cotes, sa hauteur et sa trajectoire (dans le moteur).
 export const SatelliteMenu = () => {
   const mode = useStore((s) => s.view.mode)
-  const on = useStore((s) => s.features)
   return (
     <>
       {sats.map((s) => (
         <Button key={s.key} label={'🛰 ' + s.name} active={mode === 'iss'} onClick={goIss} />
-      ))}
-      {features.map((f) => (
-        <Button key={f.id} label={f.label} active={!!on[f.id]} onClick={() => setFeature(f.id, !on[f.id])} />
       ))}
     </>
   )
