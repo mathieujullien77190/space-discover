@@ -77,5 +77,5 @@ export type CreateEngineOptions = {
   createRenderer?: (canvas: HTMLCanvasElement) => unknown
 }
 
-export type PanelName = 'planets'
+export type PanelName = 'planets' | 'observatories'
 export type BodyCategory = 'planets' | 'comets' | 'stars'

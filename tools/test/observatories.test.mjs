@@ -4,7 +4,8 @@ import { OBSERVATORIES, observatoryById, observatoryFrame } from '../../src/engi
 const fails = [], check = (c, m) => { console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if (!c) fails.push(m); };
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], len = a => Math.hypot(a[0], a[1], a[2]);
 const o = observatoryById('pic-du-midi');
-check(!!o && OBSERVATORIES.length >= 1, 'observatoire du Pic du Midi présent');
+check(!!o && OBSERVATORIES.length >= 10, 'Pic du Midi présent, ' + OBSERVATORIES.length + ' observatoires dans le monde');
+check(new Set(OBSERVATORIES.map(x => x.id)).size === OBSERVATORIES.length && OBSERVATORIES.every(x => Math.abs(x.lat) < 89 && Math.abs(x.lon) <= 180 && x.altM >= 0 && x.facts.length >= 4 && /vérifier/.test(x.note)), 'identifiants uniques, coordonnées valides, fiches complètes « à vérifier »');
 check(o.lat > 41 && o.lat < 51.5 && o.lon > -5.5 && o.lon < 9.7, 'en France métropolitaine : ' + o.lat + '° N, ' + o.lon + '° E');
 check(o.altM > 2800 && o.altM < 2950 && o.eyeM > 30 && o.eyeM < 300, 'altitude du sol ' + o.altM + ' m, œil à ' + o.eyeM + ' m au-dessus (la caméra reste au-dessus du maillage du relief)');
 const f = observatoryFrame(o);

@@ -1,8 +1,7 @@
 import Button from '@/components/ui/Button'
 import { CLOUDS_LABEL, DAY_NIGHT_LABEL, EARTH_LABEL, ISS_VIEW_LABELS, PANEL_BUTTONS, REALISTIC_LABEL } from '@/constants'
 import { useStore } from '@/store'
-import { OBSERVATORIES } from '@/engine/observatories'
-import { goIss, goObservatory, selectView } from '@/store/commands'
+import { goIss, selectView } from '@/store/commands'
 import styles from './TopBar.module.css'
 
 export const TopBar = () => {
@@ -12,7 +11,6 @@ export const TopBar = () => {
   const toggleClouds = useStore((s) => s.toggleClouds)
   const realistic = useStore((s) => s.realistic)
   const toggleRealistic = useStore((s) => s.toggleRealistic)
-  const observatory = useStore((s) => s.observatory.id)
   const dayNight = useStore((s) => s.dayNight)
   const toggleDayNight = useStore((s) => s.toggleDayNight)
   const viewMode = useStore((s) => s.view.mode)
@@ -23,9 +21,6 @@ export const TopBar = () => {
       ))}
       <Button label={EARTH_LABEL} active={viewMode === 'earth'} title="Revenir à la vue Terre (Échap fait la même chose)" onClick={() => selectView('earth')} />
       <Button label={ISS_VIEW_LABELS.go} active={viewMode === 'iss'} title="Aller à l’ISS : la caméra se place tout près de la station" onClick={goIss} />
-      {OBSERVATORIES.map((o) => (
-        <Button key={o.id} label={'🔭 ' + o.short} active={observatory === o.id} title={'Aller à ' + o.name + ' : la Terre de près, avec le relief ; sa fiche propose la vue depuis l’observatoire'} onClick={() => goObservatory(o.id)} />
-      ))}
       <Button label={CLOUDS_LABEL} active={clouds} title="Couverture nuageuse quasi temps réel (satellites, mise à jour toutes les 3 h ; demande internet)" onClick={toggleClouds} />
       <Button label={DAY_NIGHT_LABEL} active={dayNight} title="Jour / nuit : le vrai Soleil éclaire, la face cachée est sombre (décoché : tout est éclairé de face)" onClick={toggleDayNight} />
       <Button label={REALISTIC_LABEL} active={realistic} title="Vue réaliste : retire les trajectoires, les noms, les repères et tout ce qui n’existe pas dans la réalité" onClick={toggleRealistic} />

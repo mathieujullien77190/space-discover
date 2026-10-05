@@ -14,7 +14,10 @@ export const TIME_SPEEDS: ReadonlyArray<{ speed: number; label: string }> = [
   { speed: 31557600, label: '1 an/s' },
   { speed: 315576000, label: '10 ans/s' },
 ]
-export const PANEL_BUTTONS: ReadonlyArray<{ panel: 'planets'; label: string }> = [{ panel: 'planets', label: '🌌 Astres' }]
+export const PANEL_BUTTONS: ReadonlyArray<{ panel: 'planets' | 'observatories'; label: string }> = [
+  { panel: 'planets', label: '🌌 Astres' },
+  { panel: 'observatories', label: '🔭 Observatoires' },
+]
 
 // catégories d'astres du sous-menu « Astres » : types (bodyType du JSON) regroupés par bouton
 export const BODY_CATEGORIES: ReadonlyArray<{ id: 'planets' | 'comets' | 'stars'; label: string; types: ReadonlyArray<string> }> = [

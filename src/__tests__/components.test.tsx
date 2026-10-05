@@ -23,7 +23,7 @@ describe('TopBar + SubMenu', () => {
   })
   it('barre du haut : Astres, Terre, ISS, Nuages ; ni Histoires, ni Fusées, ni Satellites, aucun sous-menu au départ', () => {
     render(<><TopBar /><SubMenu /></>)
-    for (const l of ['🌌 Astres', '🌍 Terre', '🛰 ISS', '☁ Nuages', '🌗 Jour / nuit', '🔭 Pic du Midi', '🎬 Vue réaliste']) expect(screen.getByText(l)).toBeInTheDocument()
+    for (const l of ['🌌 Astres', '🔭 Observatoires', '🌍 Terre', '🛰 ISS', '☁ Nuages', '🌗 Jour / nuit', '🎬 Vue réaliste']) expect(screen.getByText(l)).toBeInTheDocument()
     for (const l of [/Histoires/, /Fusées/, /Satellites/, /Engins/]) expect(screen.queryByText(l)).toBeNull()
     expect(screen.queryByText(/Lune/)).toBeNull()
   })
@@ -60,9 +60,11 @@ describe('TopBar + SubMenu', () => {
   })
   it('observatoire : bouton de la barre du haut, fiche avec « Vue depuis l’observatoire »', () => {
     useStore.setState({ ...initialEngineState, observatory: { id: null, view: false }, cardCollapsed: false })
-    render(<><TopBar /><ObservatoryCard /></>)
+    render(<><TopBar /><SubMenu /><ObservatoryCard /></>)
     expect(screen.queryByText('Observatoire du Pic du Midi')).toBeNull()                       // pas de fiche tant qu’on n’y est pas
-    fireEvent.click(screen.getByText('🔭 Pic du Midi'))
+    fireEvent.click(screen.getByText('🔭 Observatoires'))
+    expect(screen.getByText('Mauna Kea')).toBeInTheDocument()                                  // observatoires du monde
+    fireEvent.click(screen.getByText('Pic du Midi'))
     expect(engine.goObservatory).toHaveBeenCalledWith('pic-du-midi')
     act(() => useStore.setState({ observatory: { id: 'pic-du-midi', view: false } }))
     expect(screen.getByText('Observatoire du Pic du Midi')).toBeInTheDocument()

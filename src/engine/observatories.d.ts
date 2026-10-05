@@ -7,6 +7,7 @@ export type Observatory = {
   lon: number
   altM: number
   eyeM: number
+  scene: 'snow' | 'desert' | 'forest'
   image: string
   facts: { label: string; value: string }[]
   note: string

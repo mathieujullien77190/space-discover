@@ -23,7 +23,7 @@ import { assetUrl, setBaseUrl } from './config.js';
 import { KM_AL, KM_UA, fmtBig } from './format.js';
 import { createOverlay } from './overlay.js';
 import { parseObj } from './obj-mini.js';
-const STAR_DARK_SIN = 0.3;   // sinus de la hauteur du Soleil sous l'horizon (≈ −17°) où toutes les étoiles sont là
+const STAR_DARK_SIN = 0.0047;   // sin du rayon apparent du Soleil (0,267°) : opacité 0 quand son centre est à l'horizon (à moitié caché), pleine quand il est entièrement sous l'horizon
 
 export const ISS_MIN_DIST_KM = 0.001;   // zoom minimal autour de l'ISS : 1 m (c'était 100 m, puis 10 cm)
 const SUN_INTENSITY = 3.6, NIGHT_AMBIENT = 0.012;   // jour / nuit : éclairage PHYSIQUE de three.js (la BRDF de Lambert divise par π) : un Soleil d'intensité 1 ne donnait que 32 % de la couleur au zénith, donc « la nuit » partout, même sur la face éclairée ; ≈ π × 1,15 au zénith, ambiance 0,012 (≈ 0,4 % la nuit : on ne voit presque rien ; c'était 0,25 puis 0,06)
