@@ -571,7 +571,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       hubDg.attributes.position.setXYZ(0, hub.pos.x, hub.pos.y, hub.pos.z); hubDg.attributes.position.needsUpdate = true;
       const p = hub.pos.clone().project(camera);
       if (!hiddenByEarth(hub.pos) && p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1) { hubScreen = [(p.x + 1) / 2 * innerWidth, (1 - p.y) / 2 * innerHeight]; hubLabel.style.display = 'block'; hubLabel.style.transform = `translate(${hubScreen[0] + 10}px,${hubScreen[1] - 8}px)`; }
-      if (realistic || issHidden || (issView && cam.fp && focusSat === 'hubble')) { hubScreen = null; hubLabel.style.display = 'none'; hubDot.visible = false; hubModel.visible = false; }   // vue réaliste, dézoomé ou vue DEPUIS Hubble : ni modèle, ni repère, ni nom
+      if (realistic) { hubScreen = null; hubLabel.style.display = 'none'; hubDot.visible = false; }   // vue réaliste : ni nom ni repère, mais le vrai modèle reste
+      if (issHidden || (issView && cam.fp && focusSat === 'hubble')) { hubScreen = null; hubLabel.style.display = 'none'; hubDot.visible = false; hubModel.visible = false; }   // vue réaliste, dézoomé ou vue DEPUIS Hubble : ni modèle, ni repère, ni nom
     }
     // CONCORDE : modèle à la taille réelle quand il fait ≥ 6 px, sinon repère orange ; nom à tout zoom
     concScreen = null; concLabel.style.display = 'none';
@@ -591,7 +592,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       concDg.attributes.position.setXYZ(0, conc.pos.x, conc.pos.y, conc.pos.z); concDg.attributes.position.needsUpdate = true;
       const p = conc.pos.clone().project(camera);
       if (!hiddenByEarth(conc.pos) && p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1) { concScreen = [(p.x + 1) / 2 * innerWidth, (1 - p.y) / 2 * innerHeight]; concLabel.style.display = 'block'; concLabel.style.transform = `translate(${concScreen[0] + 10}px,${concScreen[1] - 8}px)`; }
-      if (realistic || issHidden || (issView && cam.fp && focusSat === 'concorde')) { concScreen = null; concLabel.style.display = 'none'; concDot.visible = false; concModel.visible = false; }   // vue réaliste, dézoomé ou vue DEPUIS le Concorde : ni modèle, ni repère, ni nom
+      if (realistic) { concScreen = null; concLabel.style.display = 'none'; concDot.visible = false; }   // vue réaliste : ni nom ni repère, mais le vrai modèle reste
+      if (issHidden || (issView && cam.fp && focusSat === 'concorde')) { concScreen = null; concLabel.style.display = 'none'; concDot.visible = false; concModel.visible = false; }   // vue réaliste, dézoomé ou vue DEPUIS le Concorde : ni modèle, ni repère, ni nom
     } else { concModel.visible = false; concDot.visible = false; }
     // AVIONS : modèle 3D à la taille réelle (rien s'il est trop petit), traînée de condensation, feux la nuit ; disparaissent d'un coup sous 12° d'élévation vu de l'observatoire
     airliners.update({ dt, camera, fov: camera.fov, height: innerHeight, sunDir: airSun.copy(babs[STAR]).normalize(), hide: solarMode || (camera.position.length() - 1) * R_KM > 2000, hiddenByEarth, obsActive: false, obsFrame, groundR: obsFrame ? Math.hypot(...obsFrame.ground) : 1, eye: obsFrame ? airEye.fromArray(obsFrame.eye) : airEye, R_KM });
