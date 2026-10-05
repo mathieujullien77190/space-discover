@@ -1,6 +1,6 @@
 // AVIONS DE NUIT (vue depuis un observatoire, ciel noir seulement) : un avion de ligne traverse le ciel, simulé PHYSIQUEMENT :
 // il vole à altitude constante (9 000 à 11 500 m) en ligne droite à 220–260 m/s (≈ 800 à 940 km/h) au-dessus de l'observateur (distance minimale de passage 0 à 45 km), cap au hasard ;
-// on le voit tant qu'il est à plus de 8° au-dessus de l'horizon (≈ 70 km de distance horizontale). Deux feux de position, comme sur un vrai avion : un point ROUGE au bout de l'aile gauche
+// on le voit tant qu'il est à plus de 12° au-dessus de l'horizon (≈ 47 km de distance horizontale). Deux feux de position, comme sur un vrai avion : un point ROUGE au bout de l'aile gauche
 // et un point VERT au bout de l'aile droite (envergure 60 m, donc 2 à 5 px d'écart selon la distance) ; fondu près de l'horizon, plus pâles quand l'avion est loin ; le relief les cache.
 // Vitesse apparente réelle : jusqu'à ≈ 1,4°/s à la verticale, bien plus lent au loin (traversée complète du ciel : plusieurs minutes). Seulement en vue depuis un observatoire, la nuit.
 import * as THREE from 'three';
@@ -9,9 +9,9 @@ export const PLANE_GAP_S = [15, 50], PLANE_FIRST_S = [3, 10];   // délai entre 
 export const PLANE_ALTITUDE_M = [9000, 11500];                   // altitude de croisière
 export const PLANE_SPEED_MS = [220, 260];                        // vitesse sol (≈ 800 à 940 km/h)
 export const PLANE_CLOSEST_M = [0, 45000];                       // distance horizontale minimale de passage
-export const PLANE_MIN_ELEVATION_DEG = 8;                        // au-dessous : invisible (horizon, brume)
+export const PLANE_MIN_ELEVATION_DEG = 12;                       // au-dessous : invisible (horizon, brume)
 export const PLANE_WINGSPAN_M = 60;
-export const PLANE_SLOTS = 6;
+export const PLANE_SLOTS = 8;
 const DEG = Math.PI / 180;
 const range = (r, [a, b]) => a + (b - a) * r;
 

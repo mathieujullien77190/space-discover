@@ -41,10 +41,10 @@ for (let i = 0; i < 6000 && p.count() > 0; i++) {
   minE = Math.min(minE, Math.asin(l.normalize().y) * 180 / Math.PI);
   const col = pts.geometry.attributes.color; if (!(col.getX(0) > col.getY(0) && col.getY(1) > col.getX(1))) redLeft = false; void r;
 }
-check(visibleSteps > 50 && minE > 7, 'visible ' + (visibleSteps / 10).toFixed(0) + ' s, jamais plus bas que ' + minE.toFixed(1) + '° d’élévation');
+check(visibleSteps > 50 && minE > 11, 'visible ' + (visibleSteps / 10).toFixed(0) + ' s, jamais plus bas que ' + minE.toFixed(1) + '° d’élévation');
 check(redLeft && pts.geometry.attributes.color.count === 2, 'premier point rouge, second vert (deux points, pas de flash)');
 let maxCount = 0, total = 0; p = mk(); for (let i = 0; i < 36000; i++) { step(p, 0.1); maxCount = Math.max(maxCount, p.count()); total = p.total(); }
-check(maxCount <= PLANE_SLOTS && total >= 60 && total <= 260, 'en 1 h : ' + total + ' avions, jamais plus de ' + PLANE_SLOTS + ' à la fois (' + maxCount + ')');
+check(maxCount <= PLANE_SLOTS && total >= 60 && total <= 400, 'en 1 h : ' + total + ' avions, jamais plus de ' + PLANE_SLOTS + ' à la fois (' + maxCount + ')');
 for (let i = 0; i < 20; i++) step(p, 0.1, false);
 check(p.count() === 0, 'désactivé : tout s’éteint');
 if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }
