@@ -19,7 +19,7 @@ describe('createEngine (rendu factice)', () => {
     canvas = document.createElement('canvas')
     overlay = document.createElement('div')
     document.body.append(canvas, overlay)
-    const e = createEngine({ canvas, overlay, publish: (p: EnginePatch) => { state = { ...state, ...mergePatch(state, p) } }, createRenderer: fakeRenderer })
+    const e = createEngine({ canvas, overlay, publish: (p: EnginePatch) => { state = { ...state, ...mergePatch(state, p) } }, createRenderer: fakeRenderer, showProbes: true })
     if (!e) throw new Error('moteur non créé')
     engine = e
   })

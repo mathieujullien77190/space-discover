@@ -35,7 +35,7 @@ const loadObject = (key, custom) => custom ? Promise.resolve(custom) : (isHttp()
   return Promise.all(ps.map(([n, f]) => getJson(dir + f).then(j => { o.parts[n] = j; }))).then(() => o);
 }) : Promise.reject(new Error('file'))).catch(() => Object.assign({}, FLIGHT_OBJECTS[key], { _dir: (FLIGHT_OBJECT_FILES[key] || '').replace(/[^/]*$/, '') }));
 
-export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = '', createRenderer = defaultRenderer }) {
+export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = '', createRenderer = defaultRenderer, showProbes = false }) {   // showProbes : dessiner les sondes rejouées (Voyager…) ; désactivé par défaut (demande de l'utilisateur : « vire les sondes de l'affichage »), tout le code est conservé
   setBaseUrl(baseUrl);
   let renderer;
   try { renderer = createRenderer(canvas); } catch (e) { publish({ status: 'error', error: 'WebGL indisponible dans ce navigateur.' }); return null; }
@@ -151,7 +151,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       }
       if (tr && tr.pastDays) { o.loop = new THREE.Group(); solar.add(o.loop); o.past = mkTrail(121, 1); o.fut = mkTrail(61, 0.45); o.loop.add(o.past, o.fut); }   // trace : le passé (un tour complet, s'estompe vers le début) et l'avenir (pâle)
     }
-    buildProbes();
+    if (showProbes) buildProbes();
     solarBuilt = true;
   };
   const solarTimer = setTimeout(buildSolar, 400);

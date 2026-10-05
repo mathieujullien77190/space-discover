@@ -86,6 +86,7 @@ export type CreateEngineOptions = {
   overlay: HTMLElement
   publish: (patch: EnginePatch) => void
   baseUrl?: string
+  showProbes?: boolean   // dessiner les sondes rejouées (désactivé par défaut)
   createRenderer?: (canvas: HTMLCanvasElement) => unknown
 }
 
