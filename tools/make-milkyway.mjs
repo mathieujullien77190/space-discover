@@ -1,4 +1,4 @@
-// Étoiles de fond de la VOIE LACTÉE : ≈ 20 000 points répartis selon le VRAI contour de la Voie lactée (cinq niveaux de luminosité tracés d'après des relevés du ciel : d3-celestial, milkyway.json, licence BSD-3).
+// Étoiles de fond de la VOIE LACTÉE : ≈ 50 000 points répartis selon le VRAI contour de la Voie lactée (cinq niveaux de luminosité tracés d'après des relevés du ciel : d3-celestial, milkyway.json, licence BSD-3).
 // Les contours (polygones en ascension droite / déclinaison J2000) sont remplis sur une grille de 0,25° (règle pair / impair : les « trous » et les îlots sont respectés) ; le niveau de luminosité du pixel (0 à 5)
 // fixe la densité de points (probabilité ∝ (niveau / 5)^3,2 × cos(déclinaison)) ; chaque point reçoit une luminosité tirée au hasard (beaucoup de faibles, peu de brillants).
 // Écrit src/engine/data/milkyway-points.js : { N, base64 } avec 5 octets par point : α (16 bits), δ (16 bits), luminosité (8 bits).
@@ -15,7 +15,7 @@ if (!fs.existsSync(cache)) {
   fs.writeFileSync(cache, Buffer.from(await r.arrayBuffer()));
 }
 const features = JSON.parse(fs.readFileSync(cache, 'utf8')).features;
-const W = 1440, H = 720, STEP = 0.25, N = 20000, DEG = Math.PI / 180;
+const W = 1440, H = 720, STEP = 0.25, N = 50000, DEG = Math.PI / 180;
 const level = new Uint8Array(W * H);   // nombre de contours (0 à 5) qui contiennent le pixel
 // les anneaux qui franchissent le méridien ±180° sautent de +179° à −179° : on les rend continus (longitudes cumulées) puis on les remplit aussi décalés de ±360°
 const unwrap = ring => { const out = [ring[0].slice()]; for (let i = 1; i < ring.length; i++) { let x = ring[i][0]; const prev = out[i - 1][0]; while (x - prev > 180) x -= 360; while (x - prev < -180) x += 360; out.push([x, ring[i][1]]); } return out; };

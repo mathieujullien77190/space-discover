@@ -526,9 +526,9 @@ describe('createEngine (rendu factice)', () => {
     const night = engine._obs()
     expect(Math.max(...night.starOpacity)).toBeCloseTo(0.5, 1)                // toutes les étoiles deux fois moins lumineuses depuis l’observatoire
     expect(engine._milky()).toMatchObject({ built: true, visible: true })      // pleine nuit : la Voie lactée est là...
-    expect(engine._milky().count).toBeGreaterThan(15000)                         // ≈ 20 000 petites étoiles de fond, sans lueur floue
-    expect(engine._milky().opacity).toBeGreaterThan(0.2)                         // trois fois moins lumineuses que les étoiles (0,9 / 3 = 0,3 au maximum)
-    expect(engine._milky().opacity).toBeLessThan(0.31)
+    expect(engine._milky().count).toBeGreaterThan(45000)                         // ≈ 50 000 toutes petites étoiles de fond, sans lueur floue
+    expect(engine._milky().opacity).toBeGreaterThan(0.15)                        // cinq fois moins lumineuses que les étoiles (0,9 × 0,2 = 0,18 au maximum)
+    expect(engine._milky().opacity).toBeLessThan(0.19)
     expect(engine._spawnMeteor()).toBe(true)                                    // étoiles filantes : on peut en lancer une de nuit depuis l’observatoire
     engine._frame(performance.now() + 960); engine._frame(performance.now() + 980)
     expect(engine._meteors().total).toBeGreaterThan(0)

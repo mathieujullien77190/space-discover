@@ -1,6 +1,6 @@
-// VOIE LACTÉE (vue depuis un observatoire, en pleine nuit) : 20 000 petites étoiles de fond semées selon le VRAI contour de la Voie lactée
+// VOIE LACTÉE (vue depuis un observatoire, en pleine nuit) : 50 000 toutes petites étoiles de fond semées selon le VRAI contour de la Voie lactée
 // (cinq niveaux de luminosité du relevé d3-celestial, BSD-3 : tools/make-milkyway.mjs → data/milkyway-points.js). Pas de lueur floue : seulement des points,
-// de luminosités très variées (beaucoup de très faibles, quelques-unes plus brillantes), environ trois fois moins lumineux que les étoiles du catalogue.
+// de luminosités très variées (beaucoup de très faibles, quelques-unes plus brillantes), environ cinq fois moins lumineux que les étoiles du catalogue.
 // Les positions sont des étoiles tirées au hasard DANS le vrai contour : ce n'est pas un relevé étoile par étoile.
 // Fondue avec la hauteur du Soleil : absente tant qu'il fait même un peu jour, pleine seulement quand le Soleil est à plus de 18° sous l'horizon.
 import * as THREE from 'three';
@@ -20,7 +20,7 @@ export const MILKY_FADE = [-0.2, -0.32];
 export const MILKY_MAX_OPACITY = 0.6;
 export const milkyWayOpacity = se => { const t = Math.max(0, Math.min(1, (se - MILKY_FADE[0]) / (MILKY_FADE[1] - MILKY_FADE[0]))); return t * t * (3 - 2 * t) * MILKY_MAX_OPACITY; };
 
-export const MILKY_DIM = 1 / 3;        // luminosité globale des points : trois fois moins que les étoiles du catalogue
+export const MILKY_DIM = 0.2;          // luminosité globale des points : cinq fois moins que les étoiles du catalogue (nombreux et très discrets)
 export const MILKY_LUM_POWER = 2.2;    // la luminosité tirée (0–1) est élevée à cette puissance : la grande majorité des points est très faible, peu sont brillants
 export const MILKY_BRIGHT_MIN = 0.3;   // au-delà (après la puissance), un point est « brillant » (un peu plus gros)
 
@@ -35,7 +35,7 @@ export function milkyWayStars() {
     starVector(ra, dec, v); pos[3 * i] = v.x; pos[3 * i + 1] = v.y; pos[3 * i + 2] = v.z; lum[i] = b;
     const e = [v.x, -v.z, v.y], g = GALACTIC_FROM_EQUATORIAL.map(r => r[0] * e[0] + r[1] * e[1] + r[2] * e[2]), l = Math.atan2(g[1], g[0]) * 180 / Math.PI;
     const warm = Math.min(1, gauss(l / 55) * 0.85 + ((i * 2654435761) % 1000) / 1000 * 0.25);   // centre jaune, ailleurs plutôt blanc-bleu
-    const k = 0.25 + 0.75 * b;   // la plupart sont très ternes (mais encore visibles)
+    const k = 0.35 + 0.65 * b;   // la plupart sont très ternes (mais encore visibles)
     col[3 * i] = k * (0.80 + 0.20 * warm); col[3 * i + 1] = k * (0.88 - 0.04 * warm); col[3 * i + 2] = k * (1.0 - 0.38 * warm);
   }
   return { n, pos, col, lum };
@@ -51,10 +51,10 @@ export function createMilkyWay(starsGroup) {
     const m = new THREE.PointsMaterial({ size: px, sizeAttenuation: false, vertexColors: true, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
     const pts = new THREE.Points(g, m); pts.renderOrder = -1; pts.frustumCulled = false; pts.visible = false; starsGroup.add(pts); return pts;
   };
-  const parts = [mk(faint, 1.2), mk(bright, 2)];   // faibles : 1,2 px ; plus lumineux : 2 px
+  const parts = [mk(faint, 1), mk(bright, 1.6)];   // toutes petites : 1 px ; les plus lumineuses : 1,6 px
   return {
     points: parts, count: n, brightCount: bright.length,
-    // opacity 0 à MILKY_MAX_OPACITY ; invisibles quand elle est nulle ; × MILKY_DIM : trois fois moins lumineux que les étoiles du catalogue
+    // opacity 0 à MILKY_MAX_OPACITY ; invisibles quand elle est nulle ; × MILKY_DIM : cinq fois moins lumineux que les étoiles du catalogue
     update(opacity) { const a = Math.min(1, opacity / MILKY_MAX_OPACITY) * 0.9 * MILKY_DIM; for (const p of parts) { p.material.opacity = a; p.visible = opacity > 0.01; } },
     visible: () => parts.some(p => p.visible),
     opacity: () => parts[0].material.opacity,
