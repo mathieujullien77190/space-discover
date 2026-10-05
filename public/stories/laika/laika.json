@@ -1,0 +1,48 @@
+{
+  "id": "laika",
+  "title": "Laïka, la première voyageuse",
+  "year": 1957,
+  "icon": "🐕",
+  "launch": "spoutnik2",
+  "date": "1957-11-03T02:30:42Z",
+  "playbackSpeed": 12,
+  "extraS": 6300,
+  "steps": [
+    {
+      "id": "brouillon-avant",
+      "at": "before",
+      "title": "Brouillon",
+      "text": "Étape de test avant le départ.",
+      "camera": {
+        "follow": "pad",
+        "zoom": "max"
+      }
+    },
+    {
+      "id": "brouillon-decollage",
+      "at": "t0",
+      "title": "Décollage",
+      "text": "La fusée décolle.",
+      "camera": {
+        "follow": "rocket",
+        "zoom": 1
+      }
+    },
+    {
+      "id": "brouillon-orbite",
+      "at": "objectOrbit",
+      "title": "En orbite",
+      "text": "Elle tourne autour de la Terre.",
+      "camera": {
+        "follow": "rocket",
+        "zoom": "max"
+      }
+    }
+  ],
+  "achievement": {
+    "id": "laika-1957",
+    "title": "Amie de Laïka",
+    "text": "Tu as suivi toute l’histoire de Laïka.",
+    "icon": "🐕"
+  }
+}

@@ -396,6 +396,36 @@ describe('createEngine (rendu factice)', () => {
     engine.setDate(launch + 365 * 86400000); frames(3)
     expect(engine._probe('voyager2')!.r).not.toBeNull()
   })
+  it('mode histoire : saut à la date, pause à chaque étape, « Suivant » relance jusqu’à la suivante, fin et sortie', async () => {
+    await new Promise((r) => setTimeout(r, 450))
+    let t = 1000
+    const frames = (n: number) => { for (let i = 0; i < n; i++) engine._frame(performance.now() + (t += 100)) }
+    frames(3)
+    await engine.startStory('laika')
+    frames(2)
+    expect(state.story).toMatchObject({ active: true, id: 'laika', index: 0, phase: 'showing', canNext: true, finished: false })
+    expect(state.story.step?.at).toBe('before')
+    expect(Math.abs(state.time.simMs - Date.UTC(1957, 10, 3, 2, 30, 42))).toBeLessThan(120000)   // saut dans le temps : 3 novembre 1957
+    expect(engine._story()).toMatchObject({ playing: false, T: 0 })           // en pause, rien n'a bougé
+    engine.storyNext(); frames(1)                                              // étape suivante : le décollage, affichée tout de suite (T = 0)
+    expect(state.story.step?.at).toBe('t0')
+    expect(state.story.phase).toBe('showing')
+    expect(engine._story()?.playing).toBe(false)
+    engine.storyNext(); frames(1)                                              // la simulation repart
+    expect(state.story.phase).toBe('running')
+    expect(engine._story()?.playing).toBe(true)
+    for (let i = 0; i < 800 && state.story.phase === 'running'; i++) frames(1)   // jusqu'à la mise en orbite
+    expect(state.story.phase).toBe('showing')                                   // pause à l'étape suivante
+    expect(state.story.step?.at).toBe('objectOrbit')
+    const s = engine._story()!
+    expect(s.T).toBeGreaterThanOrEqual(s.trig[2] - 1e-6)
+    expect(s.T).toBeLessThan(s.trig[2] + 40)                                    // la pause tombe juste après l'événement (pas 5 minutes plus tard)
+    engine.storyNext(); frames(1)                                              // dernière étape passée : histoire finie
+    expect(state.story.finished).toBe(true)
+    engine.quitStory(); frames(2)
+    expect(state.story.active).toBe(false)
+    expect(state.rocket.running).toBe(false)
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)

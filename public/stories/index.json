@@ -1,0 +1,15 @@
+[
+  {
+    "id": "laika",
+    "title": "Laïka, la première voyageuse",
+    "year": 1957,
+    "icon": "🐕",
+    "launch": "spoutnik2",
+    "achievement": {
+      "id": "laika-1957",
+      "title": "Amie de Laïka",
+      "icon": "🐕"
+    },
+    "file": "stories/laika/laika.json"
+  }
+]

@@ -1,0 +1,9 @@
+.quiz { margin-top: 12px; }
+.question { margin: 0 0 8px; font-size: 20px; font-weight: 600; color: #ffe9a8; }
+.choices { display: flex; gap: 10px; flex-wrap: wrap; }
+.choice { flex: 1 1 200px; min-height: 52px; padding: 10px 14px; font-size: 18px; color: #e8eef7; background: rgba(40, 60, 100, 0.85); border: 2px solid rgba(255, 255, 255, 0.35); border-radius: 12px; cursor: pointer; touch-action: manipulation; }
+.choice:hover:not(:disabled) { border-color: #ffd54a; }
+.right { border-color: #6fdc8c; background: rgba(40, 110, 70, 0.85); }
+.almost { border-color: #ffb36b; background: rgba(120, 80, 30, 0.85); }
+.faded { opacity: 0.55; }
+.feedback { margin: 10px 0 0; font-size: 19px; line-height: 1.4; }

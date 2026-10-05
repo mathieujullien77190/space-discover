@@ -3,6 +3,7 @@ import { BODY } from './bodies.js';
 import { FLIGHT_OBJECTS } from './data/objects.js';
 import { FLIGHT_PLANS } from './data/plans.js';
 import { ISS_FEATURES, ISS_FROM } from './iss.js';
+import { STORIES, STORY_INDEX } from './data/stories.js';
 import { probeDef, probeFrom, probeIds, probeMission } from './probes.js';
 
 const flyable = k => !!FLIGHT_OBJECTS[k] && FLIGHT_OBJECTS[k].kind !== 'body' && FLIGHT_OBJECTS[k].kind !== 'probe' && !FLIGHT_OBJECTS[k].live;
@@ -53,3 +54,7 @@ export const bodyCard = id => {
 };
 // missions historiques lançables : sonde dont le JSON a un `launcher` (fusée simulée) ; date = jour du lancement
 export const missionLaunches = () => probeIds().filter(k => probeDef(k).launcher).map(k => { const d = Date.parse(probeDef(k).mission.launch.date); return { key: k, date: d, label: '🚀 ' + FLIGHT_OBJECTS[k].name + ' — ' + new Date(d).toLocaleDateString('fr-FR', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }) }; });
+
+// histoires (mode histoire) : liste et contenu (public/stories/, copie embarquée générée par tools/make-objects.js)
+export const storyList = () => STORY_INDEX.map(s => Object.assign({}, s));
+export const storyOf = id => STORIES[id] || null;

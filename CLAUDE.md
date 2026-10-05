@@ -147,3 +147,10 @@ Remote `origin` `git@github.com:mathieujullien77190/space-discover.git`, branche
 
 - Repartir de zéro ; système solaire archivé.
 - Terre 3D three.js : fond vert/bleu, côtes et frontières vectorielles nettes, orbite à la souris, zoom, ISS réelle (SGP4) zoomable à 200 km.
+
+## Mode histoire (enfants 7–10 ans) — étape 2 : format + lecteur
+
+- **Une histoire = un dossier `public/stories/<id>/<id>.json`** ; `tools/make-objects.js` (lancé par `npm run objects`, `predev`, `prebuild`) régénère `public/stories/index.json` et `src/engine/data/stories.js` (ne pas éditer). Format documenté en tête de `src/engine/story.js` (pur : `storyTriggers`, `validateStory`) : `launch` (objet de `public/objects/`, ex. `spoutnik2`), `date`, `steps[]` (`at` = `before` | `t0` | clé d'événement du vol | `end`, `offsetS`, `title`, `text` 1–3 phrases, `pause`, `camera {follow, zoom}`, `quiz` 2 choix, `image`, **`source` obligatoire dès qu'un chiffre apparaît**), `achievement {id,title,text,icon}`.
+- **Moteur** (`src/engine/app.js`) : contrôleur `startStory / storyNext / quitStory` ; la simulation est mise en pause à chaque étape (`launch.playing = false`), la caméra suit `camera.follow`. État publié : `story`. **UI** : bouton « 📖 Histoires » → `StoryList` (✓ si finie + collection des hauts faits), `StoryPlayer` (grand texte, quiz `StoryQuiz`, « Suivant », « 🔊 Lire à voix haute » via `speechSynthesis` fr-FR, désactivé par défaut, ✕ quitter), `AchievementScreen` (badge animé). Hauts faits dans `localStorage.achievements` (tableau d'ids, try/catch).
+- **Spoutnik 2** (`public/objects/spoutnik2/`, `tools/make-spoutnik2.js`) : R-7 depuis Tiouratam, satellite attaché à l'étage central, orbite ≈ 205–212 × 1 660 km, 65,3° (valeurs de mémoire, **à vérifier**).
+- Contenu de `laika.json` : **brouillon de 3 étapes** (le vrai récit sourcé = étape 3). Tests : `tools/test/story.test.mjs`, `tools/test/spoutnik2.test.mjs`, `src/__tests__/stories.test.tsx`.

@@ -22,6 +22,20 @@ export type RocketState = {
   telemetry: RocketTelemetry
 }
 
+export type StoryStep = {
+  id: string
+  at: string
+  title: string
+  text: string
+  pause?: boolean
+  camera?: { follow?: string; zoom?: number | 'max' }
+  quiz?: { question: string; choices: { text: string; correct?: boolean }[]; explain: string }
+  image?: { src: string; alt: string; credit: string; license: string }
+  source?: string
+}
+export type StoryState = { active: boolean; id: string | null; title: string; index: number; total: number; phase: 'showing' | 'running'; finished: boolean; canNext: boolean; step: StoryStep | null }
+export type StoryInfo = { id: string; title: string; year: number; icon: string; achievement: { id: string; title: string; text: string; icon: string } | null }
+
 export type EngineState = {
   status: EngineStatus
   error: string | null
@@ -31,6 +45,7 @@ export type EngineState = {
   time: TimeState
   scale: ScaleState
   rocket: RocketState
+  story: StoryState
   features: Record<string, boolean>   // options de l'ISS allumées (size, orbit)
   focus: { id: string | null }   // astre dont on est proche (sa fiche s'affiche), sinon null
 }
@@ -63,6 +78,9 @@ export type Engine = {
   setMetric: (on: boolean) => void
   startRocket: (key: string, custom?: unknown) => Promise<unknown>
   stopRocket: () => void
+  startStory: (id: string) => Promise<unknown>
+  storyNext: () => void
+  quitStory: () => void
   launchMission: (id: string) => Promise<unknown>
   followMission: () => void
   setRocketSpeed: (speed: number) => void
@@ -78,6 +96,7 @@ export type Engine = {
   _view: () => { up: number[]; dir: number[]; custom: boolean; align: 'north' | 'orbit' | null }
   _probe: (id: string) => { shown: boolean; dist: number; camDist: number; dot: boolean; model: boolean; path: boolean; local: boolean; pos: number[]; abs: number[]; r: number[] | null; label: string } | null
   _probeDistance: (probe: string, body: string) => number
+  _story: () => { index: number; next: number; phase: string; finished: boolean; trig: number[]; T: number | null; playing: boolean | null; speed: number | null } | null
   _lod: () => { earth: number; bodies: Record<string, number>; ratio: number }
 }
 
@@ -90,5 +109,5 @@ export type CreateEngineOptions = {
   createRenderer?: (canvas: HTMLCanvasElement) => unknown
 }
 
-export type PanelName = 'planets' | 'satellites' | 'rockets'
+export type PanelName = 'planets' | 'satellites' | 'rockets' | 'stories'
 export type BodyCategory = 'planets' | 'comets' | 'stars'

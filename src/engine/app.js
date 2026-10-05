@@ -19,6 +19,8 @@ import { assetUrl, setBaseUrl } from './config.js';
 import { KM_AL, KM_UA, fmtAlt, fmtBig, fmtMass } from './format.js';
 import { createOverlay } from './overlay.js';
 import { parseObj } from './obj-mini.js';
+import { STORIES } from './data/stories.js';
+import { storyTriggers } from './story.js';
 import { probeDef, probeFrom, probeIds, probeMission } from './probes.js';
 import { buildProbeModel } from './probe-model.js';
 
@@ -328,6 +330,36 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const launchMission = id => { const def = probeDef(id); if (!def || !def.launcher) return Promise.resolve(); setDate(Date.parse(def.mission.launch.date)); curMission = id; return startRocket('obj:' + def.launcher); };
   // après l'injection : on quitte la fusée, on saute 2 jours après le lancement (la sonde rejouée est alors affichée), on la regarde et le temps file (1 jour par seconde)
   const followMission = () => { const id = curMission; if (!id) return; stopRocket(); setDate(Date.parse(probeDef(id).mission.launch.date) + 2 * 86400000); selectView(id); setSimSpeed(86400); };
+  // ---------- MODE HISTOIRE (src/engine/story.js, public/stories/) ----------
+  // Une histoire lance un objet (fusée) à une date et met la simulation en PAUSE à chaque étape : texte court, cadrage de caméra, quiz éventuel. L'interface (React) affiche l'étape ; « Suivant » relance la simulation jusqu'à la suivante.
+  let story = null;   // { def, trig (instants de vol de chaque étape), index (étape affichée, −1 au départ), next (prochaine à afficher), phase: 'showing' (en pause) | 'running', finished }
+  const STORY_OFF = { active: false, id: null, title: '', index: -1, total: 0, phase: 'running', finished: false, canNext: false, step: null };
+  const publishStory = () => publish({ story: !story ? STORY_OFF : { active: true, id: story.def.id, title: story.def.title, index: story.index, total: story.def.steps.length, phase: story.phase, finished: story.finished, canNext: story.phase === 'showing', step: story.index >= 0 ? story.def.steps[story.index] : null } });
+  const storyCamera = spec => {   // cadrage : composant suivi (pad, rocket, eap1, epc…) et zoom (nombre, ou "max" = la Terre entière)
+    if (!spec || !launch) return;
+    if (spec.follow) { launch.follow = spec.follow; cam.userDir = false; }
+    if (spec.zoom !== undefined) cam.launchK = spec.zoom === 'max' ? 1e9 : spec.zoom;
+    if (cam.mode !== 'launch') setMode('launch');
+  };
+  const storyShow = i => { const st = story.def.steps[i]; story.index = i; story.next = i + 1; storyCamera(st.camera); if (st.pause === false) { story.phase = 'running'; launch.playing = true; } else { story.phase = 'showing'; launch.playing = false; } publishStory(); };
+  const storyTick = () => { if (story && launch && story.phase === 'running' && !story.finished && story.next < story.def.steps.length && launch.T >= story.trig[story.next] - 1e-9) storyShow(story.next); };
+  const storyNext = () => {
+    if (!story || story.phase !== 'showing' || story.finished) return;
+    if (story.next >= story.def.steps.length) { story.finished = true; publishStory(); return; }   // dernière étape : l'histoire est finie
+    if (story.trig[story.next] <= launch.T + 1e-9) storyShow(story.next); else { story.phase = 'running'; launch.playing = true; publishStory(); }
+  };
+  const quitStory = () => { if (!story) return; story = null; stopRocket(); resetTime(); publishStory(); };
+  const startStory = id => {
+    const def = STORIES[id]; if (!def) return Promise.resolve();
+    if (launch) stopRocket();
+    setDate(Date.parse(def.date)); setSimSpeed(1);   // saut dans le temps : le jour du lancement
+    return loadObject(def.launch).then(launchObject).then(() => {
+      if (!launch) return;
+      launch.playing = false; launch.speed = def.playbackSpeed || 10; launch.Tmax = launch.tEnd + (def.extraS != null ? def.extraS : 900);   // en pause au départ ; on peut suivre l'orbite après l'insertion (extraS secondes)
+      story = { def, trig: storyTriggers(def, launch.sim.events, launch.tEnd, def.extraS), index: -1, next: 0, phase: 'running', finished: false };
+      storyTick();   // les étapes « avant le départ » s'affichent tout de suite
+    });
+  };
   const setRocketSpeed = v => { if (!launch) return; if (v === 0) launch.playing = false; else { launch.playing = true; launch.speed = v; } };
   const toggleComponentInfo = id => { if (!launch) return; const eo = launch.elOpt(id), v = !(eo.traj && eo.speed && eo.mass); for (const k of ['traj', 'speed', 'mass']) eo[k] = v; };   // UN seul bouton : tout afficher / tout masquer
   const publishRocket = () => {   // état de la fusée pour le panneau (5 fois par seconde) : télémétrie, composants (suivi, options, valeurs en direct)
@@ -399,6 +431,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       syncView('earth');
     }
     if (launch) launch.update(dt, camera);
+    storyTick();
     const goalTgt = solarMode ? (babs[solarTarget] || (probeObjs[solarTarget] && probeObjs[solarTarget].st ? probeObjs[solarTarget].abs : null) || tmp.set(0, 0, 0)) : cam.mode === 'iss' && iss ? iss.pos : cam.mode === 'launch' && launch ? launch.focusPos : tmp.set(0, 0, 0);
     if (cam.mode === 'launch' && launch) {   // caméra auto : sur le côté de la trajectoire, de plus en plus loin ; le zoom manuel multiplie la distance
       if (!cam.userDir) { const d = launch.camDir; cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; }
@@ -642,7 +675,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _featuresVisible: () => Object.fromEntries(Object.entries(featInst).map(([id, inst]) => [id, inst.objects.some(o => o.visible)])),
     selectView,
     goIss, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
-    startRocket, stopRocket, launchMission, followMission, setRocketSpeed, followComponent, toggleComponentInfo,
+    startRocket, stopRocket, launchMission, followMission, startStory, storyNext, quitStory,
+    _story: () => story ? { index: story.index, next: story.next, phase: story.phase, finished: story.finished, trig: story.trig, T: launch ? launch.T : null, playing: launch ? launch.playing : null, speed: launch ? launch.speed : null } : null, setRocketSpeed, followComponent, toggleComponentInfo,
     dispose() {
       stopped = true; cancelAnimationFrame(raf); clearTimeout(solarTimer); disposers.forEach(d => d()); clearLabels(); overlay.dispose();
       if (launch) launch.dispose();

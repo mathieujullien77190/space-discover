@@ -27,3 +27,8 @@ export const launchMission = (id: string): void => {
   void engine()?.launchMission(id)
 }
 export const followMission = (): void => engine()?.followMission()
+export const startStory = (id: string): void => {
+  void engine()?.startStory(id)
+}
+export const storyNext = (): void => engine()?.storyNext()
+export const quitStory = (): void => engine()?.quitStory()

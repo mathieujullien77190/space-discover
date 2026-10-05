@@ -1,5 +1,5 @@
 // Constantes partagées de l'interface : clés de stockage, vitesses, chemins.
-export const STORAGE_KEYS = { cardCollapsed: 'cardCollapsed' } as const
+export const STORAGE_KEYS = { cardCollapsed: 'cardCollapsed', achievements: 'achievements', readAloud: 'readAloud' } as const
 export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
 
 export const TIME_SPEEDS: ReadonlyArray<{ speed: number; label: string }> = [
@@ -20,8 +20,9 @@ export const ROCKET_SPEEDS: ReadonlyArray<{ speed: number; label: string }> = [
   { speed: 60, label: '×60' },
   { speed: 200, label: '×200' },
 ]
-export const PANEL_BUTTONS: ReadonlyArray<{ panel: 'planets' | 'satellites' | 'rockets'; label: string }> = [
+export const PANEL_BUTTONS: ReadonlyArray<{ panel: 'planets' | 'satellites' | 'rockets' | 'stories'; label: string }> = [
   { panel: 'planets', label: '🌌 Astres' },
+  { panel: 'stories', label: '📖 Histoires' },
   // « Satellites » et « Fusées » : retirés des boutons (demande de l'utilisateur : « on va faire autrement ») ; leurs composants (SatelliteMenu, RocketMenu, RocketControls), le moteur et les commandes sont CONSERVÉS : pour les remettre, ajouter
   // { panel: 'satellites', label: '🛰 Satellites' } et { panel: 'rockets', label: '🚀 Fusées' } ici.
 ]

@@ -29,3 +29,37 @@ export const fromInputValue = (value: string): number | null => {
   const ms = Date.parse(value + ':00Z')
   return Number.isFinite(ms) ? ms : null
 }
+
+// hauts faits débloqués (tableau d'identifiants) et option « lire à voix haute » : localStorage, toujours en try/catch (navigation privée, stockage bloqué…)
+export const readAchievements = (): string[] => {
+  try {
+    const v: unknown = JSON.parse(localStorage.getItem(STORAGE_KEYS.achievements) ?? '[]')
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+export const writeAchievements = (ids: string[]): void => {
+  try {
+    localStorage.setItem(STORAGE_KEYS.achievements, JSON.stringify(ids))
+  } catch {
+    /* stockage indisponible : le haut fait n'est pas mémorisé */
+  }
+}
+
+export const readReadAloud = (): boolean => {
+  try {
+    return localStorage.getItem(STORAGE_KEYS.readAloud) === '1'
+  } catch {
+    return false
+  }
+}
+
+export const writeReadAloud = (on: boolean): void => {
+  try {
+    localStorage.setItem(STORAGE_KEYS.readAloud, on ? '1' : '0')
+  } catch {
+    /* stockage indisponible */
+  }
+}
