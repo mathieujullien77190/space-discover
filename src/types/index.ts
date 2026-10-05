@@ -64,6 +64,7 @@ export type Engine = {
   _frame: (now: number) => void
   _featuresVisible: () => Record<string, boolean>
   _orbitsVisible: () => Record<string, boolean>
+  _localOrbit: (id: string) => { visible: boolean; coarse: boolean; n: number; mid: number[]; pos: number[]; end: number[] } | null
   _lod: () => { earth: number; bodies: Record<string, number>; ratio: number }
 }
 

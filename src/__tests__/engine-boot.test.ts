@@ -206,6 +206,26 @@ describe('createEngine (rendu factice)', () => {
     for (let i = 0; i < 2500; i++) engine._frame(t += 8)   // 125 images par seconde
     expect(engine._lod().ratio).toBeGreaterThan(slow)
   })
+  it('trace locale : près d’un astre sa trajectoire passe pile par son centre (double précision), loin c’est l’orbite complète', async () => {
+    await new Promise((r) => setTimeout(r, 450))
+    let t = 1000
+    const frames = (n: number) => { for (let i = 0; i < n; i++) engine._frame(performance.now() + (t += 100)) }
+    for (const id of ['tchouri', 'pluto', 'neptune', 'mars', 'earth', 'triton']) {
+      engine.selectView(id); frames(4)
+      const l = engine._localOrbit(id)!
+      expect(l, id).not.toBeNull()
+      if (id === 'earth') continue   // en vue Terre la caméra est au centre : la trace locale n’est pas dessinée
+      expect(l.visible, id).toBe(true)
+      expect(l.coarse, id).toBe(false)           // la grosse ellipse (32 bits) est masquée, elle manquerait l’astre
+      expect(l.n, id).toBe(513)
+      expect(l.mid, id).toEqual([0, 0, 0])        // le sommet du milieu EST l’astre
+      expect(Math.hypot(...l.end), id).toBeGreaterThan(0)   // et la ligne s’en éloigne de part et d’autre
+    }
+    engine.selectView('sun'); frames(4)
+    const far = engine._localOrbit('mars')!
+    expect(far.visible).toBe(false)
+    expect(far.coarse).toBe(true)
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)

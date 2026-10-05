@@ -48,7 +48,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const earth = buildEarth(renderer); world.add(earth);
   // NIVEAUX DE DÉTAIL selon la taille à l'écran (en pixels de rayon) : la Terre (1 048 576 triangles !) et les ~35 sphères d'astres (9 000 triangles chacune) n'étaient pas allégées quand elles ne font que quelques pixels.
   // Les géométries sont partagées (un cache par nombre de segments) ; une hystérésis (±15 %) évite de changer de niveau à chaque image.
-  const lodCache = {}, sphereLod = nx => lodCache[nx] || (lodCache[nx] = earthGeometry(nx, nx / 2));
+  const LOCAL_N = 256, lodCache = {}, sphereLod = nx => lodCache[nx] || (lodCache[nx] = earthGeometry(nx, nx / 2));
   const lodLevel = (px, cur, T) => { for (let i = 0; i < T.length; i++) if (px > T[i] * (cur <= i ? 0.85 : 1.15)) return i; return T.length; };
   const EARTH_LOD = { T: [400, 100, 20, 5], seg: [0, 512, 128, 48, 24] }, BODY_LOD = { T: [150, 40, 8], seg: [0, 48, 24, 12] };   // seg 0 = géométrie d'origine (la plus fine)
   const earthGlobe = earth.children[0], earthGeoHi = earthGlobe.geometry; let earthLevel = 0, pxScale = 400;
@@ -72,6 +72,15 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     for (const [f, t, al] of rg.bands || [[0, 1, 1]]) { g.fillStyle = `rgba(255,255,255,${al})`; g.fillRect(f * 512, 0, Math.max(1, (t - f) * 512), 4); }
     const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), color: new THREE.Color(rg.color || '#d8c9a0'), transparent: true, opacity: rg.opacity != null ? rg.opacity : 0.85, side: THREE.DoubleSide, depthWrite: false }));
     m.rotation.x = -Math.PI / 2; return m;   // RingGeometry est dans le plan XY (normale +Z) : on la couche dans le plan équatorial (normale +y, le pôle du maillage)
+  };
+  // TRACE LOCALE : l'orbite complète est stockée en flottants 32 bits (≈ 7 chiffres) : à 3 UA du Soleil (70 000 unités de scène) un sommet est faux de plusieurs centièmes d'unité, soit plus que le noyau d'une comète (0,0003 unité),
+  // et Pluton (940 000 unités) manquait sa trace de la moitié de son rayon. Près de l'astre, la trace est donc recalculée à chaque image en DOUBLE précision AUTOUR de lui : sommets = déplacement relatif à son corps central depuis sa position actuelle
+  // (petits nombres, exacts), ligne posée sur l'astre → elle passe pile par son centre. Étendue : de part et d'autre, 6 fois la distance de la caméra (au moins 40 rayons), au plus une demi-période.
+  const updateLocalOrbit = (o, id, b, Dd, dCam, ru, v) => {
+    const r0 = BODY.rel(id, Dd), h = 0.01, r1 = BODY.rel(id, Dd + h), speed = Math.hypot(r1[0] - r0[0], r1[1] - r0[1], r1[2] - r0[2]) * KMU / h;   // unités par jour
+    const half = (b.motion.periodDays || 365.25) / 2, T = Math.min(half, Math.max(40 * ru, 6 * dCam) / Math.max(speed, 1e-12)), at = o.localLine.geometry.attributes.position;
+    for (let k = -LOCAL_N; k <= LOCAL_N; k++) { const r = k === 0 ? r0 : BODY.rel(id, Dd + T * k / LOCAL_N), i = k + LOCAL_N; at.setXYZ(i, (r[0] - r0[0]) * KMU, (r[1] - r0[1]) * KMU, (r[2] - r0[2]) * KMU); }
+    at.needsUpdate = true; o.localLine.position.copy(v);
   };
   const buildSolar = () => {
     const D0 = astroD(new Date());
@@ -98,6 +107,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       const tr = b.trace;
       if (tr && tr.fullOrbit && b.around) {   // orbite complète autour du corps central (la Terre autour du Soleil : l'ellipse réelle sur un an) ; le groupe est posé sur le corps central à chaque image
         o.orbitG = new THREE.Group(); const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(BODY.orbitPoints(b.id, D0, BODY.orbitSamples(b.id)).map(p => new THREE.Vector3(p[0] * KMU, p[1] * KMU, p[2] * KMU))), new THREE.LineBasicMaterial({ color: new THREE.Color(tr.color || '#4a90e2'), transparent: true, opacity: 0.9 })); l.frustumCulled = false; o.orbitG.add(l); solar.add(o.orbitG);
+        o.localLine = new THREE.Line(new THREE.BufferGeometry(), l.material.clone()); o.localLine.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array((2 * LOCAL_N + 1) * 3), 3)); o.localLine.frustumCulled = false; o.localLine.visible = false; solar.add(o.localLine);   // trace LOCALE : voir updateLocalOrbit
       }
       if (tr && tr.pastDays) { o.loop = new THREE.Group(); solar.add(o.loop); o.past = mkTrail(121, 1); o.fut = mkTrail(61, 0.45); o.loop.add(o.past, o.fut); }   // trace : le passé (un tour complet, s'estompe vers le début) et l'avenir (pâle)
     }
@@ -371,7 +381,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
           const sv = bpos[STAR], rAU = Math.hypot(v.x - sv.x, v.y - sv.y, v.z - sv.z) / AU_U, tl = b.appearance.tail, k = Math.max(0, 1 - rAU / 3.5) / Math.pow(Math.max(0.3, rAU), 1.5), len = tl.lengthKmAt1AU / R_KM * k;
           o.tail.visible = len > ru * 4 && !hid; if (o.tail.visible) { const dir = v.clone().sub(sv).normalize(); o.tail.position.copy(v); o.tail.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir); const w = tl.widthKm / 2 / R_KM * Math.sqrt(Math.min(1, k)); o.tail.scale.set(Math.max(w, ru), len, Math.max(w, ru)); }
         }
-        if (o.orbitG) { o.orbitG.position.copy(parent || bpos[BODY.origin()]); o.orbitG.visible = (solarMode || cam.mode === 'earth' || camera.position.length() > 300) && !hid; }   // l'orbite de la Terre reste affichée en vue Terre (de près comme de loin), comme celle de Mars en vue Mars ; masquée seulement en vue ISS / fusée
+        if (o.orbitG) { o.orbitG.position.copy(parent || bpos[BODY.origin()]); const orbitOn = (solarMode || cam.mode === 'earth' || camera.position.length() > 300) && !hid, dCam = camera.position.distanceTo(ab), nearL = orbitOn && !!o.localLine && dCam < 3000 * ru; o.orbitG.visible = orbitOn && !nearL; if (o.localLine) { o.localLine.visible = nearL; if (nearL) updateLocalOrbit(o, id, b, Dd, dCam, ru, v); } }   // l'orbite de la Terre reste affichée en vue Terre (de près comme de loin), comme celle de Mars en vue Mars ; masquée seulement en vue ISS / fusée
 
         if (o.dot) { const d = b.dot, shown = (!d.onlyInSolarView || solarMode) && cam.dist > (d.minDistanceUnits || 0) && !(solarMode && solarTarget === id && cam.dist < (d.hideBelowUnits || 0)); o.dot.visible = shown && !hid; const at = o.dot.geometry.attributes.position; at.setXYZ(0, v.x, v.y, v.z); at.needsUpdate = true; }
         if (o.loop) {   // trace de la trajectoire autour du corps central : passé et avenir, recalculée tous les 0,05 jour, collée à l'astre à chaque image
@@ -526,7 +536,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     // pour les tests et l'interface : exécute une image sans requestAnimationFrame
     _frame: frame,
     _lod: () => ({ earth: earthLevel, bodies: Object.fromEntries(Object.entries(bodyObjs).filter(([, o]) => o.lodHi).map(([id, o]) => [id, o.mesh.visible ? o.lod : -1])), ratio }),
-    _orbitsVisible: () => Object.fromEntries(Object.entries(bodyObjs).filter(([, o]) => o.orbitG).map(([id, o]) => [id, o.orbitG.visible])),
+    _orbitsVisible: () => Object.fromEntries(Object.entries(bodyObjs).filter(([, o]) => o.orbitG).map(([id, o]) => [id, o.orbitG.visible || (!!o.localLine && o.localLine.visible)])),
+    _localOrbit: id => { const o = bodyObjs[id]; if (!o || !o.localLine) return null; const at = o.localLine.geometry.attributes.position; return { visible: o.localLine.visible, coarse: o.orbitG.visible, n: at.count, mid: [at.getX(LOCAL_N), at.getY(LOCAL_N), at.getZ(LOCAL_N)], pos: o.localLine.position.toArray(), end: [at.getX(0), at.getY(0), at.getZ(0)] }; },
     _featuresVisible: () => Object.fromEntries(Object.entries(featInst).map(([id, inst]) => [id, inst.objects.some(o => o.visible)])),
     selectView,
     goIss, nudge, setSimSpeed, resetTime, setFeature, setMetric: v => { metric = !!v; },
