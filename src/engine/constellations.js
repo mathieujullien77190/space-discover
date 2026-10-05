@@ -15,11 +15,32 @@ export function constellationSegments() {
   return new Float32Array(out);
 }
 
+// segments d'UNE constellation (Float32Array) et ses étoiles (sommets distincts des tracés)
+export function constellationParts(c) {
+  const seg = [], stars = new Map(), a = new THREE.Vector3(), b = new THREE.Vector3();
+  for (const line of c[3]) for (let i = 0; i < line.length; i++) {
+    starVector(line[i][0], line[i][1], a); stars.set(line[i][0] + ',' + line[i][1], [a.x, a.y, a.z]);
+    if (i + 1 < line.length) { starVector(line[i + 1][0], line[i + 1][1], b); seg.push(a.x, a.y, a.z, b.x, b.y, b.z); }
+  }
+  return { segments: new Float32Array(seg), stars: new Float32Array([...stars.values()].flat()) };
+}
+
+// Un CLIC sur le nom d'une constellation la sélectionne : seuls SES traits restent affichés, ses étoiles sont mises en valeur (points plus gros et plus clairs) ; un second clic (ou l'option éteinte) remet tout.
 export function createConstellations(starsGroup, overlay) {
-  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(constellationSegments(), 3));
-  const lines = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: LINE_COLOR, transparent: true, opacity: LINE_OPACITY, depthWrite: false })); lines.frustumCulled = false; lines.visible = false; starsGroup.add(lines);
+  const mat = new THREE.LineBasicMaterial({ color: LINE_COLOR, transparent: true, opacity: LINE_OPACITY, depthWrite: false });
+  const lines = new THREE.Group(); lines.visible = false; starsGroup.add(lines);   // un LineSegments par constellation (visibles ou non selon la sélection)
+  const parts = {};
+  for (const c of CONSTELLATIONS) { const pt = constellationParts(c), g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pt.segments, 3)); const l = new THREE.LineSegments(g, mat); l.frustumCulled = false; lines.add(l); (parts[c[0]] = parts[c[0]] || []).push({ line: l, stars: pt.stars }); }   // certaines (Serpent) ont deux parties sous le même identifiant
+  const hi = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ color: 0xcfe2ff, size: 7, sizeAttenuation: false, depthWrite: false })); hi.frustumCulled = false; hi.visible = false; starsGroup.add(hi);   // étoiles de la constellation choisie
+  let selected = null;
+  const select = id => {
+    selected = id && parts[id] && id !== selected ? id : null;
+    if (selected) { hi.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(parts[selected].flatMap(p => [...p.stars])), 3)); hi.geometry.computeBoundingSphere(); }
+    hi.visible = !!selected;
+    if (items) for (const it of items) it.el.classList.toggle('sel', it.id === selected);
+  };
   let items = null, shown = 0;
-  const build = () => { items = CONSTELLATIONS.map(([id, name, [ra, dec]]) => { const el = overlay.label(name, 'const'); el.style.display = 'none'; return { id, name, dir: starVector(ra, dec, new THREE.Vector3()), el, w: name.length * CHAR_W + 10 }; }); };
+  const build = () => { items = CONSTELLATIONS.map(([id, name, [ra, dec]]) => { const el = overlay.label(name, 'const'); el.style.display = 'none'; el.addEventListener('click', () => select(id)); return { id, name, dir: starVector(ra, dec, new THREE.Vector3()), el, w: name.length * CHAR_W + 10 }; }); };
   const hideAll = () => { if (items) for (const it of items) it.el.style.display = 'none'; shown = 0; };
   const p = new THREE.Vector3(), cam = new THREE.Vector3(), ec = new THREE.Vector3();
   return {
@@ -27,7 +48,8 @@ export function createConstellations(starsGroup, overlay) {
     // on : option allumée ; camera ; width / height (pixels) ; earthCenter : centre de la Terre dans le monde (les noms derrière la Terre sont cachés) ; renvoie le nombre de noms affichés
     update({ on, camera, width, height, earthCenter }) {
       lines.visible = !!on;
-      if (!on) { if (shown) hideAll(); return 0; }
+      if (!on) { if (selected) select(null); hi.visible = false; if (shown) hideAll(); return 0; }
+      for (const id in parts) for (const p of parts[id]) p.line.visible = !selected || selected === id;   // une constellation choisie : les autres traits sont cachés
       if (!items) build();
       starsGroup.updateMatrixWorld(true);
       cam.copy(camera.position);
@@ -47,7 +69,8 @@ export function createConstellations(starsGroup, overlay) {
       }
       shown = n; return n;
     },
+    select, selected: () => selected,
     count: () => shown,
-    dispose() { if (items) for (const it of items) overlay.remove(it.el); items = null; starsGroup.remove(lines); geo.dispose(); },
+    dispose() { if (items) for (const it of items) overlay.remove(it.el); items = null; starsGroup.remove(lines, hi); mat.dispose(); for (const id in parts) for (const p of parts[id]) p.line.geometry.dispose(); hi.geometry.dispose(); },
   };
 }

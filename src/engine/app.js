@@ -571,6 +571,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     setDayNight: on => { dayNight = !!on; terrain.setLook(dayNight ? 0 : TERRAIN_GLOW, dayNight ? TERRAIN_DAY_GAIN : 1); },
     _glare: () => ({ visible: sunGlare.sprite.visible, opacity: sunGlare.sprite.material.opacity, scale: sunGlare.sprite.scale.x }),
     _sun: () => { const v = babs[STAR].clone().normalize(); return { lon: Math.atan2(-v.z, v.x) / DEG, lat: Math.asin(v.y) / DEG }; },   // point subsolaire dans le repère de la scène (vue Terre fixe)
+    _constellation: () => ({ selected: constellations.selected(), lines: constellations.lines.children.filter(l => l.visible).length, highlighted: constellations.lines.parent.children.some(c => c.isPoints && c.visible && c.material.size === 7) }),
     _mapOptions: () => ({ borders: bordersOn && borders.visible, capitals: capitals.count(), observatories: obsSites.count(), constellations: constellations.lines.visible, constellationNames: constellations.count(), realistic, dayNight, ambient: amb.intensity, sunPoint: sunPoint.visible }),
     _clouds: () => Object.assign({ on: cloudsOn }, clouds.stats()),
     setIssView,

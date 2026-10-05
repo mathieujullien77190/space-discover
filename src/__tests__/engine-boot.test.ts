@@ -379,6 +379,17 @@ describe('createEngine (rendu factice)', () => {
     engine.selectView('earth'); engine.setObservatories(false); engine._frame(performance.now() + 350)
     expect(on.constellations).toBe(true)
     expect(on.constellationNames).toBeGreaterThan(0)                           // au moins un nom de constellation à l’écran autour de la Terre
+    const all = engine._constellation().lines                                  // clic sur un nom : seule cette constellation garde ses traits, ses étoiles sont mises en valeur
+    const cname = [...overlay.querySelectorAll<HTMLElement>('.eng-l3d.const')].find((e) => e.style.display === 'block')
+    cname?.click(); engine._frame(performance.now() + 220)
+    const one = engine._constellation()
+    expect(all).toBeGreaterThan(50)
+    expect(one.selected).not.toBeNull()
+    expect(one.lines).toBeLessThanOrEqual(2)
+    expect(one.lines).toBeGreaterThan(0)
+    expect(one.highlighted).toBe(true)
+    cname?.click(); engine._frame(performance.now() + 240)                     // second clic : tout revient
+    expect(engine._constellation()).toMatchObject({ selected: null, lines: all, highlighted: false })
     expect(on.dayNight && on.sunPoint).toBe(true)                              // jour / nuit : le vrai Soleil éclaire, l’ambiance est sombre
     expect(on.ambient).toBeLessThan(0.4)
     expect(engine._terrain()).toMatchObject({ glow: 0, gain: 2.2 })           // tuiles de relief plus claires le jour, sans lumière propre la nuit (valeurs du mode jour / nuit, coché par défaut)

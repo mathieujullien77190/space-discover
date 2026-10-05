@@ -55,6 +55,7 @@ export type Engine = {
   setDayNight: (on: boolean) => void
   _glare: () => { visible: boolean; opacity: number; scale: number }
   _sun: () => { lon: number; lat: number }
+  _constellation: () => { selected: string | null; lines: number; highlighted: boolean }
   _mapOptions: () => { borders: boolean; capitals: number; observatories: number; constellations: boolean; constellationNames: number; realistic: boolean; dayNight: boolean; ambient: number; sunPoint: boolean }
   _terrain: () => { gain: number; glow: number; levels: number; shown: boolean; tiles: number; ready: number; loading: number; seaOffset: number }
   _clouds: () => { on: boolean; state: string | null; level: string | null; visible: boolean; opacity: number }
