@@ -2,7 +2,7 @@ import { DEG, R_KM } from './earth.js';
 
 // Contrôles : glisser = tourner autour de la cible, molette / pincement = zoom, clic sans bouger = onClick(x, y).
 export function attachControls(canvas, cam, onClick) {
-  const ptrs = new Map(); let pinch = 0, moved = 0;
+  const ptrs = new Map(); let pinch = 0, moved = 0; const offs = [], on = (t, ev, fn, o) => { t.addEventListener(ev, fn, o); offs.push(() => t.removeEventListener(ev, fn, o)); };
   const tanH = () => Math.tan(cam.fov * DEG / 2);
   const zoom = f => {   // f > 1 = on s'éloigne
     if (cam.mode === 'launch') { cam.zoomFit = false; cam.launchK = Math.max(1e-7, Math.min(1e7, cam.launchK * f)); }   // zoom manuel sur la caméra auto de la fusée
@@ -17,8 +17,8 @@ export function attachControls(canvas, cam, onClick) {
     cam.goal.lon -= dx * k; cam.goal.lat = Math.max(-89.5, Math.min(89.5, cam.goal.lat + dy * k));
     cam.lon = cam.goal.lon; cam.lat = cam.goal.lat; cam.fly = 0; if (cam.mode === 'launch') cam.userDir = true;   // l'utilisateur reprend la main
   };
-  canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); moved = 0; canvas.classList.add('drag'); if (ptrs.size === 2) pinch = 0; });
-  canvas.addEventListener('pointermove', e => {
+  on(canvas, 'pointerdown', e => { canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); moved = 0; canvas.classList.add('drag'); if (ptrs.size === 2) pinch = 0; });
+  on(canvas, 'pointermove', e => {
     const p = ptrs.get(e.pointerId); if (!p) return;
     const dx = e.clientX - p[0], dy = e.clientY - p[1]; moved += Math.abs(dx) + Math.abs(dy);
     if (ptrs.size === 1) rotate(dx, dy);
@@ -32,10 +32,11 @@ export function attachControls(canvas, cam, onClick) {
     if (ptrs.has(e.pointerId) && ptrs.size === 1 && moved < 6 && e.type === 'pointerup') onClick(e.clientX, e.clientY);
     ptrs.delete(e.pointerId); pinch = 0; if (!ptrs.size) canvas.classList.remove('drag');
   };
-  canvas.addEventListener('pointerup', up); canvas.addEventListener('pointercancel', up);
-  canvas.addEventListener('wheel', e => { e.preventDefault(); zoom(Math.exp(Math.max(-200, Math.min(200, e.deltaY)) * (cam.mode === 'iss' ? (cam.goal.dist * R_KM < 30 ? 0.0009 : 0.0025) : 0.0015))); }, { passive: false });
-  addEventListener('keydown', e => {
+  on(canvas, 'pointerup', up); on(canvas, 'pointercancel', up);
+  on(canvas, 'wheel', e => { e.preventDefault(); zoom(Math.exp(Math.max(-200, Math.min(200, e.deltaY)) * (cam.mode === 'iss' ? (cam.goal.dist * R_KM < 30 ? 0.0009 : 0.0025) : 0.0015))); }, { passive: false });
+  on(window, 'keydown', e => {
     if (e.key === '+' || e.key === '=') zoom(0.8); else if (e.key === '-') zoom(1.25);
     else if (e.key === 'Escape') cam.onEarth && cam.onEarth();
   });
+  return () => offs.forEach(f => f());
 }
