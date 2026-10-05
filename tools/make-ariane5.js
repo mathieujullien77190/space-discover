@@ -17,10 +17,11 @@ const m0 = B.count * (B.dryKg + B.propKg) + S1.dryKg + S1.propKg + S2.dryKg + S2
 // --- débit et Isp effectifs des moteurs allumés ---
 const srb = t => (1.35 - 0.55 * t / B.burnS) / 1.075, mdB = t => B.count * B.propKg / B.burnS * srb(t), mdS1 = S1.propKg / S1.burnS, mdS2 = S2.thrustN / (S2.isp * G0);
 const tl = [], tSep = ev('eap'), STEP = +process.env.STEP || 5;
-// pitch : points de la courbe d'origine, simplifiés (Douglas-Peucker, 0,05°)
-const pts = plan.pitch.table, tol = +process.env.TOL || 0.05, keep = new Set([0, pts.length - 1]);
-(function rdp(a, b) { let dmax = 0, im = -1; for (let i = a + 1; i < b; i++) { const f = (pts[i][0] - pts[a][0]) / Math.max(1e-9, pts[b][0] - pts[a][0]), d = Math.abs(pts[i][1] - (pts[a][1] + f * (pts[b][1] - pts[a][1]))); if (d > dmax) { dmax = d; im = i; } } if (dmax > tol) { keep.add(im); rdp(a, im); rdp(im, b); } })(0, pts.length - 1);
-const pitchTl = [...keep].sort((a, b) => a - b).map(i => ({ t: r1(pts[i][0], 10), pitch: r1(pts[i][1], 100) }));
+// pitch : une courbe LISSE de 10 points, cherchée ci-dessous (demande de l'utilisateur : pas les 93 points hérités de l'ancien guidage, qui corrigeait l'altitude de l'étage principal par à-coups de −11° à +44° en quelques secondes) ;
+// aux poussées de l'étage supérieur la poussée suit la vitesse (« prograde »)
+const PT = [0, 8, 20, 40, 70, 130, 200, 300, 400, r1(ev('meco'), 10)];   // dates des points (s)
+const pitchTl = k => PT.map((t, i) => ({ t, pitch: r1(k[i], 100) }));
+let knots = [90, 90, 78, 66, 56, 42, 30, 18, 9, 2];   // valeur de départ : virage gravitationnel approximatif
 // montée à deux moteurs : un palier tous les STEP s (le débit des boosters à poudre décroît), débit et Isp effectifs au milieu de l'intervalle
 for (let a = 0; a < tSep - 1e-6; a += STEP) {
   const mid = a + STEP / 2, b = mdB(mid), c = mdS1, md = b + c, entry = { t: a, burnKgS: r1(md, 10), ispVac: r1((b * B.ispVac + c * S1.ispVac) / md, 10), ispSea: r1((b * B.ispSea + c * S1.ispSea) / md, 10) };
@@ -31,17 +32,32 @@ tl.push({ t: r1(tSep, 10), release: [{ part: 'booster', count: B.count }], burnK
 tl.push({ t: r1(ev('fairing'), 10), release: [{ part: 'fairing', count: 2 }], label: 'Largage de la coiffe' });
 tl.push({ t: r1(ev('meco'), 10), burnKgS: 0, flames: [], label: 'Arrêt du moteur principal', key: 'meco' });
 tl.push({ t: r1(ev('epcsep'), 10), release: [{ part: 'stage1', count: 1 }], label: 'Séparation de l’étage principal' });
-tl.push({ t: r1(ev('esc1'), 10), burnKgS: r1(mdS2, 1000), ispVac: S2.isp, ispSea: S2.isp, flames: ['esc'], label: 'Allumage de l’étage supérieur', key: 'esc1', phase: 'transfert' });
+tl.push({ t: r1(ev('esc1'), 10), burnKgS: r1(mdS2, 1000), ispVac: S2.isp, ispSea: S2.isp, flames: ['esc'], pitch: 'prograde', label: 'Allumage de l’étage supérieur', key: 'esc1', phase: 'transfert' });
 tl.push({ t: r1(ev('esc1end'), 10), burnKgS: 0, flames: [], label: 'Fin de la 1re poussée', key: 'esc1end', phase: 'transfert (sans poussée)' });
-tl.push({ t: r1(ev('esc2'), 10), burnKgS: r1(mdS2, 1000), flames: ['esc'], label: 'Allumage à l’apogée (circularisation)', key: 'esc2', phase: 'circularisation' });
+tl.push({ t: r1(ev('esc2'), 10), burnKgS: r1(mdS2, 1000), flames: ['esc'], pitch: 'prograde', label: 'Allumage à l’apogée (circularisation)', key: 'esc2', phase: 'circularisation' });
 tl.push({ t: r1(ev('esc2end'), 10), burnKgS: 0, flames: [], label: 'Extinction : orbite atteinte', key: 'esc2end', phase: 'en orbite' });
 tl.push({ t: r1(ev('sat'), 10), release: [{ part: 'satellite', count: 1 }], label: 'Satellite largué' });
-let timeline = tl.concat(pitchTl).sort((a, b) => a.t - b.t);
+const mkTL = k => tl.concat(pitchTl(k)).sort((a, b) => a.t - b.t || (typeof a.pitch === 'number' ? -1 : 0));
+const startS = { lat: plan.site.lat, lon: plan.site.lon, altitudeKm: 0, azimuthDeg: 90, elevationDeg: 90, speedMs: 0 };
+const flyK = k => { ctx.TRYK = { name: 'x', start: startS, parts, timeline: mkTL(k) }; return vm.runInContext('flyObject(TRYK)', ctx); };
+const elAt = (r, t) => { const q = r.samples.find(x => x.t >= t - 1e-6) || r.samples[r.samples.length - 1]; ctx.QS = q; return vm.runInContext('lchElements(Math.hypot(QS.x, QS.y), (QS.vx * QS.x + QS.vy * QS.y) / Math.hypot(QS.x, QS.y), (QS.vy * QS.x - QS.vx * QS.y) / Math.hypot(QS.x, QS.y))', ctx); };
+// cible : l'orbite de l'ancien plan à la fin de la 1re poussée de l'étage supérieur (même énergie, même apogée)
+ctx.PL = plan; const tgt = vm.runInContext('(() => { const p = flyPlan(PL), q = p.samples.find(x => x.t >= ' + ev('esc1end') + '); return lchElements(Math.hypot(q.x, q.y), (q.vx * q.x + q.vy * q.y) / Math.hypot(q.x, q.y), (q.vy * q.x - q.vx * q.y) / Math.hypot(q.x, q.y)); })()', ctx);
+// régularité : on pénalise les changements de pente de la courbe de pitch (pas de coude brusque)
+const rough = k => { let p = 0; for (let i = 2; i < k.length; i++) { const s1 = (k[i - 1] - k[i - 2]) / (PT[i - 1] - PT[i - 2]), s2 = (k[i] - k[i - 1]) / (PT[i] - PT[i - 1]); p += Math.abs(s2 - s1); } return p; };
+const orbErr = k => { const o = elAt(flyK(k), ev('esc1end')); return Math.abs(o.ra - tgt.ra) / 1000 + Math.abs(o.rp - tgt.rp) / 1000; };
+const lossK = k => orbErr(k) + 120 * rough(k);
+{ let bl = lossK(knots), seed = 5; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296 - 0.5; };
+  for (let it = 0; it < 2600; it++) { const sig = it < 700 ? 4 : it < 1400 ? 1.5 : 0.5, k = knots.slice(); for (let i = 2; i < k.length; i++) if (rnd() > -0.1) k[i] += rnd() * 2 * sig; for (let i = 3; i < k.length; i++) k[i] = Math.min(k[i], k[i - 1]); if (k[k.length - 1] < -3) continue; const l = lossK(k); if (l < bl) { bl = l; knots = k; } }
+  const o = elAt(flyK(knots), ev('esc1end')); console.log('pitch lisse : ' + knots.map(v => r1(v, 10)).join(', ') + ' (aux dates ' + PT.join(', ') + ') → à la fin de la 1re poussée de l’étage supérieur : orbite ' + Math.round((o.rp - 6378137) / 1000) + ' x ' + Math.round((o.ra - 6378137) / 1000) + ' km (cible ' + Math.round((tgt.rp - 6378137) / 1000) + ' x ' + Math.round((tgt.ra - 6378137) / 1000) + ' km, erreur d’orbite ' + orbErr(knots).toFixed(1) + ' km, rugosité ' + rough(knots).toFixed(3) + ' °/s)'); }
+let timeline = mkTL(knots);
 // réglage des deux dernières poussées : fin de la 1re (apogée visée), allumage à l'apogée et durée de la 2e (circularisation), cherchés pour viser l'orbite du plan (500 x 502 km) ; le reste n'est pas touché
-{ const e1e = timeline.find(e => e.key === 'esc1end'), e2 = timeline.find(e => e.key === 'esc2'), e2e = timeline.find(e => e.key === 'esc2end'), sat = timeline.find(e => e.release && e.release[0].part === 'satellite'), a1 = e1e.t, a2 = e2.t, d2 = e2e.t - e2.t; let best = null;
+{ const e1e = timeline.find(e => e.key === 'esc1end'), e2 = timeline.find(e => e.key === 'esc2'), e2e = timeline.find(e => e.key === 'esc2end'), sat = timeline.find(e => e.release && e.release[0].part === 'satellite'), a1 = e1e.t, d2 = e2e.t - e2.t; let best = null;
+  // instant d'apogée réel (la courbe de pitch a changé l'orbite) : l'allumage de la circularisation est cherché autour de lui
+  const r0 = flyK(knots); let ia = -1; for (let i = 0; i < r0.samples.length; i++) if (r0.samples[i].t > a1 && r0.samples[i].t < e2.t && (ia < 0 || r0.samples[i].alt > r0.samples[ia].alt)) ia = i; const tApo = r0.samples[ia].t, a2 = tApo - d2 / 2;
   const run = (t1, ti, dur) => { e1e.t = r1(t1, 100); e2.t = r1(ti, 100); e2e.t = r1(ti + dur, 100); sat.t = r1(ti + dur + 0.1, 100); ctx.TRY = { name: 'x', start: { lat: plan.site.lat, lon: plan.site.lon, altitudeKm: 0, azimuthDeg: 90, elevationDeg: 90, speedMs: 0 }, parts, timeline: timeline.slice().sort((x, y) => x.t - y.t) };
     return vm.runInContext('(() => { const r = flyObject(TRY); return r.ok ? [(r.orbit.rp - 6378137) / 1000, (r.orbit.ra - 6378137) / 1000] : null; })()', ctx); };
-  for (let t1 = a1 - 2; t1 <= a1 + 4; t1 += 0.5) for (let ti = a2 - 4; ti <= a2 + 8; ti += 1) for (let dur = d2 - 2; dur <= d2 + 4; dur += 0.25) { const o = run(t1, ti, dur); if (!o) continue; const e = Math.abs(o[0] - 500) + Math.abs(o[1] - 502); if (!best || e < best.e) best = { e, t1, ti, dur }; }
+  for (let t1 = a1 - 1; t1 <= a1 + 1; t1 += 0.5) for (let ti = a2 - 12; ti <= a2 + 12; ti += 1) for (let dur = Math.max(8, d2 - 10); dur <= d2 + 10; dur += 0.5) { const o = run(t1, ti, dur); if (!o) continue; const e = Math.abs(o[0] - 500) + Math.abs(o[1] - 502); if (!best || e < best.e) best = { e, t1, ti, dur }; }
   run(best.t1, best.ti, best.dur); console.log('poussées réglées : fin de la 1re T+' + e1e.t + ', allumage T+' + e2.t + ', durée ' + r1(e2e.t - e2.t, 100) + ' s (erreur d’orbite ' + best.e.toFixed(1) + ' km)');
   timeline = timeline.slice().sort((x, y) => x.t - y.t); }
 const main = {
