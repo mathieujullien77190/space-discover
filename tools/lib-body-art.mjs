@@ -65,3 +65,25 @@ export const blobs = (c, rand, count, rMin, rMax, color, yMin = 0, yMax = 1) => 
   const w = c.width, h = c.height, g = c.getContext('2d'); g.fillStyle = color;
   for (let i = 0; i < count; i++) { const cx = rand() * w, cy = (yMin + rand() * (yMax - yMin)) * h, R = rMin + rand() * (rMax - rMin); for (let k = 0; k < 7; k++) { const a = rand() * 6.28, d = rand() * R * 0.8, r = R * (0.3 + rand() * 0.5); for (const dx of [-w, 0, w]) { g.beginPath(); g.arc(cx + Math.cos(a) * d + dx, cy + Math.sin(a) * d * 0.7, r, 0, 2 * Math.PI); g.fill(); } } }
 };
+
+// ---------- rendu logiciel d'un maillage (z-buffer, ombrage en 5 aplats) pour les fiches : V = [[x, y, z]], F = [[a, b, c]] ----------
+export const renderMeshCard = (V, F, { yaw = 0.5, pitch = 0.45, base = [150, 140, 128], size = S } = {}) => {
+  const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const rot = v => { const x = v[0] * cy + v[2] * sy, z = -v[0] * sy + v[2] * cy; return [x, v[1] * cp - z * sp, v[1] * sp + z * cp]; };
+  const R = V.map(rot), lo = [0, 1].map(i => Math.min(...R.map(v => v[i]))), hi = [0, 1].map(i => Math.max(...R.map(v => v[i]))), scale = 0.9 * size / Math.max(hi[0] - lo[0], hi[1] - lo[1]);
+  const px_ = v => (v[0] - (lo[0] + hi[0]) / 2) * scale + size / 2, py_ = v => size / 2 - (v[1] - (lo[1] + hi[1]) / 2) * scale;
+  const c = createCanvas(size, size), g = c.getContext('2d'), img = g.createImageData(size, size), zb = new Float32Array(size * size).fill(-1e9), LEV = [0.35, 0.55, 0.75, 0.95, 1.1], light = [-0.5, 0.6, 0.62], ln = Math.hypot(...light);
+  for (let i = 0; i < 3; i++) light[i] /= ln;
+  for (const [ia, ib, ic] of F) {
+    const A = R[ia], B = R[ib], C = R[ic], ux = B[0] - A[0], uy = B[1] - A[1], uz = B[2] - A[2], vx = C[0] - A[0], vy = C[1] - A[1], vz = C[2] - A[2];
+    let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl; if (nz < 0) { nx = -nx; ny = -ny; nz = -nz; }
+    const k = LEV[Math.min(4, Math.floor(Math.max(0, nx * light[0] + ny * light[1] + nz * light[2]) * 5))];
+    const x0 = px_(A), y0 = py_(A), x1 = px_(B), y1 = py_(B), x2 = px_(C), y2 = py_(C), den = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2); if (Math.abs(den) < 1e-9) continue;
+    for (let py = Math.max(0, Math.floor(Math.min(y0, y1, y2))); py <= Math.min(size - 1, Math.ceil(Math.max(y0, y1, y2))); py++) for (let px = Math.max(0, Math.floor(Math.min(x0, x1, x2))); px <= Math.min(size - 1, Math.ceil(Math.max(x0, x1, x2))); px++) {
+      const l1 = ((y1 - y2) * (px + 0.5 - x2) + (x2 - x1) * (py + 0.5 - y2)) / den, l2 = ((y2 - y0) * (px + 0.5 - x2) + (x0 - x2) * (py + 0.5 - y2)) / den, l3 = 1 - l1 - l2; if (l1 < 0 || l2 < 0 || l3 < 0) continue;
+      const z = l1 * A[2] + l2 * B[2] + l3 * C[2], o = py * size + px; if (z <= zb[o]) continue; zb[o] = z;
+      img.data[o * 4] = Math.min(255, base[0] * k); img.data[o * 4 + 1] = Math.min(255, base[1] * k); img.data[o * 4 + 2] = Math.min(255, base[2] * k); img.data[o * 4 + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0); return c;
+};

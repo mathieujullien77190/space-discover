@@ -23,4 +23,10 @@ check(size[0] > 4 && size[0] < 6 && size[2] > 2 && size[2] < 3.5, 'boîte englob
 const dens = j.massKg / (real.vol * 1e9) / 1000;
 check(Math.abs(dens - 0.53) < 0.03, 'densité ' + dens.toFixed(3) + ' g/cm³ (≈ 0,53 attendus : masse ' + j.massKg + ' kg / volume)');
 check(Math.abs(360 / j.rotation.rateDegPerDay * 24 - 12.4) < 0.01, 'rotation : ' + (360 / j.rotation.rateDegPerDay * 24).toFixed(2) + ' h (12,4 attendues)');
+// 4. Halley : forme approchée en « cacahuète » (15 × 7 × 7 km, cou étroit) fabriquée par tools/make-halley-shape.mjs
+{ const h = JSON.parse(fs.readFileSync(path.join(root, 'public', 'objects', 'halley', 'halley.json'), 'utf8')), t2 = fs.readFileSync(path.join(root, 'public', 'objects', 'halley', h.appearance.model), 'utf8');
+  ctx.OBJ2 = t2; ctx.KM2 = h.appearance.kmPerUnit;
+  const s = G('(() => { const g = parseObj(OBJ2, KM2, 1); const bb = new THREE.Box3().setFromBufferAttribute(g.attributes.position), p = g.attributes.position; let waist = 0, n = 0, big = 0; for (let i = 0; i < p.count; i++) { const x = p.getX(i); if (Math.abs(x) < 0.8) { waist = Math.max(waist, Math.hypot(p.getY(i), p.getZ(i))); n++; } if (Math.abs(x) > 3 && Math.abs(x) < 5) big = Math.max(big, Math.hypot(p.getY(i), p.getZ(i))); } return { size: bb.getSize(new THREE.Vector3()).toArray(), tris: g.index.count / 3, waist, big }; })()');
+  check(s.size[0] > 14 && s.size[0] < 17 && s.size[1] > 5.5 && s.size[1] < 9 && s.size[2] > 5.5 && s.size[2] < 9, 'Halley : noyau de ' + s.size.map(v => v.toFixed(1)).join(' × ') + ' km (≈ 15 × 8 × 8 attendus), ' + s.tris + ' triangles');
+  check(s.waist < 0.85 * s.big, 'Halley : cou étroit au milieu (rayon ' + s.waist.toFixed(1) + ' km contre ' + s.big.toFixed(1) + ' km aux lobes) : forme en cacahuète, pas une sphère'); }
 if (fails.length) process.exit(1);

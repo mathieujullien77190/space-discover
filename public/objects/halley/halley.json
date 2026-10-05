@@ -18,8 +18,10 @@
     "periodDays": 27510
   },
   "appearance": {
-    "kind": "comet",
-    "color": "#d9e4ee",
+    "kind": "mesh",
+    "model": "halley.obj",
+    "kmPerUnit": 1,
+    "color": "#4a4540",
     "tail": {
       "color": "#bfe3ff",
       "lengthKmAt1AU": 30000000,
@@ -43,7 +45,7 @@
     "order": 5,
     "icon": "☄",
     "view": {
-      "distanceUnits": 0.5,
+      "distanceUnits": 0.006,
       "text": "Vue de la comète de Halley : orbite de 75 ans autour du Soleil (périhélie le 9 février 1986), queue tournée à l'opposé du Soleil"
     }
   },
@@ -51,8 +53,16 @@
   "card": {
     "_note": "Fiche affichée près de l'astre. L'illustration est fabriquée par tools/make-body-cards.mjs. Les caractéristiques listées ici sont écrites DE MÉMOIRE (à vérifier) ; diamètre, masse, gravité, rotation, révolution et distance au Soleil sont CALCULÉS d'après le reste du JSON.",
     "image": "card.png",
-    "nearUnits": 2,
+    "nearUnits": 0.05,
     "facts": [
+      {
+        "label": "Forme",
+        "value": "noyau allongé en « cacahuète » (illustration approchée, pas un modèle mesuré)"
+      },
+      {
+        "label": "Dimensions",
+        "value": "≈ 15 × 8 × 8 km (sonde Giotto, 1986)"
+      },
       {
         "label": "Dernier passage",
         "value": "périhélie du 9 février 1986"
@@ -62,9 +72,16 @@
         "value": "2061"
       },
       {
-        "label": "Noyau",
-        "value": "≈ 15 × 8 km"
+        "label": "Rotation",
+        "value": "culbute, ≈ 2,2 jours"
       }
     ]
+  },
+  "rotation": {
+    "_note": "ILLUSTRATIF : le noyau de Halley culbute (≈ 2,2 jours, axe mal connu) ; pôle et phase arbitraires.",
+    "poleRaDeg": 90,
+    "poleDecDeg": 45,
+    "w0Deg": 0,
+    "rateDegPerDay": 163.64
   }
 }
