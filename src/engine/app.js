@@ -10,7 +10,6 @@ import { createCapitals } from './capitals.js';
 import { OBS_VIEW_ALT_KM, OBS_VIEW_FOV, OBS_VIEW_PITCH, observatoryById, observatoryFrame } from './observatories.js';
 import { createConstellations } from './constellations.js';
 import { createStars } from './stars.js';
-const TWINKLE_ALT_KM = 120, TWINKLE_AMP = 0.18;   // les étoiles scintillent sous 120 km d'altitude (±18 % au sol)
 import { createSunGlare } from './sun-glare.js';
 import { occludedBy } from './occlusion.js';
 import { createTerrainLayer } from './terrain-layer.js';
@@ -270,7 +269,6 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const issSrc = { pos: null, dir: new THREE.Vector3(), radial: new THREE.Vector3() };   // l'ISS vue de l'intérieur : sens de la marche = vitesse, haut = à l'opposé de la Terre
   let issView = false;
   // OBSERVATOIRE (comme l'ISS : aller dessus, puis « vue depuis ») : obsId = observatoire choisi, obsView = on regarde DEPUIS lui ; obsFrame = repère local (œil, haut, sud)
-  let twkT = -1, twkAmp = -1;
   let obsId = null, obsView = false, obsFrame = null, skyOn = false, obsDay = 0;
   const obsPos = new THREE.Vector3(), obsSrc = { pos: obsPos, dir: new THREE.Vector3(), radial: new THREE.Vector3() }, skyCol = new THREE.Color(), tmpObs = new THREE.Vector3(), tmpObs2 = new THREE.Vector3();
   const obsDotG = new THREE.BufferGeometry(); obsDotG.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
@@ -527,8 +525,6 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     constellations.update({ on: constellationsOn && !realistic, camera, width: innerWidth, height: innerHeight, earthCenter: new THREE.Vector3().setFromMatrixPosition(earth.matrixWorld) });
     capitals.update({ on: capitalsOn && !realistic, camera, width: innerWidth, height: innerHeight, hidden: p => occludedBy(camera.position.toArray(), [p.x, p.y, p.z], lastOcc.filter(o => o.id !== 'earth'), 0, 0) !== null });   // juste avant le rendu : pose de la Terre et de la caméra à jour (rotation du temps sidéral comprise) ; cachée par la Lune / une planète = pas de nom
     // ciel de l'observatoire : bleu le jour, noir étoilé la nuit (selon la hauteur du Soleil au-dessus de l'horizon de l'observatoire)
-    { const aAlt = (camera.position.length() - 1) * R_KM, amp = Math.max(0, 1 - aAlt / TWINKLE_ALT_KM) * TWINKLE_AMP * Math.max(0, 1 - obsDay), tq = Math.round(performance.now() / 50);   // scintillement : seulement dans l'atmosphère (au sol, pas de l'espace), un peu (± 18 %), mis à jour 20 fois par seconde
-      if (tq !== twkT || amp !== twkAmp) { twkT = tq; twkAmp = amp; stars.userData.twinkle(performance.now() / 1000, amp); } }
     if (obsView) { const se = tmpObs.copy(babs[STAR]).sub(obsPos).normalize().dot(obsSrc.radial), t = Math.max(0, Math.min(1, (se + 0.12) / 0.22)); obsDay = t * t * (3 - 2 * t); const ts = Math.max(0, Math.min(1, se / 0.3)); stars.userData.setDay(ts * ts * (3 - 2 * ts)); skyOn = true; }   // les étoiles s'éteignent peu à peu au lever du jour (les plus faibles d'abord)   // le ciel n'est PAS une couleur de fond : c'est l'atmosphère (bleu le jour, orange au crépuscule, transparent la nuit) ; le jour les étoiles disparaissent
     else if (skyOn) { stars.userData.setDay(0); obsDay = 0; skyOn = false; }
     // marqueur de l'observatoire (point + nom) quand on le regarde depuis l'extérieur, du côté visible de la Terre

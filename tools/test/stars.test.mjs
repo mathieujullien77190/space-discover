@@ -1,7 +1,7 @@
 // Vrai ciel étoilé : catalogue (≈ 5 000 étoiles), repère, couleurs, classes d'éclat.
 import * as THREE from 'three';
 import { STARS } from '../../src/engine/data/stars.js';
-import { STAR_BINS, STAR_FADE_LIMITS, bvColor, starOpacity, starBin, starVector, twinkleFactor } from '../../src/engine/stars.js';
+import { STAR_BINS, STAR_FADE_LIMITS, bvColor, starOpacity, starBin, starVector } from '../../src/engine/stars.js';
 
 const fails = [], check = (c, m) => { console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if (!c) fails.push(m); };
 check(STARS.length > 4500 && STARS.length < 6000, 'catalogue : ' + STARS.length + ' étoiles de magnitude ≤ 6');
@@ -16,10 +16,6 @@ check(!!polaris && polaris[2] > 1.8 && polaris[2] < 2.2, 'la Polaire est dans le
 const blue = bvColor(-0.2), sun = bvColor(0.65), red = bvColor(1.7);
 check(blue[2] > blue[0] && red[0] > red[2] && sun[0] >= sun[2], 'couleurs : une étoile bleue est bleutée (' + blue.map(x => x.toFixed(2)) + '), une rouge est rougeâtre (' + red.map(x => x.toFixed(2)) + ')');
 check(starBin(-1.4) === 0 && starBin(2) === 1 && starBin(6) === STAR_BINS.length - 1 && STAR_BINS.every((b, i) => i === 0 || b.size < STAR_BINS[i - 1].size), 'classes d’éclat : les plus brillantes sont les plus grosses');
-const fs = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => twinkleFactor(i * 0.1, 1.3, 5, 0.18)), mn = Math.min(...fs), mx = Math.max(...fs);
-check(twinkleFactor(3.3, 1, 5, 0) === 1, 'sans amplitude (dans l’espace) : étoile fixe');
-check(mn >= 0.82 - 1e-9 && mx <= 1.18 + 1e-9 && mx - mn > 0.03, 'scintillement mesuré : de ' + mn.toFixed(2) + ' à ' + mx.toFixed(2) + ' (± 18 % au plus, pas trop)');
-check(twinkleFactor(2, 0.5, 4, 0.18) === twinkleFactor(2, 0.5, 4, 0.18), 'fonction pure (reproductible)');
 check(STAR_BINS.every((_, b) => starOpacity(b, 0) === 1) && STAR_BINS.every((_, b) => starOpacity(b, 1) === 0), 'nuit : toutes les étoiles ; plein jour : aucune');
 check(starOpacity(5, 0.3) === 0 && starOpacity(0, 0.3) > 0.6, 'au lever du jour (day = 0,3) : les plus faibles ont disparu, les plus brillantes restent (' + starOpacity(0, 0.3).toFixed(2) + ')');
 check(STAR_FADE_LIMITS.every((l, i) => i === 0 || l < STAR_FADE_LIMITS[i - 1]), 'les classes plus faibles disparaissent plus tôt');
