@@ -23,7 +23,7 @@ import { KM_AL, KM_UA, fmtBig } from './format.js';
 import { createOverlay } from './overlay.js';
 import { parseObj } from './obj-mini.js';
 
-export const ISS_MIN_DIST_KM = 0.0001;   // zoom minimal autour de l'ISS : 10 cm (c'était 100 m)
+export const ISS_MIN_DIST_KM = 0.001;   // zoom minimal autour de l'ISS : 1 m (c'était 100 m, puis 10 cm)
 const SUN_INTENSITY = 3.6, NIGHT_AMBIENT = 0.012;   // jour / nuit : éclairage PHYSIQUE de three.js (la BRDF de Lambert divise par π) : un Soleil d'intensité 1 ne donnait que 32 % de la couleur au zénith, donc « la nuit » partout, même sur la face éclairée ; ≈ π × 1,15 au zénith, ambiance 0,012 (≈ 0,4 % la nuit : on ne voit presque rien ; c'était 0,25 puis 0,06)
 const VIEW_ISS = { yaw: -28.8, pitch: 24.9, dist: 0.393 };   // accès DIRECT à l'ISS, sans transition : vue réglée par l'utilisateur, un peu de derrière et au-dessus, à 393 m (yaw °, pitch °, distance km)
 const Y_AXIS = new THREE.Vector3(0, 1, 0), KMU = 1 / (R_KM * 1000);
@@ -333,7 +333,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     if (cam.fp && cam.mode === 'iss' && iss && issView) { issSrc.pos = iss.pos; issSrc.dir.copy(iss.vel).normalize(); issSrc.radial.copy(iss.pos).normalize(); placeFirstPerson(issSrc); }
     else { if (camera.fov !== cam.fov) camera.fov = cam.fov; camera.lookAt(cam.tgt); }
     camera.updateMatrixWorld();
-    const closest = Math.max(1e-10, Math.min(cam.dist, camera.position.length() - 1) * 0.05);   // plan proche jusqu'à 6 mm (zoom de l'ISS à 10 cm)
+    const closest = Math.max(1e-10, Math.min(cam.dist, camera.position.length() - 1) * 0.05);   // plan proche jusqu'à 6 mm (zoom de l'ISS à 1 m)
     pxScale = innerHeight / 2 / Math.tan(camera.fov * DEG / 2);   // pixels par unité de rayon vu à 1 unité de distance
     { const lv = lodLevel(pxScale / Math.max(1e-6, camera.position.length()), earthLevel, EARTH_LOD.T); if (lv !== earthLevel) { earthLevel = lv; earthGlobe.geometry = EARTH_LOD.seg[lv] ? sphereLod(EARTH_LOD.seg[lv]) : earthGeoHi; } }
     earthAxis.visible = !realistic && ((cam.mode === 'earth' && cam.dist > 1.6) || solarMode) && camera.position.length() < 40;   // équateur et pôle nord de la Terre quand on la regarde d'assez loin
