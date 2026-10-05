@@ -47,5 +47,24 @@
       "text": "Vue de la comète de Halley : orbite de 75 ans autour du Soleil (périhélie le 9 février 1986), queue tournée à l'opposé du Soleil"
     }
   },
-  "hitExtraPx": 4
+  "hitExtraPx": 4,
+  "card": {
+    "_note": "Fiche affichée près de l'astre. L'illustration est fabriquée par tools/make-body-cards.mjs. Les caractéristiques listées ici sont écrites DE MÉMOIRE (à vérifier) ; diamètre, masse, gravité, rotation, révolution et distance au Soleil sont CALCULÉS d'après le reste du JSON.",
+    "image": "card.png",
+    "nearUnits": 2,
+    "facts": [
+      {
+        "label": "Dernier passage",
+        "value": "périhélie du 9 février 1986"
+      },
+      {
+        "label": "Prochain passage",
+        "value": "2061"
+      },
+      {
+        "label": "Noyau",
+        "value": "≈ 15 × 8 km"
+      }
+    ]
+  }
 }

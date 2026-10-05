@@ -85,6 +85,16 @@ describe('createEngine (rendu factice)', () => {
     for (let i = 0; i < 6; i++) engine._frame(performance.now() + 9000 + i * 100)
     expect(JSON.parse(state.viewJson).altKm).toBeLessThan(1e5)
   })
+  it('fiche d’astre : la Terre au départ, la Lune en vue Lune, rien en vue ISS', () => {
+    for (let i = 0; i < 4; i++) engine._frame(performance.now() + 300 + i * 100)
+    expect(state.focus.id).toBe('earth')
+    engine.selectView('moon')
+    for (let i = 0; i < 4; i++) engine._frame(performance.now() + 1000 + i * 100)
+    expect(state.focus.id).toBe('moon')
+    engine.goIss()
+    for (let i = 0; i < 4; i++) engine._frame(performance.now() + 2000 + i * 100)
+    expect(state.focus.id).toBeNull()
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)

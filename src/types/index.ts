@@ -30,6 +30,7 @@ export type EngineState = {
   time: TimeState
   scale: ScaleState
   rocket: RocketState
+  focus: { id: string | null }   // astre dont on est proche (sa fiche s'affiche), sinon null
 }
 
 // Correctif envoyé par le moteur : chaque tranche peut être partielle (fusion superficielle dans le store).
@@ -37,6 +38,8 @@ export type EnginePatch = {
   [K in keyof EngineState]?: EngineState[K] extends object ? Partial<EngineState[K]> : EngineState[K]
 }
 
+export type BodyFact = { label: string; value: string }
+export type BodyCardData = { id: string; name: string; kind: string; image: string; facts: BodyFact[] }
 export type MenuItem = { id: string; label: string; type: string; around: string | null }   // type : bodyType du JSON (planet, moon, comet, star…) ; around : corps central (une lune dépend de sa planète)
 export type FeatureItem = { id: string; label: string }
 export type SatelliteItem = { key: string; name: string }

@@ -1,3 +1,4 @@
+import BodyCard from '@/components/BodyCard'
 import EngineHost from '@/components/EngineHost'
 import InfoText from '@/components/InfoText'
 import ScaleBar from '@/components/ScaleBar'
@@ -14,6 +15,7 @@ export const App = () => (
     <div className={styles.hud}>
       <TopBar />
       <SubMenu />
+      <BodyCard />
       <InfoText />
     </div>
     <TimeBar />

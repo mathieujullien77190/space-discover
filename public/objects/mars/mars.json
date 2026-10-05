@@ -51,5 +51,27 @@
       "text": "Vue de Mars : planète simple décrite par ses éléments orbitaux (objects/mars/mars.json)"
     }
   },
-  "hitExtraPx": 4
+  "hitExtraPx": 4,
+  "card": {
+    "_note": "Fiche affichée près de l'astre. L'illustration est fabriquée par tools/make-body-cards.mjs. Les caractéristiques listées ici sont écrites DE MÉMOIRE (à vérifier) ; diamètre, masse, gravité, rotation, révolution et distance au Soleil sont CALCULÉS d'après le reste du JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Atmosphère",
+        "value": "CO₂ (95 %), très ténue"
+      },
+      {
+        "label": "Température moyenne",
+        "value": "−63 °C"
+      },
+      {
+        "label": "Lunes",
+        "value": "2 (Phobos et Déimos)"
+      },
+      {
+        "label": "Plus haut volcan",
+        "value": "Olympus Mons, ≈ 22 km"
+      }
+    ]
+  }
 }

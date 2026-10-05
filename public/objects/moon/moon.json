@@ -43,5 +43,27 @@
       "text": "Vue de la Lune : la Terre tourne, la Lune lui présente toujours la même face"
     }
   },
-  "hitExtraPx": 4
+  "hitExtraPx": 4,
+  "card": {
+    "_note": "Fiche affichée près de l'astre. L'illustration est fabriquée par tools/make-body-cards.mjs. Les caractéristiques listées ici sont écrites DE MÉMOIRE (à vérifier) ; diamètre, masse, gravité, rotation, révolution et distance au Soleil sont CALCULÉS d'après le reste du JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Atmosphère",
+        "value": "quasi nulle"
+      },
+      {
+        "label": "Température",
+        "value": "−170 °C à +120 °C"
+      },
+      {
+        "label": "Distance à la Terre",
+        "value": "384 400 km en moyenne"
+      },
+      {
+        "label": "Rotation",
+        "value": "27,3 jours (synchrone : même face vers la Terre)"
+      }
+    ]
+  }
 }

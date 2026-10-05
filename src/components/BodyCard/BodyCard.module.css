@@ -1,0 +1,6 @@
+.card { display: flex; gap: 12px; align-items: flex-start; width: fit-content; max-width: min(420px, calc(100vw - 24px)); margin-top: 10px; padding: 10px 12px; background: rgba(20, 30, 50, 0.78); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 8px; backdrop-filter: blur(4px); pointer-events: none; }
+.picture { flex: 0 0 auto; width: 96px; height: 96px; object-fit: contain; }
+.text { min-width: 0; }
+.name { margin: 0; font-size: 16px; line-height: 1.2; }
+.kind { margin-bottom: 6px; font-size: 12px; color: #9fb0c8; }
+@media (max-width: 700px), (pointer: coarse) { .picture { width: 64px; height: 64px; } }

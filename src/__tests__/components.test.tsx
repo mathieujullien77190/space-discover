@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import BodyCard from '@/components/BodyCard'
 import RocketControls from '@/components/RocketControls'
 import SubMenu from '@/components/SubMenu'
 import TopBar from '@/components/TopBar'
@@ -113,5 +114,23 @@ describe('ViewParams (juste au-dessus de la barre d’échelle)', () => {
     expect(engine.nudge).toHaveBeenLastCalledWith('p+', 5)
     fireEvent.click(screen.getByText('📋 Copier'))
     expect(writeText).toHaveBeenCalledWith('{"mode":"earth","lon":2,"lat":30,"altKm":15000,"fov":50}')
+  })
+})
+
+describe('BodyCard (fiche de l’astre proche)', () => {
+  it('rien quand on n’est proche d’aucun astre', () => {
+    useStore.setState({ ...initialEngineState, focus: { id: null } })
+    const { container } = render(<BodyCard />)
+    expect(container).toBeEmptyDOMElement()
+  })
+  it('Mars : illustration, diamètre, gravité calculée et faits du JSON', () => {
+    useStore.setState({ ...initialEngineState, focus: { id: 'mars' } })
+    render(<BodyCard />)
+    expect(screen.getByRole('heading', { name: 'Mars' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Mars' }).getAttribute('src')).toBe('/objects/mars/card.png')
+    expect(screen.getByText('6 779 km')).toBeInTheDocument()
+    expect(screen.getByText('3,73 m/s²')).toBeInTheDocument()
+    expect(screen.getByText('24 h 37 min')).toBeInTheDocument()
+    expect(screen.getByText('2 (Phobos et Déimos)')).toBeInTheDocument()
   })
 })

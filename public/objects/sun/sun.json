@@ -29,5 +29,27 @@
       "text": "Vue du Soleil : la Terre tourne sur elle-même et autour de lui (échelle réelle : Terre et Lune sont des points)"
     }
   },
-  "hitExtraPx": 14
+  "hitExtraPx": 14,
+  "card": {
+    "_note": "Fiche affichée près de l'astre. L'illustration est fabriquée par tools/make-body-cards.mjs. Les caractéristiques listées ici sont écrites DE MÉMOIRE (à vérifier) ; diamètre, masse, gravité, rotation, révolution et distance au Soleil sont CALCULÉS d'après le reste du JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Température de surface",
+        "value": "≈ 5 500 °C"
+      },
+      {
+        "label": "Température du cœur",
+        "value": "≈ 15 millions °C"
+      },
+      {
+        "label": "Composition",
+        "value": "hydrogène 73 %, hélium 25 %"
+      },
+      {
+        "label": "Âge",
+        "value": "4,6 milliards d’années"
+      }
+    ]
+  }
 }

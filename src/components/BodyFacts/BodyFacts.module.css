@@ -1,0 +1,5 @@
+.list { margin: 0; font-size: 12px; line-height: 1.5; }
+.row { display: flex; gap: 6px; }
+.label { flex: 0 0 auto; margin: 0; color: #9fb0c8; }
+.label::after { content: ' :'; }
+.value { margin: 0; color: #e8eef7; }

@@ -442,7 +442,9 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       if (cam.mode === 'iss') t += "\nÉchelle réelle : l'ISS (109 m) n'est visible qu'à moins de ~17 km.";
       t += '\n' + BODY.list().filter(b => b.info).sort((a, b) => (a.menu ? a.menu.order : 99) - (b.menu ? b.menu.order : 99)).map(b => { const d = bpos[b.id].length() * R_KM; return `${b.name} à ${fmtBig(d) || Math.round(d).toLocaleString('fr-FR') + ' km'}`; }).join(' · ');   // distances des astres marqués "info" (Lune, Soleil)
       if (solarMode && BODY.get(solarTarget) && BODY.get(solarTarget).menu.view) t += '\n' + BODY.get(solarTarget).menu.view.text;
-      publish({ info: t, viewJson: JSON.stringify(currentView()), time: { simMs, speed: simSpeed, visible: !launch } });
+      const fid = cam.mode === 'earth' ? 'earth' : solarMode ? solarTarget : null, fb = fid && BODY.get(fid);   // astre regardé ; « proche » = à moins de 30 de ses rayons (ou card.nearUnits) : sa fiche s'affiche
+      const near = !!fb && !!fb.card && cam.dist < ((fb.card && fb.card.nearUnits) || 30 * BODY.radiusUnits(fid));
+      publish({ info: t, viewJson: JSON.stringify(currentView()), focus: { id: near ? fid : null }, time: { simMs, speed: simSpeed, visible: !launch } });
     }
     // origine flottante : près de l'ISS, on recentre le monde sur elle pour rendre sans perte de précision
     const shift = cam.mode === 'launch' && launch ? launch.focusPos : iss && camera.position.distanceTo(iss.pos) * R_KM < 3000 ? iss.pos : null, saved = camera.position.clone();

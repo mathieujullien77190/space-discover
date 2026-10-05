@@ -5,16 +5,60 @@
   "name": "Terre",
   "radiusKm": 6378.137,
   "flatteningInverse": 298.257223563,
-  "muM3S2": 3.986004418e14,
-  "massKg": 5.972e24,
-  "rotationRadS": 7.2921159e-5,
+  "muM3S2": 398600441800000,
+  "massKg": 5.972e+24,
+  "rotationRadS": 0.000072921159,
   "axialTiltDeg": 23.4393,
   "around": "sun",
   "sceneOrigin": true,
-  "motion": { "frame": "heliocentric", "model": "inverse", "of": "sun", "semiMajorAxisKm": 149597870.7, "periodDays": 365.2422 },
-  "appearance": { "kind": "earth" },
-  "trace": { "fullOrbit": true, "color": "#4a90e2" },
-  "dot": { "color": "#5ab0ff", "minDistanceUnits": 300 },
-  "label": { "text": "Terre", "metricText": "Terre · Ø {diameterKm} km", "minDistanceUnits": 300 },
-  "menu": { "order": 1, "icon": "🌍", "mode": "earth" }
+  "motion": {
+    "frame": "heliocentric",
+    "model": "inverse",
+    "of": "sun",
+    "semiMajorAxisKm": 149597870.7,
+    "periodDays": 365.2422
+  },
+  "appearance": {
+    "kind": "earth"
+  },
+  "trace": {
+    "fullOrbit": true,
+    "color": "#4a90e2"
+  },
+  "dot": {
+    "color": "#5ab0ff",
+    "minDistanceUnits": 300
+  },
+  "label": {
+    "text": "Terre",
+    "metricText": "Terre · Ø {diameterKm} km",
+    "minDistanceUnits": 300
+  },
+  "menu": {
+    "order": 1,
+    "icon": "🌍",
+    "mode": "earth"
+  },
+  "card": {
+    "_note": "Fiche affichée près de l'astre. L'illustration est fabriquée par tools/make-body-cards.mjs. Les caractéristiques listées ici sont écrites DE MÉMOIRE (à vérifier) ; diamètre, masse, gravité, rotation, révolution et distance au Soleil sont CALCULÉS d'après le reste du JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Atmosphère",
+        "value": "azote 78 %, oxygène 21 %"
+      },
+      {
+        "label": "Température moyenne",
+        "value": "15 °C"
+      },
+      {
+        "label": "Lunes",
+        "value": "1 (la Lune)"
+      },
+      {
+        "label": "Âge",
+        "value": "4,5 milliards d’années"
+      }
+    ]
+  }
 }
