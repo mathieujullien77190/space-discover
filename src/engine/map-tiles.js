@@ -1,9 +1,9 @@
 // Fond de carte « plan » (type Google Maps / Mapbox) : tuiles Web Mercator (« slippy map » z/x/y). Fonctions PURES (sans three.js), testées dans Node.
-// Source par défaut : CARTO « Voyager » (données © OpenStreetMap contributors, style © CARTO) : https://carto.com/basemaps/ ; il faut citer les deux (voir MAP_CREDIT).
-// Styles : « street » = CARTO Voyager (données © OpenStreetMap contributors, style © CARTO : routes, villes, parcs ; https://carto.com/basemaps/), « terrain » = OpenTopoMap (CC-BY-SA : relief ombré, forêts, courbes de niveau ; https://opentopomap.org/ ; zoom max 17).
-// Les deux sont des SERVICES EN LIGNE tiers : il faut citer leurs crédits (MAP_STYLES[style].credit) et respecter leurs règles d'usage.
+// CARTO « Voyager » (essayé d'abord) EXIGE maintenant une clé d'API (les tuiles affichent « API KEY REQUIRED ») : abandonné.
+// Styles (tuiles SANS clé, avec CORS) : « street » = Esri « World Topographic Map » (vert clair, forêts, montagnes en relief ombré, lacs et mers bleus, routes, villes : le plus proche de Google Maps), « terrain » = OpenTopoMap (CC-BY-SA : relief très contrasté, courbes de niveau ; zoom max 17).
+// Ce sont des SERVICES EN LIGNE tiers : il faut citer leurs crédits (MAP_STYLES[style].credit) et respecter leurs règles d'usage (usage raisonnable, pas de téléchargement en masse).
 export const MAP_STYLES = {
-  street: { url: 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', credit: '© OpenStreetMap contributors · © CARTO', zMax: 17 },
+  street: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', credit: 'Esri, HERE, Garmin, USGS, NGA, © OpenStreetMap contributors', zMax: 17 },
   terrain: { url: 'https://a.tile.opentopomap.org/{z}/{x}/{y}.png', credit: '© OpenStreetMap contributors, SRTM · style © OpenTopoMap (CC-BY-SA)', zMax: 17 },
 };
 export const MAP_URL = MAP_STYLES.street.url;

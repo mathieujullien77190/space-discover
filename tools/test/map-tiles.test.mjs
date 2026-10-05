@@ -19,6 +19,7 @@ const small = mapTiles(0, 0, 3);
 check(new Set(small.map(t => t.key)).size === small.length && small.length <= 64, 'petit niveau de zoom : pas de doublons (' + small.length + ' tuiles)');
 const pole = mapTiles(10, 84, 6);
 check(pole.every(t => t.y >= 0 && t.y < 64), 'près du pôle : lignes limitées à la projection');
+check(tileUrl(5, 1, 2, MAP_STYLES.street.url) === 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/5/2/1' && !/carto/i.test(MAP_STYLES.street.url), 'URL Esri : ordre {z}/{y}/{x}, plus de CARTO (clé exigée)');
 check(tileUrl(5, 1, 2, MAP_STYLES.terrain.url) === 'https://a.tile.opentopomap.org/5/1/2.png' && /\{z\}/.test(MAP_STYLES.street.url), 'URLs : remplacement de {z}/{x}/{y}');
-check(MAP_STYLES.street.credit.includes('OpenStreetMap') && MAP_STYLES.terrain.credit.includes('OpenTopoMap'), 'crédits des deux fonds présents');
+check(MAP_STYLES.street.credit.includes('Esri') && MAP_STYLES.terrain.credit.includes('OpenTopoMap'), 'crédits des deux fonds présents');
 if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }

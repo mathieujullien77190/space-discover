@@ -40,7 +40,7 @@ describe('TopBar + SubMenu', () => {
     expect(screen.queryByText(/OpenStreetMap/)).toBeNull()
     fireEvent.click(screen.getByText('🗺 Carte dessinée'))
     expect(engine.setMapStyle).toHaveBeenLastCalledWith('street')
-    expect(screen.getByText(/CARTO/)).toBeInTheDocument()
+    expect(screen.getByText(/Esri/)).toBeInTheDocument()
     fireEvent.click(screen.getByText('🗺 Plan'))
     expect(engine.setMapStyle).toHaveBeenLastCalledWith('terrain')
     expect(screen.getByText(/OpenTopoMap/)).toBeInTheDocument()
