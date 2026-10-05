@@ -342,7 +342,6 @@ describe('createEngine (rendu factice)', () => {
     const dot = (a: number[], b: number[]) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
     expect(fp.posErr!).toBeLessThan(1)
     expect(dot(fp.up, fp.radial!)).toBeGreaterThan(0.5)
-    expect(engine._eg()).toBeNull()
     engine.selectView('moon'); engine._frame(performance.now() + 1500)
     expect(engine._fp()).toBeNull()
     engine.goIss(); engine._frame(performance.now() + 1700)                          // le bouton « ISS » zoome sur la station
@@ -355,42 +354,6 @@ describe('createEngine (rendu factice)', () => {
     expect(engine._clouds().on).toBe(true)
     engine.setClouds(false); engine._frame(performance.now() + 300)
     expect(engine._clouds().visible).toBe(false)
-  })
-  it('vue au sol : un clic sur la boule pose la caméra sur l’axe centre de la Terre → extérieur ; elle monte / descend le long de cet axe et son regard fait un angle avec lui', () => {
-    engine.selectView('earth'); engine._frame(performance.now() + 100)
-    expect(engine._eg()).toBeNull()
-    engine._click(innerWidth / 2, innerHeight / 2); engine._frame(performance.now() + 200)
-    const a = engine._eg()!
-    expect(a).not.toBeNull()
-    expect(a.tilt).toBe(0)
-    expect(a.nadirDot).toBeGreaterThan(0.9999)                                 // la caméra est sur l’axe qui passe par le point
-    expect(a.viewDot).toBeLessThan(-0.9999)                                    // et regarde droit vers le bas
-    engine._egSet(60, 40)
-    for (let i = 0; i < 4; i++) engine._frame(performance.now() + 300 + i * 100)
-    const b = engine._eg()!
-    expect(b.nadirDot).toBeGreaterThan(0.9999)                                 // toujours sur le même axe : l’inclinaison ne déplace pas la caméra
-    expect(b.viewDot).toBeCloseTo(-Math.cos(60 * Math.PI / 180), 3)            // le regard fait 60° avec l’axe
-    expect(Math.abs(b.camAltKm - a.camAltKm)).toBeLessThan(1)                  // altitude inchangée
-    engine._egSet(95, 0); engine._frame(performance.now() + 800)
-    expect(engine._eg()!.tilt).toBeLessThanOrEqual(85)                         // jamais au-delà de l’horizon
-    engine.selectView('earth'); engine._frame(performance.now() + 900)
-    expect(engine._eg()).toBeNull()                                            // le bouton Terre coupe la vue au sol
-  })
-  it('relief satellite : rien n’est chargé au-dessus de 1 000 km', () => {
-    engine.selectView('earth'); engine._frame(performance.now() + 100)
-    expect(engine._terrain()).toMatchObject({ shown: false, tiles: 0, loading: 0 })
-  })
-  it('boutons Nord en haut / Orbite à plat de la Terre : fonctionnent aussi pendant la vue au sol', () => {
-    engine.selectView('earth'); engine._frame(performance.now() + 100)
-    engine._click(innerWidth / 2, innerHeight / 2); engine._frame(performance.now() + 200)
-    engine._egSet(40, 70); engine._frame(performance.now() + 300)
-    engine.alignNorth('earth'); engine._frame(performance.now() + 400)
-    expect(engine._eg()!.yaw).toBe(0)                                           // nord en haut : cap nord, la vue au sol reste
-    expect(state.view.align).toBe('north')
-    engine.alignOrbit('earth'); engine._frame(performance.now() + 500)
-    expect(engine._eg()).toBeNull()                                             // orbite à plat : on quitte la vue au sol
-    expect(state.view.align).toBe('orbit')
-    engine.selectView('earth'); engine._frame(performance.now() + 600)
   })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
