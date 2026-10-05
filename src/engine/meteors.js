@@ -2,6 +2,7 @@
 // Chaque météore suit un arc de grand cercle dans le ciel LOCAL (au-dessus de l'horizon, dans le repère de l'observateur : elles ne tournent pas avec les étoiles) :
 // une traînée qui s'éteint vers l'arrière (polyligne à couleurs dégradées, mélange additif) et un point brillant à la tête. Posées à grande distance (comme les étoiles) : le relief les cache.
 import * as THREE from 'three';
+import { roundPointsMaterial } from './round-points.js';
 
 export const METEOR_GAP_S = [3, 12];        // délai entre deux étoiles filantes (s)
 export const METEOR_DURATION_S = [0.9, 1.6];    // durée totale (s) : la tête parcourt l'arc pendant les 55 premiers % ; la traînée, elle, s'efface DEPUIS SON DÉBUT jusqu'à la tête
@@ -26,7 +27,7 @@ export function createMeteors(scene, rand = Math.random) {
     const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(VERTS * 3), 3)); lg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(VERTS * 3), 3));
     const line = new THREE.Line(lg, new THREE.LineBasicMaterial({ vertexColors: true, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false })); line.frustumCulled = false; line.visible = false;
     const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
-    const head = new THREE.Points(pg, new THREE.PointsMaterial({ color: 0xffffff, size: 4, sizeAttenuation: false, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false })); head.frustumCulled = false; head.visible = false;
+    const head = new THREE.Points(pg, roundPointsMaterial({ color: 0xffffff, size: 4, sizeAttenuation: false, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false })); head.frustumCulled = false; head.visible = false;
     group.add(line, head); slots.push({ line, head, active: false, t: 0, dur: 1, a: new THREE.Vector3(), b: new THREE.Vector3(), bright: 1 });
   }
   let wait = range(rand(), METEOR_GAP_S), total = 0;

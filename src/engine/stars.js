@@ -1,6 +1,7 @@
 // Le VRAI ciel étoilé : ≈ 5 000 étoiles (magnitude ≤ 6) à leur vraie position (ascension droite / déclinaison J2000), avec leur couleur (B−V) et leur éclat (magnitude).
 // Repère : le même que celui de la scène en vues « inertielles » : l'axe x = le point vernal, y = le pôle nord de la Terre, donc une étoile (α, δ) est en ll(α, δ) ; le moteur fait tourner le groupe avec le temps sidéral.
 import * as THREE from 'three';
+import { roundPointsMaterial } from './round-points.js';
 import { STARS } from './data/stars.js';
 
 // vecteur unitaire de l'étoile (mêmes axes que ll() de earth.js : x vers α = 0, y nord, z vers α = 270°)
@@ -41,7 +42,7 @@ export function createStars(scene) {
     const n = arr.length / 6, pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
     for (let k = 0; k < n; k++) { pos.set(arr.slice(6 * k, 6 * k + 3), 3 * k); col.set(arr.slice(6 * k + 3, 6 * k + 6), 3 * k); }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); const colA = new THREE.BufferAttribute(col, 3); g.setAttribute('color', colA);
-    const p = new THREE.Points(g, new THREE.PointsMaterial({ size: STAR_BINS[i].size, sizeAttenuation: false, vertexColors: true, depthWrite: false, transparent: true })); p.userData.bin = i; p.frustumCulled = false; group.add(p);
+    const p = new THREE.Points(g, roundPointsMaterial({ size: STAR_BINS[i].size, sizeAttenuation: false, vertexColors: true, depthWrite: false, transparent: true })); p.userData.bin = i; p.frustumCulled = false; group.add(p);
   });
   group.frustumCulled = false; scene.add(group);
   group.userData.setDay = (day, dim = 1) => { for (const p of group.children) { if (p.userData.bin === undefined) continue; p.material.opacity = starOpacity(p.userData.bin, day) * dim; p.visible = p.material.opacity > 0.003; } };   // day : 0 = nuit (toutes les étoiles), 1 = plein jour (aucune) ; dim : luminosité globale (0,5 depuis un observatoire : étoiles deux fois moins lumineuses)

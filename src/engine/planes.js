@@ -4,6 +4,7 @@
 // et un point VERT au bout de l'aile droite (envergure 60 m, donc 2 à 5 px d'écart selon la distance) ; fondu près de l'horizon, plus pâles quand l'avion est loin ; le relief les cache.
 // Vitesse apparente réelle : jusqu'à ≈ 1,4°/s à la verticale, bien plus lent au loin (traversée complète du ciel : plusieurs minutes). Seulement en vue depuis un observatoire, la nuit.
 import * as THREE from 'three';
+import { roundPointsMaterial } from './round-points.js';
 
 export const PLANE_GAP_S = [15, 50], PLANE_FIRST_S = [3, 10];   // délai entre deux avions ; délai avant le premier
 export const PLANE_ALTITUDE_M = [9000, 11500];                   // altitude de croisière
@@ -38,7 +39,7 @@ export function createPlanes(scene, rand = Math.random) {
   const slots = [];
   for (let i = 0; i < PLANE_SLOTS; i++) {
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3)); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array([1, 0.12, 0.1, 0.15, 1, 0.25]), 3));   // rouge puis vert
-    const pts = new THREE.Points(g, new THREE.PointsMaterial({ size: 3.4, sizeAttenuation: false, vertexColors: true, blending: THREE.AdditiveBlending, transparent: true, opacity: 0, depthWrite: false })); pts.frustumCulled = false; pts.visible = false;
+    const pts = new THREE.Points(g, roundPointsMaterial({ size: 3.4, sizeAttenuation: false, vertexColors: true, blending: THREE.AdditiveBlending, transparent: true, opacity: 0, depthWrite: false })); pts.frustumCulled = false; pts.visible = false;
     group.add(pts); slots.push({ pts, active: false, t: 0, tr: null });
   }
   let wait = range(rand(), PLANE_FIRST_S), total = 0;

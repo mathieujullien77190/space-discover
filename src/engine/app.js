@@ -3,6 +3,7 @@
 //   les commandes renvoyées par createEngine() : l'interface pilote le moteur (changer de vue, régler le temps, aller à l'ISS…).
 // Le rendu est injectable (createRenderer) pour tester sans WebGL.
 import * as THREE from 'three';
+import { roundPointsMaterial } from './round-points.js';
 import { BODY } from './bodies.js';
 import { ISS_FEATURES, ISS_EPOCH, ISS_FROM, ISS_MODEL, ISS_MODEL_CFG, ISS_W, issState, hubbleState, HUBBLE_PERIOD_MS } from './iss.js';
 import { HUBBLE_LENGTH_M, HUBBLE_MODEL, HUBBLE_MODEL_CFG, HUBBLE_DIMS, buildHubble } from './hubble-model.js';
@@ -75,7 +76,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const bodyObjs = {}, bpos = {}, babs = {};   // bodyObjs[id] : objets 3D de l'astre ; bpos / babs : position géocentrique (inertielle / dans le repère tourné de `solar`), recalculées à chaque image
   for (const b of BODY.list()) { bpos[b.id] = new THREE.Vector3(); babs[b.id] = new THREE.Vector3(); }
   // points lointains sans test de profondeur : sinon le point de la Terre, posé au centre de sa sphère (même minuscule), disparaissait derrière elle par intermittence
-  const dotOf = color => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3)); const p = new THREE.Points(g, new THREE.PointsMaterial({ color, size: 7, sizeAttenuation: false, depthWrite: false, depthTest: false })); p.frustumCulled = false; solar.add(p); return p; };
+  const dotOf = color => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3)); const p = new THREE.Points(g, roundPointsMaterial({ color, size: 7, sizeAttenuation: false, depthWrite: false, depthTest: false })); p.frustumCulled = false; solar.add(p); return p; };
   const PAINTERS = { moon: r => buildMoonMesh(r) };   // sphères peintes (appearance.kind = "painted", appearance.painter)
   const mkTrail = (n, op) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); const l = new THREE.Line(g, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: op })); l.frustumCulled = false; return l; };
   // anneaux : disque plat percé, texture radiale 1D (bandes d'opacité : lacunes, anneaux denses) ; rg = { innerKm, outerKm, color, opacity, bands: [[de, à, opacité] (0 = bord intérieur, 1 = bord extérieur)] }
@@ -162,7 +163,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     }).catch(e => { hiState = 'error'; console.warn('Modèle ISS détaillé indisponible :', e.message); });
   };
   const dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
-  const dot = new THREE.Points(dg, new THREE.PointsMaterial({ color: 0xffd54a, size: 10, sizeAttenuation: false })); dot.frustumCulled = false; world.add(dot);
+  const dot = new THREE.Points(dg, roundPointsMaterial({ color: 0xffd54a, size: 10, sizeAttenuation: false })); dot.frustumCulled = false; world.add(dot);
   const issLabel = overlay.label('ISS', 'iss');
   // HUBBLE : même mécanique que l'ISS (état SGP4 du TLE, modèle stylisé à la taille réelle, repère bleu clair, nom) ; la caméra le suit comme l'ISS (cam.mode 'iss' + focusSat)
   const hubModel = new THREE.Group(), hubProc = buildHubble(), hubHi = new THREE.Group(); hubModel.add(hubProc, hubHi); hubModel.visible = false; world.add(hubModel);
@@ -177,7 +178,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     }).catch(e => { hubHiState = 'error'; console.warn('Modèle Hubble détaillé indisponible :', e.message); });
   };
   const hubDg = new THREE.BufferGeometry(); hubDg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
-  const hubDot = new THREE.Points(hubDg, new THREE.PointsMaterial({ color: 0x7fe3ff, size: 10, sizeAttenuation: false })); hubDot.frustumCulled = false; hubDot.visible = false; world.add(hubDot);
+  const hubDot = new THREE.Points(hubDg, roundPointsMaterial({ color: 0x7fe3ff, size: 10, sizeAttenuation: false })); hubDot.frustumCulled = false; hubDot.visible = false; world.add(hubDot);
   const hubLabel = overlay.label('Hubble', 'iss'); let hubScreen = null;
   const capitals = createCapitals(overlay, earth); let capitalsOn = false, lastOcc = [];   // éteinte par défaut
   let observatoriesOn = true;   // cochée par défaut   // option Observatoires : les observatoires du monde, cliquables (clic = y aller, fiche + vue depuis)
@@ -299,7 +300,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   let obsId = null, obsView = false, obsFrame = null, skyOn = false, obsDay = 0;
   const obsPos = new THREE.Vector3(), obsSrc = { pos: obsPos, dir: new THREE.Vector3(), radial: new THREE.Vector3() }, skyCol = new THREE.Color(), tmpObs = new THREE.Vector3(), tmpObs2 = new THREE.Vector3();
   const obsDotG = new THREE.BufferGeometry(); obsDotG.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
-  const obsDot = new THREE.Points(obsDotG, new THREE.PointsMaterial({ color: 0xff7a45, size: 9, sizeAttenuation: false, depthTest: false })); obsDot.frustumCulled = false; obsDot.visible = false; obsDot.renderOrder = 30; earth.add(obsDot);
+  const obsDot = new THREE.Points(obsDotG, roundPointsMaterial({ color: 0xff7a45, size: 9, sizeAttenuation: false, depthTest: false })); obsDot.frustumCulled = false; obsDot.visible = false; obsDot.renderOrder = 30; earth.add(obsDot);
   const obsLabel = overlay.label('', 'obs'); obsLabel.style.display = 'none';
   const goObservatory = id => {   // aller à l'observatoire : la boule, de près (40 km), à la verticale du lieu ; le relief satellite se charge ; sa fiche s'ouvre
     const o = observatoryById(id); if (!o) return;

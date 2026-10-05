@@ -1,6 +1,7 @@
 // Option « Constellations » : les traits qui relient les étoiles (la « casserole » = la Grande Ourse, Orion, Cassiopée…) et le nom de chaque constellation, en français.
 // Les traits sont des segments sur la sphère des étoiles (même repère que stars.js : on les ajoute au groupe des étoiles, qui tourne avec le temps sidéral) ; les noms sont des étiquettes HTML posées à la position de l'étiquette de chaque constellation.
 import * as THREE from 'three';
+import { roundPointsMaterial } from './round-points.js';
 import { CONSTELLATIONS } from './data/constellations.js';
 import { overlaps } from './capitals.js';
 import { starVector } from './stars.js';
@@ -31,7 +32,7 @@ export function createConstellations(starsGroup, overlay) {
   const lines = new THREE.Group(); lines.visible = false; starsGroup.add(lines);   // un LineSegments par constellation (visibles ou non selon la sélection)
   const parts = {};
   for (const c of CONSTELLATIONS) { const pt = constellationParts(c), g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pt.segments, 3)); const l = new THREE.LineSegments(g, mat); l.frustumCulled = false; lines.add(l); (parts[c[0]] = parts[c[0]] || []).push({ line: l, stars: pt.stars }); }   // certaines (Serpent) ont deux parties sous le même identifiant
-  const hi = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ color: 0xcfe2ff, size: 7, sizeAttenuation: false, depthWrite: false })); hi.frustumCulled = false; hi.visible = false; starsGroup.add(hi);   // étoiles de la constellation choisie
+  const hi = new THREE.Points(new THREE.BufferGeometry(), roundPointsMaterial({ color: 0xcfe2ff, size: 7, sizeAttenuation: false, depthWrite: false })); hi.frustumCulled = false; hi.visible = false; starsGroup.add(hi);   // étoiles de la constellation choisie
   let selected = null;
   const select = id => {
     selected = id && parts[id] && id !== selected ? id : null;
