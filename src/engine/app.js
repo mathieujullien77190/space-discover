@@ -352,7 +352,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     camera.position.copy(src.pos); camera.quaternion.setFromRotationMatrix(fpM.makeBasis(r2, u2, d.clone().negate())); camera.fov = cam.fp.fov || 70;
   };
   const issSrc = { pos: null, dir: new THREE.Vector3(), radial: new THREE.Vector3() };   // l'ISS vue de l'intérieur : sens de la marche = vitesse, haut = à l'opposé de la Terre
-  let issView = false;
+  let issView = false, issShown = true;   // issShown : interrupteur « afficher l'ISS » (modèle, repère, nom, cotes, trajectoire)
   const setIssView = on => {   // « vue depuis l'ISS » : la caméra est sur la station, on regarde autour en glissant ; couper = retour à la vue d'accès de l'ISS
     if (on && iss && !launch) { setMode('iss'); cam.fp = { yaw: 0, pitch: -35, fov: 70 }; cam.fpUp.set(0, 0, 0); issView = true; }
     else { const was = issView; issView = false; if (was) { cam.fp = null; if (iss) viewIss(); } }
@@ -596,7 +596,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
         issLabel.style.display = 'block'; issLabel.style.transform = `translate(${issScreen[0] + 10}px,${issScreen[1] - 8}px)`;   // le nom reste affiché à tout zoom
       }
     }
-    const issHidden = solarMode || (camera.position.length() - 1) * R_KM > 20000;   // l'ISS cachée cache aussi tout ce qui lui appartient : cotes, hauteur, trajectoire
+    const issHidden = !issShown || solarMode || (camera.position.length() - 1) * R_KM > 20000;   // l'ISS cachée cache aussi tout ce qui lui appartient : cotes, hauteur, trajectoire
     if (issView && cam.fp) { issModel.visible = false; dot.visible = false; }   // vue depuis l'ISS : on est dedans (ni le modèle ni le repère jaune)
     if (issHidden) { issScreen = null; issLabel.style.display = 'none'; dot.visible = false; issModel.visible = false; }   // dézoomé : l'ISS est cachée (point, nom et modèle)
     // caractéristiques 3D : mise à jour puis étiquettes projetées à l'écran
@@ -739,7 +739,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _map: () => Object.assign({ style: mapStyle, shown: mapShown }, mapLayer.stats()),
     setClouds: on => { cloudsOn = !!on; },
     _clouds: () => Object.assign({ on: cloudsOn }, clouds.stats()),
-    setBigVehicles, setFirstPerson, setIssView, setViewInset, setStorySlowMotion,
+    setBigVehicles, setFirstPerson, setIssView, setIssShown: on => { issShown = !!on; }, setViewInset, setStorySlowMotion,
     _fp: () => cam.fp ? { yaw: cam.fp.yaw, pitch: cam.fp.pitch, fov: camera.fov, posErr: launch ? camera.position.distanceTo(launch.pos) * R_KM * 1000 : iss && issView ? camera.position.distanceTo(iss.pos) * R_KM * 1000 : null, dir: new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray(), up: new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion).toArray(), radial: launch ? launch.radial.toArray() : issView ? issSrc.radial.toArray() : null, flight: launch ? launch.dir.toArray() : null } : null,
 
     startRocket, stopRocket, launchMission, followMission, startStory, storyNext, storyPrev, quitStory,

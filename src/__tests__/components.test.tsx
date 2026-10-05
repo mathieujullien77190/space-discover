@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import BodyCard from '@/components/BodyCard'
+import IssBadge from '@/components/IssBadge'
 import MapCredit from '@/components/MapCredit'
 import DatePicker from '@/components/DatePicker'
 import RocketControls from '@/components/RocketControls'
@@ -11,7 +12,7 @@ import { useStore } from '@/store'
 import { initialEngineState } from '@/store/initial'
 import type { Engine } from '@/types'
 
-const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), startRocket: vi.fn(() => Promise.resolve()), stopRocket: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setRocketSpeed: vi.fn(), setBigVehicles: vi.fn(), setMapStyle: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
+const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), startRocket: vi.fn(() => Promise.resolve()), stopRocket: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setRocketSpeed: vi.fn(), setBigVehicles: vi.fn(), setMapStyle: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn(), setIssShown: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
 
 describe('TopBar + SubMenu', () => {
   let engine: ReturnType<typeof fakeEngine>
@@ -34,10 +35,21 @@ describe('TopBar + SubMenu', () => {
     fireEvent.click(screen.getByText('🔭 Engins ×1000'))
     expect(engine.setBigVehicles).toHaveBeenLastCalledWith(false)
   })
+  it('interrupteur « Afficher l’ISS » : cache ou montre la station, indépendamment de la vue depuis l’ISS', () => {
+    useStore.setState({ issShown: true })
+    render(<TopBar />)
+    fireEvent.click(screen.getByText('🛰 Afficher l’ISS'))
+    expect(engine.setIssShown).toHaveBeenLastCalledWith(false)
+  })
+  it('bandeau « Vue depuis l’ISS » : le nom de la station en texte', () => {
+    useStore.setState({ issView: true })
+    render(<IssBadge />)
+    expect(screen.getByText(/Vue depuis l’ISS/)).toBeInTheDocument()
+  })
   it('bouton « Vue depuis l’ISS » : active la vue à la première personne sur la station', () => {
     useStore.setState({ issView: false })
     render(<TopBar />)
-    fireEvent.click(screen.getByText('🛰 Vue depuis l’ISS'))
+    fireEvent.click(screen.getByText('👁 Vue depuis l’ISS'))
     expect(engine.setIssView).toHaveBeenCalledWith(true)
   })
   it('bouton « Nuages » : active la couverture nuageuse avec son crédit', () => {

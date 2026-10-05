@@ -1,3 +1,4 @@
+import IssBadge from '@/components/IssBadge'
 import MapCredit from '@/components/MapCredit'
 import BodyCard from '@/components/BodyCard'
 import EngineHost from '@/components/EngineHost'
@@ -28,6 +29,7 @@ export const App = () => (
     </div>
     <StatusMessage />
     <MapCredit />
+    <IssBadge />
     <StoryPlayer />
     <AchievementScreen />
   </>
