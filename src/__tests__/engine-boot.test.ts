@@ -376,7 +376,7 @@ describe('createEngine (rendu factice)', () => {
     engine.selectView('earth'); engine._frame(performance.now() + 900)
     expect(engine._eg()).toBeNull()                                            // le bouton Terre coupe la vue au sol
   })
-  it('relief satellite : rien n’est chargé au-dessus de 600 km', () => {
+  it('relief satellite : rien n’est chargé au-dessus de 1 000 km', () => {
     engine.selectView('earth'); engine._frame(performance.now() + 100)
     expect(engine._terrain()).toMatchObject({ shown: false, tiles: 0, loading: 0 })
   })

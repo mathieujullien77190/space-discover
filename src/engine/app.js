@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { BODY } from './bodies.js';
 import { ISS_FEATURES, ISS_EPOCH, ISS_FROM, ISS_MODEL, ISS_W, issState } from './iss.js';
 import { createClouds } from './clouds.js';
+import { occludedBy } from './occlusion.js';
 import { createTerrainLayer } from './terrain-layer.js';
 import { DEG, R_KM, buildEarth, earthGeometry, ll } from './earth.js';
 import { loadGlb } from './gltf-mini.js';
@@ -369,7 +370,12 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       // lunes affichées : la planète dont les lunes sont dessinées perd son nom (celui des lunes suffit) et sa fiche s'affiche (voir plus bas)
       for (const k in moonsShown) delete moonsShown[k];
       for (const id in bodyObjs) { const b = bodyObjs[id].b; if (b.showWithinUnits && b.around && camera.position.distanceTo(babs[b.around]) <= b.showWithinUnits) moonsShown[b.around] = camera.position.distanceTo(babs[b.around]); }
-      const masked = id => { const pr = bodyObjs[id].b.displayPriority || 0, s = scr[id]; if (!s) return false; for (const j in bodyObjs) { if (j !== bodyObjs[id].b.around || (bodyObjs[j].b.displayPriority || 0) <= pr || !scr[j] || !dotShown(j)) continue; if (Math.hypot(s[0] - scr[j][0], s[1] - scr[j][1]) < 18) return true; } return false; };
+      // OCCULTATION (demande de l'utilisateur) : un astre qui passe derrière un autre astre n'est pas affiché (maillage, point, nom, orbite) ; géométrique : plus loin qu'un occulteur ET entièrement dans son DISQUE réel ; seul un occulteur dont le disque fait au moins 1,5 px compte (un astre réduit à un point n'en cache pas un autre : à ces échelles tout se confond)
+      const pxAng = 2 * Math.tan(camera.fov * DEG / 2) / innerHeight, occ = [], camA = camera.position.toArray();
+      for (const j in bodyObjs) { const rj = BODY.radiusUnits(j); const oj = bodyObjs[j], seen = !!oj && (oj.b.sceneOrigin || (oj.dot && oj.dot.visible) || (oj.mesh && oj.mesh.visible));   // l'occulteur doit être AFFICHÉ (image précédente) : une lune masquée loin de sa planète n'occulte rien
+        if (rj > 0 && seen && rj / Math.max(1e-9, camera.position.distanceTo(babs[j])) > 1.5 * pxAng) occ.push({ id: j, p: babs[j].toArray(), r: rj }); }
+      const maskedNear = id => { const pr = bodyObjs[id].b.displayPriority || 0, s = scr[id]; if (!s) return false; for (const j in bodyObjs) { if (j !== bodyObjs[id].b.around || (bodyObjs[j].b.displayPriority || 0) <= pr || !scr[j] || !dotShown(j)) continue; if (Math.hypot(s[0] - scr[j][0], s[1] - scr[j][1]) < 18) return true; } return false; };   // ancienne règle d'encombrement : une lune collée à son corps central (moins de 18 px) est masquée
+      const masked = id => maskedNear(id) || occludedBy(camA, babs[id].toArray(), occ.filter(o => o.id !== id), 0, BODY.radiusUnits(id)) !== null;
       for (const id in bodyObjs) {
         const o = bodyObjs[id], b = o.b, v = bpos[id], ab = babs[id], ru = BODY.radiusUnits(id), hid = masked(id) || (!!b.showWithinUnits && !!b.around && camera.position.distanceTo(babs[b.around]) > b.showWithinUnits), parent = b.around && bpos[b.around] ? bpos[b.around] : null, tr = b.trace || {};
         o.px = o.mesh ? pxScale * ru * (b.appearance.rings ? 2.4 : 1) / Math.max(1e-9, camera.position.distanceTo(ab)) : 0;   // rayon apparent du maillage (pixels)
