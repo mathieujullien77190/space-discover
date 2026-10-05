@@ -1,4 +1,5 @@
 import IssBadge from '@/components/IssBadge'
+import ObservatoryCard from '@/components/ObservatoryCard'
 import MapCredit from '@/components/MapCredit'
 import MapOptions from '@/components/MapOptions'
 import BodyCard from '@/components/BodyCard'
@@ -20,6 +21,7 @@ export const App = () => (
       <InfoText />
     </div>
     <BodyCard />
+    <ObservatoryCard />
     <TimeBar />
     <div className={styles.bottomLeft}>
       <MapOptions />

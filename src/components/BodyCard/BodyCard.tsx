@@ -13,10 +13,11 @@ export const BodyCard = () => {
   const id = useStore((s) => s.focus.id)
   const align = useStore((s) => s.view.align)
   const issView = useStore((s) => s.issView)
+  const observatory = useStore((s) => s.observatory.id)
   const collapsed = useStore((s) => s.cardCollapsed)
   const setCollapsed = useStore((s) => s.setCardCollapsed)
   const card = useMemo(() => (id ? bodyCard(id) : null), [id])
-  if (!card) return null
+  if (!card || observatory) return null   // la fiche d'un observatoire prend la place
   const picture = `${BASE_PATH}/${card.image}`
   if (collapsed) {
     return (

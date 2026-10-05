@@ -14,6 +14,9 @@ describe('halo bleu de l’atmosphère', () => {
     expect(mat.uniforms.uRatm.value).toBe(ATM_R)
     expect(ATM_R).toBeGreaterThan(1.005)
     expect(ATM_R).toBeLessThan(1.15)
+    expect(mat.uniforms.uUseSun.value).toBe(0)                                       // sans Soleil par défaut
+    expect(mat.fragmentShader).toContain('uSun')
+    expect(mat.fragmentShader).toMatch(/vec3\(1\.0, 0\.46, 0\.18\)/)                // la teinte orangée du crépuscule
     expect(mat.uniforms.uColor.value.z).toBeGreaterThan(mat.uniforms.uColor.value.x)   // bleu
   })
 })

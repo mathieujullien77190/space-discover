@@ -33,6 +33,6 @@ export const MAP_OPTIONS = [
   { key: 'borders', label: 'Limites de pays' },
   { key: 'capitals', label: 'Capitales' },
   { key: 'constellations', label: 'Constellations' },
-  { key: 'dayNight', label: 'Jour / nuit' },
 ] as const   // chaque option est une case à cocher, éteinte par défaut
 export const REALISTIC_LABEL = '🎬 Vue réaliste'   // retire trajectoires, noms, repères et tout ce qui n'existe pas dans la réalité
+export const DAY_NIGHT_LABEL = '🌗 Jour / nuit'   // option GLOBALE (toutes les vues, tous les astres) : le vrai Soleil éclaire, la face cachée est sombre ; cochée par défaut

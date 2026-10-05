@@ -357,7 +357,11 @@ describe('createEngine (rendu factice)', () => {
   })
   it('options de carte : limites de pays et capitales éteintes par défaut, affichées à la demande', () => {
     engine.selectView('earth'); engine._frame(performance.now() + 100)
-    expect(engine._mapOptions()).toMatchObject({ borders: false, capitals: 0, constellations: false, dayNight: false, sunPoint: false })
+    expect(engine._mapOptions()).toMatchObject({ borders: false, capitals: 0, constellations: false, dayNight: true, sunPoint: true })   // jour / nuit : coché par défaut
+    expect(engine._mapOptions().ambient).toBeLessThan(0.1)
+    engine.setDayNight(false); engine._frame(performance.now() + 150)
+    expect(engine._mapOptions()).toMatchObject({ dayNight: false, sunPoint: false })
+    expect(engine._mapOptions().ambient).toBeGreaterThan(0.5)                  // décoché : l'éclairage « de face »
     engine.setBorders(true); engine.setCapitals(true); engine.setConstellations(true); engine.setDayNight(true)
     engine._frame(performance.now() + 200)
     const on = engine._mapOptions()
@@ -369,11 +373,10 @@ describe('createEngine (rendu factice)', () => {
     expect(on.constellationNames).toBeGreaterThan(0)                           // au moins un nom de constellation à l’écran autour de la Terre
     expect(on.dayNight && on.sunPoint).toBe(true)                              // jour / nuit : le vrai Soleil éclaire, l’ambiance est sombre
     expect(on.ambient).toBeLessThan(0.4)
-    expect(engine._terrain()).toMatchObject({ glow: 0, gain: 1.6 })           // tuiles de relief plus claires le jour, sans lumière propre la nuit
-    engine.setBorders(false); engine.setCapitals(false); engine.setConstellations(false); engine.setDayNight(false)
+    expect(engine._terrain()).toMatchObject({ glow: 0, gain: 2.2 })           // tuiles de relief plus claires le jour, sans lumière propre la nuit (valeurs du mode jour / nuit, coché par défaut)
+    engine.setBorders(false); engine.setCapitals(false); engine.setConstellations(false)
     engine._frame(performance.now() + 300)
-    expect(engine._mapOptions()).toMatchObject({ borders: false, capitals: 0, constellations: false, constellationNames: 0, dayNight: false, sunPoint: false })
-    expect(engine._mapOptions().ambient).toBeGreaterThan(0.5)                  // retour à l’éclairage « de face »
+    expect(engine._mapOptions()).toMatchObject({ borders: false, capitals: 0, constellations: false, constellationNames: 0, dayNight: true, sunPoint: true })
   })
   it('jour / nuit : le point subsolaire est au bon endroit (5 oct. 2026 à 12 h UTC : longitude ≈ −3°, latitude ≈ −5,7°)', () => {
     engine.selectView('earth')
@@ -416,6 +419,33 @@ describe('createEngine (rendu factice)', () => {
     expect(Object.values(engine._orbitsVisible()).some(Boolean)).toBe(true)      // retour à la normale
     expect(names().length).toBeGreaterThan(0)
     engine.selectView('earth')
+  })
+  it('observatoire du Pic du Midi : aller dessus, vue depuis l’observatoire (ciel bleu le jour, étoilé la nuit), quitter', () => {
+    engine.resetTime(); engine._frame(performance.now() + 100)
+    engine.goObservatory('pic-du-midi'); engine._frame(performance.now() + 200); engine._frame(performance.now() + 300)
+    expect(state.observatory).toEqual({ id: 'pic-du-midi', view: false })
+    const a = engine._obs()
+    expect(a.dot).toBe(true)                                                  // marqueur de l’observatoire
+    expect(Math.abs(a.camAltKm - 40)).toBeLessThan(2)                         // vue d’accès à 40 km d’altitude
+    engine.setDate(Date.UTC(2026, 9, 5, 12, 0, 0)); engine._frame(performance.now() + 400)
+    engine.setObservatoryView(true)
+    for (let i = 0; i < 3; i++) engine._frame(performance.now() + 500 + i * 100)
+    const day = engine._obs()
+    expect(state.observatory.view).toBe(true)
+    expect(day.posErr!).toBeLessThan(1)                                       // la caméra est sur l’observatoire
+    expect(day.camAltKm).toBeGreaterThan(2.9)                                 // 2 877 m + 120 m d’œil
+    expect(day.camAltKm).toBeLessThan(3.1)
+    expect(day.day).toBeGreaterThan(0.9)                                      // midi : plein jour (le ciel bleu est celui de l’atmosphère)
+    expect(day.atmSun).toBe(1)                                                // l’atmosphère tient compte du Soleil
+    expect(day.stars).toBe(false)                                             // et pas d’étoiles
+    engine.setDate(Date.UTC(2026, 9, 5, 0, 0, 0)); for (let i = 0; i < 2; i++) engine._frame(performance.now() + 900 + i * 100)
+    const night = engine._obs()
+    expect(night.stars).toBe(true)                                            // minuit : ciel étoilé
+    expect(night.day).toBeLessThan(0.05)                                      // nuit : l’atmosphère est transparente
+    engine.selectView('earth'); engine._frame(performance.now() + 1500)
+    expect(state.observatory).toEqual({ id: null, view: false })              // le bouton Terre quitte l’observatoire
+    expect(engine._obs().stars).toBe(true)
+    engine.resetTime()
   })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)

@@ -62,7 +62,7 @@ export const useStore = create<Store>((set) => ({
   borders: false,
   capitals: false,
   constellations: false,
-  dayNight: false,
+  dayNight: true,
   realistic: false,
   terrainDetail: false,
   setEngine: (engine) => set({ engine }),

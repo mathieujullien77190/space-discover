@@ -8,11 +8,11 @@ export const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/
 export const TERRAIN_CREDIT = 'Imagerie : Esri, Maxar, Earthstar Geographics, USDA, USGS… · Altitudes : AWS Terrain Tiles (SRTM, GMTED, USGS 3DEP, GEBCO)';
 export const TERRAIN_Z_MIN = 3, TERRAIN_Z_MAX = 14;   // niveaux de zoom utilisés (14 ≈ 10 m par pixel d'image)
 export const TERRAIN_RADIUS = 4;                       // grille de (2 × 4 + 1)² = 81 tuiles autour du point regardé (une couronne de plus : les côtés ne montraient que la carte floue)
-export const TERRAIN_MAX_ALT_KM = 1000;                // au-dessus : la carte dessinée de la Terre reste affichée (fondu entre 900 et 1 000 km : tuiles pleinement visibles à 900 km)
+export const TERRAIN_MAX_ALT_KM = 4000;                // au-dessus : la carte dessinée de la Terre reste affichée ; le premier niveau (le plus grossier) apparaît à 4 000 km, les niveaux plus fins s'ajoutent en descendant (c'était 1 000 km)
 export const TERRAIN_HYSTERESIS = 1.12;                // une fois affiché, le relief ne disparaît qu'à 12 % au-dessus du seuil
 export const TERRAIN_EXAGGERATION = 1;                 // relief à l'échelle réelle ×1 (c'était ×2 : « les montagnes sont trop hautes ») (à 6 378 km de rayon, l'Everest ne fait que 0,14 % : invisible sinon)
 export const TERRAIN_GLOW = 0.3;                       // lumière propre ajoutée à l'imagerie (relève les ombres du relief : la face à l'ombre du Soleil n'est plus noire)
-export const TERRAIN_DAY_GAIN = 1.6;                   // mode jour / nuit : coefficient de luminosité des tuiles (l'imagerie satellite est sombre : éclairée par le Soleil elle paraissait terne)
+export const TERRAIN_DAY_GAIN = 2.2;                   // mode jour / nuit : coefficient de luminosité des tuiles (l'imagerie satellite est sombre : éclairée par le Soleil elle paraissait terne)
 export const EARTH_R_M = 6378137;
 export const SEA_LEVEL_OFFSET = 8e-6;                  // le niveau de la mer des tuiles est ≈ 50 m au-dessus du maillage de la Terre (dont les facettes plongent jusqu'à 30 m sous la sphère)
 const R2D = 180 / Math.PI, EARTH_CIRC_KM = 40075.017;
@@ -80,6 +80,7 @@ export const vertexRadius = (elevM, exag = TERRAIN_EXAGGERATION) => 1 + SEA_LEVE
 // RELIEF JUSQU'À L'HORIZON : plusieurs niveaux de zoom emboîtés autour du point regardé. Niveau 0 = le plus fin (z0, grille de (2 · TERRAIN_RADIUS + 1)², avec le RELIEF) ; niveaux suivants = zoom z0 − k, grille de 7 × 7, image seulement,
 // en ne gardant que les tuiles NON recouvertes par le niveau plus fin (les 4 tuiles enfants toutes présentes) : on s'arrête quand la grille atteint l'horizon (depuis l'ISS : ≈ 2 300 km), au plus TERRAIN_LEVELS niveaux.
 export const TERRAIN_LEVELS = 5, TERRAIN_FAR_RADIUS = 3;
+export const DEM_MIN_Z = 8;   // sous ce niveau de zoom (tuiles de plus de 150 km) le relief est invisible : pas de téléchargement d'altitudes (économie de ≈ 11 Mo à 4 000 km)
 export const horizonKm = altKm => { const h = Math.max(0, altKm) / 6378.137; return 6378.137 * Math.acos(1 / (1 + h)); };   // distance au sol jusqu'à l'horizon
 export function terrainLevels(lon, lat, altKm, fovDeg, aspect) {
   const z0 = Math.min(terrainZoom(altKm, lat, fovDeg, aspect), TERRAIN_Z_MAX), horizon = horizonKm(altKm), levels = [], coslat = Math.max(0.05, Math.cos(lat / R2D));
@@ -88,7 +89,7 @@ export function terrainLevels(lon, lat, altKm, fovDeg, aspect) {
     const z = z0 - k; if (z < TERRAIN_Z_MIN) break;
     const r = k === 0 ? TERRAIN_RADIUS : TERRAIN_FAR_RADIUS, grid = terrainTiles(lon, lat, z, r), keys = new Set(grid.map(t => t.key));
     const covered = t => prev && [0, 1].every(dx => [0, 1].every(dy => prev.has((z + 1) + '/' + (2 * t.x + dx) + '/' + (2 * t.y + dy))));
-    levels.push({ k, z, dem: k === 0, tiles: k === 0 ? grid : grid.filter(t => !covered(t)) });
+    levels.push({ k, z, dem: k === 0 && z >= DEM_MIN_Z, tiles: k === 0 ? grid : grid.filter(t => !covered(t)) });
     prev = keys;
     if ((r + 0.5) * EARTH_CIRC_KM * coslat / Math.pow(2, z) >= horizon) break;   // la grille de ce niveau atteint l'horizon
   }
@@ -111,4 +112,4 @@ export function terrainFallbacks(want, isReady) {
 // nombre de facettes par côté d'une tuile : la corde d'une facette plonge sous la sphère de R · θ² / 8 (θ = angle de la facette) ; pour que la tuile reste AU-DESSUS du maillage de la Terre (niveau de la mer à ≈ 50 m, SEA_LEVEL_OFFSET)
 // il faut θ ≤ 0,4° (flèche ≈ 39 m) : les grosses tuiles lointaines (45° au niveau 3) ont donc besoin de beaucoup de facettes, sinon la carte dessinée perce en dents de scie près de l'horizon.
 export const MAX_FACET_DEG = 0.4;
-export const tileSegments = (bounds, base, max = 96) => Math.max(base, Math.min(max, Math.ceil(Math.max(bounds[1] - bounds[0], bounds[3] - bounds[2]) / MAX_FACET_DEG)));
+export const tileSegments = (bounds, base, max = 128) => Math.max(base, Math.min(max, Math.ceil(Math.max(bounds[1] - bounds[0], bounds[3] - bounds[2]) / MAX_FACET_DEG)));

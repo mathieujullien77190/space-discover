@@ -10,6 +10,7 @@ export type EngineState = {
   status: EngineStatus
   error: string | null
   view: ViewState
+  observatory: { id: string | null; view: boolean }   // observatoire choisi et vue « depuis » active
   info: string
   viewJson: string
   time: TimeState
@@ -21,7 +22,7 @@ export type EngineState = {
 // Correctif envoyé par le moteur : chaque tranche peut être partielle (fusion superficielle dans le store).
 export type EnginePatch = {
   [K in keyof EngineState]?: EngineState[K] extends object ? Partial<EngineState[K]> : EngineState[K]
-} & { bigVehicles?: boolean; firstPerson?: boolean }   // le moteur peut aussi activer le mode engins géants (histoire : à 50 km d'altitude)
+} & { bigVehicles?: boolean; firstPerson?: boolean}   // clés publiées par le moteur hors des tranches de EngineState
 
 export type BodyFact = { label: string; value: string }
 export type BodyCardData = { id: string; name: string; kind: string; canNorth: boolean; canOrbit: boolean; image: string; facts: BodyFact[] }   // canNorth / canOrbit : boutons « Nord en haut » / « Orbite à plat » de la fiche
@@ -45,6 +46,9 @@ export type Engine = {
   setClouds: (on: boolean) => void
   setBorders: (on: boolean) => void
   setCapitals: (on: boolean) => void
+  goObservatory: (id: string) => void
+  setObservatoryView: (on: boolean) => void
+  _obs: () => { id: string | null; view: boolean; label: string; dot: boolean; camAltKm: number; posErr: number | null; day: number; stars: boolean; atmSun: number }
   setRealistic: (on: boolean) => void
   setConstellations: (on: boolean) => void
   setDayNight: (on: boolean) => void

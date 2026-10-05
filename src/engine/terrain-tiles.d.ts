@@ -31,3 +31,4 @@ export function terrainLevels(lon: number, lat: number, altKm: number, fovDeg: n
 export function terrainFallbacks(want: { x: number; y: number; z: number; key: string; k?: number; d?: number }[], isReady: (key: string) => boolean): { x: number; y: number; z: number; key: string; k: number; dem: boolean; d: number; fallback: boolean }[]
 export const MAX_FACET_DEG: number
 export function tileSegments(bounds: [number, number, number, number], base: number, max?: number): number
+export const DEM_MIN_Z: number
