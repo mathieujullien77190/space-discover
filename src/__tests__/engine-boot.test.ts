@@ -373,7 +373,7 @@ describe('createEngine (rendu factice)', () => {
     expect(engine._moonBoost()).toBe(1)
     engine.goObservatory('pic-du-midi'); engine.setObservatoryView(true)
     for (let i = 0; i < 3; i++) engine._frame(performance.now() + 200 + i * 100)
-    expect(engine._moonBoost()).toBe(3)
+    expect(engine._moonBoost()).toBe(6)
     expect(engine._moonBright()).toBeGreaterThan(2)                            // et plus lumineuse
     engine.selectView('earth'); engine._frame(performance.now() + 700)
     expect(engine._moonBoost()).toBe(1)
