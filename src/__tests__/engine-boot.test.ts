@@ -150,6 +150,17 @@ describe('createEngine (rendu factice)', () => {
     expect(state.status).toBe('ready')
     expect(JSON.parse(state.viewJson).altKm).toBeGreaterThan(3e6 * 6378)
   })
+  it('vue Terre très dézoomée : Mars, sa trace et son nom restent affichés (seule une lune est masquée par sa planète)', async () => {
+    await new Promise((r) => setTimeout(r, 450))
+    engine._frame(performance.now() + 300)
+    for (let i = 0; i < 48; i++) engine.nudge('d+', 15)   // ≈ 4 × 10⁶ rayons terrestres : Mars et la Terre ne sont qu’à quelques pixels l’une de l’autre
+    for (let i = 0; i < 60; i++) engine._frame(performance.now() + 1000 + i * 100)
+    const label = (text: string) => [...overlay.querySelectorAll<HTMLElement>('.eng-l3d')].find((x) => x.textContent === text)
+    expect(label('Mars')?.style.display).toBe('block')
+    expect(label('Terre')?.style.display).toBe('block')
+    expect(label('Lune')?.style.display).toBe('none')
+    expect(engine._orbitsVisible().mars).toBe(true)
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)

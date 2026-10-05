@@ -63,6 +63,7 @@ export type Engine = {
   dispose: () => void
   _frame: (now: number) => void
   _featuresVisible: () => Record<string, boolean>
+  _orbitsVisible: () => Record<string, boolean>
 }
 
 export type CreateEngineOptions = {
