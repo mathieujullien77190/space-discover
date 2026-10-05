@@ -15,9 +15,7 @@
     },
     "at": "now"
   },
-  "model": {
-    "file": "iss-nasa.glb"
-  },
+  "model": { "file": "iss-model.glb", "scale": 0.0254, "transform": [1, 0, 0, 0, 1, 0, 0, 0, 1] },
   "visual": {
     "name": "ISS",
     "lengthM": 73,

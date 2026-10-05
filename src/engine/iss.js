@@ -5,7 +5,7 @@ import { objectPeriodS, objectStart, tleToOrbit } from './flight-object.js';
 
 // ISS : UNE SEULE ISS, celle du JSON (objects/iss/iss.json : paramètres orbitaux du TLE + modèle 3D `model.file` dans le même dossier). Sa position à la date d vient de `objectStart` (js/flight-object.js) :
 // état SGP4 exact à cette date. Pour la rafraîchir : coller dans le JSON les nouveaux paramètres orbitaux (ou `start.tle`) puis `node tools/make-objects.js`.
-export const ISS_OBJ = FLIGHT_OBJECTS.iss, ISS_DIR = 'objects/iss/', ISS_MODEL = ISS_DIR + ISS_OBJ.model.file, ISS_W = ISS_OBJ.visual.widthM;
+export const ISS_OBJ = FLIGHT_OBJECTS.iss, ISS_DIR = 'objects/iss/', ISS_MODEL = ISS_DIR + ISS_OBJ.model.file, ISS_MODEL_CFG = ISS_OBJ.model, ISS_W = ISS_OBJ.visual.widthM;
 export const ISS_EPOCH = Date.parse((ISS_OBJ.start.orbit || tleToOrbit(ISS_OBJ.start.tle)).epoch);   // époque des paramètres orbitaux
 export const ISS_PERIOD_MS = objectPeriodS(ISS_OBJ) * 1000;
 

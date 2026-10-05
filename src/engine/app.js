@@ -4,7 +4,7 @@
 // Le rendu est injectable (createRenderer) pour tester sans WebGL.
 import * as THREE from 'three';
 import { BODY } from './bodies.js';
-import { ISS_FEATURES, ISS_EPOCH, ISS_FROM, ISS_MODEL, ISS_W, issState } from './iss.js';
+import { ISS_FEATURES, ISS_EPOCH, ISS_FROM, ISS_MODEL, ISS_MODEL_CFG, ISS_W, issState } from './iss.js';
 import { createClouds } from './clouds.js';
 import { createCapitals } from './capitals.js';
 import { createConstellations } from './constellations.js';
@@ -145,7 +145,9 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     hiState = 'loading';
     loadGlb(ISS_MODEL).then(root => {
       const c = new THREE.Box3().setFromObject(root).getCenter(new THREE.Vector3()); root.position.sub(c);
-      const w = new THREE.Group(); w.matrixAutoUpdate = false; w.matrix.set(0, 0, -1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1);   // (X, Y, Z) glTF -> (−Z, Y, X) : x = vol, y = haut, z = poutre
+      // le modèle se décrit dans iss.json : `scale` (mètres par unité du fichier : 0,0254 = pouces) et `transform` (matrice 3 × 3 par lignes : repère du fichier → scène, x = vol, y = haut, z = poutre) ; défaut : mètres, (X, Y, Z) → (−Z, Y, X)
+      const mo = ISS_MODEL_CFG, k = mo.scale || 1, m3 = mo.transform || [0, 0, -1, 0, 1, 0, 1, 0, 0];
+      const w = new THREE.Group(); w.matrixAutoUpdate = false; w.matrix.set(m3[0] * k, m3[1] * k, m3[2] * k, 0, m3[3] * k, m3[4] * k, m3[5] * k, 0, m3[6] * k, m3[7] * k, m3[8] * k, 0, 0, 0, 0, 1);
       w.add(root); issHi.add(w); hiState = 'ready';
     }).catch(e => { hiState = 'error'; console.warn('Modèle ISS détaillé indisponible :', e.message); });
   };
