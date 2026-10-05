@@ -18,4 +18,9 @@ check(L.right.position.x < -5 && L.right.position.x > -25, 'aile delta : le bout
 check(CONCORDE_DIMS.length === 2 && CONCORDE_DIMS.every(d => d.a.length === 3 && d.b.length === 3 && /m$/.test(d.text)), 'deux cotes (longueur 61,7 m, envergure 25,6 m)');
 const d0 = CONCORDE_DIMS[0], d1 = CONCORDE_DIMS[1];
 check(Math.abs(Math.hypot(d0.b[0] - d0.a[0]) - 61.6) < 0.2 && Math.abs(Math.abs(d1.b[2] - d1.a[2]) - 25.6) < 0.2, 'les cotes mesurent bien ' + Math.abs(d0.b[0] - d0.a[0]).toFixed(1) + ' m et ' + Math.abs(d1.b[2] - d1.a[2]).toFixed(1) + ' m');
+// train d'atterrissage (sorti / rentré) et nez articulé
+check(m.userData.gear.visible === false && (m.userData.setGear(true), m.userData.gear.visible === true) && m.userData.gear.children.length === 13 && m.userData.gear.children.every(c => c.geometry.type === 'CylinderGeometry'), 'train : 2 bogies à 4 roues + jambe avant à 2 roues, caché par défaut, montré par setGear(true)');
+m.userData.setNose(12); const nz = m.children.find(c => c.type === 'Group' && c.children.length === 4 && c.children[0].geometry.type === 'LatheGeometry');
+check(!!nz && Math.abs(nz.rotation.z + 12 * Math.PI / 180) < 1e-9, 'nez articulé : baissé de 12° (rotation ' + (nz ? (nz.rotation.z * 180 / Math.PI).toFixed(1) : '?') + '°)');
+m.userData.setNose(0);
 if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }

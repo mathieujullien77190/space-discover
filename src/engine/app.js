@@ -588,6 +588,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
         L.strobes.forEach((l, j) => { l.visible = night && strobeFlash(tt, j * 0.31) > 0; l.scale.setScalar(k); });
         concLit = night;
       }
+      concModel.userData.setGear(conc.alt < 0.8); concModel.userData.setNose(12 * (1 - smoothstepFlame((conc.alt - 0.3) / 1.2)));   // train sorti sous 800 m ; nez baissé de 12° près du sol (décollage, atterrissage), relevé ensuite
       concModel.userData.setFlames(conc.t < AIRBORNE_S / 2 ? 1 - smoothstepFlame((conc.alt - 15.5) / 0.5) : 0, performance.now() / 1000);   // flammes de réchauffe du décollage jusqu'à l'altitude de croisière (≈ 15,5 km)
       concDg.attributes.position.setXYZ(0, conc.pos.x, conc.pos.y, conc.pos.z); concDg.attributes.position.needsUpdate = true;
       const p = conc.pos.clone().project(camera);
@@ -705,7 +706,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _localOrbit: id => { const o = bodyObjs[id]; if (!o || !o.localLine) return null; const at = o.localLine.geometry.attributes.position; return { visible: o.localLine.visible, coarse: o.orbitG.visible, n: at.count, mid: [at.getX(LOCAL_N), at.getY(LOCAL_N), at.getZ(LOCAL_N)], pos: o.localLine.position.toArray(), end: [at.getX(0), at.getY(0), at.getZ(0)] }; },
     _concordeFeatures: () => Object.fromEntries(Object.entries(featInst).filter(([id]) => id.startsWith('concorde:')).map(([id, inst]) => [id.slice(9), inst.objects.some(o => o.visible)])),
     _skyObs: () => ({ on: obsView || (issView && !!cam.fp && focusSat === 'concorde' && !!conc), orange: atmMat.uniforms.uOrange.value, day: obsDay, stars: stars.children.some(c => c.userData.bin !== undefined && c.visible && c.material.opacity > 0.4), moonBoost: bodyObjs.moon && bodyObjs.moon.mesh ? bodyObjs.moon.mesh.scale.x / (bodyObjs.moon.baseScale || 1) : 1 }),
-    _concorde: () => (conc ? { active: true, flight: conc.flight.id, alt: conc.alt, mach: conc.mach, speedKmh: conc.speed * 3600, t: conc.t, model: concModel.visible, lights: concLit && concModel.userData.lights.left.visible, flames: concModel.userData.flames.some(x => x.visible), dot: concDot.visible } : { active: false, flight: null, alt: 0, mach: 0, speedKmh: 0, t: 0, model: false, lights: false, flames: false, dot: concDot.visible }),
+    _concorde: () => (conc ? { active: true, flight: conc.flight.id, alt: conc.alt, mach: conc.mach, speedKmh: conc.speed * 3600, t: conc.t, model: concModel.visible, gear: concModel.userData.gear.visible, lights: concLit && concModel.userData.lights.left.visible, flames: concModel.userData.flames.some(x => x.visible), dot: concDot.visible } : { active: false, flight: null, alt: 0, mach: 0, speedKmh: 0, t: 0, model: false, gear: false, lights: false, flames: false, dot: concDot.visible }),
     _featuresVisible: () => Object.fromEntries(Object.entries(featInst).filter(([id]) => !id.includes(':')).map(([id, inst]) => [id, inst.objects.some(o => o.visible)])),   // ISS
     _hubbleFeatures: () => Object.fromEntries(Object.entries(featInst).filter(([id]) => id.startsWith('hubble:')).map(([id, inst]) => [id.slice(7), inst.objects.some(o => o.visible)])),
     selectView,
