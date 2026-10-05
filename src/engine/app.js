@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { BODY } from './bodies.js';
 import { ISS_FEATURES, ISS_EPOCH, ISS_FROM, ISS_MODEL, ISS_W, issState } from './iss.js';
 import { createClouds } from './clouds.js';
+import { createTerrainLayer } from './terrain-layer.js';
 import { DEG, R_KM, buildEarth, earthGeometry, ll } from './earth.js';
 import { loadGlb } from './gltf-mini.js';
 import { FLIGHT_OBJECTS, FLIGHT_OBJECT_FILES } from './data/objects.js';
@@ -36,6 +37,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const inertial = new THREE.Group(); scene.add(inertial);
   const earth = buildEarth(renderer); world.add(earth);
 
+  const terrain = createTerrainLayer(earth, renderer); let terrainShown = false;   // Terre en RELIEF avec imagerie satellite sous 800 km d'altitude (automatique, hors ligne : la carte dessinée reste)
   const clouds = createClouds(earth, renderer); let cloudsOn = false;   // couverture nuageuse quasi temps réel (option)
   // NIVEAUX DE DÉTAIL selon la taille à l'écran (en pixels de rayon) : la Terre (1 048 576 triangles !) et les ~35 sphères d'astres (9 000 triangles chacune) n'étaient pas allégées quand elles ne font que quelques pixels.
   // Les géométries sont partagées (un cache par nombre de segments) ; une hystérésis (±15 %) évite de changer de niveau à chaque image.
@@ -458,7 +460,11 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     {
       const camAlt = (camera.position.length() - 1) * R_KM;
       clouds.update({ on: cloudsOn, camAlt, http: isHttp() });
-      for (let k = 1; k < earth.children.length; k++) if (earth.children[k].isLineSegments) earth.children[k].visible = camAlt < 20000;   // dézoomé : plus de trait de côte
+      { const wasShown = terrainShown, L = camera.position.length(); let cl = Math.asin(camera.position.y / L) / DEG, co = Math.atan2(-camera.position.z, camera.position.x) / DEG;
+        if (cam.eg) { cl = Math.asin(cam.eg.t.y) / DEG; co = Math.atan2(-cam.eg.t.z, cam.eg.t.x) / DEG; }   // vue au sol : le relief se charge autour du point VISÉ
+        terrainShown = terrain.update({ on: true, camAlt, cl, co, fov: camera.fov, aspect: camera.aspect, http: isHttp() });
+        if (terrainShown !== wasShown) publish({ terrainDetail: terrainShown }); }   // l'interface affiche les crédits seulement quand le relief est visible
+      for (let k = 1; k < earth.children.length; k++) if (earth.children[k].isLineSegments) earth.children[k].visible = camAlt < 20000 && !terrainShown;   // dézoomé : plus de trait de côte ; sur le relief satellite il flotterait au-dessus
     }
     // échelle : longueur « ronde » (1, 2, 5 × 10^n) qui fait 70 à 170 px au point regardé
     {
@@ -521,6 +527,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     selectView,
     goIss, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
     setClouds: on => { cloudsOn = !!on; },
+    _terrain: () => Object.assign({ shown: terrainShown }, terrain.stats()),
     _clouds: () => Object.assign({ on: cloudsOn }, clouds.stats()),
     setIssView,
     _eg: () => cam.eg ? { lon: Math.atan2(-cam.eg.t.z, cam.eg.t.x) / DEG, lat: Math.asin(cam.eg.t.y) / DEG, yaw: cam.eg.yaw, pitch: cam.eg.pitch, distKm: cam.eg.dist * R_KM, camAltKm: (camera.position.length() - 1) * R_KM, tilt: camera.position.clone().sub(cam.eg.t).normalize().dot(cam.eg.t) } : null,
@@ -530,7 +537,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
 
     dispose() {
       stopped = true; cancelAnimationFrame(raf); clearTimeout(solarTimer); disposers.forEach(d => d()); overlay.dispose();
-      clouds.dispose();
+      terrain.dispose(); clouds.dispose();
       if (renderer.dispose) renderer.dispose();
     },
   };

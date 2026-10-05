@@ -11,6 +11,7 @@ export type UiState = {
   bodyCategory: BodyCategory
   nudgeStep: number   // index dans NUDGE_STEPS
   cardCollapsed: boolean   // fiche d'astre réduite en mini bouton-icône (mémorisé)
+  terrainDetail: boolean   // le relief satellite (sous 800 km) est affiché : crédits à montrer (publié par le moteur)
   clouds: boolean   // couverture nuageuse affichée
   issView: boolean   // vue depuis l'ISS (publié par le moteur)
 }
@@ -48,6 +49,7 @@ export const useStore = create<Store>((set) => ({
   cardCollapsed: readCardCollapsed(),
   issView: false,
   clouds: false,
+  terrainDetail: false,
   setEngine: (engine) => set({ engine }),
   applyPatch: (patch) => set((s) => mergePatch(s, patch)),
   togglePanel: (panel) => set((s) => ({ panel: s.panel === panel ? null : panel })),

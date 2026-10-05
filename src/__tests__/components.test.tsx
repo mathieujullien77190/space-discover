@@ -54,6 +54,15 @@ describe('TopBar + SubMenu', () => {
     expect(engine.setClouds).toHaveBeenLastCalledWith(true)
     expect(screen.getByText(/matteason/)).toBeInTheDocument()
   })
+  it('crédit du relief satellite : affiché seulement quand le relief est visible', () => {
+    useStore.setState({ clouds: false, terrainDetail: false })
+    const { rerender } = render(<MapCredit />)
+    expect(screen.queryByText(/Esri/)).toBeNull()
+    act(() => useStore.setState({ terrainDetail: true }))
+    rerender(<MapCredit />)
+    expect(screen.getByText(/Esri/)).toBeInTheDocument()
+    expect(screen.getByText(/AWS Terrain Tiles/)).toBeInTheDocument()
+  })
   it('crédit des nuages : affiché seulement quand la couche est active', () => {
     useStore.setState({ clouds: false })
     const { rerender } = render(<MapCredit />)
