@@ -1,0 +1,17 @@
+{
+  "name": "Booster latéral (blocs B, V, G, D)",
+  "role": "booster",
+  "massKg": 3450,
+  "residualPropKg": 1327,
+  "visual": {
+    "radiusM": 1.3,
+    "lengthM": 19,
+    "noseM": 3,
+    "nozzleM": 1.6,
+    "color": "#cfc8b8",
+    "bandColor": "#b8b0a0"
+  },
+  "dragCoefficient": 1,
+  "separationSpeedMs": -1.5,
+  "disintegrates": false
+}
