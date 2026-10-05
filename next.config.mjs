@@ -9,7 +9,7 @@ const nextConfig = {
   images: { unoptimized: true },
   trailingSlash: true,
   reactStrictMode: true,
-  devIndicators: { position: 'bottom-right' },   // pastille « N » du mode dev
+  devIndicators: false,   // pas de pastille « N » du mode dev
   allowedDevOrigins: ['192.168.*.*', '10.*.*.*'],   // test depuis un téléphone du réseau local en mode dev
 };
 

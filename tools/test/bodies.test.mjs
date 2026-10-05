@@ -39,4 +39,10 @@ check(Math.min(...hr) < 0.6 && Math.max(...hr) > 35 && hpts.every(p => p.every(N
 // 7. un modèle inconnu est refusé clairement
 let err = null; try { G('(() => { FLIGHT_OBJECTS.__x = { kind: "body", name: "x", radiusKm: 1, bodyType: "planet", around: "sun", motion: { frame: "heliocentric", model: "inconnu" }, appearance: { kind: "sphere" } }; try { return BODY.rel("__x", 0); } finally { delete FLIGHT_OBJECTS.__x; } })()'); } catch (e) { err = e; }
 check(!!err && /modèle de mouvement inconnu/.test(err.message), 'modèle de mouvement inconnu refusé : ' + (err && err.message));
+// 8. la trace d'un astre képlérien passe par l'astre : distance de Mars (rayon 3 390 km) à la polyligne de son orbite (2 048 points, comme app.js) < 1 000 km à plusieurs dates ; Halley : < 1 % de sa distance au Soleil
+{ const segD = (p, a, b) => { const ab = b.map((v, i) => v - a[i]), ap = p.map((v, i) => v - a[i]); let t = (ab[0] * ap[0] + ab[1] * ap[1] + ab[2] * ap[2]) / (ab[0] ** 2 + ab[1] ** 2 + ab[2] ** 2); t = Math.max(0, Math.min(1, t)); return Math.hypot(...ap.map((v, i) => v - t * ab[i])); };
+  for (const [id, tol] of [['mars', 1000e3], ['halley', null]]) { let worst = 0, rel = 0;
+    for (const iso of ['2026-10-05', '2027-06-01', '2030-01-01', '2040-07-01']) { const D = dayOf(iso), m = G('BODY.geo("' + id + '", ' + D + ')'), sn = G('BODY.geo("sun", ' + D + ')'), r = m.map((v, i) => v - sn[i]), pts = G('BODY.orbitPoints("' + id + '", ' + D + ', 2048)');
+      let best = 1e99; for (let i = 0; i < pts.length - 1; i++) best = Math.min(best, segD(r, pts[i], pts[i + 1])); worst = Math.max(worst, best); rel = Math.max(rel, best / Math.hypot(...r)); }
+    check(tol ? worst < tol : rel < 0.01, id + ' : la trace de l’orbite passe à ' + (worst / 1000).toFixed(0) + ' km de l’astre (' + (rel * 100).toFixed(4) + ' % de sa distance au Soleil)'); } }
 if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }
