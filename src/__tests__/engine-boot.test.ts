@@ -85,7 +85,7 @@ describe('createEngine (rendu factice)', () => {
     for (let i = 0; i < 6; i++) engine._frame(performance.now() + 9000 + i * 100)
     expect(JSON.parse(state.viewJson).altKm).toBeLessThan(1e5)
   })
-  it('fiche d’astre : la Terre au départ, la Lune en vue Lune, rien en vue ISS', () => {
+  it('fiche d’astre : la Terre au départ, la Lune en vue Lune, l’ISS en vue ISS', () => {
     for (let i = 0; i < 4; i++) engine._frame(performance.now() + 300 + i * 100)
     expect(state.focus.id).toBe('earth')
     engine.selectView('moon')
@@ -93,7 +93,7 @@ describe('createEngine (rendu factice)', () => {
     expect(state.focus.id).toBe('moon')
     engine.goIss()
     for (let i = 0; i < 4; i++) engine._frame(performance.now() + 2000 + i * 100)
-    expect(state.focus.id).toBeNull()
+    expect(state.focus.id).toBe('iss')
   })
   it('choisir l’ISS : options allumées d’office (dimensions, trajectoire) et fiche de l’ISS ; une option peut ensuite être éteinte', () => {
     engine._frame(performance.now() + 300)
@@ -106,6 +106,18 @@ describe('createEngine (rendu factice)', () => {
     engine.setFeature('orbit', false)
     expect(state.features.orbit).toBe(false)
     expect(state.features.size).toBe(true)
+  })
+  it('l’ISS cachée cache sa trajectoire et ses cotes ; elles reviennent avec elle', () => {
+    engine._frame(performance.now() + 300)
+    engine.goIss()
+    engine._frame(performance.now() + 400)
+    expect(engine._featuresVisible()).toEqual({ size: true, orbit: true })
+    engine.selectView('sun')   // vue Soleil : l’ISS n’est plus dessinée
+    engine._frame(performance.now() + 500)
+    expect(engine._featuresVisible()).toEqual({ size: false, orbit: false })
+    engine.goIss()
+    engine._frame(performance.now() + 600)
+    expect(engine._featuresVisible()).toEqual({ size: true, orbit: true })
   })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)

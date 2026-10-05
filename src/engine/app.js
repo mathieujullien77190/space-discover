@@ -109,6 +109,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const issLabel = overlay.label('ISS', 'iss');
 
   const cam = { fov: 50, mode: 'earth', tgt: new THREE.Vector3(), lon: 2, lat: 30, dist: 3.4, fly: 0, tfly: 0, launchK: 1, userDir: false, goal: { lon: 2, lat: 30, dist: 3.4 } };
+  let poseStale = false;   // juste après un changement de vue la caméra garde l'ancienne position jusqu'à la prochaine image : on n'en déduit pas « trop loin de l'ISS »
   let iss = null, frameF = 0, curGm = 0, launch = null, evLabels = [], tagEls = [], rocketRows = [];
   const optShared = launchOptDefault();
 
@@ -118,7 +119,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     if ((m === 'solar') !== (cam.mode === 'solar')) {   // changement de repère (Terre fixe ↔ inertiel) : on tourne la pose de la caméra de l'angle sidéral pour que l'image ne saute pas
       const ang = m === 'solar' ? curGm : -curGm; cam.tgt.applyAxisAngle(Y_AXIS, ang); camera.position.applyAxisAngle(Y_AXIS, ang); cam.lon += ang / DEG; cam.goal.lon += ang / DEG; frameF = m === 'solar' ? 1 : 0;
     }
-    cam.mode = m; cam.fly = cam.tfly = 0;   // changement de vue DIRECT : plus aucune transition
+    cam.mode = m; cam.fly = cam.tfly = 0; poseStale = true;   // changement de vue DIRECT : plus aucune transition
     syncView(m);
     if (m === 'launch') cam.userDir = false;   // caméra auto de la fusée (réglée dans la boucle)
     if (m === 'iss' && iss) applyLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist, true);
@@ -275,7 +276,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     for (const id in bpos) { const g = BODY.geo(id, Dd); bpos[id].set(g[0] * KMU, g[1] * KMU, g[2] * KMU); babs[id].copy(bpos[id]).applyAxisAngle(Y_AXIS, rotS); }   // position géocentrique de chaque astre (inertielle, puis dans le repère tourné de `solar`)
 
     // trop loin pour voir l'ISS (cachée) : on passe en vue « Terre » sans bouger la caméra
-    if (cam.mode === 'iss' && (camera.position.length() - 1) * R_KM > 20000) {
+    if (poseStale) poseStale = false;
+    else if (cam.mode === 'iss' && (camera.position.length() - 1) * R_KM > 20000) {
       const p = camera.position, L = p.length(); cam.mode = 'earth'; cam.tgt.set(0, 0, 0); cam.dist = cam.goal.dist = L; cam.lat = cam.goal.lat = Math.asin(p.y / L) / DEG; cam.lon = cam.goal.lon = Math.atan2(-p.z, p.x) / DEG; cam.fly = cam.tfly = 0;
       syncView('earth');
     }
@@ -310,15 +312,15 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       const scr = {}; for (const id in bodyObjs) { const pp = babs[id].clone().project(camera); scr[id] = pp.z < 1 ? [(pp.x + 1) / 2 * innerWidth, (1 - pp.y) / 2 * innerHeight] : null; }
       const masked = id => { const pr = bodyObjs[id].b.displayPriority || 0, s = scr[id]; if (!s) return false; for (const j in bodyObjs) { if (j === id || (bodyObjs[j].b.displayPriority || 0) <= pr || !scr[j] || !dotShown(j)) continue; if (Math.hypot(s[0] - scr[j][0], s[1] - scr[j][1]) < 18) return true; } return false; };
       for (const id in bodyObjs) {
-        const o = bodyObjs[id], b = o.b, v = bpos[id], ab = babs[id], ru = BODY.radiusUnits(id), parent = b.around && bpos[b.around] ? bpos[b.around] : null, tr = b.trace || {};
+        const o = bodyObjs[id], b = o.b, v = bpos[id], ab = babs[id], ru = BODY.radiusUnits(id), hid = masked(id), parent = b.around && bpos[b.around] ? bpos[b.around] : null, tr = b.trace || {};
         if (o.mesh) { o.mesh.position.copy(v); if (b.orientation === 'tidal-lock' && parent) moonQuat(v.clone().sub(parent).normalize(), ECLIPTIC_POLE, o.mesh.quaternion); else if (b.rotation) rotationQuat(b.rotation, Dd, o.mesh.quaternion); }   // rotation synchrone : toujours la même face vers le corps central
         if (o.tail) {   // queue de comète : à l'opposé de l'étoile, de plus en plus longue près d'elle, invisible au-delà de ≈ 3,5 UA
           const sv = bpos[STAR], rAU = Math.hypot(v.x - sv.x, v.y - sv.y, v.z - sv.z) / AU_U, tl = b.appearance.tail, k = Math.max(0, 1 - rAU / 3.5) / Math.pow(Math.max(0.3, rAU), 1.5), len = tl.lengthKmAt1AU / R_KM * k;
-          o.tail.visible = len > ru * 4; if (o.tail.visible) { const dir = v.clone().sub(sv).normalize(); o.tail.position.copy(v); o.tail.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir); const w = tl.widthKm / 2 / R_KM * Math.sqrt(Math.min(1, k)); o.tail.scale.set(Math.max(w, ru), len, Math.max(w, ru)); }
+          o.tail.visible = len > ru * 4 && !hid; if (o.tail.visible) { const dir = v.clone().sub(sv).normalize(); o.tail.position.copy(v); o.tail.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir); const w = tl.widthKm / 2 / R_KM * Math.sqrt(Math.min(1, k)); o.tail.scale.set(Math.max(w, ru), len, Math.max(w, ru)); }
         }
-        if (o.orbitG) { o.orbitG.position.copy(parent || bpos[BODY.origin()]); o.orbitG.visible = solarMode || cam.mode === 'earth' || camera.position.length() > 300; }   // l'orbite de la Terre reste affichée en vue Terre (de près comme de loin), comme celle de Mars en vue Mars ; masquée seulement en vue ISS / fusée
+        if (o.orbitG) { o.orbitG.position.copy(parent || bpos[BODY.origin()]); o.orbitG.visible = (solarMode || cam.mode === 'earth' || camera.position.length() > 300) && !hid; }   // l'orbite de la Terre reste affichée en vue Terre (de près comme de loin), comme celle de Mars en vue Mars ; masquée seulement en vue ISS / fusée
 
-        if (o.dot) { const d = b.dot, shown = (!d.onlyInSolarView || solarMode) && cam.dist > (d.minDistanceUnits || 0) && !(solarMode && solarTarget === id && cam.dist < (d.hideBelowUnits || 0)); o.dot.visible = shown && !masked(id); const at = o.dot.geometry.attributes.position; at.setXYZ(0, v.x, v.y, v.z); at.needsUpdate = true; }
+        if (o.dot) { const d = b.dot, shown = (!d.onlyInSolarView || solarMode) && cam.dist > (d.minDistanceUnits || 0) && !(solarMode && solarTarget === id && cam.dist < (d.hideBelowUnits || 0)); o.dot.visible = shown && !hid; const at = o.dot.geometry.attributes.position; at.setXYZ(0, v.x, v.y, v.z); at.needsUpdate = true; }
         if (o.loop) {   // trace de la trajectoire autour du corps central : passé et avenir, recalculée tous les 0,05 jour, collée à l'astre à chaque image
           const N = 120, NF = 60;
           if (Math.abs(Dd - o.loopD) > 0.05) {
@@ -329,12 +331,12 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
             P.color.needsUpdate = true; F.color.needsUpdate = true; P.position.needsUpdate = true; F.position.needsUpdate = true;
           }
           { const P = o.past.geometry.attributes.position; P.setXYZ(N, v.x, v.y, v.z); P.needsUpdate = true; const F = o.fut.geometry.attributes.position; F.setXYZ(0, v.x, v.y, v.z); F.needsUpdate = true; }
-          o.loop.visible = solarMode || camera.position.length() > 8;
+          o.loop.visible = (solarMode || camera.position.length() > 8) && !hid;
         }
         if (o.label) {   // étiquette : nom (mesures : diamètre) ; la Terre n'est écrite que de loin ou en mode mesures
           const lb = b.label, dKm = fr(2 * b.radiusKm), txt = metric && lb.metricText ? lb.metricText.replace('{diameterKm}', dKm).replace('{earths}', fr(2 * b.radiusKm / (2 * R_KM))) : lb.text; if (o.label.textContent !== txt) o.label.textContent = txt;
           const on = b.sceneOrigin ? ((solarMode || cam.mode === 'earth') && camera.position.length() > 300) || (metric && cam.mode === 'earth' && cam.dist > 6) : camera.position.distanceTo(ab) > (lb.minDistanceRadii != null ? lb.minDistanceRadii * ru : lb.minDistanceUnits || 0);
-          o.screen = proj(o.label, ab, on && !masked(id));   // la Terre se comporte comme Mars : cliquable quand son nom est affiché (caméra à plus de 300 rayons d'elle), dans toutes les vues d'astre et en vue Terre dézoomée 
+          o.screen = proj(o.label, ab, on && !hid);   // la Terre se comporte comme Mars : cliquable quand son nom est affiché (caméra à plus de 300 rayons d'elle), dans toutes les vues d'astre et en vue Terre dézoomée 
         }
       }
     } else { for (const id in bodyObjs) { const o = bodyObjs[id]; if (o.label) o.label.style.display = 'none'; o.screen = null; } }
@@ -360,11 +362,12 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
         issLabel.style.display = 'block'; issLabel.style.transform = `translate(${issScreen[0] + 10}px,${issScreen[1] - 8}px)`;   // le nom reste affiché à tout zoom
       }
     }
-    if (solarMode || (camera.position.length() - 1) * R_KM > 20000) { issScreen = null; issLabel.style.display = 'none'; dot.visible = false; issModel.visible = false; }   // dézoomé : l'ISS est cachée (point, nom et modèle)
+    const issHidden = solarMode || (camera.position.length() - 1) * R_KM > 20000;   // l'ISS cachée cache aussi tout ce qui lui appartient : cotes, hauteur, trajectoire
+    if (issHidden) { issScreen = null; issLabel.style.display = 'none'; dot.visible = false; issModel.visible = false; }   // dézoomé : l'ISS est cachée (point, nom et modèle)
     // caractéristiques 3D : mise à jour puis étiquettes projetées à l'écran
     for (const f of ISS_FEATURES) {   // une caractéristique « onlyIss » (taille, hauteur) n'apparaît que sur la vue de l'ISS
       const inst = featInst[f.id]; if (!inst) continue;
-      const act = !!featOn[f.id] && (!f.onlyIss || cam.mode === 'iss');
+      const act = !!featOn[f.id] && !!iss && !issHidden && (!f.onlyIss || cam.mode === 'iss');
       inst.objects.forEach(o => { o.visible = act; }); inst.labels.forEach(l => { l.active = act; });
       if (act && iss) inst.update(iss, camera, date);
     }
@@ -466,6 +469,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   return {
     // pour les tests et l'interface : exécute une image sans requestAnimationFrame
     _frame: frame,
+    _featuresVisible: () => Object.fromEntries(Object.entries(featInst).map(([id, inst]) => [id, inst.objects.some(o => o.visible)])),
     selectView,
     goIss, nudge, setSimSpeed, resetTime, setFeature, setMetric: v => { metric = !!v; },
     startRocket, stopRocket, setRocketSpeed, followComponent, toggleComponentInfo,

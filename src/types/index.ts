@@ -62,6 +62,7 @@ export type Engine = {
   toggleComponentInfo: (id: string) => void
   dispose: () => void
   _frame: (now: number) => void
+  _featuresVisible: () => Record<string, boolean>
 }
 
 export type CreateEngineOptions = {
