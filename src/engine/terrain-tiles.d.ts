@@ -26,3 +26,7 @@ export function sampleDem(rgba: ArrayLike<number>, w: number, h: number, u: numb
 export function tileHeights(rgba: ArrayLike<number>, w: number, h: number, nx: number, ny: number, bounds?: [number, number, number, number]): Float32Array
 export function vertexRadius(elevM: number, exag?: number): number
 export function terrainOpacity(altKm: number): number
+export const TERRAIN_LEVELS: number
+export const TERRAIN_FAR_RADIUS: number
+export function horizonKm(altKm: number): number
+export function terrainLevels(lon: number, lat: number, altKm: number, fovDeg: number, aspect: number): { k: number; z: number; dem: boolean; tiles: { x: number; y: number; z: number; key: string; d: number }[] }[]

@@ -1,5 +1,5 @@
 // Relief + imagerie satellite : maths des tuiles Web Mercator, décodage Terrarium, interpolation, niveau de zoom, grille, rayon des sommets.
-import { DEM_URL, IMAGERY_URL, SEA_LEVEL_OFFSET, TERRAIN_EXAGGERATION, TERRAIN_MAX_ALT_KM, TERRAIN_OPACITY, sampleDem, terrainOpacity, terrainTiles, terrainZoom, terrariumElevation, tileAt, tileBounds, tileHeights, tileUrl, vertexRadius } from '../../src/engine/terrain-tiles.js';
+import { DEM_URL, IMAGERY_URL, SEA_LEVEL_OFFSET, TERRAIN_EXAGGERATION, TERRAIN_MAX_ALT_KM, horizonKm, terrainLevels, TERRAIN_OPACITY, sampleDem, terrainOpacity, terrainTiles, terrainZoom, terrariumElevation, tileAt, tileBounds, tileHeights, tileUrl, vertexRadius } from '../../src/engine/terrain-tiles.js';
 
 const fails = [], check = (c, m) => { console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if (!c) fails.push(m); };
 const p = tileAt(2.3522, 48.8566, 10);
@@ -30,4 +30,13 @@ check(tileUrl(5, 1, 2, IMAGERY_URL) === 'https://server.arcgisonline.com/ArcGIS/
 check(terrainOpacity(TERRAIN_MAX_ALT_KM) === 0 && terrainOpacity(5000) === 0, 'opacité nulle au seuil de 1 000 km et au-delà (pas de surgissement)');
 check(terrainOpacity(900) === TERRAIN_OPACITY && TERRAIN_OPACITY < 1, 'opacité pleine à 900 km : ' + TERRAIN_OPACITY + ' (< 1 : la carte dessinée éclaircit)');
 check(terrainOpacity(960) > 0 && terrainOpacity(960) < terrainOpacity(920), 'entre 900 et 1 000 km : fondu progressif');
+const iss = terrainLevels(2.35, 48.85, 420, 50, 1.8), hz = horizonKm(420);
+check(hz > 2200 && hz < 2400, 'horizon à 420 km d’altitude (ISS) : ' + Math.round(hz) + ' km');
+check(iss.length >= 3 && iss[0].tiles.length === 81 && iss[0].dem && iss.slice(1).every(l => !l.dem), 'ISS : ' + iss.length + ' niveaux emboîtés (z ' + iss.map(l => l.z).join(', ') + '), relief seulement au niveau le plus fin');
+const last = iss[iss.length - 1], ext = (3 + 0.5) * 40075 * Math.cos(48.85 * Math.PI / 180) / Math.pow(2, last.z);
+check(ext >= hz, 'le dernier niveau atteint l’horizon (' + Math.round(ext) + ' km ≥ ' + Math.round(hz) + ' km)');
+const total = iss.reduce((a, l) => a + l.tiles.length, 0);
+check(total < 260 && iss[1].tiles.length < 49 && iss[1].tiles.length > 20, 'tuiles recouvertes par le niveau plus fin exclues : ' + iss.map(l => l.tiles.length).join(' + ') + ' = ' + total + ' (moins de 260)');
+const low = terrainLevels(2, 48, 20, 50, 1.8);
+check(low.length >= 2 && low.length <= 5 && low[0].z >= 11, 'très bas (20 km) : z ' + low[0].z + ' au plus fin puis des niveaux plus larges jusqu’à l’horizon de 160 km (' + low.length + ' niveaux)');
 if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }

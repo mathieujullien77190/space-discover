@@ -82,3 +82,21 @@ export function terrainOpacity(altKm) {
   const hi = TERRAIN_MAX_ALT_KM, lo = hi * TERRAIN_FADE_START, t = Math.max(0, Math.min(1, (hi - altKm) / (hi - lo)));
   return TERRAIN_OPACITY * t * t * (3 - 2 * t);   // marche lissée
 }
+
+// RELIEF JUSQU'À L'HORIZON : plusieurs niveaux de zoom emboîtés autour du point regardé. Niveau 0 = le plus fin (z0, grille de (2 · TERRAIN_RADIUS + 1)², avec le RELIEF) ; niveaux suivants = zoom z0 − k, grille de 7 × 7, image seulement,
+// en ne gardant que les tuiles NON recouvertes par le niveau plus fin (les 4 tuiles enfants toutes présentes) : on s'arrête quand la grille atteint l'horizon (depuis l'ISS : ≈ 2 300 km), au plus TERRAIN_LEVELS niveaux.
+export const TERRAIN_LEVELS = 5, TERRAIN_FAR_RADIUS = 3;
+export const horizonKm = altKm => { const h = Math.max(0, altKm) / 6378.137; return 6378.137 * Math.acos(1 / (1 + h)); };   // distance au sol jusqu'à l'horizon
+export function terrainLevels(lon, lat, altKm, fovDeg, aspect) {
+  const z0 = Math.min(terrainZoom(altKm, lat, fovDeg, aspect), TERRAIN_Z_MAX), horizon = horizonKm(altKm), levels = [], coslat = Math.max(0.05, Math.cos(lat / R2D));
+  let prev = null;
+  for (let k = 0; k < TERRAIN_LEVELS; k++) {
+    const z = z0 - k; if (z < TERRAIN_Z_MIN) break;
+    const r = k === 0 ? TERRAIN_RADIUS : TERRAIN_FAR_RADIUS, grid = terrainTiles(lon, lat, z, r), keys = new Set(grid.map(t => t.key));
+    const covered = t => prev && [0, 1].every(dx => [0, 1].every(dy => prev.has((z + 1) + '/' + (2 * t.x + dx) + '/' + (2 * t.y + dy))));
+    levels.push({ k, z, dem: k === 0, tiles: k === 0 ? grid : grid.filter(t => !covered(t)) });
+    prev = keys;
+    if ((r + 0.5) * EARTH_CIRC_KM * coslat / Math.pow(2, z) >= horizon) break;   // la grille de ce niveau atteint l'horizon
+  }
+  return levels;
+}

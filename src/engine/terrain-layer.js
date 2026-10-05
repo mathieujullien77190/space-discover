@@ -2,11 +2,12 @@
 // Visible sous TERRAIN_MAX_ALT_KM ; au-dessus (ou hors ligne) la carte dessinée de la Terre reste. Réseau nécessaire (http seulement). Mêmes principes que les photos aériennes de earth.js (rayon proche de 1, au-dessus du maillage de la Terre).
 import * as THREE from 'three';
 import { ll } from './earth.js';
-import { DEM_URL, IMAGERY_URL, SEA_LEVEL_OFFSET, TERRAIN_GLOW, TERRAIN_HYSTERESIS, TERRAIN_MAX_ALT_KM, TERRAIN_Z_MAX, mercY, terrainTiles, terrainOpacity, terrainZoom, tileBounds, tileHeights, tileUrl, vertexRadius } from './terrain-tiles.js';
+import { DEM_URL, IMAGERY_URL, SEA_LEVEL_OFFSET, TERRAIN_GLOW, TERRAIN_HYSTERESIS, TERRAIN_MAX_ALT_KM, mercY, terrainTiles, terrainLevels, terrainOpacity, tileBounds, tileHeights, tileUrl, vertexRadius } from './terrain-tiles.js';
 
-const MAX_CACHED = 200;   // tuiles gardées en mémoire (≈ 200 × (image 350 Ko + relief) de mémoire graphique) : les plus anciennes sont libérées
+const MAX_CACHED = 320;   // tuiles gardées en mémoire (≈ 320 × (image 350 Ko + relief) de mémoire graphique) : les plus anciennes sont libérées
 const MAX_LOADING = 16;   // images en cours de téléchargement
 export const TILE_SEGMENTS = 32;   // facettes par côté d'une tuile
+export const FAR_SEGMENTS = 12;    // facettes par côté d'une tuile LOINTAINE (sans relief)
 export const SKIRT = 6e-4;         // jupe sous les bords d'une tuile (≈ 4 km) : cache les fissures entre tuiles voisines de relief différent
 
 // géométrie d'une tuile : grille régulière en longitude / latitude, rayon = niveau de la mer + altitude exagérée, V de la texture en ordonnée Mercator ;
@@ -27,16 +28,16 @@ export function terrainTileGeometry(b, nx, ny, heights, exag) {
 export function createTerrainLayer(parent, renderer, opts) {
   const group = new THREE.Group(); group.visible = false; parent.add(group);
   const tiles = new Map(), exag = (opts && opts.exaggeration) || 2;   // key → { state: 'loading' | 'ready' | 'error', t, mesh, img, dem }
-  let loading = 0, tick = 0, enabled = false, opacityAlt = TERRAIN_MAX_ALT_KM;   // opacityAlt : dernière altitude de caméra (pour les tuiles construites ensuite)
+  let loading = 0, tick = 0, enabled = false, opacityAlt = TERRAIN_MAX_ALT_KM, lastLevels = 0;   // opacityAlt : dernière altitude de caméra (pour les tuiles construites ensuite)
   const free = (key, t) => { if (t.mesh) { group.remove(t.mesh); if (t.mesh.material.map) t.mesh.material.map.dispose(); t.mesh.material.dispose(); t.mesh.geometry.dispose(); } t.dead = true; tiles.delete(key); };
   const build = (tl, t) => {   // imagerie ET relief reçus : on construit la tuile
     try {
-      const b = tileBounds(tl.x, tl.y, tl.z), w = t.dem.naturalWidth || 256, h = t.dem.naturalHeight || 256, c = document.createElement('canvas'); c.width = w; c.height = h;
-      const g = c.getContext('2d'); g.drawImage(t.dem, 0, 0, w, h);
-      const heights = tileHeights(g.getImageData(0, 0, w, h).data, w, h, TILE_SEGMENTS, TILE_SEGMENTS, b);
+      const b = tileBounds(tl.x, tl.y, tl.z), seg = tl.dem ? TILE_SEGMENTS : FAR_SEGMENTS; let heights;
+      if (tl.dem) { const w = t.dem.naturalWidth || 256, h = t.dem.naturalHeight || 256, c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.drawImage(t.dem, 0, 0, w, h); heights = tileHeights(g.getImageData(0, 0, w, h).data, w, h, seg, seg, b); }
+      else heights = new Float32Array((seg + 1) * (seg + 1));   // tuiles lointaines : image seulement, niveau de la mer (le relief n'y serait pas visible)
       const tex = new THREE.Texture(t.img); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); tex.needsUpdate = true;
-      t.mesh = new THREE.Mesh(terrainTileGeometry(b, TILE_SEGMENTS, TILE_SEGMENTS, heights, exag), new THREE.MeshLambertMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: TERRAIN_GLOW, transparent: true, opacity: terrainOpacity(opacityAlt), depthWrite: false }));
-      t.mesh.renderOrder = -2; group.add(t.mesh); t.state = 'ready'; t.img = t.dem = null;
+      t.mesh = new THREE.Mesh(terrainTileGeometry(b, seg, seg, heights, exag), new THREE.MeshLambertMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: TERRAIN_GLOW, transparent: true, opacity: terrainOpacity(opacityAlt), depthWrite: false }));
+      t.mesh.renderOrder = -2 - (tl.k || 0); group.add(t.mesh); t.state = 'ready'; t.img = t.dem = null;
     } catch (e) { t.state = 'error'; }
   };
   const fetchImage = (url, onload, t) => {
@@ -47,9 +48,9 @@ export function createTerrainLayer(parent, renderer, opts) {
   };
   const load = tl => {
     const t = { state: 'loading', t: tick, mesh: null, img: null, dem: null }; tiles.set(tl.key, t);
-    const done = () => { if (t.img && t.dem && !t.dead && t.state === 'loading') build(tl, t); };
+    const done = () => { if (t.img && (t.dem || !tl.dem) && !t.dead && t.state === 'loading') build(tl, t); };
     fetchImage(tileUrl(tl.z, tl.x, tl.y, IMAGERY_URL), img => { t.img = img; done(); }, t);
-    fetchImage(tileUrl(tl.z, tl.x, tl.y, DEM_URL), img => { t.dem = img; done(); }, t);
+    if (tl.dem) fetchImage(tileUrl(tl.z, tl.x, tl.y, DEM_URL), img => { t.dem = img; done(); }, t);   // le relief n'est chargé que pour le niveau le plus fin
   };
   return {
     group,
@@ -60,7 +61,8 @@ export function createTerrainLayer(parent, renderer, opts) {
       if (!enabled) { group.visible = false; if (!on || camAlt > 3000) for (const [k, t] of [...tiles]) free(k, t); return false; }
       tick++; opacityAlt = camAlt;
       const op = terrainOpacity(camAlt); for (const t of tiles.values()) if (t.mesh) t.mesh.material.opacity = op;   // éclaircit : la carte dessinée transparaît, de plus en plus en montant
-      const z = Math.min(terrainZoom(camAlt, cl, fov, aspect), TERRAIN_Z_MAX), want = terrainTiles(co, cl, z);
+      const levels = terrainLevels(co, cl, camAlt, fov, aspect), want = []; lastLevels = levels.length;
+      levels.forEach(lv => lv.tiles.forEach(tl => want.push(Object.assign({}, tl, { k: lv.k, dem: lv.dem }))));   // niveaux emboîtés jusqu'à l'horizon
       for (const tl of want) { const t = tiles.get(tl.key); if (t) t.t = tick; else if (loading < MAX_LOADING) load(tl); }
       if (tiles.size > MAX_CACHED) for (const [k, t] of [...tiles].sort((a, b) => a[1].t - b[1].t)) { if (tiles.size <= MAX_CACHED) break; if (t.t !== tick) free(k, t); }
       const wantKeys = new Set(want.map(t => t.key));
@@ -68,7 +70,7 @@ export function createTerrainLayer(parent, renderer, opts) {
       group.visible = true;
       return [...tiles.values()].some(t => t.state === 'ready' && t.mesh && t.mesh.visible);
     },
-    stats() { return { opacity: terrainOpacity(opacityAlt), tiles: tiles.size, ready: [...tiles.values()].filter(t => t.state === 'ready').length, loading, seaOffset: SEA_LEVEL_OFFSET }; },
+    stats() { return { levels: lastLevels, opacity: terrainOpacity(opacityAlt), tiles: tiles.size, ready: [...tiles.values()].filter(t => t.state === 'ready').length, loading, seaOffset: SEA_LEVEL_OFFSET }; },
     dispose() { for (const [k, t] of [...tiles]) free(k, t); parent.remove(group); },
   };
 }

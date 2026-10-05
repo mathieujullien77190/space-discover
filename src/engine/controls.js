@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { DEG, R_KM, ll } from './earth.js';
 
-// Contrôles : glisser = tourner autour de la cible, molette / pincement = zoom, APPUI SUR LA MOLETTE (bouton du milieu) + glisser = monter / descendre la caméra, clic sans bouger = onClick(x, y).
+// Contrôles : glisser = tourner autour de la cible, molette / pincement = zoom, APPUI SUR LA MOLETTE (bouton du milieu) + glisser = ORIENTER la vue vers l'horizon, clic sans bouger = onClick(x, y).
 export const EARTH_MAX_DIST = 1e10;   // zoom arrière maximal de la vue Terre (rayons terrestres) : pratiquement illimité (≈ 7 années-lumière ; 1 UA = 23 455 rayons)
 export function attachControls(canvas, cam, onClick) {
   const ptrs = new Map(), mid = new Set(); let pinch = 0, moved = 0; const offs = [], on = (t, ev, fn, o) => { t.addEventListener(ev, fn, o); offs.push(() => t.removeEventListener(ev, fn, o)); };
@@ -14,10 +14,12 @@ export function attachControls(canvas, cam, onClick) {
     else cam.goal.dist = Math.min(41, Math.max(0.1 / R_KM, cam.goal.dist * f));                                    // autour de l'ISS (min 100 m)
     
   };
-  // MONTER / DESCENDRE (appui sur la molette + glisser vers le haut / le bas) : la caméra monte ou descend (vue au sol : le long de l'axe centre de la Terre → extérieur) ; comme la molette
-  const lift = dy => {
-    const f = Math.exp(-dy * 0.008);   // glisser vers le haut (dy < 0) = monter
-    zoom(f);   // vue au sol comprise : la caméra monte / descend le long de l'axe
+  // APPUI SUR LA MOLETTE (bouton du milieu) + glisser = ORIENTER la vue : vers le HAUT = relever le regard vers l'HORIZON (angle avec l'axe centre de la Terre → extérieur), vers le bas = regarder sous soi, de côté = tourner le cap.
+  // Depuis la vue Terre (boule), le geste pose d'abord la caméra sur l'axe du point sous elle (cam.ensureGround, fourni par le moteur) ; la MOLETTE (rotation) fait monter / descendre la caméra le long de cet axe.
+  const orient = (dx, dy) => {
+    if (!cam.eg && cam.ensureGround) cam.ensureGround();
+    if (cam.eg) { cam.eg.yaw -= dx * 0.3; cam.eg.tilt = Math.max(0, Math.min(85, cam.eg.tilt - dy * 0.3)); return; }
+    rotate(dx, dy);   // autres vues (ISS, astres…) : tourner comme d'habitude
   };
   const rotate = (dx, dy) => {
     if (cam.eg) { cam.eg.yaw -= dx * 0.3; cam.eg.tilt = Math.max(0, Math.min(85, cam.eg.tilt - dy * 0.3)); return; }   // vue au sol : glisser de côté = cap ; glisser vers le HAUT = relever le regard vers l'horizon (inclinaison par rapport à l'axe), vers le bas = regarder de nouveau sous soi
@@ -37,7 +39,7 @@ export function attachControls(canvas, cam, onClick) {
   on(canvas, 'pointermove', e => {
     const p = ptrs.get(e.pointerId); if (!p) return;
     const dx = e.clientX - p[0], dy = e.clientY - p[1]; moved += Math.abs(dx) + Math.abs(dy);
-    if (mid.has(e.pointerId)) lift(dy); else if (ptrs.size === 1) rotate(dx, dy);
+    if (mid.has(e.pointerId)) orient(dx, dy); else if (ptrs.size === 1) rotate(dx, dy);
     p[0] = e.clientX; p[1] = e.clientY;
     if (ptrs.size === 2) {
       const [a, b] = [...ptrs.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]);

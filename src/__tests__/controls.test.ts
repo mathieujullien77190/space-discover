@@ -13,17 +13,27 @@ describe('contrôles : appui sur la molette + glisser = monter / descendre', () 
     const off = attachControls(canvas, cam, onClick)
     return { canvas, cam: cam as { eg: { tilt: number; h: number; yaw: number }; goal: { dist: number } }, onClick, off }
   }
-  it('vue au sol : appui sur la molette + glisser vers le haut = monter le long de l’axe (inclinaison inchangée), vers le bas = descendre', () => {
+  it('molette enfoncée + glisser vers le haut = relever le regard vers l’horizon, vers le bas = regarder sous soi ; l’altitude ne change pas', () => {
     const { canvas, cam, off } = setup()
     const h0 = cam.eg.h
     canvas.dispatchEvent(ptr('pointerdown', { button: 1, x: 100, y: 300 }))
-    canvas.dispatchEvent(ptr('pointermove', { button: 1, x: 100, y: 200 }))   // vers le haut : monter
-    expect(cam.eg.h).toBeGreaterThan(h0)
-    expect(cam.eg.tilt).toBe(30)                                                // l’angle avec l’axe ne change pas
-    const up = cam.eg.h
-    canvas.dispatchEvent(ptr('pointermove', { button: 1, x: 100, y: 330 }))   // vers le bas : descendre
-    expect(cam.eg.h).toBeLessThan(up)
-    expect(cam.eg.yaw).toBe(0)
+    canvas.dispatchEvent(ptr('pointermove', { button: 1, x: 100, y: 200 }))   // vers le haut : relever le regard
+    expect(cam.eg.tilt).toBeGreaterThan(30)
+    expect(cam.eg.h).toBe(h0)                                                   // pas de zoom : l’altitude ne change pas
+    const up = cam.eg.tilt
+    canvas.dispatchEvent(ptr('pointermove', { button: 1, x: 100, y: 330 }))   // vers le bas : regarder sous soi
+    expect(cam.eg.tilt).toBeLessThan(up)
+    canvas.dispatchEvent(ptr('pointermove', { button: 1, x: 160, y: 330 }))   // de côté : cap
+    expect(cam.eg.yaw).not.toBe(0)
+    off()
+  })
+  it('depuis la vue Terre (sans vue au sol), le geste demande au moteur de poser la caméra sur l’axe', () => {
+    const canvas = fakeCanvas()
+    const cam = { fov: 50, mode: 'earth', eg: null, goal: { dist: 3.4, lon: 0, lat: 0 }, lon: 0, lat: 0, dist: 3.4, fly: 0, ensureGround: vi.fn() } as never
+    const off = attachControls(canvas, cam, vi.fn())
+    canvas.dispatchEvent(ptr('pointerdown', { button: 1, x: 10, y: 10 }))
+    canvas.dispatchEvent(ptr('pointermove', { button: 1, x: 10, y: 0 }))
+    expect((cam as { ensureGround: ReturnType<typeof vi.fn> }).ensureGround).toHaveBeenCalled()
     off()
   })
   it('un appui sur la molette ne déclenche pas de clic, et le bouton gauche ne monte pas la caméra', () => {

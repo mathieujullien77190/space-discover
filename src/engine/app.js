@@ -277,6 +277,15 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     else cam.eg.goal.copy(P);   // clics suivants : la caméra glisse à la verticale du nouveau point, altitude et inclinaison conservées
     publish({ view: { mode: 'earth', selected: 'earth', align: 'ground' } });
   };
+  // geste « molette enfoncée + glisser » depuis la vue Terre : on pose la caméra sur l'axe du point qui est SOUS elle (même altitude, regard vers le bas) avec le cap actuel de l'écran, sans saut d'image
+  cam.ensureGround = () => {
+    if (cam.mode !== 'earth' || cam.eg) return !!cam.eg;
+    const P = camera.position.clone().normalize(), up = new THREE.Vector3().copy(P), east = new THREE.Vector3().crossVectors(Y_AXIS, up); if (east.lengthSq() < 1e-8) east.set(0, 0, -1); east.normalize();
+    const north = new THREE.Vector3().crossVectors(up, east).normalize(), h = new THREE.Vector3().copy(camera.up).addScaledVector(up, -camera.up.dot(up));   // « haut » de l'écran projeté sur le plan horizontal : le cap
+    cam.eg = { t: P.clone(), goal: P.clone(), center: P.clone(), yaw: h.lengthSq() > 1e-10 ? Math.atan2(h.dot(east), h.dot(north)) / DEG : 0, tilt: 0, h: Math.max(EG_H_MIN, camera.position.length() - 1) };
+    publish({ view: { mode: 'earth', selected: 'earth', align: 'ground' } });
+    return true;
+  };
   const placeGround = dt => {   // VUE AU SOL : la caméra est SUR l'axe centre de la Terre → extérieur, à la verticale du point n, à l'altitude h ; elle MONTE / DESCEND le long de cet axe ; son regard fait un ANGLE (tilt : 0 = droit vers le bas, ~85° = presque l'horizon) avec cet axe, dans la direction du cap (yaw)
     const g = cam.eg; g.t.lerp(g.goal, 1 - Math.exp(-dt * 7)).normalize();
     g.tilt = Math.max(0, Math.min(EG_TILT_MAX, g.tilt)); g.h = Math.max(EG_H_MIN, Math.min(EG_H_MAX, g.h));
