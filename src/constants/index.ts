@@ -22,8 +22,8 @@ export const ROCKET_SPEEDS: ReadonlyArray<{ speed: number; label: string }> = [
 ]
 export const PANEL_BUTTONS: ReadonlyArray<{ panel: 'planets' | 'satellites' | 'rockets'; label: string }> = [
   { panel: 'planets', label: '🌌 Astres' },
-  { panel: 'satellites', label: '🛰 Satellites' },
-  { panel: 'rockets', label: '🚀 Fusées' },
+  // « Satellites » et « Fusées » : retirés des boutons (demande de l'utilisateur : « on va faire autrement ») ; leurs composants (SatelliteMenu, RocketMenu, RocketControls), le moteur et les commandes sont CONSERVÉS : pour les remettre, ajouter
+  // { panel: 'satellites', label: '🛰 Satellites' } et { panel: 'rockets', label: '🚀 Fusées' } ici.
 ]
 
 // catégories d'astres du sous-menu « Astres » : types (bodyType du JSON) regroupés par bouton

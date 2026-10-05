@@ -76,7 +76,7 @@ export type Engine = {
   _dotVisible: () => Record<string, boolean>
   _axisVisible: () => Record<string, boolean>
   _view: () => { up: number[]; dir: number[]; custom: boolean; align: 'north' | 'orbit' | null }
-  _probe: (id: string) => { shown: boolean; dot: boolean; model: boolean; path: boolean; local: boolean; pos: number[]; abs: number[]; r: number[] | null; label: string } | null
+  _probe: (id: string) => { shown: boolean; dist: number; camDist: number; dot: boolean; model: boolean; path: boolean; local: boolean; pos: number[]; abs: number[]; r: number[] | null; label: string } | null
   _probeDistance: (probe: string, body: string) => number
   _lod: () => { earth: number; bodies: Record<string, number>; ratio: number }
 }

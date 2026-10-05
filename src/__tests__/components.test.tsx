@@ -18,11 +18,11 @@ describe('TopBar + SubMenu', () => {
     engine = fakeEngine()
     useStore.setState({ ...initialEngineState, panel: null, bodyCategory: 'planets', features: {}, engine })
   })
-  it('trois boutons en haut, aucun sous-menu au départ', () => {
+  it('un seul bouton en haut (Astres) : Satellites et Fusées sont retirés de l’interface, aucun sous-menu au départ', () => {
     render(<><TopBar /><SubMenu /></>)
     expect(screen.getByText('🌌 Astres')).toBeInTheDocument()
-    expect(screen.getByText('🛰 Satellites')).toBeInTheDocument()
-    expect(screen.getByText('🚀 Fusées')).toBeInTheDocument()
+    expect(screen.queryByText('🛰 Satellites')).toBeNull()
+    expect(screen.queryByText('🚀 Fusées')).toBeNull()
     expect(screen.queryByText(/Lune/)).toBeNull()
   })
   it('Astres : la Lune n’est pas une planète : elle apparaît sous la Terre, pas sous Mars', () => {
@@ -78,7 +78,7 @@ describe('TopBar + SubMenu', () => {
   })
   it('Satellites : l’ISS et les sondes ; un objet pas encore lancé à la date choisie est grisé', () => {
     render(<><TopBar /><SubMenu /></>)
-    fireEvent.click(screen.getByText('🛰 Satellites'))
+    act(() => useStore.setState({ panel: 'satellites' }))   // panneau conservé dans le code, plus de bouton
     for (const n of ['ISS', 'Voyager 1', 'Voyager 2', 'Pioneer 10', 'Pioneer 11', 'New Horizons']) expect(screen.getByText('🛰 ' + n)).toBeInTheDocument()
     expect(screen.getByText('🛰 New Horizons')).toBeEnabled()   // date de départ : maintenant
     act(() => useStore.setState({ time: { simMs: Date.UTC(1975, 0, 1), speed: 1, visible: true } }))
@@ -92,20 +92,20 @@ describe('TopBar + SubMenu', () => {
   })
   it('Satellites : seulement le bouton de l’ISS (plus de boutons Dimensions ni Trajectoire)', () => {
     render(<><TopBar /><SubMenu /></>)
-    fireEvent.click(screen.getByText('🛰 Satellites'))
+    act(() => useStore.setState({ panel: 'satellites' }))   // panneau conservé dans le code, plus de bouton
     expect(screen.getByText(/ISS/)).toBeInTheDocument()
     expect(screen.queryByText(/Dimensions/)).toBeNull()
     expect(screen.queryByText(/Trajectoire/)).toBeNull()
   })
   it('Satellites : l’ISS mène à la vue ISS', () => {
     render(<><TopBar /><SubMenu /></>)
-    fireEvent.click(screen.getByText('🛰 Satellites'))
+    act(() => useStore.setState({ panel: 'satellites' }))   // panneau conservé dans le code, plus de bouton
     fireEvent.click(screen.getByText(/ISS/))
     expect(engine.goIss).toHaveBeenCalled()
   })
   it('Fusées : un clic sur une fusée la lance', () => {
     render(<><TopBar /><SubMenu /></>)
-    fireEvent.click(screen.getByText('🚀 Fusées'))
+    act(() => useStore.setState({ panel: 'rockets' }))   // panneau conservé dans le code, plus de bouton
     fireEvent.click(screen.getByText(/Ariane 5/))
     expect(engine.startRocket).toHaveBeenCalledWith('obj:ariane5')
   })
