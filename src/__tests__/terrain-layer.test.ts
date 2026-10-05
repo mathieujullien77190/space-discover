@@ -27,6 +27,18 @@ describe('géométrie d’une tuile de relief', () => {
     expect(max - (1 + SEA_LEVEL_OFFSET)).toBeCloseTo((3000 * 2) / 6378137, 7)
   })
 
+  it('normales radiales : identiques pour deux tuiles voisines à leur bord (pas de quadrillage d’éclairage)', () => {
+    const g = terrainTileGeometry(b, n, n, hill, 2)
+    const pos = g.attributes.position
+    const nor = g.attributes.normal
+    for (const i of [0, 40, 700, pos.count - 1]) {
+      const len = Math.hypot(pos.getX(i), pos.getY(i), pos.getZ(i))
+      expect(nor.getX(i)).toBeCloseTo(pos.getX(i) / len, 6)
+      expect(nor.getY(i)).toBeCloseTo(pos.getY(i) / len, 6)
+      expect(nor.getZ(i)).toBeCloseTo(pos.getZ(i) / len, 6)
+    }
+  })
+
   it('texture : V en ordonnée Mercator de 0 (sud) à 1 (nord), U de 0 à 1', () => {
     const g = terrainTileGeometry(b, n, n, flat, 2)
     const uv = g.attributes.uv

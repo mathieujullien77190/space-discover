@@ -21,7 +21,11 @@ export function terrainTileGeometry(b, nx, ny, heights, exag) {
     pos.set([v.x * r, v.y * r, v.z * r], 3 * k); uv.set([ci / nx, (mercY(lat) - my0) / (my1 - my0)], 2 * k);
   }
   for (let j = 0; j < rows - 1; j++) for (let i = 0; i < cols - 1; i++) { const a = j * cols + i, b2 = a + 1, c = a + cols, d = c + 1; idx.push(a, c, b2, b2, c, d); }
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); g.setIndex(idx);
+  // normales RADIALES (la verticale du lieu), pas calculées depuis le relief : une tuile ne connaît pas ses voisines, donc les normales de ses bords différaient de celles de la tuile d'à côté et le
+  // maillage des tuiles se dessinait en QUADRILLAGE (capture de l'utilisateur) ; l'image satellite porte déjà l'ombrage naturel du relief (un éclairage du relief en plus le compterait deux fois)
+  const nor = new Float32Array(pos.length); for (let i = 0; i < pos.length; i += 3) { const l = Math.hypot(pos[i], pos[i + 1], pos[i + 2]) || 1; nor[i] = pos[i] / l; nor[i + 1] = pos[i + 1] / l; nor[i + 2] = pos[i + 2] / l; }
+  g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
   return g;
 }
 
