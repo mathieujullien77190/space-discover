@@ -6,6 +6,7 @@ import * as THREE from 'three';
 export const METEOR_GAP_S = [3, 12];        // délai entre deux étoiles filantes (s)
 export const METEOR_DURATION_S = [0.9, 1.6];    // durée totale (s) : la tête parcourt l'arc pendant les 55 premiers % ; la traînée, elle, s'efface DEPUIS SON DÉBUT jusqu'à la tête
 export const METEOR_DRIFT = 0.9, METEOR_END_MIN_DEG = 4;   // dérive latérale aléatoire de la course ; hauteur minimale de l'arrivée
+export const METEOR_HEAD_FADE = 0.06;   // durée (part de la durée totale) de l'extinction de la tête
 export const METEOR_HEAD_SHARE = 0.55, METEOR_TAIL_DELAY = 0.12;   // part de la durée où la tête avance ; moment (part de la durée) où le DÉBUT de la traînée commence à s'effacer
 export const METEOR_LENGTH_DEG = [8, 28];   // longueur de l'arc parcouru dans le ciel
 export const METEOR_ELEVATION_DEG = [20, 80];   // hauteur du point de départ au-dessus de l'horizon (elles descendent ensuite vers l'horizon)
@@ -65,7 +66,8 @@ export function createMeteors(scene, rand = Math.random) {
         }
         pos.needsUpdate = col.needsUpdate = true;
         const h = slerp(s.a, s.b, hd, tmp); s.head.geometry.attributes.position.setXYZ(0, h.x, h.y, h.z); s.head.geometry.attributes.position.needsUpdate = true;
-        s.head.material.opacity = hd < 1 ? f : 0; s.line.visible = true; s.head.visible = hd < 1;   // la tête disparaît à l'arrivée, la traînée finit de s'effacer
+        const out = Math.max(0, Math.min(1, (u - METEOR_HEAD_SHARE) / METEOR_HEAD_FADE));   // à l'arrivée la boule ronde de la tête passe RAPIDEMENT de 100 % à 0 d'opacité (en 6 % de la durée) ; la traînée finit de s'effacer
+        s.head.material.opacity = f * (1 - out); s.line.visible = true; s.head.visible = out < 1;
       }
     },
     spawn,

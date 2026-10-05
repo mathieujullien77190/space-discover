@@ -633,7 +633,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     setStarInfo: on => { starInfoOn = !!on; if (!starInfoOn) clearStar(); }, clearStar,
     _moonBright: () => (bodyObjs.moon && bodyObjs.moon.mesh && bodyObjs.moon.mesh.material.color ? bodyObjs.moon.mesh.material.color.r : 1),
     _moonBoost: () => (bodyObjs.moon && bodyObjs.moon.mesh ? bodyObjs.moon.mesh.scale.x / (bodyObjs.moon.baseScale || 1) : 1),
-    _milky: () => ({ built: !!milky, visible: !!milky && milky.mesh.visible, opacity: milky ? milky.mesh.material.opacity : 0 }),
+    _milky: () => ({ built: !!milky, visible: !!milky && milky.visible(), opacity: milky ? milky.opacity() : 0, count: milky ? milky.count : 0 }),
     _meteors: () => ({ active: meteors.count(), total: meteors.total() }),
     _spawnMeteor: () => (obsFrame ? meteors.spawn(obsFrame.up, obsFrame.east, obsFrame.north) : false),
     _starInfo: () => ({ on: starInfoOn, hip: starSel >= 0 ? STARS[starSel][4] : null, ring: starRing.style.display }),
