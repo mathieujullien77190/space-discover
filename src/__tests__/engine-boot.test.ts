@@ -354,6 +354,7 @@ describe('createEngine (rendu factice)', () => {
     expect(q.model).toBe(true)      // vue de la sonde (127 m) : son modèle 3D à l'échelle réelle (antenne de 3,7 m ≈ 24 px)
     expect(q.dot).toBe(false)
     expect(q.local).toBe(true)      // trace locale en double précision, passant par la sonde
+    expect(Math.abs(q.dist / q.camDist - 1)).toBeLessThan(0.01)   // la caméra est CENTRÉE sur la sonde à chaque image (16 km/s = 260 m par image : une caméra en retard d'une image la décentrerait)
     engine.selectView('sun'); frames(4)
     const far = engine._probe('voyager2')!
     expect(far.dot).toBe(true)      // de loin : un point (le modèle ferait un millionième de pixel)

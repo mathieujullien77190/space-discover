@@ -385,6 +385,13 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     const Dd = astroD(date), gm = curGm = gmstOf(Dd), _d = curD = Dd, solarMode = cam.mode === 'solar', rotS = -gm * (1 - frameF);
     for (const id in bpos) { const g = BODY.geo(id, Dd); bpos[id].set(g[0] * KMU, g[1] * KMU, g[2] * KMU); babs[id].copy(bpos[id]).applyAxisAngle(Y_AXIS, rotS); }   // position géocentrique de chaque astre (inertielle, puis dans le repère tourné de `solar`)
 
+    // sondes : position CALCULÉE à la date simulée, AVANT de placer la caméra (qui peut les suivre : à 16 km/s une sonde fait 260 m par image, la caméra serait en retard d'une image) ; absentes avant leur lancement (+ 1 jour)
+    for (const pid in probeObjs) {
+      const o = probeObjs[pid];
+      if (date.getTime() < probeFrom(pid)) { o.st = null; continue; }
+      const st = o.st = o.mission.state(Dd), r = st.r;
+      o.pos.copy(bpos[STAR]).add(tmp.set(r[0] * KMU, r[1] * KMU, r[2] * KMU)); o.abs.copy(o.pos).applyAxisAngle(Y_AXIS, rotS);
+    }
     // trop loin pour voir l'ISS (cachée) : on passe en vue « Terre » sans bouger la caméra
     if (poseStale) poseStale = false;
     else if (cam.mode === 'iss' && (camera.position.length() - 1) * R_KM > 20000) {
@@ -477,10 +484,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       }
       // sondes rejouées : position CALCULÉE à la date simulée ; absentes avant leur lancement (+ 1 jour : avant, c'est le lanceur qui est simulé)
       for (const pid in probeObjs) {
-        const o = probeObjs[pid], shown = date.getTime() >= probeFrom(pid);
-        if (!shown) { o.dot.visible = o.model.visible = o.pathG.visible = o.local.visible = false; o.label.style.display = 'none'; o.screen = null; o.st = null; continue; }
-        const st = o.st = o.mission.state(Dd), r = st.r;
-        o.pos.copy(bpos[STAR]).add(tmp.set(r[0] * KMU, r[1] * KMU, r[2] * KMU)); o.abs.copy(o.pos).applyAxisAngle(Y_AXIS, rotS);
+        const o = probeObjs[pid], shown = !!o.st;
+        if (!shown) { o.dot.visible = o.model.visible = o.pathG.visible = o.local.visible = false; o.label.style.display = 'none'; o.screen = null; continue; }
         const dist = camera.position.distanceTo(o.abs), px = pxScale * (o.def.appearance.dishM * KMU / 2) / Math.max(1e-12, dist);   // rayon de l'antenne à l'écran (pixels)
         o.model.visible = px > 0.8; if (o.model.visible) { o.model.position.copy(o.pos); o.model.quaternion.setFromUnitVectors(Z_AXIS, tmp.copy(o.pos).negate().normalize()); }   // l'antenne regarde la Terre
         o.dot.visible = px < 6; o.dot.position.copy(o.pos);
@@ -626,7 +631,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     // pour les tests et l'interface : exécute une image sans requestAnimationFrame
     alignNorth, alignOrbit, resetUp,
     _probeDistance: (pid, bid) => { const o = probeObjs[pid]; return o && o.st ? Math.hypot(o.pos.x - bpos[bid].x, o.pos.y - bpos[bid].y, o.pos.z - bpos[bid].z) * 6378.137 : Infinity; },   // km
-    _probe: id => { const o = probeObjs[id]; return o ? { shown: !!o.st, dot: o.dot.visible, model: o.model.visible, path: o.pathG.visible, local: o.local.visible, pos: o.pos.toArray(), abs: o.abs.toArray(), r: o.st ? o.st.r : null, label: o.label.style.display } : null; },
+    _probe: id => { const o = probeObjs[id]; return o ? { shown: !!o.st, dist: camera.position.distanceTo(o.abs), camDist: cam.dist, dot: o.dot.visible, model: o.model.visible, path: o.pathG.visible, local: o.local.visible, pos: o.pos.toArray(), abs: o.abs.toArray(), r: o.st ? o.st.r : null, label: o.label.style.display } : null; },
     _dotVisible: () => Object.fromEntries(Object.entries(bodyObjs).filter(([, o]) => o.dot).map(([id, o]) => [id, o.dot.visible])),
     _axisVisible: () => Object.assign({ earth: earthAxis.visible }, Object.fromEntries(Object.entries(bodyObjs).filter(([, o]) => o.axisG).map(([id, o]) => [id, o.axisG.visible]))),
     _view: () => ({ up: camera.up.toArray(), dir: camera.position.clone().sub(cam.tgt).normalize().toArray(), custom: !!cam.userUp, align: cam.upKind }),
