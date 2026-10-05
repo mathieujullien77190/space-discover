@@ -372,15 +372,18 @@ describe('createEngine (rendu factice)', () => {
     engine.goObservatory('pic-du-midi'); engine.setObservatoryView(true)
     for (let i = 0; i < 3; i++) engine._frame(performance.now() + 200 + i * 100)
     expect(engine._moonBoost()).toBe(3)
+    expect(engine._moonBright()).toBeGreaterThan(2)                            // et plus lumineuse
     engine.selectView('earth'); engine._frame(performance.now() + 700)
     expect(engine._moonBoost()).toBe(1)
+    expect(engine._moonBright()).toBe(1)
   })
   it('infos étoiles : option, clic sur une étoile visible = sa fiche + anneau, fermeture', async () => {
     await new Promise((r) => setTimeout(r, 500))                               // astres construits (400 ms) : la vue ne change plus en cours de test
     engine.resetTime(); engine.setSimSpeed(1); engine._frame(performance.now() + 100)
     engine.selectView('earth'); engine.setObservatories(false); engine._frame(performance.now() + 150)
     expect(engine._starInfo()).toMatchObject({ on: false, hip: null })
-    const list = engine._starsOnScreen(3)
+    const cx = innerWidth / 2, cy = innerHeight / 2
+    const list = engine._starsOnScreen(40).sort((p, q) => Math.hypot(p.x - cx, p.y - cy) - Math.hypot(q.x - cx, q.y - cy)).slice(0, 3)   // les plus proches du centre : loin du bord de l'écran et du limbe de la Terre
     expect(list.length).toBeGreaterThan(0)                                     // vue de départ : des étoiles brillantes visibles autour de la Terre
     expect(engine._pickStarAt(list[0].x, list[0].y)).toBe(list[0].hip)         // la visée marche (même sans l'option, la fonction est testable)
     engine.setStarInfo(true); engine._pickStarAt(list[0].x, list[0].y); engine._frame(performance.now() + 200)

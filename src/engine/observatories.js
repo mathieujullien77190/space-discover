@@ -229,6 +229,7 @@ export const observatoryById = id => OBSERVATORIES.find(o => o.id === id) || nul
 export const OBS_VIEW_ALT_KM = 40;      // la vue d'accès : à 40 km d'altitude à la verticale de l'observatoire (la boule, de près)
 export const OBS_VIEW_PITCH = 6;        // la vue « depuis » commence 6° au-dessus de l'horizon, plein sud
 export const OBS_VIEW_FOV = 50;       // champ de départ de la vue depuis l'observatoire (la molette le règle de 1° à 100°)
+export const OBS_MOON_BRIGHT = 2.4;   // la Lune est aussi plus LUMINEUSE depuis l'observatoire (couleur du matériau × 2,4 : sa carte sombre ressortait mal sur le ciel bleu)
 export const OBS_MOON_BOOST = 3;      // ILLUSION LUNAIRE : depuis l'observatoire la Lune est dessinée 3 fois plus grosse (0,52° réels : à l'œil elle « paraît » bien plus grosse qu'un disque de 0,5° vu sur un écran)
 
 // position de l'œil de l'observateur (rayons terrestres), et vecteurs locaux (tableaux [x, y, z], repère de la scène : y = nord, x vers (lon 0, lat 0), z vers 90° O)

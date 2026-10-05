@@ -52,6 +52,7 @@ export type Engine = {
   setStarInfo: (on: boolean) => void
   clearStar: () => void
   _moonBoost: () => number
+  _moonBright: () => number
   _starInfo: () => { on: boolean; hip: number | null; ring: string }
   _starsOnScreen: (n?: number) => { hip: number; x: number; y: number }[]
   _pickStarAt: (x: number, y: number) => number | null

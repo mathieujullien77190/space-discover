@@ -8,7 +8,7 @@ import { ISS_FEATURES, ISS_EPOCH, ISS_FROM, ISS_MODEL, ISS_MODEL_CFG, ISS_W, iss
 import { HUBBLE_LENGTH_M, buildHubble } from './hubble-model.js';
 import { createClouds } from './clouds.js';
 import { createCapitals } from './capitals.js';
-import { OBSERVATORIES, OBS_MOON_BOOST, OBS_VIEW_ALT_KM, OBS_VIEW_FOV, OBS_VIEW_PITCH, observatoryById, observatoryFrame } from './observatories.js';
+import { OBSERVATORIES, OBS_MOON_BOOST, OBS_MOON_BRIGHT, OBS_VIEW_ALT_KM, OBS_VIEW_FOV, OBS_VIEW_PITCH, observatoryById, observatoryFrame } from './observatories.js';
 import { createConstellations } from './constellations.js';
 import { createStars, starBin, starVector } from './stars.js';
 import { STARS } from './data/stars.js';
@@ -405,7 +405,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       for (const id in bodyObjs) {
         const o = bodyObjs[id], b = o.b, v = bpos[id], ab = babs[id], ru = BODY.radiusUnits(id), hid = masked(id) || (!!b.showWithinUnits && !!b.around && camera.position.distanceTo(babs[b.around]) > b.showWithinUnits), parent = b.around && bpos[b.around] ? bpos[b.around] : null, tr = b.trace || {};
         const boost = obsView && b.bodyType === 'moon' && b.around === 'earth' ? OBS_MOON_BOOST : 1;   // depuis un observatoire la Lune est agrandie (illusion lunaire)
-        if (o.mesh) { if (o.baseScale === undefined) o.baseScale = o.mesh.scale.x; o.mesh.scale.setScalar(o.baseScale * boost); }   // (les sphères « peintes » ont déjà leur rayon dans l'échelle du maillage)
+        if (o.mesh) { if (o.baseScale === undefined) o.baseScale = o.mesh.scale.x; o.mesh.scale.setScalar(o.baseScale * boost); if (boost > 1 && o.mesh.material.color) o.mesh.material.color.setScalar(OBS_MOON_BRIGHT); else if (o.moonLit && o.mesh.material.color) o.mesh.material.color.setScalar(1); o.moonLit = boost > 1; }   // (les sphères « peintes » ont déjà leur rayon dans l'échelle du maillage)
         o.px = o.mesh ? boost * pxScale * ru * (b.appearance.rings ? 2.4 : 1) / Math.max(1e-9, camera.position.distanceTo(ab)) : 0;   // rayon apparent du maillage (pixels)
         if (o.mesh && o.lodHi) {   // niveau de détail de la sphère d'après sa taille à l'écran ; invisible sous 1 px (son point lointain la remplace)
           const px = o.px, lv = lodLevel(px, o.lod || 0, BODY_LOD.T);
@@ -603,6 +603,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     setCapitals: on => { capitalsOn = !!on; },
     setObservatories: on => { observatoriesOn = !!on; },
     setStarInfo: on => { starInfoOn = !!on; if (!starInfoOn) clearStar(); }, clearStar,
+    _moonBright: () => (bodyObjs.moon && bodyObjs.moon.mesh && bodyObjs.moon.mesh.material.color ? bodyObjs.moon.mesh.material.color.r : 1),
     _moonBoost: () => (bodyObjs.moon && bodyObjs.moon.mesh ? bodyObjs.moon.mesh.scale.x / (bodyObjs.moon.baseScale || 1) : 1),
     _starInfo: () => ({ on: starInfoOn, hip: starSel >= 0 ? STARS[starSel][4] : null, ring: starRing.style.display }),
     _starsOnScreen: (n = 5) => { refreshBins(); const out = []; for (let i = 0; i < STARS.length && out.length < n; i++) { if (!starVisible(i)) continue; const p = starProject(STARS[i]); if (p) out.push({ hip: STARS[i][4], x: p[0], y: p[1] }); } return out; },
