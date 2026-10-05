@@ -1,12 +1,12 @@
 {
-  "name": "projets-3d",
+  "name": "space-discover",
   "version": "1.0.0",
-  "description": "Projets 3D (three.js) : space (Terre, ISS, fusées) et dday",
+  "description": "Terre 3D (three.js), ISS réelle et lancements de fusées simulés",
   "private": true,
   "scripts": {
-    "space": "npm --prefix space start",
-    "dday": "npm --prefix dday start",
-    "start": "npx --yes http-server -p 5170 -c-1 -o"
+    "prestart": "node tools/make-objects.js",
+    "start": "npx --yes http-server -p 5179 -c-1 -o",
+    "test": "node tools/test/physics.test.js"
   },
   "license": "MIT"
 }

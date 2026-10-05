@@ -2,24 +2,61 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#05080f">
-<title>Projets 3D</title>
-<style>
-  html, body { margin: 0; min-height: 100%; background: #05080f; color: #e8eef7; font-family: system-ui, sans-serif; }
-  main { max-width: 760px; margin: 0 auto; padding: 48px 20px; }
-  h1 { font-size: 26px; margin: 0 0 6px; } p.sub { color: #9fb0c8; margin: 0 0 28px; }
-  a.card { display: block; padding: 18px 20px; margin: 0 0 14px; border: 1px solid rgba(255, 255, 255, .22); border-radius: 12px; color: inherit; text-decoration: none; background: rgba(20, 30, 50, .6); }
-  a.card:hover { border-color: #ffd54a; background: rgba(40, 60, 100, .6); }
-  a.card b { font-size: 18px; } a.card span { display: block; color: #b8c6dc; margin-top: 4px; font-size: 14px; }
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Terre 3D</title>
+<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<main>
-  <h1>Projets 3D</h1>
-  <p class="sub">JavaScript pur + three.js, rien à installer.</p>
-  <a class="card" href="space/"><b>🌍 space</b><span>La Terre en 3D, l’ISS réelle, la Lune et le Soleil, lancements de fusées (Ariane 5, Starship qui revient se poser) pilotés par un plan de vol JSON.</span></a>
-  <a class="card" href="dday/"><b>🏖 dday</b><span>Projet 3D à part, bac à sable pour tester des idées (plage, mer, barges de débarquement).</span></a>
-</main>
+<canvas id="gl"></canvas>
+<div id="hud">
+  <div class="bar" id="bar">
+    <select id="viewSel" title="Vue"></select>
+    <button id="bSats">🛰 <span>Satellites</span></button>
+    <button id="bSat">🚀 <span>Fusées</span></button>
+    <button id="bLaunch" hidden>🚀 <span>Lancement</span></button>
+  </div>
+  <div id="info"></div>
+</div>
+<div id="viewTxt"><b>Vue</b> <button id="bCopy">📋 Copier</button><br><code id="viewJson"></code>
+  <div id="nudge">cap <button data-n="y-">◀</button><button data-n="y+">▶</button> pitch <button data-n="p+">▲</button><button data-n="p-">▼</button> dist <button data-n="d-">＋</button><button data-n="d+">－</button> pas <button id="bStep">1°</button></div></div>
+<label class="sw sw2" title="Afficher les tailles réelles (diamètres) du Soleil, de la Lune et de la Terre"><input type="checkbox" id="mtChk"><span class="track"><span class="ic">·</span><span class="ic">📏</span><span class="knob"></span></span></label>
+<div id="timeBar"><span id="timeTxt"></span><span class="tb"><button data-sp="1" class="on">Temps réel</button><button data-sp="3600">1 h/s</button><button data-sp="21600">6 h/s</button><button data-sp="86400">1 j/s</button><button data-sp="432000">5 j/s</button><button id="bNow" title="Revenir à maintenant">⟳</button></span></div>
+<div id="launchPanel" hidden></div>
+<div id="satPanel" hidden></div>
+<div id="satsPanel" hidden></div>
+<div id="story" hidden></div>
+<div id="timeline" hidden></div>
+<div id="scale"><div id="scaleBar"></div><div id="scaleTxt"></div></div>
+<div id="issLabel">ISS</div>
+<div id="msg">Chargement…</div>
+<div id="err" hidden></div>
+<script>addEventListener("error", function (e) { var d = document.getElementById("err"); if (!d) return; d.hidden = false; d.textContent += "Erreur : " + (e.message || "chargement") + (e.filename ? " (" + e.filename.split("/").pop() + ":" + e.lineno + ")" : "") + "\n"; });</script>
+<script src="js/vendor/three.min.js"></script>
+<script src="js/vendor/satellite.min.js"></script>
+<script src="js/data/surface-earth.js"></script>
+<script src="js/data/earth-borders.js"></script>
+<script src="js/data/objects.js"></script>
+<script src="js/ephemeris.js"></script>
+<script src="js/bodies.js"></script>
+<script src="js/earth.js"></script>
+<script src="js/gltf-mini.js"></script>
+<script src="js/stack-models.js"></script>
+<script src="js/physics.js"></script>
+<script src="js/launch.js"></script>
+<script src="js/rockets.js"></script>
+<script src="js/flight-plan.js"></script>
+<script src="js/flight-object.js"></script>
+<script src="js/data/plans.js"></script>
+<script src="js/iss.js"></script>
+<script src="js/story.js"></script>
+<script src="js/data/surface-moon.js"></script>
+<script src="js/launch-3d.js"></script>
+<script src="js/sat-lite.js"></script>
+<script src="js/moon.js"></script>
+<script src="js/controls.js"></script>
+<script src="js/main.js"></script>
 </body>
 </html>
