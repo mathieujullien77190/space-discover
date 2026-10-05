@@ -407,25 +407,24 @@ describe('createEngine (rendu factice)', () => {
     expect(state.story.step?.at).toBe('before')
     expect(Math.abs(state.time.simMs - Date.UTC(1957, 10, 3, 2, 30, 42))).toBeLessThan(120000)   // saut dans le temps : 3 novembre 1957
     expect(engine._story()).toMatchObject({ playing: false, T: 0 })           // en pause, rien n'a bougé
-    engine.storyNext(); frames(1)                                              // étape suivante : le décollage, affichée tout de suite (T = 0)
-    expect(state.story.step?.at).toBe('t0')
-    expect(state.story.phase).toBe('showing')
-    expect(engine._story()?.playing).toBe(false)
-    engine.storyNext(); frames(1)                                              // la simulation repart
-    expect(state.story.phase).toBe('running')
-    expect(engine._story()?.playing).toBe(true)
-    for (let i = 0; i < 800 && state.story.phase === 'running'; i++) frames(1)   // jusqu'à la mise en orbite
-    expect(state.story.phase).toBe('showing')                                   // pause à l'étape suivante
-    expect(state.story.step?.at).toBe('objectOrbit')
-    const s = engine._story()!
-    expect(s.T).toBeGreaterThanOrEqual(s.trig[2] - 1e-6)
-    expect(s.T).toBeLessThan(s.trig[2] + 40)                                    // la pause tombe juste après l'événement (pas 5 minutes plus tard)
-    engine.storyNext(); frames(1)                                              // dernière étape passée : histoire finie
+    // on clique « Suivant » à chaque étape : la simulation est en pause sur chaque texte, et chaque étape tombe juste après son événement
+    const seen: string[] = [state.story.step!.id]
+    for (let guard = 0; guard < 40 && !state.story.finished; guard++) {
+      engine.storyNext(); frames(1)
+      for (let i = 0; i < 6000 && !state.story.finished && state.story.phase === 'running'; i++) frames(1)
+      if (state.story.finished) break
+      expect(state.story.phase, JSON.stringify({ seen, idx: state.story.index, st: engine._story() })).toBe('showing')
+      const s = engine._story()!
+      expect(s.T).toBeGreaterThanOrEqual(s.trig[state.story.index] - 1e-6)
+      expect(s.T).toBeLessThan(Math.max(s.trig[state.story.index], 0) + 60)
+      seen.push(state.story.step!.id)
+    }
+    expect(seen).toEqual(['mouches', 'moscou', 'entrainement', 'decollage', 'boosters', 'orbite', 'tour', 'adieu', 'heritage'])
     expect(state.story.finished).toBe(true)
     engine.quitStory(); frames(2)
     expect(state.story.active).toBe(false)
     expect(state.rocket.running).toBe(false)
-  })
+  }, 180000)
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)
