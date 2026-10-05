@@ -3,7 +3,8 @@
 const CSS = `.eng-l3d{position:fixed;left:0;top:0;padding:1px 6px;font:600 12px system-ui,sans-serif;color:#4fd8ff;background:rgba(0,0,0,.55);border-radius:4px;pointer-events:none;text-shadow:0 1px 2px #000;white-space:nowrap;display:none}
 .eng-l3d.evl{color:#9fd8ff}.eng-l3d.evl.done{color:#8fe58f}
 .eng-l3d.tag{color:#ffe9a8;background:rgba(60,40,0,.6);pointer-events:auto;cursor:pointer}.eng-l3d.tag:hover{background:rgba(120,80,0,.8)}.eng-l3d.tag.follow{outline:2px solid #ffd54a}
-.eng-l3d.iss{color:#ffd54a;background:rgba(0,0,0,.45)}`;
+.eng-l3d.iss{color:#ffd54a;background:rgba(0,0,0,.45)}
+.eng-l3d.cap{color:#fff;background:rgba(0,0,0,.35);font-weight:500;padding:0 4px;line-height:18px}`;
 
 export const createOverlay = (container) => {
   const style = document.createElement('style'); style.textContent = CSS; container.appendChild(style);

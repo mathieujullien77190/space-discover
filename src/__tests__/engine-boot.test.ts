@@ -355,6 +355,20 @@ describe('createEngine (rendu factice)', () => {
     engine.setClouds(false); engine._frame(performance.now() + 300)
     expect(engine._clouds().visible).toBe(false)
   })
+  it('options de carte : limites de pays et capitales éteintes par défaut, affichées à la demande', () => {
+    engine.selectView('earth'); engine._frame(performance.now() + 100)
+    expect(engine._mapOptions()).toEqual({ borders: false, capitals: 0 })
+    engine.setBorders(true); engine.setCapitals(true)
+    engine._frame(performance.now() + 200)
+    const on = engine._mapOptions()
+    expect(on.borders).toBe(true)
+    expect(on.capitals).toBeGreaterThan(5)                                     // vue de départ : l’Europe en face, plusieurs capitales visibles
+    const names = [...overlay.querySelectorAll<HTMLElement>('.eng-l3d.cap')].filter((e) => e.style.display === 'block').map((e) => e.textContent)
+    expect(names.some((t) => /Paris/.test(t ?? ''))).toBe(true)
+    engine.setBorders(false); engine.setCapitals(false)
+    engine._frame(performance.now() + 300)
+    expect(engine._mapOptions()).toEqual({ borders: false, capitals: 0 })
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)

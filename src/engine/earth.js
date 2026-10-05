@@ -100,7 +100,14 @@ export function buildEarth(renderer) {
   }
   group.add(buildAtmosphere());   // halo bleu de l'atmosphère sur l'horizon
   group.add(linesMesh([2], 1.00003, 0xffffff, 0.85));        // trait de côte : contour net mer / continent
-  // frontières des pays : NON affichées (demande de l'utilisateur : seulement les limites mer / lac / océan, c'est-à-dire le trait de côte) ; les données restent (linesMesh([0]) et linesMesh([1]))
+  // frontières des pays : NON affichées par défaut (option « Limites de pays » : voir buildBorders) (demande de l'utilisateur : seulement les limites mer / lac / océan, c'est-à-dire le trait de côte) ; les données restent (linesMesh([0]) et linesMesh([1]))
   return group;
 }
 
+
+// Limites de pays (option de carte) : frontières (jaune pâle) et frontières contestées (orange) en traits vectoriels ; groupe masqué par défaut, posé légèrement au-dessus des traits de côte.
+export function buildBorders() {
+  const g = new THREE.Group(); g.visible = false; g.name = 'borders';
+  g.add(linesMesh([0], 1.00005, 0xfff3c4, 0.9)); g.add(linesMesh([1], 1.00005, 0xffa566, 0.9));
+  return g;
+}

@@ -27,3 +27,8 @@ export const NUDGE_REPEAT_MS = 70
 export const ISS_VIEW_LABELS = { on: '👁 Vue depuis l’ISS', off: '↩ Quitter la vue ISS', go: '🛰 ISS' } as const   // bouton de la barre du haut
 export const CLOUDS_LABEL = '☁ Nuages'   // couverture nuageuse quasi temps réel
 export const EARTH_LABEL = '🌍 Terre'   // retour à la vue Terre, de n'importe quelle vue
+export const MAP_OPTIONS_TITLE = '🗺 Options de carte'   // bloc d'options de la carte (en bas à gauche)
+export const MAP_OPTIONS = [
+  { key: 'borders', label: 'Limites de pays' },
+  { key: 'capitals', label: 'Capitales' },
+] as const   // chaque option est une case à cocher, éteinte par défaut

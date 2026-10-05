@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import BodyCard from '@/components/BodyCard'
 import IssBadge from '@/components/IssBadge'
+import MapOptions from '@/components/MapOptions'
 import MapCredit from '@/components/MapCredit'
 import DatePicker from '@/components/DatePicker'
 import SubMenu from '@/components/SubMenu'
@@ -11,7 +12,7 @@ import { useStore } from '@/store'
 import { initialEngineState } from '@/store/initial'
 import type { Engine } from '@/types'
 
-const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
+const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn(), setBorders: vi.fn(), setCapitals: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
 
 describe('TopBar + SubMenu', () => {
   let engine: ReturnType<typeof fakeEngine>
@@ -54,6 +55,22 @@ describe('TopBar + SubMenu', () => {
     fireEvent.click(screen.getByText('☁ Nuages'))
     expect(engine.setClouds).toHaveBeenLastCalledWith(true)
     expect(screen.getByText(/matteason/)).toBeInTheDocument()
+  })
+  it('bloc « Options de carte » : limites de pays et capitales, éteintes par défaut, deux cases à cocher', () => {
+    useStore.setState({ borders: false, capitals: false })
+    render(<MapOptions />)
+    const borders = screen.getByLabelText('Limites de pays') as HTMLInputElement
+    const capitals = screen.getByLabelText('Capitales') as HTMLInputElement
+    expect(screen.getByText('🗺 Options de carte')).toBeInTheDocument()
+    expect(borders.checked).toBe(false)
+    expect(capitals.checked).toBe(false)
+    fireEvent.click(borders)
+    expect(engine.setBorders).toHaveBeenLastCalledWith(true)
+    fireEvent.click(capitals)
+    expect(engine.setCapitals).toHaveBeenLastCalledWith(true)
+    expect(borders.checked).toBe(true)
+    fireEvent.click(borders)
+    expect(engine.setBorders).toHaveBeenLastCalledWith(false)
   })
   it('crédit du relief satellite : affiché seulement quand le relief est visible', () => {
     useStore.setState({ clouds: false, terrainDetail: false })

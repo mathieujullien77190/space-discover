@@ -12,6 +12,8 @@ export type UiState = {
   nudgeStep: number   // index dans NUDGE_STEPS
   cardCollapsed: boolean   // fiche d'astre réduite en mini bouton-icône (mémorisé)
   terrainDetail: boolean   // le relief satellite (sous 800 km) est affiché : crédits à montrer (publié par le moteur)
+  borders: boolean   // option de carte : limites de pays
+  capitals: boolean   // option de carte : noms des capitales
   clouds: boolean   // couverture nuageuse affichée
   issView: boolean   // vue depuis l'ISS (publié par le moteur)
 }
@@ -26,6 +28,8 @@ export type Store = EngineState &
     cycleNudgeStep: () => void
     setCardCollapsed: (on: boolean) => void
     toggleClouds: () => void
+    toggleBorders: () => void
+    toggleCapitals: () => void
   }
 
 const isPlainObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -49,6 +53,8 @@ export const useStore = create<Store>((set) => ({
   cardCollapsed: readCardCollapsed(),
   issView: false,
   clouds: false,
+  borders: false,
+  capitals: false,
   terrainDetail: false,
   setEngine: (engine) => set({ engine }),
   applyPatch: (patch) => set((s) => mergePatch(s, patch)),
@@ -58,6 +64,16 @@ export const useStore = create<Store>((set) => ({
     writeCardCollapsed(cardCollapsed)
     set({ cardCollapsed })
   },
+  toggleBorders: () =>
+    set((s) => {
+      s.engine?.setBorders(!s.borders)
+      return { borders: !s.borders }
+    }),
+  toggleCapitals: () =>
+    set((s) => {
+      s.engine?.setCapitals(!s.capitals)
+      return { capitals: !s.capitals }
+    }),
   toggleClouds: () =>
     set((s) => {
       s.engine?.setClouds(!s.clouds)

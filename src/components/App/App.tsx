@@ -1,5 +1,6 @@
 import IssBadge from '@/components/IssBadge'
 import MapCredit from '@/components/MapCredit'
+import MapOptions from '@/components/MapOptions'
 import BodyCard from '@/components/BodyCard'
 import EngineHost from '@/components/EngineHost'
 import InfoText from '@/components/InfoText'
@@ -22,6 +23,7 @@ export const App = () => (
     <BodyCard />
     <TimeBar />
     <div className={styles.bottomLeft}>
+      <MapOptions />
       <ViewParams />
       <ScaleBar />
     </div>

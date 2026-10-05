@@ -6,10 +6,11 @@ import * as THREE from 'three';
 import { BODY } from './bodies.js';
 import { ISS_FEATURES, ISS_EPOCH, ISS_FROM, ISS_MODEL, ISS_W, issState } from './iss.js';
 import { createClouds } from './clouds.js';
+import { createCapitals } from './capitals.js';
 import { createStars } from './stars.js';
 import { occludedBy } from './occlusion.js';
 import { createTerrainLayer } from './terrain-layer.js';
-import { DEG, R_KM, buildEarth, earthGeometry, ll } from './earth.js';
+import { DEG, buildBorders, R_KM, buildEarth, earthGeometry, ll } from './earth.js';
 import { loadGlb } from './gltf-mini.js';
 import { FLIGHT_OBJECTS, FLIGHT_OBJECT_FILES } from './data/objects.js';
 import { AU_U, ECLIPTIC_POLE, astroD, buildMoonMesh, gmstOf, moonQuat, rotationPole, rotationQuat } from './moon.js';
@@ -40,6 +41,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const earth = buildEarth(renderer); world.add(earth);
 
   const terrain = createTerrainLayer(earth, renderer); let terrainShown = false;   // Terre en RELIEF avec imagerie satellite sous 800 km d'altitude (automatique, hors ligne : la carte dessinée reste)
+  const borders = buildBorders(); earth.add(borders); let bordersOn = false;   // option « Limites de pays »
   const clouds = createClouds(earth, renderer); let cloudsOn = false;   // couverture nuageuse quasi temps réel (option)
   // NIVEAUX DE DÉTAIL selon la taille à l'écran (en pixels de rayon) : la Terre (1 048 576 triangles !) et les ~35 sphères d'astres (9 000 triangles chacune) n'étaient pas allégées quand elles ne font que quelques pixels.
   // Les géométries sont partagées (un cache par nombre de segments) ; une hystérésis (±15 %) évite de changer de niveau à chaque image.
@@ -145,6 +147,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
   const dot = new THREE.Points(dg, new THREE.PointsMaterial({ color: 0xffd54a, size: 10, sizeAttenuation: false })); dot.frustumCulled = false; world.add(dot);
   const issLabel = overlay.label('ISS', 'iss');
+  const capitals = createCapitals(overlay, earth); let capitalsOn = false;   // option « Capitales »
 
   const cam = { fov: 50, mode: 'earth', tgt: new THREE.Vector3(), lon: 0, lat: 50, dist: 3.4, fly: 0, tfly: 0, userDir: false, fp: null, fpUp: new THREE.Vector3(), upKind: 'north', goal: { lon: 0, lat: 50, dist: 3.4 } };   // départ : la Terre vue du nord (nord en haut), le méridien de Greenwich (0°) en face de la caméra
   const moonsShown = {};   // planète → distance de la caméra, pour les planètes dont les lunes sont affichées
@@ -439,6 +442,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       { const wasShown = terrainShown, L = camera.position.length(); let cl = Math.asin(camera.position.y / L) / DEG, co = Math.atan2(-camera.position.z, camera.position.x) / DEG;
         terrainShown = terrain.update({ on: true, camAlt, cl, co, fov: camera.fov, aspect: camera.aspect, http: isHttp() });
         if (terrainShown !== wasShown) publish({ terrainDetail: terrainShown }); }   // l'interface affiche les crédits seulement quand le relief est visible
+      borders.visible = bordersOn && camAlt < 20000; borders.scale.setScalar(terrainShown ? 1.0016 : 1);   // sur le relief satellite, les limites flottent au-dessus des montagnes (1,0014 au plus)
+      capitals.update({ on: capitalsOn, camera, width: innerWidth, height: innerHeight });
       for (let k = 1; k < earth.children.length; k++) if (earth.children[k].isLineSegments) earth.children[k].visible = camAlt < 20000 && !terrainShown;   // dézoomé : plus de trait de côte ; sur le relief satellite il flotterait au-dessus
     }
     // échelle : longueur « ronde » (1, 2, 5 × 10^n) qui fait 70 à 170 px au point regardé
@@ -503,13 +508,16 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     goIss, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
     setClouds: on => { cloudsOn = !!on; },
     _terrain: () => Object.assign({ shown: terrainShown }, terrain.stats()),
+    setBorders: on => { bordersOn = !!on; },
+    setCapitals: on => { capitalsOn = !!on; },
+    _mapOptions: () => ({ borders: bordersOn && borders.visible, capitals: capitals.count() }),
     _clouds: () => Object.assign({ on: cloudsOn }, clouds.stats()),
     setIssView,
     _fp: () => cam.fp ? { yaw: cam.fp.yaw, pitch: cam.fp.pitch, fov: camera.fov, posErr: iss && issView ? camera.position.distanceTo(iss.pos) * R_KM * 1000 : null, dir: new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray(), up: new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion).toArray(), radial: issView ? issSrc.radial.toArray() : null, flight: issView ? issSrc.dir.toArray() : null } : null,
 
     dispose() {
       stopped = true; cancelAnimationFrame(raf); clearTimeout(solarTimer); disposers.forEach(d => d()); overlay.dispose();
-      terrain.dispose(); clouds.dispose();
+      terrain.dispose(); clouds.dispose(); capitals.dispose();
       if (renderer.dispose) renderer.dispose();
     },
   };

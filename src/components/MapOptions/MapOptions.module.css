@@ -1,0 +1,4 @@
+.box { margin: 0 0 6px; padding: 4px 10px 6px; display: flex; flex-direction: column; gap: 2px; color: #e8eef7; background: rgba(14, 22, 40, 0.75); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 8px; font-size: 13px; pointer-events: auto; text-shadow: 0 1px 3px #000; }
+.title { padding: 0 4px; font-weight: 600; font-size: 12px; color: #cfe0ff; }
+.option { display: flex; align-items: center; gap: 6px; cursor: pointer; min-height: 24px; }
+.option input { accent-color: #ffd54a; width: 16px; height: 16px; }
