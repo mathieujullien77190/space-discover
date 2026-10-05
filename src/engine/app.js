@@ -733,7 +733,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     selectView,
     goIss, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
     setStorySpeed: v => { if (launch && Number.isFinite(v) && v > 0) launch.speed = v; },   // vitesse du temps pendant une histoire (ne relance pas une étape en pause)
-    setMapStyle: style => { mapStyle = style === 'street' || style === 'clean' || style === 'terrain' ? style : 'drawn'; },   // 'drawn' (Natural Earth), 'street' (plan type Google Maps) ou 'terrain' (relief, forêts, montagnes)
+    setMapStyle: style => { mapStyle = style === 'street' || style === 'clean' || style === 'ocean' || style === 'terrain' ? style : 'drawn'; },   // 'drawn' (Natural Earth), 'street' (plan type Google Maps) ou 'terrain' (relief, forêts, montagnes)
     _map: () => Object.assign({ style: mapStyle, shown: mapShown }, mapLayer.stats()),
     setClouds: on => { cloudsOn = !!on; },
     _clouds: () => Object.assign({ on: cloudsOn }, clouds.stats()),

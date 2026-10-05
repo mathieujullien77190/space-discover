@@ -4,7 +4,8 @@
 // Ce sont des SERVICES EN LIGNE tiers : il faut citer leurs crédits (MAP_STYLES[style].credit) et respecter leurs règles d'usage (usage raisonnable, pas de téléchargement en masse).
 export const MAP_STYLES = {
   street: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', credit: 'Esri, HERE, Garmin, USGS, NGA, © OpenStreetMap contributors', zMax: 17 },
-  clean: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}', credit: 'Esri, GEBCO, NOAA, National Geographic, DeLorme, HERE, Geonames.org, and other contributors', zMax: 10, maxAltKm: 400 },   // SANS noms de villes : relief, forêts, lacs et rivières, côtes (au-delà du niveau 10 : pas de données)
+  clean: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', credit: 'Esri, US National Park Service', zMax: 8, maxAltKm: 400 },   // carte PHYSIQUE peinte (vert et jaune, neiges blanches, lacs bleus), SANS noms ; niveau 8 au plus (au-delà : image vide)
+  ocean: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}', credit: 'Esri, GEBCO, NOAA, National Geographic, DeLorme, HERE, Geonames.org, and other contributors', zMax: 10, maxAltKm: 400 },   // ancien fond « sans noms » (plus pâle), gardé en réserve
   terrain: { url: 'https://a.tile.opentopomap.org/{z}/{x}/{y}.png', credit: '© OpenStreetMap contributors, SRTM · style © OpenTopoMap (CC-BY-SA)', zMax: 17 },
 };
 export const MAP_URL = MAP_STYLES.street.url;
