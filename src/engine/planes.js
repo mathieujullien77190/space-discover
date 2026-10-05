@@ -5,13 +5,13 @@
 // Vitesse apparente réelle : jusqu'à ≈ 1,4°/s à la verticale, bien plus lent au loin (traversée complète du ciel : plusieurs minutes). Seulement en vue depuis un observatoire, la nuit.
 import * as THREE from 'three';
 
-export const PLANE_GAP_S = [60, 180], PLANE_FIRST_S = [8, 30];   // délai entre deux avions ; délai avant le premier
+export const PLANE_GAP_S = [15, 50], PLANE_FIRST_S = [3, 10];   // délai entre deux avions ; délai avant le premier
 export const PLANE_ALTITUDE_M = [9000, 11500];                   // altitude de croisière
 export const PLANE_SPEED_MS = [220, 260];                        // vitesse sol (≈ 800 à 940 km/h)
 export const PLANE_CLOSEST_M = [0, 45000];                       // distance horizontale minimale de passage
 export const PLANE_MIN_ELEVATION_DEG = 8;                        // au-dessous : invisible (horizon, brume)
 export const PLANE_WINGSPAN_M = 60;
-export const PLANE_SLOTS = 2;
+export const PLANE_SLOTS = 6;
 const DEG = Math.PI / 180;
 const range = (r, [a, b]) => a + (b - a) * r;
 
