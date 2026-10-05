@@ -98,13 +98,10 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   };
   // pôle nord d'un astre en axes inertiels de la scène : sa rotation (IAU), sinon (lune en rotation synchrone) celui de sa planète, sinon l'axe de la Lune (pôle de l'écliptique) ; null si inconnu
   const poleOf = b => { if (b.sceneOrigin) return new THREE.Vector3(0, 1, 0); if (b.rotation) return rotationPole(b.rotation); if (b.orientation === 'tidal-lock') { const pb = b.around && BODY.get(b.around); return pb && pb.rotation ? rotationPole(pb.rotation) : ECLIPTIC_POLE.clone(); } return null; };
-  let nTex = null;
-  const axisMarker = () => {   // dans le repère du maillage (rayon 1, y = nord) : équateur en pointillé, tige rouge et lettre « N » au-dessus du pôle nord
+  const axisMarker = () => {   // dans le repère du maillage (rayon 1, y = nord) : équateur en pointillé et tige rouge au-dessus du pôle nord (la lettre « N » est retirée)
     const g = new THREE.Group(), pts = []; for (let i = 0; i < 160; i++) { const t = i / 160 * 2 * Math.PI; pts.push(new THREE.Vector3(1.003 * Math.cos(t), 0, 1.003 * Math.sin(t))); }
     const ring = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 0.05, gapSize: 0.04, transparent: true, opacity: 0.75 })); ring.computeLineDistances(); ring.frustumCulled = false; g.add(ring);
     const spike = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 1.55, 0)]), new THREE.LineBasicMaterial({ color: 0xff5a3c })); spike.frustumCulled = false; g.add(spike);
-    if (!nTex) { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.fillStyle = '#ff5a3c'; x.font = 'bold 52px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('N', 32, 36); nTex = new THREE.CanvasTexture(c); }
-    const n = new THREE.Sprite(new THREE.SpriteMaterial({ map: nTex, depthTest: false, transparent: true })); n.position.set(0, 1.78, 0); n.scale.setScalar(0.4); g.add(n);
     g.visible = false; return g;
   };
   { const m = axisMarker(); earthAxis.add(...m.children); earth.add(earthAxis); }
