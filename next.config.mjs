@@ -9,6 +9,7 @@ const nextConfig = {
   images: { unoptimized: true },
   trailingSlash: true,
   reactStrictMode: true,
+  allowedDevOrigins: ['192.168.*.*', '10.*.*.*'],   // test depuis un téléphone du réseau local en mode dev
 };
 
 export default nextConfig;
