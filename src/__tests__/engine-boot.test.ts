@@ -357,17 +357,22 @@ describe('createEngine (rendu factice)', () => {
   })
   it('options de carte : limites de pays et capitales éteintes par défaut, affichées à la demande', () => {
     engine.selectView('earth'); engine._frame(performance.now() + 100)
-    expect(engine._mapOptions()).toEqual({ borders: false, capitals: 0 })
-    engine.setBorders(true); engine.setCapitals(true)
+    expect(engine._mapOptions()).toMatchObject({ borders: false, capitals: 0, constellations: false, dayNight: false, sunPoint: false })
+    engine.setBorders(true); engine.setCapitals(true); engine.setConstellations(true); engine.setDayNight(true)
     engine._frame(performance.now() + 200)
     const on = engine._mapOptions()
     expect(on.borders).toBe(true)
     expect(on.capitals).toBeGreaterThan(5)                                     // vue de départ : l’Europe en face, plusieurs capitales visibles
     const names = [...overlay.querySelectorAll<HTMLElement>('.eng-l3d.cap')].filter((e) => e.style.display === 'block').map((e) => e.textContent)
     expect(names.some((t) => /Paris/.test(t ?? ''))).toBe(true)
-    engine.setBorders(false); engine.setCapitals(false)
+    expect(on.constellations).toBe(true)
+    expect(on.constellationNames).toBeGreaterThan(0)                           // au moins un nom de constellation à l’écran autour de la Terre
+    expect(on.dayNight && on.sunPoint).toBe(true)                              // jour / nuit : le vrai Soleil éclaire, l’ambiance est sombre
+    expect(on.ambient).toBeLessThan(0.1)
+    engine.setBorders(false); engine.setCapitals(false); engine.setConstellations(false); engine.setDayNight(false)
     engine._frame(performance.now() + 300)
-    expect(engine._mapOptions()).toEqual({ borders: false, capitals: 0 })
+    expect(engine._mapOptions()).toMatchObject({ borders: false, capitals: 0, constellations: false, constellationNames: 0, dayNight: false, sunPoint: false })
+    expect(engine._mapOptions().ambient).toBeGreaterThan(0.5)                  // retour à l’éclairage « de face »
   })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)

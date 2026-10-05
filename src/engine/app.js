@@ -7,9 +7,11 @@ import { BODY } from './bodies.js';
 import { ISS_FEATURES, ISS_EPOCH, ISS_FROM, ISS_MODEL, ISS_W, issState } from './iss.js';
 import { createClouds } from './clouds.js';
 import { createCapitals } from './capitals.js';
+import { createConstellations } from './constellations.js';
 import { createStars } from './stars.js';
 import { occludedBy } from './occlusion.js';
 import { createTerrainLayer } from './terrain-layer.js';
+import { TERRAIN_GLOW } from './terrain-tiles.js';
 import { DEG, buildBorders, R_KM, buildEarth, earthGeometry, ll } from './earth.js';
 import { loadGlb } from './gltf-mini.js';
 import { FLIGHT_OBJECTS, FLIGHT_OBJECT_FILES } from './data/objects.js';
@@ -129,8 +131,10 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   // VRAI ciel étoilé (≈ 5 000 étoiles, vraies positions / couleurs / éclats : stars.js), sphère de rayon 1 replacée sur la caméra et grossie à chaque image, tournée avec le temps sidéral
   const tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3(), tmp3 = new THREE.Vector3(), tmp4 = new THREE.Vector3(), fpM = new THREE.Matrix4();
   const stars = createStars(scene);
+  const constellations = createConstellations(stars, overlay); let constellationsOn = false;   // option « Constellations » : traits entre les étoiles + noms
   const amb = new THREE.AmbientLight(0xffffff, 0.55), sun = new THREE.DirectionalLight(0xffffff, 1.0);
-  scene.add(amb, sun, sun.target);
+  const sunPoint = new THREE.PointLight(0xffffff, 1.0, 0, 0); sunPoint.visible = false; scene.add(amb, sun, sun.target, sunPoint);   // sunPoint : le VRAI Soleil (option jour / nuit)
+  let dayNight = false;
 
   // ISS : modèle (taille réelle) + repère ; modèle détaillé NASA (~14 Mo) chargé quand on s'approche, remplace le repère jaune
   const issModel = new THREE.Group(); world.add(issModel);
@@ -395,7 +399,10 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       }
     } else { for (const id in bodyObjs) { const o = bodyObjs[id]; if (o.label) o.label.style.display = 'none'; o.screen = null; } }
     // lumière : toujours « jour » (la Terre et la Lune sont éclairées de face)
-    sun.position.copy(cam.mode === 'solar' ? camera.position.clone().sub(cam.tgt).normalize() : camera.position.clone().normalize()).add(tmp.set(0.4, 0.5, 0.2)).multiplyScalar(10); amb.intensity = 0.55;
+    if (dayNight) { sun.visible = false; sunPoint.visible = true; amb.intensity = 0.05; }   // JOUR / NUIT : éclairage par le vrai Soleil (un point à sa position), la face cachée est sombre
+    else { sun.visible = true; sunPoint.visible = false; }
+    if (!dayNight) sun.position.copy(cam.mode === 'solar' ? camera.position.clone().sub(cam.tgt).normalize() : camera.position.clone().normalize()).add(tmp.set(0.4, 0.5, 0.2)).multiplyScalar(10);
+    if (!dayNight) amb.intensity = 0.55;
 
     // ISS
     issScreen = null; issLabel.style.display = 'none';
@@ -481,6 +488,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     if (shift) { world.position.copy(shift).negate(); camera.position.sub(shift); camera.updateMatrixWorld(); } else world.position.set(0, 0, 0);
     inertial.position.copy(world.position); solar.position.copy(world.position);
     stars.position.copy(camera.position); stars.scale.setScalar(camera.far * 0.45); stars.rotation.y = solar.rotation.y;   // les étoiles suivent le repère « solaire » : fixes en vue inertielle, elles tournent avec le temps sidéral quand la Terre est fixe
+    sunPoint.position.copy(babs[STAR]); if (shift) sunPoint.position.sub(shift);   // le Soleil suit le décalage d'origine flottante
+    constellations.update({ on: constellationsOn, camera, width: innerWidth, height: innerHeight, earthCenter: new THREE.Vector3().setFromMatrixPosition(earth.matrixWorld) });
     capitals.update({ on: capitalsOn, camera, width: innerWidth, height: innerHeight, hidden: p => occludedBy(camera.position.toArray(), [p.x, p.y, p.z], lastOcc.filter(o => o.id !== 'earth'), 0, 0) !== null });   // juste avant le rendu : pose de la Terre et de la caméra à jour (rotation du temps sidéral comprise) ; cachée par la Lune / une planète = pas de nom
     renderer.render(scene, camera);
     camera.position.copy(saved); camera.updateMatrixWorld();
@@ -510,14 +519,16 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _terrain: () => Object.assign({ shown: terrainShown }, terrain.stats()),
     setBorders: on => { bordersOn = !!on; },
     setCapitals: on => { capitalsOn = !!on; },
-    _mapOptions: () => ({ borders: bordersOn && borders.visible, capitals: capitals.count() }),
+    setConstellations: on => { constellationsOn = !!on; },
+    setDayNight: on => { dayNight = !!on; terrain.setGlow(dayNight ? 0 : TERRAIN_GLOW); },
+    _mapOptions: () => ({ borders: bordersOn && borders.visible, capitals: capitals.count(), constellations: constellations.lines.visible, constellationNames: constellations.count(), dayNight, ambient: amb.intensity, sunPoint: sunPoint.visible }),
     _clouds: () => Object.assign({ on: cloudsOn }, clouds.stats()),
     setIssView,
     _fp: () => cam.fp ? { yaw: cam.fp.yaw, pitch: cam.fp.pitch, fov: camera.fov, posErr: iss && issView ? camera.position.distanceTo(iss.pos) * R_KM * 1000 : null, dir: new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray(), up: new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion).toArray(), radial: issView ? issSrc.radial.toArray() : null, flight: issView ? issSrc.dir.toArray() : null } : null,
 
     dispose() {
       stopped = true; cancelAnimationFrame(raf); clearTimeout(solarTimer); disposers.forEach(d => d()); overlay.dispose();
-      terrain.dispose(); clouds.dispose(); capitals.dispose();
+      terrain.dispose(); clouds.dispose(); capitals.dispose(); constellations.dispose();
       if (renderer.dispose) renderer.dispose();
     },
   };

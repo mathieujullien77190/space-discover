@@ -12,7 +12,7 @@ import { useStore } from '@/store'
 import { initialEngineState } from '@/store/initial'
 import type { Engine } from '@/types'
 
-const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn(), setBorders: vi.fn(), setCapitals: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
+const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn(), setBorders: vi.fn(), setCapitals: vi.fn(), setConstellations: vi.fn(), setDayNight: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
 
 describe('TopBar + SubMenu', () => {
   let engine: ReturnType<typeof fakeEngine>
@@ -56,8 +56,8 @@ describe('TopBar + SubMenu', () => {
     expect(engine.setClouds).toHaveBeenLastCalledWith(true)
     expect(screen.getByText(/matteason/)).toBeInTheDocument()
   })
-  it('bloc « Options de carte » : limites de pays et capitales, éteintes par défaut, deux cases à cocher', () => {
-    useStore.setState({ borders: false, capitals: false })
+  it('bloc « Options de carte » : limites de pays, capitales, constellations et jour / nuit, éteints par défaut', () => {
+    useStore.setState({ ...initialEngineState, borders: false, capitals: false, constellations: false, dayNight: false })
     render(<MapOptions />)
     const borders = screen.getByLabelText('Limites de pays') as HTMLInputElement
     const capitals = screen.getByLabelText('Capitales') as HTMLInputElement
@@ -71,6 +71,24 @@ describe('TopBar + SubMenu', () => {
     expect(borders.checked).toBe(true)
     fireEvent.click(borders)
     expect(engine.setBorders).toHaveBeenLastCalledWith(false)
+    fireEvent.click(screen.getByLabelText('Constellations'))
+    expect(engine.setConstellations).toHaveBeenLastCalledWith(true)
+    fireEvent.click(screen.getByLabelText('Jour / nuit'))
+    expect(engine.setDayNight).toHaveBeenLastCalledWith(true)
+  })
+  it('options de carte liées à la planète regardée : Terre et ISS oui, Mars, Lune ou Soleil non', () => {
+    useStore.setState({ ...initialEngineState })
+    const { rerender } = render(<MapOptions />)
+    expect(screen.getByText('🗺 Options de carte')).toBeInTheDocument()                                  // vue Terre
+    act(() => useStore.setState({ view: { ...initialEngineState.view, mode: 'iss', selected: null } }))
+    rerender(<MapOptions />)
+    expect(screen.getByText('🗺 Options de carte')).toBeInTheDocument()                                  // vue ISS : la planète est la Terre
+    act(() => useStore.setState({ view: { ...initialEngineState.view, mode: 'solar', selected: 'mars' } }))
+    rerender(<MapOptions />)
+    expect(screen.queryByText('🗺 Options de carte')).toBeNull()                                         // Mars : pas d'options de carte
+    act(() => useStore.setState({ view: { ...initialEngineState.view, mode: 'solar', selected: 'earth' } }))
+    rerender(<MapOptions />)
+    expect(screen.getByText('🗺 Options de carte')).toBeInTheDocument()                                  // la Terre vue de loin
   })
   it('crédit du relief satellite : affiché seulement quand le relief est visible', () => {
     useStore.setState({ clouds: false, terrainDetail: false })

@@ -32,7 +32,8 @@ export function terrainTileGeometry(b, nx, ny, heights, exag) {
 export function createTerrainLayer(parent, renderer, opts) {
   const group = new THREE.Group(); group.visible = false; parent.add(group);
   const tiles = new Map(), exag = (opts && opts.exaggeration) || TERRAIN_EXAGGERATION;   // key → { state: 'loading' | 'ready' | 'error', t, mesh, img, dem }
-  let loading = 0, tick = 0, enabled = false, lastLevels = 0;
+  let loading = 0, tick = 0, enabled = false, lastLevels = 0, glow = TERRAIN_GLOW;
+  const setGlow = g => { glow = g; for (const t of tiles.values()) if (t.mesh) t.mesh.material.emissiveIntensity = g; };   // 0 en mode jour / nuit : sinon la nuit resterait éclairée
   const free = (key, t) => { if (t.mesh) { group.remove(t.mesh); if (t.mesh.material.map) t.mesh.material.map.dispose(); t.mesh.material.dispose(); t.mesh.geometry.dispose(); } t.dead = true; tiles.delete(key); };
   const build = (tl, t) => {   // imagerie ET relief reçus : on construit la tuile
     try {
@@ -41,7 +42,7 @@ export function createTerrainLayer(parent, renderer, opts) {
       if (tl.dem) { const w = t.dem.naturalWidth || 256, h = t.dem.naturalHeight || 256, c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.drawImage(t.dem, 0, 0, w, h); heights = tileHeights(g.getImageData(0, 0, w, h).data, w, h, seg, seg, b); }
       else heights = new Float32Array((seg + 1) * (seg + 1));   // tuiles lointaines : image seulement, niveau de la mer (le relief n'y serait pas visible)
       const tex = new THREE.Texture(t.img); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); tex.needsUpdate = true;
-      t.mesh = new THREE.Mesh(terrainTileGeometry(b, seg, seg, heights, exag), new THREE.MeshLambertMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: TERRAIN_GLOW }));
+      t.mesh = new THREE.Mesh(terrainTileGeometry(b, seg, seg, heights, exag), new THREE.MeshLambertMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: glow }));
       t.mesh.renderOrder = -2 - (tl.k || 0); group.add(t.mesh); t.state = 'ready'; t.img = t.dem = null;
     } catch (e) { t.state = 'error'; }
   };
@@ -58,7 +59,7 @@ export function createTerrainLayer(parent, renderer, opts) {
     if (tl.dem) fetchImage(tileUrl(tl.z, tl.x, tl.y, DEM_URL), img => { t.dem = img; done(); }, t);   // le relief n'est chargé que pour le niveau le plus fin
   };
   return {
-    group,
+    group, setGlow,
     // à chaque image : on = couche demandée ; camAlt (km), cl / co = latitude / longitude du point regardé (°), fov (°), aspect ; renvoie vrai quand le relief est affiché
     update({ on, camAlt, cl, co, fov, aspect, http }) {
       const lim = TERRAIN_MAX_ALT_KM * (enabled ? TERRAIN_HYSTERESIS : 1);   // seuil d'affichage (hystérésis : pas de clignotement)

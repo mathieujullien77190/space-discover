@@ -31,4 +31,6 @@ export const MAP_OPTIONS_TITLE = '🗺 Options de carte'   // bloc d'options de 
 export const MAP_OPTIONS = [
   { key: 'borders', label: 'Limites de pays' },
   { key: 'capitals', label: 'Capitales' },
+  { key: 'constellations', label: 'Constellations' },
+  { key: 'dayNight', label: 'Jour / nuit' },
 ] as const   // chaque option est une case à cocher, éteinte par défaut

@@ -14,6 +14,8 @@ export type UiState = {
   terrainDetail: boolean   // le relief satellite (sous 800 km) est affiché : crédits à montrer (publié par le moteur)
   borders: boolean   // option de carte : limites de pays
   capitals: boolean   // option de carte : noms des capitales
+  constellations: boolean   // option de carte : constellations (traits entre les étoiles et noms)
+  dayNight: boolean   // option de carte : jour / nuit (éclairage par le vrai Soleil)
   clouds: boolean   // couverture nuageuse affichée
   issView: boolean   // vue depuis l'ISS (publié par le moteur)
 }
@@ -30,6 +32,8 @@ export type Store = EngineState &
     toggleClouds: () => void
     toggleBorders: () => void
     toggleCapitals: () => void
+    toggleConstellations: () => void
+    toggleDayNight: () => void
   }
 
 const isPlainObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -55,6 +59,8 @@ export const useStore = create<Store>((set) => ({
   clouds: false,
   borders: false,
   capitals: false,
+  constellations: false,
+  dayNight: false,
   terrainDetail: false,
   setEngine: (engine) => set({ engine }),
   applyPatch: (patch) => set((s) => mergePatch(s, patch)),
@@ -68,6 +74,16 @@ export const useStore = create<Store>((set) => ({
     set((s) => {
       s.engine?.setBorders(!s.borders)
       return { borders: !s.borders }
+    }),
+  toggleConstellations: () =>
+    set((s) => {
+      s.engine?.setConstellations(!s.constellations)
+      return { constellations: !s.constellations }
+    }),
+  toggleDayNight: () =>
+    set((s) => {
+      s.engine?.setDayNight(!s.dayNight)
+      return { dayNight: !s.dayNight }
     }),
   toggleCapitals: () =>
     set((s) => {
