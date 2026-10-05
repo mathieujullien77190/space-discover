@@ -18,7 +18,7 @@ describe('mergePatch', () => {
 })
 
 describe('store', () => {
-  beforeEach(() => useStore.setState({ ...initialEngineState, panel: null, metric: false, features: {}, engine: null }))
+  beforeEach(() => useStore.setState({ ...initialEngineState, panel: null, features: {}, engine: null }))
   it('ouvre puis referme un panneau en cliquant deux fois', () => {
     useStore.getState().togglePanel('planets')
     expect(useStore.getState().panel).toBe('planets')

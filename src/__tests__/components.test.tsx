@@ -3,17 +3,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RocketControls from '@/components/RocketControls'
 import SubMenu from '@/components/SubMenu'
 import TopBar from '@/components/TopBar'
+import ViewParams from '@/components/ViewParams'
 import { useStore } from '@/store'
 import { initialEngineState } from '@/store/initial'
 import type { Engine } from '@/types'
 
-const fakeEngine = () => ({ selectView: vi.fn(), goIss: vi.fn(), startRocket: vi.fn(() => Promise.resolve()), stopRocket: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setMetric: vi.fn(), setRocketSpeed: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
+const fakeEngine = () => ({ nudge: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), startRocket: vi.fn(() => Promise.resolve()), stopRocket: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setRocketSpeed: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
 
 describe('TopBar + SubMenu', () => {
   let engine: ReturnType<typeof fakeEngine>
   beforeEach(() => {
     engine = fakeEngine()
-    useStore.setState({ ...initialEngineState, panel: null, bodyCategory: 'planets', metric: false, features: {}, engine })
+    useStore.setState({ ...initialEngineState, panel: null, bodyCategory: 'planets', features: {}, engine })
   })
   it('trois boutons en haut, aucun sous-menu au départ', () => {
     render(<><TopBar /><SubMenu /></>)
@@ -92,5 +93,25 @@ describe('RocketControls (feuille : uniquement des props)', () => {
     fireEvent.click(screen.getByText('×60'))
     expect(onSpeed).toHaveBeenCalledWith(60)
     expect(screen.getByText('×20').className).toMatch(/on/)
+  })
+})
+
+describe('ViewParams (juste au-dessus de la barre d’échelle)', () => {
+  it('affiche le JSON de la vue, règle la vue avec le pas choisi et copie', () => {
+    const engine = fakeEngine()
+    useStore.setState({ ...initialEngineState, viewJson: '{"mode":"earth","lon":2,"lat":30,"altKm":15000,"fov":50}', nudgeStep: 1, engine })
+    const writeText = vi.fn(() => Promise.resolve())
+    Object.assign(navigator, { clipboard: { writeText } })
+    render(<ViewParams />)
+    expect(screen.getByText(/"mode":"earth"/)).toBeInTheDocument()
+    fireEvent.pointerDown(screen.getByText('◀'))
+    fireEvent.pointerUp(screen.getByText('◀'))
+    expect(engine.nudge).toHaveBeenCalledWith('y-', 1)
+    fireEvent.click(screen.getByText('1°'))   // pas suivant : 5°
+    fireEvent.pointerDown(screen.getByText('▲'))
+    fireEvent.pointerUp(screen.getByText('▲'))
+    expect(engine.nudge).toHaveBeenLastCalledWith('p+', 5)
+    fireEvent.click(screen.getByText('📋 Copier'))
+    expect(writeText).toHaveBeenCalledWith('{"mode":"earth","lon":2,"lat":30,"altKm":15000,"fov":50}')
   })
 })

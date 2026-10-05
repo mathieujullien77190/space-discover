@@ -1,11 +1,11 @@
 import EngineHost from '@/components/EngineHost'
 import InfoText from '@/components/InfoText'
-import MeasureSwitch from '@/components/MeasureSwitch'
 import ScaleBar from '@/components/ScaleBar'
 import StatusMessage from '@/components/StatusMessage'
 import SubMenu from '@/components/SubMenu'
 import TimeBar from '@/components/TimeBar'
 import TopBar from '@/components/TopBar'
+import ViewParams from '@/components/ViewParams'
 import styles from './App.module.css'
 
 export const App = () => (
@@ -16,9 +16,11 @@ export const App = () => (
       <SubMenu />
       <InfoText />
     </div>
-    <MeasureSwitch />
     <TimeBar />
-    <ScaleBar />
+    <div className={styles.bottomLeft}>
+      <ViewParams />
+      <ScaleBar />
+    </div>
     <StatusMessage />
   </>
 )

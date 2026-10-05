@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { BASE_PATH } from '@/constants'
 import { createEngine } from '@/engine/app'
-import { readMetric } from '@/helpers'
 import { useStore } from '@/store'
 import styles from './EngineHost.module.css'
 
@@ -13,12 +12,9 @@ export const EngineHost = () => {
     const canvas = canvasRef.current
     const overlay = overlayRef.current
     if (!canvas || !overlay) return
-    const { applyPatch, setEngine, setMetricFlag } = useStore.getState()
+    const { applyPatch, setEngine } = useStore.getState()
     const engine = createEngine({ canvas, overlay, publish: applyPatch, baseUrl: BASE_PATH })
     if (!engine) return
-    const metric = readMetric()
-    setMetricFlag(metric)
-    engine.setMetric(metric)
     setEngine(engine)
     return () => {
       engine.dispose()

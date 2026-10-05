@@ -1,0 +1,5 @@
+.box { max-width: calc(100vw - 28px); padding: 6px 10px; background: rgba(20, 30, 50, 0.75); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 8px; font-size: 12px; text-shadow: 0 1px 3px #000; pointer-events: auto; user-select: text; }
+.json { display: block; margin: 2px 0; word-break: break-all; color: #cfe8ff; user-select: all; }
+.nudge { margin-top: 4px; white-space: nowrap; }
+.small { padding: 2px 8px; font-size: 12px; background: rgba(20, 30, 50, 0.75); color: #e8eef7; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 8px; cursor: pointer; }
+.small:hover { background: rgba(40, 60, 100, 0.85); }

@@ -72,6 +72,19 @@ describe('createEngine (rendu factice)', () => {
     fire('pointerdown'); fire('pointerup')
     expect(state.view).toEqual({ mode: 'earth', selected: 'earth' })
   })
+  it('vue Terre dézoomée : un clic sur le nom de la Terre revient près de la Terre (même comportement que Mars)', async () => {
+    await new Promise((r) => setTimeout(r, 450))
+    for (let i = 0; i < 60; i++) engine.nudge('d+', 15)
+    for (let i = 0; i < 40; i++) engine._frame(performance.now() + 1000 + i * 100)
+    const terre = [...overlay.querySelectorAll<HTMLElement>('.eng-l3d')].find((e) => e.textContent === 'Terre')
+    const m = /translate[(]([-0-9.]+)px,([-0-9.]+)px[)]/.exec(terre?.style.transform ?? '')
+    expect(m).not.toBeNull()
+    ;(canvas as unknown as { setPointerCapture: () => void }).setPointerCapture = () => {}
+    const fire = (type: string) => { const e = new MouseEvent(type, { clientX: Number(m?.[1]) - 10, clientY: Number(m?.[2]) + 8, bubbles: true }); Object.assign(e, { pointerId: 1 }); canvas.dispatchEvent(e) }
+    fire('pointerdown'); fire('pointerup')
+    for (let i = 0; i < 6; i++) engine._frame(performance.now() + 9000 + i * 100)
+    expect(JSON.parse(state.viewJson).altKm).toBeLessThan(1e5)
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)

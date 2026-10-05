@@ -1,0 +1,2 @@
+.button { min-width: 0; padding: 2px 5px; margin: 0; font-size: 12px; touch-action: none; user-select: none; background: rgba(20, 30, 50, 0.75); color: #e8eef7; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 8px; cursor: pointer; }
+.button:hover { background: rgba(40, 60, 100, 0.85); }

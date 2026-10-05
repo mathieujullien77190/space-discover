@@ -1,13 +1,14 @@
 // Store Zustand : miroir de l'état publié par le moteur 3D + état propre à l'interface (panneau ouvert, réglages).
 // Le moteur n'importe jamais ce fichier : il reçoit `applyPatch` comme canal de publication, et l'interface le pilote par les commandes de `commands.ts`.
 import { create } from 'zustand'
+import { NUDGE_STEPS } from '@/constants'
 import type { BodyCategory, Engine, EnginePatch, EngineState, PanelName } from '@/types'
 import { initialEngineState } from './initial'
 
 export type UiState = {
   panel: PanelName | null
   bodyCategory: BodyCategory
-  metric: boolean
+  nudgeStep: number   // index dans NUDGE_STEPS
   features: Record<string, boolean>
 }
 
@@ -18,7 +19,7 @@ export type Store = EngineState &
     applyPatch: (patch: EnginePatch) => void
     togglePanel: (panel: PanelName) => void
     setBodyCategory: (category: BodyCategory) => void
-    setMetricFlag: (on: boolean) => void
+    cycleNudgeStep: () => void
     setFeatureFlag: (id: string, on: boolean) => void
   }
 
@@ -39,12 +40,12 @@ export const useStore = create<Store>((set) => ({
   engine: null,
   panel: null,
   bodyCategory: 'planets',
-  metric: false,
+  nudgeStep: 1,
   features: {},
   setEngine: (engine) => set({ engine }),
   applyPatch: (patch) => set((s) => mergePatch(s, patch)),
   togglePanel: (panel) => set((s) => ({ panel: s.panel === panel ? null : panel })),
   setBodyCategory: (bodyCategory) => set({ bodyCategory }),
-  setMetricFlag: (metric) => set({ metric }),
+  cycleNudgeStep: () => set((s) => ({ nudgeStep: (s.nudgeStep + 1) % NUDGE_STEPS.length })),
   setFeatureFlag: (id, on) => set((s) => ({ features: { ...s.features, [id]: on } })),
 }))
