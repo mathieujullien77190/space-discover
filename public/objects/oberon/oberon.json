@@ -1,0 +1,62 @@
+{
+  "kind": "body",
+  "displayPriority": 1,
+  "bodyType": "moon",
+  "name": "Obéron",
+  "radiusKm": 761.4,
+  "massKg": 3.076e+21,
+  "around": "uranus",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "planeOf": true,
+    "semiMajorAxisKm": 583500,
+    "eccentricity": 0.0014,
+    "inclinationDeg": 0.07,
+    "nodeDeg": 126,
+    "argPerigeeDeg": 234,
+    "meanAnomalyDeg": 198,
+    "epochD2000": 0,
+    "periodDays": 13.463239,
+    "_note": "Inclinaison et nœud comptés par rapport à l’ÉQUATEUR de la planète (planeOf) ; a, e, i, période de mémoire (à vérifier) ; nœud, périastre et position de départ sont ILLUSTRATIFS (la vraie position de la lune à une date donnée n’est pas modélisée)."
+  },
+  "appearance": {
+    "kind": "textured",
+    "texture": "oberon.jpg",
+    "color": "#8c867e"
+  },
+  "orientation": "tidal-lock",
+  "showWithinUnits": 1830,
+  "trace": {
+    "fullOrbit": true,
+    "color": "#6f7a8a"
+  },
+  "dot": {
+    "color": "#cfd6e0",
+    "minDistanceUnits": 0,
+    "hideBelowUnits": 3.5813
+  },
+  "label": {
+    "text": "Obéron",
+    "metricText": "Obéron · Ø {diameterKm} km",
+    "minDistanceRadii": 6
+  },
+  "menu": {
+    "order": 6.18,
+    "icon": "⚪",
+    "view": {
+      "distanceUnits": 0.71626,
+      "text": "Vue de Obéron, lune de Uranus : même face toujours tournée vers sa planète"
+    }
+  },
+  "card": {
+    "_note": "Données ÉCRITES DE MÉMOIRE (à vérifier) : éléments orbitaux moyens J2000, pôle et rotation IAU, rayon, masse, faits de la fiche. Carte dessinée et fiche fabriquées par tools/make-planets.mjs (aplats, pas une photo). Diamètre, masse, gravité, jour et année de la fiche sont CALCULÉS d'après ce JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Surface",
+        "value": "très cratérisée, fonds de cratères sombres"
+      }
+    ]
+  }
+}

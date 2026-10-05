@@ -1,0 +1,66 @@
+{
+  "kind": "body",
+  "displayPriority": 1,
+  "bodyType": "moon",
+  "name": "Téthys",
+  "radiusKm": 531.1,
+  "massKg": 618000000000000000000,
+  "around": "saturn",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "planeOf": true,
+    "semiMajorAxisKm": 294672,
+    "eccentricity": 0.0001,
+    "inclinationDeg": 0.17,
+    "nodeDeg": 63,
+    "argPerigeeDeg": 297,
+    "meanAnomalyDeg": 279,
+    "epochD2000": 0,
+    "periodDays": 1.887802,
+    "_note": "Inclinaison et nœud comptés par rapport à l’ÉQUATEUR de la planète (planeOf) ; a, e, i, période de mémoire (à vérifier) ; nœud, périastre et position de départ sont ILLUSTRATIFS (la vraie position de la lune à une date donnée n’est pas modélisée)."
+  },
+  "appearance": {
+    "kind": "textured",
+    "texture": "tethys.jpg",
+    "color": "#cfcdc8"
+  },
+  "orientation": "tidal-lock",
+  "showWithinUnits": 11166,
+  "trace": {
+    "fullOrbit": true,
+    "color": "#6f7a8a"
+  },
+  "dot": {
+    "color": "#cfd6e0",
+    "minDistanceUnits": 0,
+    "hideBelowUnits": 2.49806
+  },
+  "label": {
+    "text": "Téthys",
+    "metricText": "Téthys · Ø {diameterKm} km",
+    "minDistanceRadii": 6
+  },
+  "menu": {
+    "order": 6.09,
+    "icon": "⚪",
+    "view": {
+      "distanceUnits": 0.49961,
+      "text": "Vue de Téthys, lune de Saturne : même face toujours tournée vers sa planète"
+    }
+  },
+  "card": {
+    "_note": "Données ÉCRITES DE MÉMOIRE (à vérifier) : éléments orbitaux moyens J2000, pôle et rotation IAU, rayon, masse, faits de la fiche. Carte dessinée et fiche fabriquées par tools/make-planets.mjs (aplats, pas une photo). Diamètre, masse, gravité, jour et année de la fiche sont CALCULÉS d'après ce JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Particularité",
+        "value": "immense canyon Ithaca Chasma (≈ 2 000 km)"
+      },
+      {
+        "label": "Composition",
+        "value": "presque pure glace d’eau"
+      }
+    ]
+  }
+}

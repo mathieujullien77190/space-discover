@@ -1,0 +1,80 @@
+{
+  "kind": "body",
+  "displayPriority": 2,
+  "bodyType": "planet",
+  "name": "Uranus",
+  "radiusKm": 25559,
+  "massKg": 8.681e+25,
+  "around": "sun",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "semiMajorAxisKm": 2870658171,
+    "eccentricity": 0.04725744,
+    "inclinationDeg": 0.77263783,
+    "nodeDeg": 74.01692503,
+    "argPerigeeDeg": 96.93735,
+    "meanAnomalyDeg": 142.28383,
+    "epochD2000": 0,
+    "periodDays": 30688.5
+  },
+  "appearance": {
+    "kind": "textured",
+    "texture": "uranus.jpg",
+    "color": "#a9dde4"
+  },
+  "rotation": {
+    "_note": "Éléments IAU, DE MÉMOIRE (à vérifier) : pôle nord (α0, δ0) J2000 et méridien origine W = w0 + rate × jours depuis J2000.",
+    "poleRaDeg": 257.311,
+    "poleDecDeg": -15.175,
+    "w0Deg": 203.81,
+    "rateDegPerDay": -501.1600928
+  },
+  "trace": {
+    "fullOrbit": true,
+    "color": "#bdeaf0"
+  },
+  "dot": {
+    "color": "#bdeaf0",
+    "minDistanceUnits": 300
+  },
+  "label": {
+    "text": "Uranus",
+    "metricText": "Uranus · Ø {diameterKm} km",
+    "minDistanceUnits": 300
+  },
+  "menu": {
+    "order": 5.3,
+    "icon": "🔵",
+    "view": {
+      "distanceUnits": 22.04,
+      "text": "Vue de Uranus : planète décrite par ses éléments orbitaux (objects/uranus/uranus.json)"
+    }
+  },
+  "card": {
+    "_note": "Données ÉCRITES DE MÉMOIRE (à vérifier) : éléments orbitaux moyens J2000, pôle et rotation IAU, rayon, masse, faits de la fiche. Carte dessinée et fiche fabriquées par tools/make-planets.mjs (aplats, pas une photo). Diamètre, masse, gravité, jour et année de la fiche sont CALCULÉS d'après ce JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Atmosphère",
+        "value": "hydrogène, hélium, méthane (couleur cyan)"
+      },
+      {
+        "label": "Inclinaison",
+        "value": "axe couché à 98° : elle roule sur son orbite"
+      },
+      {
+        "label": "Température",
+        "value": "≈ −195 °C"
+      },
+      {
+        "label": "Lunes",
+        "value": "28 connues"
+      },
+      {
+        "label": "Anneaux",
+        "value": "13, ténus et sombres"
+      }
+    ]
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "kind": "body",
+  "displayPriority": 2,
+  "bodyType": "planet",
+  "name": "Saturne",
+  "radiusKm": 60268,
+  "massKg": 5.6834e+26,
+  "around": "sun",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "semiMajorAxisKm": 1426666414,
+    "eccentricity": 0.05386179,
+    "inclinationDeg": 2.48599187,
+    "nodeDeg": 113.66242448,
+    "argPerigeeDeg": -21.06355,
+    "meanAnomalyDeg": 317.35537,
+    "epochD2000": 0,
+    "periodDays": 10759.22
+  },
+  "appearance": {
+    "kind": "textured",
+    "texture": "saturn.jpg",
+    "color": "#e0cc96",
+    "rings": {
+      "innerKm": 74658,
+      "outerKm": 136775,
+      "color": "#d9c8a0",
+      "opacity": 0.9,
+      "bands": [
+        [
+          0,
+          0.28,
+          0.35
+        ],
+        [
+          0.28,
+          0.69,
+          0.95
+        ],
+        [
+          0.69,
+          0.765,
+          0.08
+        ],
+        [
+          0.765,
+          0.95,
+          0.75
+        ],
+        [
+          0.955,
+          1,
+          0.7
+        ]
+      ]
+    }
+  },
+  "rotation": {
+    "_note": "Éléments IAU, DE MÉMOIRE (à vérifier) : pôle nord (α0, δ0) J2000 et méridien origine W = w0 + rate × jours depuis J2000.",
+    "poleRaDeg": 40.589,
+    "poleDecDeg": 83.537,
+    "w0Deg": 38.9,
+    "rateDegPerDay": 810.7939024
+  },
+  "trace": {
+    "fullOrbit": true,
+    "color": "#ecdcaa"
+  },
+  "dot": {
+    "color": "#ecdcaa",
+    "minDistanceUnits": 300
+  },
+  "label": {
+    "text": "Saturne",
+    "metricText": "Saturne · Ø {diameterKm} km",
+    "minDistanceUnits": 300
+  },
+  "menu": {
+    "order": 5.2,
+    "icon": "🪐",
+    "view": {
+      "distanceUnits": 114.335,
+      "text": "Vue de Saturne : planète décrite par ses éléments orbitaux (objects/saturn/saturn.json)"
+    }
+  },
+  "card": {
+    "_note": "Données ÉCRITES DE MÉMOIRE (à vérifier) : éléments orbitaux moyens J2000, pôle et rotation IAU, rayon, masse, faits de la fiche. Carte dessinée et fiche fabriquées par tools/make-planets.mjs (aplats, pas une photo). Diamètre, masse, gravité, jour et année de la fiche sont CALCULÉS d'après ce JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Atmosphère",
+        "value": "hydrogène, hélium"
+      },
+      {
+        "label": "Anneaux",
+        "value": "glace d’eau et roches, de 74 000 à 137 000 km du centre"
+      },
+      {
+        "label": "Lunes",
+        "value": "146 connues"
+      },
+      {
+        "label": "Densité",
+        "value": "0,69 g/cm³ (moins que l’eau)"
+      },
+      {
+        "label": "Température",
+        "value": "≈ −140 °C (sommet des nuages)"
+      }
+    ]
+  }
+}

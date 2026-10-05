@@ -13,7 +13,7 @@ import { objectStart } from './flight-object.js';
 import { FLIGHT_OBJECTS, FLIGHT_OBJECT_FILES } from './data/objects.js';
 import { FLIGHT_PLANS, FLIGHT_PLAN_FILES } from './data/plans.js';
 import { LAUNCH_SITES, Launch, fmtT, launchOptDefault } from './launch-3d.js';
-import { AU_U, ECLIPTIC_POLE, astroD, buildMoonMesh, gmstOf, moonQuat, rotationQuat } from './moon.js';
+import { AU_U, ECLIPTIC_POLE, astroD, buildMoonMesh, gmstOf, moonQuat, rotationPole, rotationQuat } from './moon.js';
 import { EARTH_MAX_DIST, attachControls } from './controls.js';
 import { assetUrl, setBaseUrl } from './config.js';
 import { KM_AL, KM_UA, fmtAlt, fmtBig, fmtMass } from './format.js';
@@ -41,7 +41,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   const overlay = createOverlay(overlayHost), disposers = [];
 
-  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(50, 1, 0.001, 4e6);
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(50, 1, 0.001, 1e7);
   const world = new THREE.Group(); scene.add(world);
   const inertial = new THREE.Group(); scene.add(inertial);
   const earth = buildEarth(renderer); world.add(earth);
@@ -57,6 +57,15 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const dotOf = color => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3)); const p = new THREE.Points(g, new THREE.PointsMaterial({ color, size: 7, sizeAttenuation: false, depthWrite: false, depthTest: false })); p.frustumCulled = false; solar.add(p); return p; };
   const PAINTERS = { moon: r => buildMoonMesh(r) };   // sphères peintes (appearance.kind = "painted", appearance.painter)
   const mkTrail = (n, op) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); const l = new THREE.Line(g, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: op })); l.frustumCulled = false; return l; };
+  // anneaux : disque plat percé, texture radiale 1D (bandes d'opacité : lacunes, anneaux denses) ; rg = { innerKm, outerKm, color, opacity, bands: [[de, à, opacité] (0 = bord intérieur, 1 = bord extérieur)] }
+  const ringMesh = (rg, radiusKm) => {
+    const inner = rg.innerKm / radiusKm, outer = rg.outerKm / radiusKm, geo = new THREE.RingGeometry(inner, outer, 160, 1), uv = geo.attributes.uv, pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) uv.setXY(i, (Math.hypot(pos.getX(i), pos.getY(i)) - inner) / (outer - inner), 0.5);
+    const c = document.createElement('canvas'); c.width = 512; c.height = 4; const g = c.getContext('2d'); g.clearRect(0, 0, 512, 4);
+    for (const [f, t, al] of rg.bands || [[0, 1, 1]]) { g.fillStyle = `rgba(255,255,255,${al})`; g.fillRect(f * 512, 0, Math.max(1, (t - f) * 512), 4); }
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), color: new THREE.Color(rg.color || '#d8c9a0'), transparent: true, opacity: rg.opacity != null ? rg.opacity : 0.85, side: THREE.DoubleSide, depthWrite: false }));
+    m.rotation.x = -Math.PI / 2; return m;   // RingGeometry est dans le plan XY (normale +Z) : on la couche dans le plan équatorial (normale +y, le pôle du maillage)
+  };
   const buildSolar = () => {
     const D0 = astroD(new Date());
     for (const b of BODY.list()) {
@@ -66,10 +75,11 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
         o.mesh = new THREE.Mesh(new THREE.SphereGeometry(ru, 64, 32), new THREE.MeshBasicMaterial({ color: new THREE.Color(ap.color || '#ffffff') }));
         const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(255,230,160,0.9)'); gr.addColorStop(0.25, 'rgba(255,190,90,0.35)'); gr.addColorStop(1, 'rgba(255,160,60,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
         const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); sp.scale.setScalar(ru * (ap.glowRadii || 7)); o.mesh.add(sp);
-      } else if (ap.kind === 'textured') {   // sphère habillée d'une carte équirectangulaire (longitudes −180…180 de gauche à droite) rangée dans le dossier de l'objet ; couleur unie en attendant le chargement
+      } else if (ap.kind === 'textured') {   // sphère habillée d'une carte équirectangulaire (longitudes −180…180 de gauche à droite) rangée dans le dossier de l'objet ; couleur unie tant qu'on est loin : la carte n'est téléchargée qu'à l'approche (voir la boucle)
         o.mesh = new THREE.Mesh(earthGeometry(96, 48), new THREE.MeshStandardMaterial({ color: new THREE.Color(ap.color || '#cccccc'), roughness: 1, metalness: 0 })); o.mesh.scale.setScalar(ru);
-        new THREE.TextureLoader().load(assetUrl((FLIGHT_OBJECT_FILES[b.id] || '').replace(/[^/]*$/, '') + ap.texture), t => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); o.mesh.material.map = t; o.mesh.material.color.set(0xffffff); o.mesh.material.needsUpdate = true; }, undefined, e => console.warn('Texture de ' + b.name + ' indisponible :', e && e.message));
+        o.texUrl = assetUrl((FLIGHT_OBJECT_FILES[b.id] || '').replace(/[^/]*$/, '') + ap.texture);
       } else if (ap.kind === 'sphere' || ap.kind === 'comet') o.mesh = new THREE.Mesh(new THREE.SphereGeometry(ru, 48, 24), new THREE.MeshStandardMaterial({ color: new THREE.Color(ap.color || '#cccccc'), roughness: 1, metalness: 0 }));
+      if (o.mesh && ap.rings) o.mesh.add(ringMesh(ap.rings, b.radiusKm));   // anneaux : dans le plan équatorial de la planète (enfant du maillage : suit son orientation)
       if (o.mesh) solar.add(o.mesh);
       if (ap.kind === 'comet' && ap.tail) { const tg = new THREE.ConeGeometry(1, 1, 24, 1, true); tg.translate(0, 0.5, 0); o.tail = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ color: new THREE.Color(ap.tail.color || '#bfe3ff'), transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); o.tail.frustumCulled = false; solar.add(o.tail); }
       if (b.dot) o.dot = dotOf(new THREE.Color(b.dot.color || '#ffffff'));
@@ -84,9 +94,9 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   };
   const solarTimer = setTimeout(buildSolar, 400);
 
-  // fond d'étoiles
+  // fond d'étoiles (rayon 3 000 000 unités : au-delà de Neptune, à 704 000)
   const sp = new Float32Array(3 * 3000), tmp = new THREE.Vector3();
-  for (let i = 0; i < 3000; i++) { tmp.set(Math.random() - .5, Math.random() - .5, Math.random() - .5).normalize().multiplyScalar(1e6); sp.set([tmp.x, tmp.y, tmp.z], 3 * i); }
+  for (let i = 0; i < 3000; i++) { tmp.set(Math.random() - .5, Math.random() - .5, Math.random() - .5).normalize().multiplyScalar(3e6); sp.set([tmp.x, tmp.y, tmp.z], 3 * i); }
   const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3));
   scene.add(new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: 1.3, sizeAttenuation: false, depthWrite: false })));
   const amb = new THREE.AmbientLight(0xffffff, 0.55), sun = new THREE.DirectionalLight(0xffffff, 1.0);
@@ -128,7 +138,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const goEarth = () => setMode('earth');
   const selectView = id => { const b = BODY.get(id); if (b && b.menu.mode === 'earth') goEarth(); else goSolar(id); };   // menu et clics sur la scène : la Terre ramène à la vue Terre, les autres astres à leur vue
   const goSolar = target => {   // vues Soleil / Lune : repère inertiel, cible = astre ; distance de la vue : son JSON
-    solarTarget = target; setMode('solar'); cam.goal.dist = BODY.get(target).menu.view.distanceUnits;
+    solarTarget = target; setMode('solar'); cam.goal.dist = BODY.get(target).menu.view.distanceUnits; cam.minDist = Math.max(1e-4, 1.3 * BODY.radiusUnits(target));   // zoom minimal : 1,3 rayon de l'astre regardé (une petite lune se regarde de près)
     const d = ECLIPTIC_POLE.clone().add(tmp.set(0.35, 0, 0.1)).normalize(); cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; snapCam();
   };
   cam.onEarth = () => goEarth();
@@ -301,7 +311,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     camera.up.set(0, 1, 0);
     camera.lookAt(cam.tgt); camera.updateMatrixWorld();
     const closest = Math.max(1e-7, Math.min(cam.dist, camera.position.length() - 1) * 0.05);
-    camera.near = Math.min(0.05, closest); camera.far = 4e6; camera.updateProjectionMatrix();
+    camera.near = Math.min(0.05, closest); camera.far = 1e7; camera.updateProjectionMatrix();
 
     // astres : chacun d'après son JSON (position, orientation, queue de comète, orbite, trace, point lointain, étiquette)
     solar.visible = true; solar.rotation.y = rotS;
@@ -312,8 +322,12 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       const scr = {}; for (const id in bodyObjs) { const pp = babs[id].clone().project(camera); scr[id] = pp.z < 1 ? [(pp.x + 1) / 2 * innerWidth, (1 - pp.y) / 2 * innerHeight] : null; }
       const masked = id => { const pr = bodyObjs[id].b.displayPriority || 0, s = scr[id]; if (!s) return false; for (const j in bodyObjs) { if (j === id || (bodyObjs[j].b.displayPriority || 0) <= pr || !scr[j] || !dotShown(j)) continue; if (Math.hypot(s[0] - scr[j][0], s[1] - scr[j][1]) < 18) return true; } return false; };
       for (const id in bodyObjs) {
-        const o = bodyObjs[id], b = o.b, v = bpos[id], ab = babs[id], ru = BODY.radiusUnits(id), hid = masked(id), parent = b.around && bpos[b.around] ? bpos[b.around] : null, tr = b.trace || {};
-        if (o.mesh) { o.mesh.position.copy(v); if (b.orientation === 'tidal-lock' && parent) moonQuat(v.clone().sub(parent).normalize(), ECLIPTIC_POLE, o.mesh.quaternion); else if (b.rotation) rotationQuat(b.rotation, Dd, o.mesh.quaternion); }   // rotation synchrone : toujours la même face vers le corps central
+        const o = bodyObjs[id], b = o.b, v = bpos[id], ab = babs[id], ru = BODY.radiusUnits(id), hid = masked(id) || (!!b.showWithinUnits && !!b.around && camera.position.distanceTo(babs[b.around]) > b.showWithinUnits), parent = b.around && bpos[b.around] ? bpos[b.around] : null, tr = b.trace || {};
+        if (o.mesh) { o.mesh.position.copy(v); if (b.orientation === 'tidal-lock' && parent) moonQuat(v.clone().sub(parent).normalize(), (BODY.get(b.around).rotation ? rotationPole(BODY.get(b.around).rotation) : ECLIPTIC_POLE), o.mesh.quaternion); else if (b.rotation) rotationQuat(b.rotation, Dd, o.mesh.quaternion); }   // rotation synchrone : toujours la même face vers le corps central
+        if (o.texUrl && !o.texReq && camera.position.distanceTo(ab) < 60 * ru) {   // carte de la surface : téléchargée à l'approche (moins de 60 rayons)
+          o.texReq = true;
+          new THREE.TextureLoader().load(o.texUrl, t => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); o.mesh.material.map = t; o.mesh.material.color.set(0xffffff); o.mesh.material.needsUpdate = true; }, undefined, e => console.warn('Texture de ' + b.name + ' indisponible :', e && e.message));
+        }
         if (o.tail) {   // queue de comète : à l'opposé de l'étoile, de plus en plus longue près d'elle, invisible au-delà de ≈ 3,5 UA
           const sv = bpos[STAR], rAU = Math.hypot(v.x - sv.x, v.y - sv.y, v.z - sv.z) / AU_U, tl = b.appearance.tail, k = Math.max(0, 1 - rAU / 3.5) / Math.pow(Math.max(0.3, rAU), 1.5), len = tl.lengthKmAt1AU / R_KM * k;
           o.tail.visible = len > ru * 4 && !hid; if (o.tail.visible) { const dir = v.clone().sub(sv).normalize(); o.tail.position.copy(v); o.tail.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir); const w = tl.widthKm / 2 / R_KM * Math.sqrt(Math.min(1, k)); o.tail.scale.set(Math.max(w, ru), len, Math.max(w, ru)); }

@@ -12,3 +12,4 @@ data/photo-kourou-hi.jpg
 # dépendances installées éventuelles
 **/node_modules/
 *.tmp.jpg
+tools/.cache/

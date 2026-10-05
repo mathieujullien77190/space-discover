@@ -119,6 +119,30 @@ describe('createEngine (rendu factice)', () => {
     engine._frame(performance.now() + 600)
     expect(engine._featuresVisible()).toEqual({ size: true, orbit: true })
   })
+  it('chaque astre du menu (planètes, lunes, comète, Soleil) se regarde sans erreur et affiche sa fiche de près', async () => {
+    await new Promise((r) => setTimeout(r, 450))
+    engine._frame(performance.now() + 500)
+    const ids = ['mercury', 'venus', 'earth', 'moon', 'sun', 'mars', 'halley', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto', 'phobos', 'deimos', 'io', 'europa', 'ganymede', 'callisto', 'amalthea', 'mimas', 'enceladus', 'tethys', 'dione', 'rhea', 'titan', 'iapetus', 'miranda', 'ariel', 'umbriel', 'titania', 'oberon', 'triton', 'proteus', 'charon']
+    let t = 1000
+    for (const id of ids) {
+      engine.selectView(id)
+      for (let i = 0; i < 4; i++) engine._frame(performance.now() + (t += 100))
+      expect(state.view.selected, id).toBe(id)
+      expect(state.status, id).toBe('ready')
+      expect(state.focus.id, id).toBe(id === 'sun' ? null : id)   // le Soleil se regarde de 90 000 unités : trop loin pour sa fiche
+    }
+  })
+  it('les lunes d’une planète ne sont dessinées que près d’elle : cachées en vue Soleil, nom affiché en vue Jupiter', async () => {
+    await new Promise((r) => setTimeout(r, 450))
+    const label = (text: string) => [...overlay.querySelectorAll<HTMLElement>('.eng-l3d')].find((x) => x.textContent === text)
+    engine.selectView('sun')
+    for (let i = 0; i < 4; i++) engine._frame(performance.now() + 1000 + i * 100)
+    expect(label('Io')?.style.display).toBe('none')
+    expect(label('Titan')?.style.display).toBe('none')
+    engine.selectView('jupiter')
+    for (let i = 0; i < 4; i++) engine._frame(performance.now() + 2000 + i * 100)
+    expect(label('Jupiter')).toBeDefined()
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)

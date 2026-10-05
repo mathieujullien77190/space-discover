@@ -1,0 +1,66 @@
+{
+  "kind": "body",
+  "displayPriority": 1,
+  "bodyType": "moon",
+  "name": "Déimos",
+  "radiusKm": 6.2,
+  "massKg": 1476200000000000,
+  "around": "mars",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "planeOf": true,
+    "semiMajorAxisKm": 23463,
+    "eccentricity": 0.0002,
+    "inclinationDeg": 1.79,
+    "nodeDeg": 47,
+    "argPerigeeDeg": 113,
+    "meanAnomalyDeg": 71,
+    "epochD2000": 0,
+    "periodDays": 1.26244,
+    "_note": "Inclinaison et nœud comptés par rapport à l’ÉQUATEUR de la planète (planeOf) ; a, e, i, période de mémoire (à vérifier) ; nœud, périastre et position de départ sont ILLUSTRATIFS (la vraie position de la lune à une date donnée n’est pas modélisée)."
+  },
+  "appearance": {
+    "kind": "textured",
+    "texture": "deimos.jpg",
+    "color": "#8a8177"
+  },
+  "orientation": "tidal-lock",
+  "showWithinUnits": 74,
+  "trace": {
+    "fullOrbit": true,
+    "color": "#6f7a8a"
+  },
+  "dot": {
+    "color": "#cfd6e0",
+    "minDistanceUnits": 0,
+    "hideBelowUnits": 0.02916
+  },
+  "label": {
+    "text": "Déimos",
+    "metricText": "Déimos · Ø {diameterKm} km",
+    "minDistanceRadii": 6
+  },
+  "menu": {
+    "order": 6.01,
+    "icon": "⚪",
+    "view": {
+      "distanceUnits": 0.00583,
+      "text": "Vue de Déimos, lune de Mars : même face toujours tournée vers sa planète"
+    }
+  },
+  "card": {
+    "_note": "Données ÉCRITES DE MÉMOIRE (à vérifier) : éléments orbitaux moyens J2000, pôle et rotation IAU, rayon, masse, faits de la fiche. Carte dessinée et fiche fabriquées par tools/make-planets.mjs (aplats, pas une photo). Diamètre, masse, gravité, jour et année de la fiche sont CALCULÉS d'après ce JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Forme",
+        "value": "irrégulière, 15 × 12 × 10 km"
+      },
+      {
+        "label": "Particularité",
+        "value": "surface lisse, couverte de poussière"
+      }
+    ]
+  }
+}

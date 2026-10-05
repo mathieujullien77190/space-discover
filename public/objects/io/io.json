@@ -1,0 +1,70 @@
+{
+  "kind": "body",
+  "displayPriority": 1,
+  "bodyType": "moon",
+  "name": "Io",
+  "radiusKm": 1821.6,
+  "massKg": 8.9319e+22,
+  "around": "jupiter",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "planeOf": true,
+    "semiMajorAxisKm": 421700,
+    "eccentricity": 0.0041,
+    "inclinationDeg": 0.04,
+    "nodeDeg": 94,
+    "argPerigeeDeg": 226,
+    "meanAnomalyDeg": 142,
+    "epochD2000": 0,
+    "periodDays": 1.769138,
+    "_note": "Inclinaison et nœud comptés par rapport à l’ÉQUATEUR de la planète (planeOf) ; a, e, i, période de mémoire (à vérifier) ; nœud, périastre et position de départ sont ILLUSTRATIFS (la vraie position de la lune à une date donnée n’est pas modélisée)."
+  },
+  "appearance": {
+    "kind": "textured",
+    "texture": "io.jpg",
+    "color": "#e9d36a"
+  },
+  "orientation": "tidal-lock",
+  "showWithinUnits": 5904,
+  "trace": {
+    "fullOrbit": true,
+    "color": "#6f7a8a"
+  },
+  "dot": {
+    "color": "#cfd6e0",
+    "minDistanceUnits": 0,
+    "hideBelowUnits": 8.56802
+  },
+  "label": {
+    "text": "Io",
+    "metricText": "Io · Ø {diameterKm} km",
+    "minDistanceRadii": 6
+  },
+  "menu": {
+    "order": 6.02,
+    "icon": "⚪",
+    "view": {
+      "distanceUnits": 1.7136,
+      "text": "Vue de Io, lune de Jupiter : même face toujours tournée vers sa planète"
+    }
+  },
+  "card": {
+    "_note": "Données ÉCRITES DE MÉMOIRE (à vérifier) : éléments orbitaux moyens J2000, pôle et rotation IAU, rayon, masse, faits de la fiche. Carte dessinée et fiche fabriquées par tools/make-planets.mjs (aplats, pas une photo). Diamètre, masse, gravité, jour et année de la fiche sont CALCULÉS d'après ce JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Particularité",
+        "value": "le corps le plus volcanique du système solaire (> 400 volcans)"
+      },
+      {
+        "label": "Surface",
+        "value": "soufre jaune, orange et rouge"
+      },
+      {
+        "label": "Orbite",
+        "value": "résonance 1:2:4 avec Europe et Ganymède"
+      }
+    ]
+  }
+}

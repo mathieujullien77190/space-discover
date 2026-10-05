@@ -46,6 +46,10 @@ Moteur 3D en **JavaScript pur** (three.js), interface en **React / Next.js / Zus
 | `_archive/` | travaux précédents (système solaire à l'échelle, frise, jeu de tir…) |
 | `CLAUDE.md` | documentation détaillée du projet |
 
+## Le système solaire
+
+Terre, Lune, Soleil, Mars, **Mercure, Vénus, Jupiter, Saturne (anneaux), Uranus, Neptune, Pluton**, la comète de Halley et **22 lunes** (Phobos, Déimos, les lunes galiléennes, Titan, Encelade, Triton, Charon…) décrits en JSON (un dossier par astre dans `public/objects/`), avec leurs cartes dessinées et leurs fiches. Générés par `tools/make-planets.mjs`. Valeurs écrites de mémoire : à vérifier avant de les citer.
+
 ## Limites
 
 Les fusées sont modélisées **de mémoire, avec des valeurs simplifiées** (masses, poussées, durées de combustion) et ajustées pour atteindre l'orbite : à vérifier avant de les citer. Mouvement dans le plan orbital, guidage idéal, pas de vent. Les chiffres historiques de Spoutnik viennent de sources courantes et sont à vérifier.

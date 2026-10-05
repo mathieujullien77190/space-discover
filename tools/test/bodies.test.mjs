@@ -4,13 +4,13 @@ import fs from 'node:fs'; import path from 'node:path'; import vm from 'node:vm'
 import { loadEngine, root } from './engine-loader.mjs';
 
 const ctx = await loadEngine();
-const fails = [], check = (c, m) => { console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if (!c) fails.push(m); };
+const DEG_ = Math.PI / 180, G_ = e => vm.runInContext(e, ctx), fails = [], check = (c, m) => { console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if (!c) fails.push(m); };
 const G = e => vm.runInContext(e, ctx), AU = 149597870700, dayOf = iso => G('EPH.days(' + Date.parse(iso) + ')'), geo = (id, iso) => G('BODY.geo("' + id + '", ' + dayOf(iso) + ')'), dist = (a, b, iso) => G('BODY.distance("' + a + '", "' + b + '", ' + dayOf(iso) + ')');
 // 1. schéma : chaque astre a ce qu'il faut ; menu ordonné
 const list = G('BODY.list()'), ids = list.map(b => b.id).sort().join(' '), menu = G('BODY.menu().map(b => b.id)').join(' ');
 const models = ['meeus-moon', 'meeus-sun', 'inverse', 'kepler'], orders = list.filter(b => b.menu).map(b => b.menu.order);
 check(list.length >= 5 && list.every(b => b.name && b.radiusKm > 0 && b.bodyType && b.motion && models.includes(b.motion.model) && b.appearance) && new Set(orders).size === orders.length, 'astres : ' + ids + ' (types : ' + list.map(b => b.id + '=' + b.bodyType).join(', ') + ')');
-check(menu === 'earth moon sun mars halley', 'menu des vues (ordre du JSON) : ' + menu);
+{ const ord = G('BODY.menu().map(b => b.menu.order)'); check(ord.every((v, i) => i === 0 || v > ord[i - 1]) && menu.startsWith('mercury venus earth moon sun mars') && menu.includes('jupiter saturn uranus neptune pluto') && menu.split(' ').length === list.length, 'menu des vues (ordre du JSON, ' + menu.split(' ').length + ' astres) : ' + menu.split(' ').slice(0, 9).join(' ') + ' …'); }
 check(G('BODY.origin()') === 'earth' && G('BODY.list().filter(b => b.thirdBody).map(b => b.id)').join() === 'moon,sun', 'origine de la scène : ' + G('BODY.origin()') + ' ; astres qui attirent les engins : ' + G('BODY.list().filter(b => b.thirdBody).map(b => b.id)').join(', '));
 // 2. constantes du JSON = constantes du moteur de vol (physics.js, launch.js)
 const E = G('FLIGHT_OBJECTS.earth');
@@ -55,4 +55,19 @@ check(!!err && /modèle de mouvement inconnu/.test(err.message), 'modèle de mou
   check(Math.abs(x0.dot(pole)) < 1e-9, 'Mars : le méridien origine est sur l’équateur de la planète');
   const mapPath = path.join(root, 'public', 'objects', 'mars', mars.appearance.texture), size = fs.existsSync(mapPath) ? fs.statSync(mapPath).size : 0;
   check(mars.appearance.kind === 'textured' && size > 200000 && size < 3e6, 'Mars : carte ' + mars.appearance.texture + ' présente (' + (size / 1e6).toFixed(2) + ' Mo, domaine public NASA / USGS)'); }
+// 10. TOUS les astres képlériens : la période écrite dans le JSON doit être celle que donne la 3e loi de Kepler (demi-grand axe + masses) à 1 % près : contrôle croisé des valeurs écrites de mémoire (a, période, masse) ;
+//     les lunes sont en orbite autour de leur planète dans le plan de son équateur (inclinaison mesurée = inclinaison du JSON, rétrograde pour i > 90°) ; chaque carte et chaque fiche existent
+{ const G = 6.6743e-11, mu = b => b.muM3S2 || G * b.massKg, ids = G_('BODY.ids()'); let n = 0, moons = 0;
+  for (const id of ids) { const b = G_('BODY.get("' + id + '")'), m = b.motion; if (m.model !== 'kepler') continue; n++;
+    const parent = G_('BODY.get("' + b.around + '")'), T = 2 * Math.PI * Math.sqrt(Math.pow(m.semiMajorAxisKm * 1000, 3) / (mu(parent) + mu(b))) / 86400;
+    check(Math.abs(T / m.periodDays - 1) < 0.01, id + ' : période ' + m.periodDays + ' j, 3e loi de Kepler ' + T.toFixed(3) + ' j');
+    if (b.appearance.kind === 'textured') check(fs.existsSync(path.join(root, 'public', 'objects', id, b.appearance.texture)) && fs.existsSync(path.join(root, 'public', 'objects', id, b.card.image)), id + ' : carte et fiche présentes');
+    if (m.planeOf) { moons++;
+      const D = dayOf('2026-10-05'), p0 = G_('BODY.rel("' + id + '", ' + D + ')'), p1 = G_('BODY.rel("' + id + '", ' + (D + m.periodDays / 40) + ')'), nrm = [p0[1] * p1[2] - p0[2] * p1[1], p0[2] * p1[0] - p0[0] * p1[2], p0[0] * p1[1] - p0[1] * p1[0]], nl = Math.hypot(...nrm);
+      const fr = G_('BODY.planeFrame("' + b.around + '")'), eq = [fr.fz[0], fr.fz[1], fr.fz[2]], toScene = v => [v[0], v[2], -v[1]];   // pôle de la planète en axes de la scène : écliptique → équatorial → scène
+      const eps = G_('EPH.EPS'), poleEq = [eq[0], eq[1] * Math.cos(eps) - eq[2] * Math.sin(eps), eq[1] * Math.sin(eps) + eq[2] * Math.cos(eps)], pole = toScene(poleEq);
+      const cosi = (nrm[0] * pole[0] + nrm[1] * pole[1] + nrm[2] * pole[2]) / nl, iMeas = Math.acos(cosi) / DEG_;
+      check(Math.abs(iMeas - m.inclinationDeg) < 0.6 || (m.inclinationDeg < 0.6 && iMeas < 1.2), id + ' : plan orbital incliné de ' + iMeas.toFixed(2) + '° sur l’équateur de ' + b.around + ' (JSON : ' + m.inclinationDeg + '°)');
+      check(G_('bodyCard("' + id + '")').facts.length >= 5, id + ' : fiche complète'); } }
+  check(n >= 28 && moons >= 21, n + ' astres képlériens, dont ' + moons + ' lunes d’une planète'); }
 if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }

@@ -1,0 +1,70 @@
+{
+  "kind": "body",
+  "displayPriority": 1,
+  "bodyType": "moon",
+  "name": "Triton",
+  "radiusKm": 1353.4,
+  "massKg": 2.14e+22,
+  "around": "neptune",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "planeOf": true,
+    "semiMajorAxisKm": 354759,
+    "eccentricity": 0.00002,
+    "inclinationDeg": 156.885,
+    "nodeDeg": 173,
+    "argPerigeeDeg": 347,
+    "meanAnomalyDeg": 269,
+    "epochD2000": 0,
+    "periodDays": 5.876854,
+    "_note": "Inclinaison et nœud comptés par rapport à l’ÉQUATEUR de la planète (planeOf) ; a, e, i, période de mémoire (à vérifier) ; nœud, périastre et position de départ sont ILLUSTRATIFS (la vraie position de la lune à une date donnée n’est pas modélisée)."
+  },
+  "appearance": {
+    "kind": "textured",
+    "texture": "triton.jpg",
+    "color": "#d9c2bd"
+  },
+  "orientation": "tidal-lock",
+  "showWithinUnits": 1112,
+  "trace": {
+    "fullOrbit": true,
+    "color": "#6f7a8a"
+  },
+  "dot": {
+    "color": "#cfd6e0",
+    "minDistanceUnits": 0,
+    "hideBelowUnits": 6.36581
+  },
+  "label": {
+    "text": "Triton",
+    "metricText": "Triton · Ø {diameterKm} km",
+    "minDistanceRadii": 6
+  },
+  "menu": {
+    "order": 6.19,
+    "icon": "⚪",
+    "view": {
+      "distanceUnits": 1.27316,
+      "text": "Vue de Triton, lune de Neptune : même face toujours tournée vers sa planète"
+    }
+  },
+  "card": {
+    "_note": "Données ÉCRITES DE MÉMOIRE (à vérifier) : éléments orbitaux moyens J2000, pôle et rotation IAU, rayon, masse, faits de la fiche. Carte dessinée et fiche fabriquées par tools/make-planets.mjs (aplats, pas une photo). Diamètre, masse, gravité, jour et année de la fiche sont CALCULÉS d'après ce JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Orbite",
+        "value": "rétrograde : probablement un objet capturé de la ceinture de Kuiper"
+      },
+      {
+        "label": "Particularité",
+        "value": "geysers d’azote ; l’un des corps les plus froids (−235 °C)"
+      },
+      {
+        "label": "Destin",
+        "value": "se rapproche de Neptune ; sera déchiré dans des milliards d’années"
+      }
+    ]
+  }
+}

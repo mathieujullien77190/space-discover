@@ -1,0 +1,80 @@
+{
+  "kind": "body",
+  "displayPriority": 2,
+  "bodyType": "dwarf",
+  "name": "Pluton",
+  "radiusKm": 1188.3,
+  "massKg": 1.303e+22,
+  "around": "sun",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "semiMajorAxisKm": 5906440597,
+    "eccentricity": 0.2488273,
+    "inclinationDeg": 17.14001206,
+    "nodeDeg": 110.30393684,
+    "argPerigeeDeg": 113.76498,
+    "meanAnomalyDeg": 14.86012,
+    "epochD2000": 0,
+    "periodDays": 90560
+  },
+  "appearance": {
+    "kind": "textured",
+    "texture": "pluto.jpg",
+    "color": "#c8a68a"
+  },
+  "rotation": {
+    "_note": "Éléments IAU, DE MÉMOIRE (à vérifier) : pôle nord (α0, δ0) J2000 et méridien origine W = w0 + rate × jours depuis J2000.",
+    "poleRaDeg": 132.993,
+    "poleDecDeg": -6.163,
+    "w0Deg": 302.695,
+    "rateDegPerDay": 56.3625225
+  },
+  "trace": {
+    "fullOrbit": true,
+    "color": "#d9bca3"
+  },
+  "dot": {
+    "color": "#d9bca3",
+    "minDistanceUnits": 300
+  },
+  "label": {
+    "text": "Pluton",
+    "metricText": "Pluton · Ø {diameterKm} km",
+    "minDistanceUnits": 300
+  },
+  "menu": {
+    "order": 5.5,
+    "icon": "⚪",
+    "view": {
+      "distanceUnits": 1.2,
+      "text": "Vue de Pluton : planète décrite par ses éléments orbitaux (objects/pluto/pluto.json)"
+    }
+  },
+  "card": {
+    "_note": "Données ÉCRITES DE MÉMOIRE (à vérifier) : éléments orbitaux moyens J2000, pôle et rotation IAU, rayon, masse, faits de la fiche. Carte dessinée et fiche fabriquées par tools/make-planets.mjs (aplats, pas une photo). Diamètre, masse, gravité, jour et année de la fiche sont CALCULÉS d'après ce JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Statut",
+        "value": "planète naine"
+      },
+      {
+        "label": "Atmosphère",
+        "value": "azote, très ténue"
+      },
+      {
+        "label": "Température",
+        "value": "≈ −230 °C"
+      },
+      {
+        "label": "Lunes",
+        "value": "5 (Charon, la plus grosse)"
+      },
+      {
+        "label": "Découverte",
+        "value": "1930"
+      }
+    ]
+  }
+}

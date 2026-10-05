@@ -1,0 +1,62 @@
+{
+  "kind": "body",
+  "displayPriority": 1,
+  "bodyType": "moon",
+  "name": "Umbriel",
+  "radiusKm": 584.7,
+  "massKg": 1.275e+21,
+  "around": "uranus",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "planeOf": true,
+    "semiMajorAxisKm": 266000,
+    "eccentricity": 0.0039,
+    "inclinationDeg": 0.13,
+    "nodeDeg": 32,
+    "argPerigeeDeg": 8,
+    "meanAnomalyDeg": 56,
+    "epochD2000": 0,
+    "periodDays": 4.144177,
+    "_note": "Inclinaison et nœud comptés par rapport à l’ÉQUATEUR de la planète (planeOf) ; a, e, i, période de mémoire (à vérifier) ; nœud, périastre et position de départ sont ILLUSTRATIFS (la vraie position de la lune à une date donnée n’est pas modélisée)."
+  },
+  "appearance": {
+    "kind": "textured",
+    "texture": "umbriel.jpg",
+    "color": "#5f5c58"
+  },
+  "orientation": "tidal-lock",
+  "showWithinUnits": 1830,
+  "trace": {
+    "fullOrbit": true,
+    "color": "#6f7a8a"
+  },
+  "dot": {
+    "color": "#cfd6e0",
+    "minDistanceUnits": 0,
+    "hideBelowUnits": 2.75018
+  },
+  "label": {
+    "text": "Umbriel",
+    "metricText": "Umbriel · Ø {diameterKm} km",
+    "minDistanceRadii": 6
+  },
+  "menu": {
+    "order": 6.16,
+    "icon": "⚪",
+    "view": {
+      "distanceUnits": 0.55004,
+      "text": "Vue de Umbriel, lune de Uranus : même face toujours tournée vers sa planète"
+    }
+  },
+  "card": {
+    "_note": "Données ÉCRITES DE MÉMOIRE (à vérifier) : éléments orbitaux moyens J2000, pôle et rotation IAU, rayon, masse, faits de la fiche. Carte dessinée et fiche fabriquées par tools/make-planets.mjs (aplats, pas une photo). Diamètre, masse, gravité, jour et année de la fiche sont CALCULÉS d'après ce JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Surface",
+        "value": "la plus sombre des grandes lunes d’Uranus, anneau brillant (cratère Wunda)"
+      }
+    ]
+  }
+}

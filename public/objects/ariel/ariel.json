@@ -1,0 +1,62 @@
+{
+  "kind": "body",
+  "displayPriority": 1,
+  "bodyType": "moon",
+  "name": "Ariel",
+  "radiusKm": 578.9,
+  "massKg": 1.251e+21,
+  "around": "uranus",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "planeOf": true,
+    "semiMajorAxisKm": 190900,
+    "eccentricity": 0.0012,
+    "inclinationDeg": 0.04,
+    "nodeDeg": 345,
+    "argPerigeeDeg": 255,
+    "meanAnomalyDeg": 345,
+    "epochD2000": 0,
+    "periodDays": 2.520379,
+    "_note": "Inclinaison et nœud comptés par rapport à l’ÉQUATEUR de la planète (planeOf) ; a, e, i, période de mémoire (à vérifier) ; nœud, périastre et position de départ sont ILLUSTRATIFS (la vraie position de la lune à une date donnée n’est pas modélisée)."
+  },
+  "appearance": {
+    "kind": "textured",
+    "texture": "ariel.jpg",
+    "color": "#b3b0aa"
+  },
+  "orientation": "tidal-lock",
+  "showWithinUnits": 1830,
+  "trace": {
+    "fullOrbit": true,
+    "color": "#6f7a8a"
+  },
+  "dot": {
+    "color": "#cfd6e0",
+    "minDistanceUnits": 0,
+    "hideBelowUnits": 2.7229
+  },
+  "label": {
+    "text": "Ariel",
+    "metricText": "Ariel · Ø {diameterKm} km",
+    "minDistanceRadii": 6
+  },
+  "menu": {
+    "order": 6.15,
+    "icon": "⚪",
+    "view": {
+      "distanceUnits": 0.54458,
+      "text": "Vue de Ariel, lune de Uranus : même face toujours tournée vers sa planète"
+    }
+  },
+  "card": {
+    "_note": "Données ÉCRITES DE MÉMOIRE (à vérifier) : éléments orbitaux moyens J2000, pôle et rotation IAU, rayon, masse, faits de la fiche. Carte dessinée et fiche fabriquées par tools/make-planets.mjs (aplats, pas une photo). Diamètre, masse, gravité, jour et année de la fiche sont CALCULÉS d'après ce JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Surface",
+        "value": "la plus jeune des grandes lunes d’Uranus : vallées et canyons"
+      }
+    ]
+  }
+}

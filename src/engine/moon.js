@@ -57,3 +57,6 @@ export function rotationQuat(rot, D, out) {
   const X = node.clone().multiplyScalar(Math.cos(W)).addScaledVector(new THREE.Vector3().crossVectors(p, node), Math.sin(W)), E = new THREE.Vector3().crossVectors(p, X);   // X : longitude 0 ; E : est
   return out.setFromRotationMatrix(new THREE.Matrix4().makeBasis(X, p, E.negate()));
 }
+
+// pôle nord d'un astre (axes de la scène) d'après sa section `rotation`
+export const rotationPole = rot => { const a = rot.poleRaDeg * DEG, d = rot.poleDecDeg * DEG; return eqScene(Math.cos(d) * Math.cos(a), Math.cos(d) * Math.sin(a), Math.sin(d)); };

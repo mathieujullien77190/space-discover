@@ -35,6 +35,26 @@ describe('TopBar + SubMenu', () => {
     act(() => useStore.setState({ view: { mode: 'solar', selected: 'moon' } }))
     expect(screen.getByText(/Lune/)).toBeInTheDocument()
   })
+  it('Astres : toutes les planètes, et les lunes de la planète choisie sous elle', () => {
+    render(<><TopBar /><SubMenu /></>)
+    fireEvent.click(screen.getByText('🌌 Astres'))
+    for (const n of ['Mercure', 'Vénus', 'Terre', 'Mars', 'Jupiter', 'Saturne', 'Uranus', 'Neptune', 'Pluton']) expect(screen.getByText(new RegExp(n + "$"))).toBeInTheDocument()
+    const moons = (planet: string, names: string[], absent: string[]) => {
+      act(() => useStore.setState({ view: { mode: 'solar', selected: planet } }))
+      for (const n of names) expect(screen.getByText(new RegExp(n + "$"))).toBeInTheDocument()
+      for (const n of absent) expect(screen.queryByText(new RegExp(n + "$"))).toBeNull()
+    }
+    moons('mars', ['Phobos', 'Déimos'], ['Io', 'Titan'])
+    moons('jupiter', ['Io', 'Europe', 'Ganymède', 'Callisto', 'Amalthée'], ['Phobos', 'Titan'])
+    moons('saturn', ['Titan', 'Encelade', 'Japet', 'Rhéa'], ['Io', 'Triton'])
+    moons('uranus', ['Miranda', 'Titania', 'Obéron'], ['Titan'])
+    moons('neptune', ['Triton', 'Protée'], ['Miranda'])
+    moons('pluto', ['Charon'], ['Triton'])
+    moons('mercury', [], ['Phobos', 'Io', 'Lune'])
+    moons('earth', ['Lune'], ['Phobos'])
+    act(() => useStore.setState({ view: { mode: 'solar', selected: 'io' } }))   // une lune choisie : sa fratrie reste affichée
+    expect(screen.getByText(/Callisto/)).toBeInTheDocument()
+  })
   it('Astres : trois catégories ; la Lune sous la Terre ; Halley dans Comètes ; le Soleil dans Étoiles', () => {
     render(<><TopBar /><SubMenu /></>)
     fireEvent.click(screen.getByText('🌌 Astres'))

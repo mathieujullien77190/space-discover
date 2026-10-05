@@ -1,0 +1,70 @@
+{
+  "kind": "body",
+  "displayPriority": 1,
+  "bodyType": "moon",
+  "name": "Phobos",
+  "radiusKm": 11.1,
+  "massKg": 10659000000000000,
+  "around": "mars",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "planeOf": true,
+    "semiMajorAxisKm": 9376,
+    "eccentricity": 0.0151,
+    "inclinationDeg": 1.08,
+    "nodeDeg": 0,
+    "argPerigeeDeg": 0,
+    "meanAnomalyDeg": 0,
+    "epochD2000": 0,
+    "periodDays": 0.31891,
+    "_note": "Inclinaison et nœud comptés par rapport à l’ÉQUATEUR de la planète (planeOf) ; a, e, i, période de mémoire (à vérifier) ; nœud, périastre et position de départ sont ILLUSTRATIFS (la vraie position de la lune à une date donnée n’est pas modélisée)."
+  },
+  "appearance": {
+    "kind": "textured",
+    "texture": "phobos.jpg",
+    "color": "#7d766e"
+  },
+  "orientation": "tidal-lock",
+  "showWithinUnits": 74,
+  "trace": {
+    "fullOrbit": true,
+    "color": "#6f7a8a"
+  },
+  "dot": {
+    "color": "#cfd6e0",
+    "minDistanceUnits": 0,
+    "hideBelowUnits": 0.05221
+  },
+  "label": {
+    "text": "Phobos",
+    "metricText": "Phobos · Ø {diameterKm} km",
+    "minDistanceRadii": 6
+  },
+  "menu": {
+    "order": 6,
+    "icon": "⚪",
+    "view": {
+      "distanceUnits": 0.01044,
+      "text": "Vue de Phobos, lune de Mars : même face toujours tournée vers sa planète"
+    }
+  },
+  "card": {
+    "_note": "Données ÉCRITES DE MÉMOIRE (à vérifier) : éléments orbitaux moyens J2000, pôle et rotation IAU, rayon, masse, faits de la fiche. Carte dessinée et fiche fabriquées par tools/make-planets.mjs (aplats, pas une photo). Diamètre, masse, gravité, jour et année de la fiche sont CALCULÉS d'après ce JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Forme",
+        "value": "irrégulière, 27 × 22 × 18 km"
+      },
+      {
+        "label": "Particularité",
+        "value": "tourne plus vite que Mars : elle s’y lève à l’ouest"
+      },
+      {
+        "label": "Destin",
+        "value": "se rapproche de Mars, s’y écrasera dans ≈ 50 millions d’années"
+      }
+    ]
+  }
+}

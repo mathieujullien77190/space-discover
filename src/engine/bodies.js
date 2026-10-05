@@ -9,8 +9,8 @@ import { EPH } from './ephemeris.js';
 //   motion     { frame: "geocentric" | "heliocentric", model, … }
 //                model "meeus-moon" | "meeus-sun" : formules de js/ephemeris.js (position géocentrique)
 //                model "inverse", of: "sun" : position = opposé de celle d'un autre corps (la Terre vue du Soleil)
-//                model "kepler" : éléments orbitaux autour de `around` (ecliptique J2000) : semiMajorAxisKm, eccentricity, inclinationDeg, nodeDeg, argPerigeeDeg, meanAnomalyDeg à l'époque epochD2000 (jours depuis J2000), periodDays
-//   appearance { kind: "earth" | "painted" (painter) | "star" | "sphere" | "comet" (tail), color … }, orientation: "tidal-lock", trace { fullOrbit | pastDays, futureDays, closeLoop, color }, dot { color, minDistanceUnits }, label { text, metricText, minDistanceUnits | minDistanceRadii },
+//                model "kepler" : éléments orbitaux autour de `around` (ecliptique J2000, ou, avec `planeOf: true`, par rapport à l'ÉQUATEUR de la planète centrale : les lunes) : semiMajorAxisKm, eccentricity, inclinationDeg, nodeDeg, argPerigeeDeg, meanAnomalyDeg à l'époque epochD2000 (jours depuis J2000), periodDays
+//   appearance { kind: "earth" | "painted" (painter) | "star" | "sphere" | "comet" (tail), color … }, orientation: "tidal-lock" (une lune tourne en bloc : même face vers sa planète), rotation { poleRaDeg, poleDecDeg, w0Deg, rateDegPerDay } (éléments IAU), rings { innerKm, outerKm, color, opacity } (anneaux dans le plan équatorial), showWithinUnits (une lune n'est dessinée que si la caméra est à moins de N unités de sa planète), appearance.texture (carte équirectangulaire du dossier, chargée à l'approche), trace { fullOrbit | pastDays, futureDays, closeLoop, color }, dot { color, minDistanceUnits }, label { text, metricText, minDistanceUnits | minDistanceRadii },
 //   thirdBody : true = son attraction agit sur les engins (marée, voir ephThirdBody), info : sa distance est écrite dans l'info, menu { order, icon, mode | view { distanceUnits, text } } : entrée du sélecteur de vues.
 export const BODY = {
   get(id) { return typeof FLIGHT_OBJECTS !== 'undefined' && FLIGHT_OBJECTS[id] && FLIGHT_OBJECTS[id].kind === 'body' ? FLIGHT_OBJECTS[id] : null; },
@@ -25,7 +25,7 @@ export const BODY = {
     if (m.model === 'meeus-moon') return EPH.moon(D).pos;
     if (m.model === 'meeus-sun') return EPH.sun(D);
     if (m.model === 'inverse') return this.geo(m.of, D).map(c => -c);
-    if (m.model === 'kepler') return this.kepler(m, D);
+    if (m.model === 'kepler') return this.kepler(m, D, undefined, m.planeOf ? this.planeFrame(b.around) : null);
     throw new Error('astre « ' + id + ' » : modèle de mouvement inconnu « ' + m.model + ' »');
   },
   // position géocentrique [x, y, z] (m) : la Terre est l'origine ; un astre « géocentrique » (Lune, Soleil) donne directement sa position ; un astre « héliocentrique » s'ajoute à celle de son corps central
@@ -35,18 +35,26 @@ export const BODY = {
     const p = this.geo(b.around, D); return [p[0] + r[0], p[1] + r[1], p[2] + r[2]];
   },
   // éléments képlériens → position relative (ecliptique J2000 → équatorial → axes de la scène)
-  kepler(m, D, Eover) {
+  // repère de l'équateur d'une planète (pour les orbites de ses lunes) en coordonnées écliptiques : z = pôle nord de la planète (rotation.poleRaDeg / poleDecDeg, J2000), x = nœud ascendant de l'équateur sur l'écliptique, y = z × x
+  planeFrame(parentId) {
+    const r = this.get(parentId).rotation, R = Math.PI / 180, a = r.poleRaDeg * R, d = r.poleDecDeg * R, eps = EPH.EPS, px = Math.cos(d) * Math.cos(a), py = Math.cos(d) * Math.sin(a), pz = Math.sin(d);
+    const fz = [px, py * Math.cos(eps) + pz * Math.sin(eps), -py * Math.sin(eps) + pz * Math.cos(eps)], n = Math.hypot(fz[0], fz[1]), fx = [-fz[1] / n, fz[0] / n, 0], fy = [fz[1] * fx[2] - fz[2] * fx[1], fz[2] * fx[0] - fz[0] * fx[2], fz[0] * fx[1] - fz[1] * fx[0]];
+    return { fx, fy, fz };
+  },
+  // F (facultatif) : repère de référence des éléments (planeFrame d'une planète : inclinaison et nœud comptés par rapport à son équateur) ; sans F : écliptique J2000
+  kepler(m, D, Eover, F) {
     const R = Math.PI / 180, a = m.semiMajorAxisKm * 1000, e = m.eccentricity, M = m.meanAnomalyDeg * R + 2 * Math.PI / m.periodDays * (D - (m.epochD2000 || 0));
     let E = Eover != null ? Eover : (() => { const Mn = ((M % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI); let x = Mn + e * Math.sin(Mn) / (1 - Math.sin(Mn + e) + Math.sin(Mn)); if (!isFinite(x)) x = e > 0.8 ? Math.PI : Mn; for (let i = 0; i < 60; i++) { const d = (x - e * Math.sin(x) - Mn) / (1 - e * Math.cos(x)); x -= d; if (Math.abs(d) < 1e-13) break; } return x; })();
     const xp = a * (Math.cos(E) - e), yp = a * Math.sqrt(1 - e * e) * Math.sin(E), O = m.nodeDeg * R, w = m.argPerigeeDeg * R, i = m.inclinationDeg * R, co = Math.cos(O), so = Math.sin(O), cw = Math.cos(w), sw = Math.sin(w), ci = Math.cos(i), si = Math.sin(i);
-    const X = xp * (co * cw - so * sw * ci) - yp * (co * sw + so * cw * ci), Y = xp * (so * cw + co * sw * ci) - yp * (so * sw - co * cw * ci), Z = xp * sw * si + yp * cw * si, eps = EPH.EPS;
+    let X = xp * (co * cw - so * sw * ci) - yp * (co * sw + so * cw * ci), Y = xp * (so * cw + co * sw * ci) - yp * (so * sw - co * cw * ci), Z = xp * sw * si + yp * cw * si;
+    const eps = EPH.EPS; if (F) { const x = X, y = Y, z = Z; X = x * F.fx[0] + y * F.fy[0] + z * F.fz[0]; Y = x * F.fx[1] + y * F.fy[1] + z * F.fz[1]; Z = x * F.fx[2] + y * F.fy[2] + z * F.fz[2]; }
     const Ye = Y * Math.cos(eps) - Z * Math.sin(eps), Ze = Y * Math.sin(eps) + Z * Math.cos(eps);
     return [X, Ze, -Ye];
   },
   // points de l'orbite complète relativement au corps central (n + 1 points) : par anomalie excentrique pour un modèle képlérien (régulier même pour une comète), par le temps pour les autres (la Terre : une année)
   orbitPoints(id, D, n) {
     const b = this.get(id), m = b.motion, out = [];
-    if (m.model === 'kepler') for (let k = 0; k <= n; k++) out.push(this.kepler(m, D, 2 * Math.PI * k / n));
+    if (m.model === 'kepler') for (let k = 0; k <= n; k++) out.push(this.kepler(m, D, 2 * Math.PI * k / n, m.planeOf ? this.planeFrame(b.around) : null));
     else for (let k = 0; k <= n; k++) out.push(this.rel(id, D + k * m.periodDays / n));
     return out;
   },

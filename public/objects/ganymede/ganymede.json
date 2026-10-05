@@ -1,0 +1,66 @@
+{
+  "kind": "body",
+  "displayPriority": 1,
+  "bodyType": "moon",
+  "name": "Ganymède",
+  "radiusKm": 2634.1,
+  "massKg": 1.4819e+23,
+  "around": "jupiter",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "planeOf": true,
+    "semiMajorAxisKm": 1070412,
+    "eccentricity": 0.0013,
+    "inclinationDeg": 0.2,
+    "nodeDeg": 188,
+    "argPerigeeDeg": 92,
+    "meanAnomalyDeg": 284,
+    "epochD2000": 0,
+    "periodDays": 7.154553,
+    "_note": "Inclinaison et nœud comptés par rapport à l’ÉQUATEUR de la planète (planeOf) ; a, e, i, période de mémoire (à vérifier) ; nœud, périastre et position de départ sont ILLUSTRATIFS (la vraie position de la lune à une date donnée n’est pas modélisée)."
+  },
+  "appearance": {
+    "kind": "textured",
+    "texture": "ganymede.jpg",
+    "color": "#8f8a82"
+  },
+  "orientation": "tidal-lock",
+  "showWithinUnits": 5904,
+  "trace": {
+    "fullOrbit": true,
+    "color": "#6f7a8a"
+  },
+  "dot": {
+    "color": "#cfd6e0",
+    "minDistanceUnits": 0,
+    "hideBelowUnits": 12.38967
+  },
+  "label": {
+    "text": "Ganymède",
+    "metricText": "Ganymède · Ø {diameterKm} km",
+    "minDistanceRadii": 6
+  },
+  "menu": {
+    "order": 6.04,
+    "icon": "⚪",
+    "view": {
+      "distanceUnits": 2.47793,
+      "text": "Vue de Ganymède, lune de Jupiter : même face toujours tournée vers sa planète"
+    }
+  },
+  "card": {
+    "_note": "Données ÉCRITES DE MÉMOIRE (à vérifier) : éléments orbitaux moyens J2000, pôle et rotation IAU, rayon, masse, faits de la fiche. Carte dessinée et fiche fabriquées par tools/make-planets.mjs (aplats, pas une photo). Diamètre, masse, gravité, jour et année de la fiche sont CALCULÉS d'après ce JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Particularité",
+        "value": "la plus grande lune du système solaire (plus grosse que Mercure)"
+      },
+      {
+        "label": "Champ magnétique",
+        "value": "seule lune qui en a un propre"
+      }
+    ]
+  }
+}

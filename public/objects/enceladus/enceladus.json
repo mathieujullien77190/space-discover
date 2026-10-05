@@ -1,0 +1,70 @@
+{
+  "kind": "body",
+  "displayPriority": 1,
+  "bodyType": "moon",
+  "name": "Encelade",
+  "radiusKm": 252.1,
+  "massKg": 108000000000000000000,
+  "around": "saturn",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "planeOf": true,
+    "semiMajorAxisKm": 238042,
+    "eccentricity": 0.0047,
+    "inclinationDeg": 0.01,
+    "nodeDeg": 16,
+    "argPerigeeDeg": 184,
+    "meanAnomalyDeg": 208,
+    "epochD2000": 0,
+    "periodDays": 1.370218,
+    "_note": "Inclinaison et nœud comptés par rapport à l’ÉQUATEUR de la planète (planeOf) ; a, e, i, période de mémoire (à vérifier) ; nœud, périastre et position de départ sont ILLUSTRATIFS (la vraie position de la lune à une date donnée n’est pas modélisée)."
+  },
+  "appearance": {
+    "kind": "textured",
+    "texture": "enceladus.jpg",
+    "color": "#f4f7fa"
+  },
+  "orientation": "tidal-lock",
+  "showWithinUnits": 11166,
+  "trace": {
+    "fullOrbit": true,
+    "color": "#6f7a8a"
+  },
+  "dot": {
+    "color": "#cfd6e0",
+    "minDistanceUnits": 0,
+    "hideBelowUnits": 1.18577
+  },
+  "label": {
+    "text": "Encelade",
+    "metricText": "Encelade · Ø {diameterKm} km",
+    "minDistanceRadii": 6
+  },
+  "menu": {
+    "order": 6.08,
+    "icon": "⚪",
+    "view": {
+      "distanceUnits": 0.23715,
+      "text": "Vue de Encelade, lune de Saturne : même face toujours tournée vers sa planète"
+    }
+  },
+  "card": {
+    "_note": "Données ÉCRITES DE MÉMOIRE (à vérifier) : éléments orbitaux moyens J2000, pôle et rotation IAU, rayon, masse, faits de la fiche. Carte dessinée et fiche fabriquées par tools/make-planets.mjs (aplats, pas une photo). Diamètre, masse, gravité, jour et année de la fiche sont CALCULÉS d'après ce JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Particularité",
+        "value": "geysers d’eau au pôle sud : ils alimentent l’anneau E"
+      },
+      {
+        "label": "Surface",
+        "value": "la plus brillante du système solaire (glace fraîche)"
+      },
+      {
+        "label": "Intérieur",
+        "value": "océan liquide sous la glace"
+      }
+    ]
+  }
+}

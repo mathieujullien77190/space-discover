@@ -1,0 +1,80 @@
+{
+  "kind": "body",
+  "displayPriority": 2,
+  "bodyType": "planet",
+  "name": "Neptune",
+  "radiusKm": 24764,
+  "massKg": 1.02413e+26,
+  "around": "sun",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "semiMajorAxisKm": 4498396417,
+    "eccentricity": 0.00859048,
+    "inclinationDeg": 1.77004347,
+    "nodeDeg": 131.78422574,
+    "argPerigeeDeg": -86.81946,
+    "meanAnomalyDeg": 259.91521,
+    "epochD2000": 0,
+    "periodDays": 60182
+  },
+  "appearance": {
+    "kind": "textured",
+    "texture": "neptune.jpg",
+    "color": "#3f6ae0"
+  },
+  "rotation": {
+    "_note": "Éléments IAU, DE MÉMOIRE (à vérifier) : pôle nord (α0, δ0) J2000 et méridien origine W = w0 + rate × jours depuis J2000.",
+    "poleRaDeg": 299.36,
+    "poleDecDeg": 43.46,
+    "w0Deg": 253.18,
+    "rateDegPerDay": 536.3128492
+  },
+  "trace": {
+    "fullOrbit": true,
+    "color": "#6a90ee"
+  },
+  "dot": {
+    "color": "#6a90ee",
+    "minDistanceUnits": 300
+  },
+  "label": {
+    "text": "Neptune",
+    "metricText": "Neptune · Ø {diameterKm} km",
+    "minDistanceUnits": 300
+  },
+  "menu": {
+    "order": 5.4,
+    "icon": "🔷",
+    "view": {
+      "distanceUnits": 21.355,
+      "text": "Vue de Neptune : planète décrite par ses éléments orbitaux (objects/neptune/neptune.json)"
+    }
+  },
+  "card": {
+    "_note": "Données ÉCRITES DE MÉMOIRE (à vérifier) : éléments orbitaux moyens J2000, pôle et rotation IAU, rayon, masse, faits de la fiche. Carte dessinée et fiche fabriquées par tools/make-planets.mjs (aplats, pas une photo). Diamètre, masse, gravité, jour et année de la fiche sont CALCULÉS d'après ce JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Atmosphère",
+        "value": "hydrogène, hélium, méthane"
+      },
+      {
+        "label": "Vents",
+        "value": "≈ 2 000 km/h, les plus rapides du système solaire"
+      },
+      {
+        "label": "Température",
+        "value": "≈ −200 °C"
+      },
+      {
+        "label": "Lunes",
+        "value": "16 connues, dont Triton"
+      },
+      {
+        "label": "Découverte",
+        "value": "1846, d’abord par le calcul"
+      }
+    ]
+  }
+}

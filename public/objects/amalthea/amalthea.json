@@ -1,0 +1,66 @@
+{
+  "kind": "body",
+  "displayPriority": 1,
+  "bodyType": "moon",
+  "name": "Amalthée",
+  "radiusKm": 83.5,
+  "massKg": 2080000000000000000,
+  "around": "jupiter",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "planeOf": true,
+    "semiMajorAxisKm": 181366,
+    "eccentricity": 0.0032,
+    "inclinationDeg": 0.37,
+    "nodeDeg": 282,
+    "argPerigeeDeg": 318,
+    "meanAnomalyDeg": 66,
+    "epochD2000": 0,
+    "periodDays": 0.498179,
+    "_note": "Inclinaison et nœud comptés par rapport à l’ÉQUATEUR de la planète (planeOf) ; a, e, i, période de mémoire (à vérifier) ; nœud, périastre et position de départ sont ILLUSTRATIFS (la vraie position de la lune à une date donnée n’est pas modélisée)."
+  },
+  "appearance": {
+    "kind": "textured",
+    "texture": "amalthea.jpg",
+    "color": "#a2492f"
+  },
+  "orientation": "tidal-lock",
+  "showWithinUnits": 5904,
+  "trace": {
+    "fullOrbit": true,
+    "color": "#6f7a8a"
+  },
+  "dot": {
+    "color": "#cfd6e0",
+    "minDistanceUnits": 0,
+    "hideBelowUnits": 0.39275
+  },
+  "label": {
+    "text": "Amalthée",
+    "metricText": "Amalthée · Ø {diameterKm} km",
+    "minDistanceRadii": 6
+  },
+  "menu": {
+    "order": 6.06,
+    "icon": "⚪",
+    "view": {
+      "distanceUnits": 0.07855,
+      "text": "Vue de Amalthée, lune de Jupiter : même face toujours tournée vers sa planète"
+    }
+  },
+  "card": {
+    "_note": "Données ÉCRITES DE MÉMOIRE (à vérifier) : éléments orbitaux moyens J2000, pôle et rotation IAU, rayon, masse, faits de la fiche. Carte dessinée et fiche fabriquées par tools/make-planets.mjs (aplats, pas une photo). Diamètre, masse, gravité, jour et année de la fiche sont CALCULÉS d'après ce JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Forme",
+        "value": "irrégulière, 250 × 146 × 128 km"
+      },
+      {
+        "label": "Couleur",
+        "value": "rougeâtre, l’une des plus rouges du système solaire"
+      }
+    ]
+  }
+}

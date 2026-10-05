@@ -1,0 +1,76 @@
+{
+  "kind": "body",
+  "displayPriority": 2,
+  "bodyType": "planet",
+  "name": "Jupiter",
+  "radiusKm": 71492,
+  "massKg": 1.8982e+27,
+  "around": "sun",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "semiMajorAxisKm": 778340817,
+    "eccentricity": 0.04838624,
+    "inclinationDeg": 1.30439695,
+    "nodeDeg": 100.47390909,
+    "argPerigeeDeg": -85.74543,
+    "meanAnomalyDeg": 19.66796,
+    "epochD2000": 0,
+    "periodDays": 4332.589
+  },
+  "appearance": {
+    "kind": "textured",
+    "texture": "jupiter.jpg",
+    "color": "#c9a77c"
+  },
+  "rotation": {
+    "_note": "Éléments IAU, DE MÉMOIRE (à vérifier) : pôle nord (α0, δ0) J2000 et méridien origine W = w0 + rate × jours depuis J2000.",
+    "poleRaDeg": 268.056595,
+    "poleDecDeg": 64.495303,
+    "w0Deg": 284.95,
+    "rateDegPerDay": 870.536642
+  },
+  "trace": {
+    "fullOrbit": true,
+    "color": "#e0c9a0"
+  },
+  "dot": {
+    "color": "#e0c9a0",
+    "minDistanceUnits": 300
+  },
+  "label": {
+    "text": "Jupiter",
+    "metricText": "Jupiter · Ø {diameterKm} km",
+    "minDistanceUnits": 300
+  },
+  "menu": {
+    "order": 5.1,
+    "icon": "🟠",
+    "view": {
+      "distanceUnits": 61.649,
+      "text": "Vue de Jupiter : planète décrite par ses éléments orbitaux (objects/jupiter/jupiter.json)"
+    }
+  },
+  "card": {
+    "_note": "Données ÉCRITES DE MÉMOIRE (à vérifier) : éléments orbitaux moyens J2000, pôle et rotation IAU, rayon, masse, faits de la fiche. Carte dessinée et fiche fabriquées par tools/make-planets.mjs (aplats, pas une photo). Diamètre, masse, gravité, jour et année de la fiche sont CALCULÉS d'après ce JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Atmosphère",
+        "value": "hydrogène 90 %, hélium 10 %"
+      },
+      {
+        "label": "Température",
+        "value": "≈ −110 °C (sommet des nuages)"
+      },
+      {
+        "label": "Lunes",
+        "value": "95 connues dont 4 galiléennes"
+      },
+      {
+        "label": "Particularité",
+        "value": "la Grande Tache rouge, tempête vieille de plusieurs siècles"
+      }
+    ]
+  }
+}

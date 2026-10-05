@@ -1,0 +1,70 @@
+{
+  "kind": "body",
+  "displayPriority": 1,
+  "bodyType": "moon",
+  "name": "Europe",
+  "radiusKm": 1560.8,
+  "massKg": 4.7998e+22,
+  "around": "jupiter",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "planeOf": true,
+    "semiMajorAxisKm": 671034,
+    "eccentricity": 0.0094,
+    "inclinationDeg": 0.47,
+    "nodeDeg": 141,
+    "argPerigeeDeg": 339,
+    "meanAnomalyDeg": 213,
+    "epochD2000": 0,
+    "periodDays": 3.551181,
+    "_note": "Inclinaison et nœud comptés par rapport à l’ÉQUATEUR de la planète (planeOf) ; a, e, i, période de mémoire (à vérifier) ; nœud, périastre et position de départ sont ILLUSTRATIFS (la vraie position de la lune à une date donnée n’est pas modélisée)."
+  },
+  "appearance": {
+    "kind": "textured",
+    "texture": "europa.jpg",
+    "color": "#e9e4d8"
+  },
+  "orientation": "tidal-lock",
+  "showWithinUnits": 5904,
+  "trace": {
+    "fullOrbit": true,
+    "color": "#6f7a8a"
+  },
+  "dot": {
+    "color": "#cfd6e0",
+    "minDistanceUnits": 0,
+    "hideBelowUnits": 7.34133
+  },
+  "label": {
+    "text": "Europe",
+    "metricText": "Europe · Ø {diameterKm} km",
+    "minDistanceRadii": 6
+  },
+  "menu": {
+    "order": 6.03,
+    "icon": "⚪",
+    "view": {
+      "distanceUnits": 1.46827,
+      "text": "Vue de Europe, lune de Jupiter : même face toujours tournée vers sa planète"
+    }
+  },
+  "card": {
+    "_note": "Données ÉCRITES DE MÉMOIRE (à vérifier) : éléments orbitaux moyens J2000, pôle et rotation IAU, rayon, masse, faits de la fiche. Carte dessinée et fiche fabriquées par tools/make-planets.mjs (aplats, pas une photo). Diamètre, masse, gravité, jour et année de la fiche sont CALCULÉS d'après ce JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Particularité",
+        "value": "océan d’eau liquide sous une croûte de glace"
+      },
+      {
+        "label": "Surface",
+        "value": "glace lisse striée de fractures brunes"
+      },
+      {
+        "label": "Intérêt",
+        "value": "candidate à la vie hors de la Terre"
+      }
+    ]
+  }
+}

@@ -34,7 +34,9 @@ export const bodyCard = id => {
   if (b.massKg) { const mu = b.muM3S2 || G * b.massKg, g = mu / Math.pow(b.radiusKm * 1000, 2); facts.push({ label: 'Masse', value: sci(b.massKg) + ' kg' }, { label: 'Gravité en surface', value: fr(g, g < 0.01 ? 4 : 2) + ' m/s²' }); }
   const spin = b.rotationRadS ? 2 * Math.PI / b.rotationRadS / 86400 : b.rotation ? 360 / b.rotation.rateDegPerDay : 0;
   if (spin) facts.push({ label: 'Jour (rotation)', value: fmtDuration(spin) });
-  const m = b.motion || {};
+  const m = b.motion || {}, parent = b.around && b.around !== 'sun' ? BODY.get(b.around) : null;
+  if (b.orientation === 'tidal-lock' && m.periodDays) facts.push({ label: 'Jour (rotation)', value: fmtDuration(m.periodDays) + ' (synchrone)' });
+  if (parent && m.semiMajorAxisKm) facts.push({ label: 'Distance à ' + parent.name, value: fr(m.semiMajorAxisKm) + ' km' }, { label: 'Période orbitale', value: fmtDuration(m.periodDays) });
   if (m.periodDays && b.around === 'sun') facts.push({ label: b.bodyType === 'comet' ? 'Période orbitale' : 'Année', value: fmtDuration(m.periodDays) });
   if (m.semiMajorAxisKm && b.around === 'sun') facts.push({ label: b.bodyType === 'comet' ? 'Distance moyenne au Soleil' : 'Distance au Soleil', value: fr(m.semiMajorAxisKm / 149597870.7, 2) + ' UA' });
   for (const f of b.card.facts || []) facts.push({ label: f.label, value: f.value });

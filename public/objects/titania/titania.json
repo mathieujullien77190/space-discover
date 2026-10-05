@@ -1,0 +1,66 @@
+{
+  "kind": "body",
+  "displayPriority": 1,
+  "bodyType": "moon",
+  "name": "Titania",
+  "radiusKm": 788.4,
+  "massKg": 3.4e+21,
+  "around": "uranus",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "planeOf": true,
+    "semiMajorAxisKm": 436300,
+    "eccentricity": 0.0011,
+    "inclinationDeg": 0.08,
+    "nodeDeg": 79,
+    "argPerigeeDeg": 121,
+    "meanAnomalyDeg": 127,
+    "epochD2000": 0,
+    "periodDays": 8.705872,
+    "_note": "Inclinaison et nœud comptés par rapport à l’ÉQUATEUR de la planète (planeOf) ; a, e, i, période de mémoire (à vérifier) ; nœud, périastre et position de départ sont ILLUSTRATIFS (la vraie position de la lune à une date donnée n’est pas modélisée)."
+  },
+  "appearance": {
+    "kind": "textured",
+    "texture": "titania.jpg",
+    "color": "#a7a29b"
+  },
+  "orientation": "tidal-lock",
+  "showWithinUnits": 1830,
+  "trace": {
+    "fullOrbit": true,
+    "color": "#6f7a8a"
+  },
+  "dot": {
+    "color": "#cfd6e0",
+    "minDistanceUnits": 0,
+    "hideBelowUnits": 3.70829
+  },
+  "label": {
+    "text": "Titania",
+    "metricText": "Titania · Ø {diameterKm} km",
+    "minDistanceRadii": 6
+  },
+  "menu": {
+    "order": 6.17,
+    "icon": "⚪",
+    "view": {
+      "distanceUnits": 0.74166,
+      "text": "Vue de Titania, lune de Uranus : même face toujours tournée vers sa planète"
+    }
+  },
+  "card": {
+    "_note": "Données ÉCRITES DE MÉMOIRE (à vérifier) : éléments orbitaux moyens J2000, pôle et rotation IAU, rayon, masse, faits de la fiche. Carte dessinée et fiche fabriquées par tools/make-planets.mjs (aplats, pas une photo). Diamètre, masse, gravité, jour et année de la fiche sont CALCULÉS d'après ce JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Particularité",
+        "value": "la plus grande lune d’Uranus"
+      },
+      {
+        "label": "Surface",
+        "value": "cratères et grands canyons"
+      }
+    ]
+  }
+}

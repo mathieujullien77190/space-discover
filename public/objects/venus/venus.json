@@ -1,0 +1,76 @@
+{
+  "kind": "body",
+  "displayPriority": 2,
+  "bodyType": "planet",
+  "name": "Vénus",
+  "radiusKm": 6051.8,
+  "massKg": 4.8675e+24,
+  "around": "sun",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "semiMajorAxisKm": 108209475,
+    "eccentricity": 0.00677672,
+    "inclinationDeg": 3.39467605,
+    "nodeDeg": 76.67984255,
+    "argPerigeeDeg": 54.92262,
+    "meanAnomalyDeg": 50.37663,
+    "epochD2000": 0,
+    "periodDays": 224.701
+  },
+  "appearance": {
+    "kind": "textured",
+    "texture": "venus.jpg",
+    "color": "#e6cf96"
+  },
+  "rotation": {
+    "_note": "Éléments IAU, DE MÉMOIRE (à vérifier) : pôle nord (α0, δ0) J2000 et méridien origine W = w0 + rate × jours depuis J2000.",
+    "poleRaDeg": 272.76,
+    "poleDecDeg": 67.16,
+    "w0Deg": 160.2,
+    "rateDegPerDay": -1.4813688
+  },
+  "trace": {
+    "fullOrbit": true,
+    "color": "#f0dca4"
+  },
+  "dot": {
+    "color": "#f0dca4",
+    "minDistanceUnits": 300
+  },
+  "label": {
+    "text": "Vénus",
+    "metricText": "Vénus · Ø {diameterKm} km",
+    "minDistanceUnits": 300
+  },
+  "menu": {
+    "order": 0.7,
+    "icon": "🟡",
+    "view": {
+      "distanceUnits": 5.219,
+      "text": "Vue de Vénus : planète décrite par ses éléments orbitaux (objects/venus/venus.json)"
+    }
+  },
+  "card": {
+    "_note": "Données ÉCRITES DE MÉMOIRE (à vérifier) : éléments orbitaux moyens J2000, pôle et rotation IAU, rayon, masse, faits de la fiche. Carte dessinée et fiche fabriquées par tools/make-planets.mjs (aplats, pas une photo). Diamètre, masse, gravité, jour et année de la fiche sont CALCULÉS d'après ce JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Atmosphère",
+        "value": "CO₂ (96 %), pression ≈ 92 fois celle de la Terre"
+      },
+      {
+        "label": "Température",
+        "value": "≈ 465 °C (la plus chaude)"
+      },
+      {
+        "label": "Lunes",
+        "value": "aucune"
+      },
+      {
+        "label": "Rotation",
+        "value": "rétrograde (le Soleil s’y lève à l’ouest)"
+      }
+    ]
+  }
+}

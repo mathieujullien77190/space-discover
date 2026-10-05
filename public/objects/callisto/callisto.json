@@ -1,0 +1,66 @@
+{
+  "kind": "body",
+  "displayPriority": 1,
+  "bodyType": "moon",
+  "name": "Callisto",
+  "radiusKm": 2410.3,
+  "massKg": 1.0759e+23,
+  "around": "jupiter",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "planeOf": true,
+    "semiMajorAxisKm": 1882709,
+    "eccentricity": 0.0074,
+    "inclinationDeg": 0.19,
+    "nodeDeg": 235,
+    "argPerigeeDeg": 205,
+    "meanAnomalyDeg": 355,
+    "epochD2000": 0,
+    "periodDays": 16.689018,
+    "_note": "Inclinaison et nœud comptés par rapport à l’ÉQUATEUR de la planète (planeOf) ; a, e, i, période de mémoire (à vérifier) ; nœud, périastre et position de départ sont ILLUSTRATIFS (la vraie position de la lune à une date donnée n’est pas modélisée)."
+  },
+  "appearance": {
+    "kind": "textured",
+    "texture": "callisto.jpg",
+    "color": "#5e564e"
+  },
+  "orientation": "tidal-lock",
+  "showWithinUnits": 5904,
+  "trace": {
+    "fullOrbit": true,
+    "color": "#6f7a8a"
+  },
+  "dot": {
+    "color": "#cfd6e0",
+    "minDistanceUnits": 0,
+    "hideBelowUnits": 11.33701
+  },
+  "label": {
+    "text": "Callisto",
+    "metricText": "Callisto · Ø {diameterKm} km",
+    "minDistanceRadii": 6
+  },
+  "menu": {
+    "order": 6.05,
+    "icon": "⚪",
+    "view": {
+      "distanceUnits": 2.2674,
+      "text": "Vue de Callisto, lune de Jupiter : même face toujours tournée vers sa planète"
+    }
+  },
+  "card": {
+    "_note": "Données ÉCRITES DE MÉMOIRE (à vérifier) : éléments orbitaux moyens J2000, pôle et rotation IAU, rayon, masse, faits de la fiche. Carte dessinée et fiche fabriquées par tools/make-planets.mjs (aplats, pas une photo). Diamètre, masse, gravité, jour et année de la fiche sont CALCULÉS d'après ce JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Surface",
+        "value": "la plus cratérisée du système solaire, vieille de 4 milliards d’années"
+      },
+      {
+        "label": "Intérieur",
+        "value": "océan possible, sous la glace"
+      }
+    ]
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "kind": "body",
+  "displayPriority": 1,
+  "bodyType": "moon",
+  "name": "Titan",
+  "radiusKm": 2574.7,
+  "massKg": 1.3452e+23,
+  "around": "saturn",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "planeOf": true,
+    "semiMajorAxisKm": 1221870,
+    "eccentricity": 0.0288,
+    "inclinationDeg": 0.33,
+    "nodeDeg": 204,
+    "argPerigeeDeg": 276,
+    "meanAnomalyDeg": 132,
+    "epochD2000": 0,
+    "periodDays": 15.945421,
+    "_note": "Inclinaison et nœud comptés par rapport à l’ÉQUATEUR de la planète (planeOf) ; a, e, i, période de mémoire (à vérifier) ; nœud, périastre et position de départ sont ILLUSTRATIFS (la vraie position de la lune à une date donnée n’est pas modélisée)."
+  },
+  "appearance": {
+    "kind": "textured",
+    "texture": "titan.jpg",
+    "color": "#d99a3c"
+  },
+  "orientation": "tidal-lock",
+  "showWithinUnits": 11166,
+  "trace": {
+    "fullOrbit": true,
+    "color": "#6f7a8a"
+  },
+  "dot": {
+    "color": "#cfd6e0",
+    "minDistanceUnits": 0,
+    "hideBelowUnits": 12.11028
+  },
+  "label": {
+    "text": "Titan",
+    "metricText": "Titan · Ø {diameterKm} km",
+    "minDistanceRadii": 6
+  },
+  "menu": {
+    "order": 6.12,
+    "icon": "⚪",
+    "view": {
+      "distanceUnits": 2.42206,
+      "text": "Vue de Titan, lune de Saturne : même face toujours tournée vers sa planète"
+    }
+  },
+  "card": {
+    "_note": "Données ÉCRITES DE MÉMOIRE (à vérifier) : éléments orbitaux moyens J2000, pôle et rotation IAU, rayon, masse, faits de la fiche. Carte dessinée et fiche fabriquées par tools/make-planets.mjs (aplats, pas une photo). Diamètre, masse, gravité, jour et année de la fiche sont CALCULÉS d'après ce JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Atmosphère",
+        "value": "azote, plus dense que celle de la Terre (1,5 bar)"
+      },
+      {
+        "label": "Surface",
+        "value": "lacs et rivières de méthane et d’éthane liquides"
+      },
+      {
+        "label": "Particularité",
+        "value": "seule lune avec une vraie atmosphère ; sonde Huygens posée en 2005"
+      }
+    ]
+  }
+}

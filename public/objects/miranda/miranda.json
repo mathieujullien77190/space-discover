@@ -1,0 +1,62 @@
+{
+  "kind": "body",
+  "displayPriority": 1,
+  "bodyType": "moon",
+  "name": "Miranda",
+  "radiusKm": 235.8,
+  "massKg": 64000000000000000000,
+  "around": "uranus",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "planeOf": true,
+    "semiMajorAxisKm": 129900,
+    "eccentricity": 0.0013,
+    "inclinationDeg": 4.34,
+    "nodeDeg": 298,
+    "argPerigeeDeg": 142,
+    "meanAnomalyDeg": 274,
+    "epochD2000": 0,
+    "periodDays": 1.413479,
+    "_note": "Inclinaison et nœud comptés par rapport à l’ÉQUATEUR de la planète (planeOf) ; a, e, i, période de mémoire (à vérifier) ; nœud, périastre et position de départ sont ILLUSTRATIFS (la vraie position de la lune à une date donnée n’est pas modélisée)."
+  },
+  "appearance": {
+    "kind": "textured",
+    "texture": "miranda.jpg",
+    "color": "#a9a6a1"
+  },
+  "orientation": "tidal-lock",
+  "showWithinUnits": 1830,
+  "trace": {
+    "fullOrbit": true,
+    "color": "#6f7a8a"
+  },
+  "dot": {
+    "color": "#cfd6e0",
+    "minDistanceUnits": 0,
+    "hideBelowUnits": 1.1091
+  },
+  "label": {
+    "text": "Miranda",
+    "metricText": "Miranda · Ø {diameterKm} km",
+    "minDistanceRadii": 6
+  },
+  "menu": {
+    "order": 6.14,
+    "icon": "⚪",
+    "view": {
+      "distanceUnits": 0.22182,
+      "text": "Vue de Miranda, lune de Uranus : même face toujours tournée vers sa planète"
+    }
+  },
+  "card": {
+    "_note": "Données ÉCRITES DE MÉMOIRE (à vérifier) : éléments orbitaux moyens J2000, pôle et rotation IAU, rayon, masse, faits de la fiche. Carte dessinée et fiche fabriquées par tools/make-planets.mjs (aplats, pas une photo). Diamètre, masse, gravité, jour et année de la fiche sont CALCULÉS d'après ce JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Relief",
+        "value": "extrême : falaise de 20 km (Verona Rupes), terrains en « chevrons »"
+      }
+    ]
+  }
+}

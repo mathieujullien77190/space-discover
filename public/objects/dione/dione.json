@@ -1,0 +1,66 @@
+{
+  "kind": "body",
+  "displayPriority": 1,
+  "bodyType": "moon",
+  "name": "Dioné",
+  "radiusKm": 561.4,
+  "massKg": 1.095e+21,
+  "around": "saturn",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "planeOf": true,
+    "semiMajorAxisKm": 377415,
+    "eccentricity": 0.0022,
+    "inclinationDeg": 0,
+    "nodeDeg": 110,
+    "argPerigeeDeg": 50,
+    "meanAnomalyDeg": 350,
+    "epochD2000": 0,
+    "periodDays": 2.736915,
+    "_note": "Inclinaison et nœud comptés par rapport à l’ÉQUATEUR de la planète (planeOf) ; a, e, i, période de mémoire (à vérifier) ; nœud, périastre et position de départ sont ILLUSTRATIFS (la vraie position de la lune à une date donnée n’est pas modélisée)."
+  },
+  "appearance": {
+    "kind": "textured",
+    "texture": "dione.jpg",
+    "color": "#c9c7c2"
+  },
+  "orientation": "tidal-lock",
+  "showWithinUnits": 11166,
+  "trace": {
+    "fullOrbit": true,
+    "color": "#6f7a8a"
+  },
+  "dot": {
+    "color": "#cfd6e0",
+    "minDistanceUnits": 0,
+    "hideBelowUnits": 2.64058
+  },
+  "label": {
+    "text": "Dioné",
+    "metricText": "Dioné · Ø {diameterKm} km",
+    "minDistanceRadii": 6
+  },
+  "menu": {
+    "order": 6.1,
+    "icon": "⚪",
+    "view": {
+      "distanceUnits": 0.52812,
+      "text": "Vue de Dioné, lune de Saturne : même face toujours tournée vers sa planète"
+    }
+  },
+  "card": {
+    "_note": "Données ÉCRITES DE MÉMOIRE (à vérifier) : éléments orbitaux moyens J2000, pôle et rotation IAU, rayon, masse, faits de la fiche. Carte dessinée et fiche fabriquées par tools/make-planets.mjs (aplats, pas une photo). Diamètre, masse, gravité, jour et année de la fiche sont CALCULÉS d'après ce JSON.",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Surface",
+        "value": "cratères et falaises de glace claires (« traînées »)"
+      },
+      {
+        "label": "Orbite",
+        "value": "partage la sienne avec de petits compagnons"
+      }
+    ]
+  }
+}
