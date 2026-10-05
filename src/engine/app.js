@@ -15,6 +15,7 @@ import { STARS } from './data/stars.js';
 import { pickNearest } from './star-info.js';
 import { precessionQuaternion } from './precession.js';
 import { createMeteors } from './meteors.js';
+import { createPlanes } from './planes.js';
 import { createSunGlare } from './sun-glare.js';
 import { occludedBy } from './occlusion.js';
 import { createTerrainLayer } from './terrain-layer.js';
@@ -348,7 +349,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   // la Terre cache-t-elle le point P vu de la caméra ?
   // option « Infos étoiles » : un clic sur une étoile VISIBLE (pas masquée par la Terre, pas éteinte par le jour) la sélectionne : sa fiche (nom, constellation, descriptif) s'affiche (composant StarInfo) et un anneau jaune la repère
   const aimDir = new THREE.Vector3(), aimHit = new THREE.Vector3();
-  const precQ = new THREE.Quaternion(), meteors = createMeteors(scene); let meteorDark = false;
+  const precQ = new THREE.Quaternion(), meteors = createMeteors(scene), planes = createPlanes(scene); let meteorDark = false;   // étoiles filantes et avions : seulement de nuit, en vue depuis un observatoire
   let starInfoOn = false, starSel = -1; const starRing = overlay.label('', 'starring'); starRing.style.display = 'none';
   const starBins = STARS.map(s => starBin(s[2])), sv = new THREE.Vector3(), byBin = [];
   let hiddenByEarth;
@@ -596,6 +597,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     // ciel de l'observatoire : bleu le jour, noir étoilé la nuit (selon la hauteur du Soleil au-dessus de l'horizon de l'observatoire)
     if (obsView) { const se = tmpObs.copy(babs[STAR]).sub(obsPos).normalize().dot(obsSrc.radial), t = Math.max(0, Math.min(1, (se + 0.12) / 0.22)); obsDay = t * t * (3 - 2 * t); const ds = Math.max(0, Math.min(1, -se / STAR_DARK_SIN)), ts = 1 - ds * ds * (3 - 2 * ds); stars.userData.setDay(ts, OBS_STAR_DIM); meteorDark = ts < 0.5; skyOn = true; }   // les étoiles s'éteignent peu à peu au lever du jour (les plus faibles d'abord)   // le ciel n'est PAS une couleur de fond : c'est l'atmosphère (bleu le jour, orange au crépuscule, transparent la nuit) ; le jour les étoiles disparaissent
     else if (skyOn) { stars.userData.setDay(0); obsDay = 0; skyOn = false; meteorDark = false; }
+    planes.update({ dt, enabled: obsView && meteorDark && !!obsFrame, camera, R: camera.far * 0.45, up: obsFrame && obsFrame.up, east: obsFrame && obsFrame.east, north: obsFrame && obsFrame.north });   // avions de nuit (feu rouge + flash blanc)
     meteors.update({ dt, enabled: obsView && meteorDark && !!obsFrame, camera, R: camera.far * 0.45, up: obsFrame && obsFrame.up, east: obsFrame && obsFrame.east, north: obsFrame && obsFrame.north });   // étoiles filantes : vue depuis un observatoire, de nuit
     // marqueur de l'observatoire (point + nom) quand on le regarde depuis l'extérieur, du côté visible de la Terre
     if (obsId) { const show = !obsView && !realistic && cam.mode === 'earth'; obsDot.visible = show; let on = false; if (show) { earth.updateWorldMatrix(true, false); const f = obsFrame, pw = tmpObs.set(f.ground[0], f.ground[1], f.ground[2]).applyMatrix4(earth.matrixWorld), c0 = tmpObs2.setFromMatrixPosition(earth.matrixWorld), nw = pw.clone().sub(c0).normalize(), v = camera.position.clone().sub(pw); if (nw.dot(v) > 0.02 * v.length()) { pw.project(camera); on = pw.z < 1 && Math.abs(pw.x) < 1 && Math.abs(pw.y) < 1; if (on) obsLabel.style.transform = 'translate(' + ((pw.x + 1) / 2 * innerWidth + 8) + 'px,' + ((1 - pw.y) / 2 * innerHeight - 8) + 'px)'; } } obsLabel.style.display = on ? 'block' : 'none'; }
@@ -632,6 +634,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     setStarInfo: on => { starInfoOn = !!on; if (!starInfoOn) clearStar(); }, clearStar,
     _moonBright: () => (bodyObjs.moon && bodyObjs.moon.mesh && bodyObjs.moon.mesh.material.color ? bodyObjs.moon.mesh.material.color.r : 1),
     _moonBoost: () => (bodyObjs.moon && bodyObjs.moon.mesh ? bodyObjs.moon.mesh.scale.x / (bodyObjs.moon.baseScale || 1) : 1),
+    _planes: () => ({ active: planes.count(), total: planes.total() }),
+    _spawnPlane: () => (obsFrame ? planes.spawn(obsFrame.up, obsFrame.east, obsFrame.north) : false),
     _meteors: () => ({ active: meteors.count(), total: meteors.total() }),
     _spawnMeteor: () => (obsFrame ? meteors.spawn(obsFrame.up, obsFrame.east, obsFrame.north) : false),
     _starInfo: () => ({ on: starInfoOn, hip: starSel >= 0 ? STARS[starSel][4] : null, ring: starRing.style.display }),
@@ -652,7 +656,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
 
     dispose() {
       stopped = true; cancelAnimationFrame(raf); clearTimeout(solarTimer); disposers.forEach(d => d()); overlay.dispose();
-      terrain.dispose(); clouds.dispose(); capitals.dispose(); obsSites.dispose(); meteors.dispose(); constellations.dispose(); sunGlare.dispose();
+      terrain.dispose(); clouds.dispose(); capitals.dispose(); obsSites.dispose(); meteors.dispose(); planes.dispose(); constellations.dispose(); sunGlare.dispose();
       if (renderer.dispose) renderer.dispose();
     },
   };

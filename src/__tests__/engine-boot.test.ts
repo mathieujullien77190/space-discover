@@ -524,6 +524,9 @@ describe('createEngine (rendu factice)', () => {
     engine.setDate(Date.UTC(2026, 9, 5, 0, 0, 0)); for (let i = 0; i < 2; i++) engine._frame(performance.now() + 900 + i * 100)
     const night = engine._obs()
     expect(Math.max(...night.starOpacity)).toBeCloseTo(0.5, 1)                // toutes les étoiles deux fois moins lumineuses depuis l’observatoire
+    expect(engine._spawnPlane()).toBe(true)                                     // avions de nuit : on peut en lancer un depuis l’observatoire
+    engine._frame(performance.now() + 955); engine._frame(performance.now() + 970)
+    expect(engine._planes().total).toBeGreaterThan(0)
     expect(engine._spawnMeteor()).toBe(true)                                    // étoiles filantes : on peut en lancer une de nuit depuis l’observatoire
     engine._frame(performance.now() + 960); engine._frame(performance.now() + 980)
     expect(engine._meteors().total).toBeGreaterThan(0)
