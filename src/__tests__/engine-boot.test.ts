@@ -176,6 +176,36 @@ describe('createEngine (rendu factice)', () => {
     for (let i = 0; i < 6; i++) engine._frame(performance.now() + 9000 + i * 100)
     expect(label('Callisto')?.style.display).toBe('none')
   })
+  it('niveaux de détail : la Terre et les sphères d’astres s’allègent quand elles sont petites à l’écran', async () => {
+    await new Promise((r) => setTimeout(r, 450))
+    let t = 1000
+    const frames = (n: number) => { for (let i = 0; i < n; i++) engine._frame(performance.now() + (t += 100)) }
+    frames(4)
+    expect(engine._lod().earth).toBeGreaterThan(0)   // vue de départ : 512 × 256 suffit (au lieu du million de triangles)
+    engine.selectView('sun'); frames(4)
+    expect(engine._lod().earth).toBe(4)   // la Terre est un point
+    const far = engine._lod().bodies
+    expect(far.jupiter).toBe(-1)          // Jupiter fait moins d’un pixel : maillage masqué, son point lointain suffit
+    expect(far.moon).toBe(-1)
+    engine.selectView('jupiter'); frames(6)
+    const near = engine._lod().bodies
+    expect(near.jupiter).toBeLessThanOrEqual(1)   // de près (≈ 150 px de rayon) : géométrie fine ou moyenne, jamais masquée
+    expect(near.mars).toBe(-1)
+    engine.selectView('earth'); frames(4)
+    for (let i = 0; i < 30; i++) engine.nudge('d-', 15)   // on descend vers le sol
+    frames(30)
+    expect(engine._lod().earth).toBe(0)   // près du sol : 1024 × 512
+  })
+  it('résolution adaptative : baisse quand les images sont lentes, remonte quand elles sont rapides', () => {
+    let t = 5e6
+    expect(engine._lod().ratio).toBe(1)
+    for (let i = 0; i < 200; i++) engine._frame(t += 50)   // 20 images par seconde
+    const slow = engine._lod().ratio
+    expect(slow).toBeLessThan(1)
+    expect(slow).toBeGreaterThanOrEqual(0.75)
+    for (let i = 0; i < 2500; i++) engine._frame(t += 8)   // 125 images par seconde
+    expect(engine._lod().ratio).toBeGreaterThan(slow)
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)

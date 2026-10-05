@@ -37,7 +37,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   setBaseUrl(baseUrl);
   let renderer;
   try { renderer = createRenderer(canvas); } catch (e) { publish({ status: 'error', error: 'WebGL indisponible dans ce navigateur.' }); return null; }
-  renderer.setPixelRatio(Math.min((typeof devicePixelRatio === 'number' ? devicePixelRatio : 1) || 1, 2));
+  const maxRatio = Math.min((typeof devicePixelRatio === 'number' ? devicePixelRatio : 1) || 1, 2); let ratio = maxRatio;
+  renderer.setPixelRatio(ratio);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   const overlay = createOverlay(overlayHost), disposers = [];
 
@@ -45,6 +46,12 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const world = new THREE.Group(); scene.add(world);
   const inertial = new THREE.Group(); scene.add(inertial);
   const earth = buildEarth(renderer); world.add(earth);
+  // NIVEAUX DE DÉTAIL selon la taille à l'écran (en pixels de rayon) : la Terre (1 048 576 triangles !) et les ~35 sphères d'astres (9 000 triangles chacune) n'étaient pas allégées quand elles ne font que quelques pixels.
+  // Les géométries sont partagées (un cache par nombre de segments) ; une hystérésis (±15 %) évite de changer de niveau à chaque image.
+  const lodCache = {}, sphereLod = nx => lodCache[nx] || (lodCache[nx] = earthGeometry(nx, nx / 2));
+  const lodLevel = (px, cur, T) => { for (let i = 0; i < T.length; i++) if (px > T[i] * (cur <= i ? 0.85 : 1.15)) return i; return T.length; };
+  const EARTH_LOD = { T: [400, 100, 20, 5], seg: [0, 512, 128, 48, 24] }, BODY_LOD = { T: [150, 40, 8], seg: [0, 48, 24, 12] };   // seg 0 = géométrie d'origine (la plus fine)
+  const earthGlobe = earth.children[0], earthGeoHi = earthGlobe.geometry; let earthLevel = 0, pxScale = 400;
 
   // ASTRES (objects/<astre>/<astre>.json, bodies.js) : chacun est dessiné d'après son JSON (aspect, trace d'orbite, point lointain, étiquette). La Terre est l'origine de la scène (son maillage est `earth`).
   // Le groupe `solar` est tourné de −GMST dans les vues « Terre fixe » et pas tourné dans les vues d'astre. Créé peu après le démarrage (texture de la Lune ~0,3 s).
@@ -82,6 +89,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
         o.mesh = new THREE.Mesh(new THREE.SphereGeometry(ru, 24, 12), new THREE.MeshStandardMaterial({ color: new THREE.Color(ap.color || '#8a8178'), roughness: 1, metalness: 0 }));
         o.meshUrl = assetUrl((FLIGHT_OBJECT_FILES[b.id] || '').replace(/[^/]*$/, '') + ap.model);
       } else if (ap.kind === 'sphere' || ap.kind === 'comet') o.mesh = new THREE.Mesh(new THREE.SphereGeometry(ru, 48, 24), new THREE.MeshStandardMaterial({ color: new THREE.Color(ap.color || '#cccccc'), roughness: 1, metalness: 0 }));
+      if (o.mesh && (ap.kind === 'textured' || ap.kind === 'painted')) { o.lodHi = o.mesh.geometry; o.lod = 0; }   // sphères à niveaux de détail
       if (o.mesh && ap.rings) o.mesh.add(ringMesh(ap.rings, b.radiusKm));   // anneaux : dans le plan équatorial de la planète (enfant du maillage : suit son orientation)
       if (o.mesh) solar.add(o.mesh);
       if (ap.tail) { const tg = new THREE.ConeGeometry(1, 1, 24, 1, true); tg.translate(0, 0.5, 0); o.tail = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ color: new THREE.Color(ap.tail.color || '#bfe3ff'), transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); o.tail.frustumCulled = false; solar.add(o.tail); }
@@ -281,7 +289,16 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   // la Terre cache-t-elle le point P vu de la caméra ?
   const hiddenByEarth = P => { const d = P.clone().sub(camera.position), L = d.length(); d.divideScalar(L); const b = camera.position.dot(d), disc = b * b - (camera.position.lengthSq() - 1); return disc > 0 && -b - Math.sqrt(disc) > 0 && -b - Math.sqrt(disc) < L; };
 
+  // résolution ADAPTATIVE : si les images prennent plus de 30 ms en moyenne, la résolution du rendu baisse (jusqu'à 0,75) ; elle remonte quand la machine suit (images < 15 ms) ; délai entre deux changements
+  const perf = { avg: 16, cool: 0 };
+  const adaptRatio = (raw, now) => {
+    if (raw > 0 && raw < 250) perf.avg = perf.avg * 0.93 + raw * 0.07;   // (images trop longues = onglet en arrière-plan : ignorées)
+    if (now < perf.cool) return;
+    if (perf.avg > 30 && ratio > 0.75) { ratio = Math.max(0.75, ratio * 0.8); perf.cool = now + 3000; renderer.setPixelRatio(ratio); resize(); }
+    else if (perf.avg < 15 && ratio < maxRatio) { ratio = Math.min(maxRatio, ratio * 1.15); perf.cool = now + 8000; renderer.setPixelRatio(ratio); resize(); }
+  };
   const frame = now => {
+    adaptRatio(now - last, now);
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     const realNow = Date.now(); simMs += (realNow - lastReal) * simSpeed; lastReal = realNow; const date = new Date(simMs);   // horloge simulée : temps réel par défaut, accélérable
     iss = issState(date);
@@ -315,6 +332,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     camera.up.set(0, 1, 0);
     camera.lookAt(cam.tgt); camera.updateMatrixWorld();
     const closest = Math.max(1e-7, Math.min(cam.dist, camera.position.length() - 1) * 0.05);
+    pxScale = innerHeight / 2 / Math.tan(camera.fov * DEG / 2);   // pixels par unité de rayon vu à 1 unité de distance
+    { const lv = lodLevel(pxScale / Math.max(1e-6, camera.position.length()), earthLevel, EARTH_LOD.T); if (lv !== earthLevel) { earthLevel = lv; earthGlobe.geometry = EARTH_LOD.seg[lv] ? sphereLod(EARTH_LOD.seg[lv]) : earthGeoHi; } }
     camera.near = Math.min(0.05, closest); camera.far = Math.max(1e7, 8 * (camera.position.length() + cam.dist)); camera.updateProjectionMatrix();   // plan lointain proportionnel à l'éloignement : pas de limite de zoom arrière
 
     // astres : chacun d'après son JSON (position, orientation, queue de comète, orbite, trace, point lointain, étiquette)
@@ -331,14 +350,22 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       const masked = id => { const pr = bodyObjs[id].b.displayPriority || 0, s = scr[id]; if (!s) return false; for (const j in bodyObjs) { if (j !== bodyObjs[id].b.around || (bodyObjs[j].b.displayPriority || 0) <= pr || !scr[j] || !dotShown(j)) continue; if (Math.hypot(s[0] - scr[j][0], s[1] - scr[j][1]) < 18) return true; } return false; };
       for (const id in bodyObjs) {
         const o = bodyObjs[id], b = o.b, v = bpos[id], ab = babs[id], ru = BODY.radiusUnits(id), hid = masked(id) || (!!b.showWithinUnits && !!b.around && camera.position.distanceTo(babs[b.around]) > b.showWithinUnits), parent = b.around && bpos[b.around] ? bpos[b.around] : null, tr = b.trace || {};
+        if (o.mesh && o.lodHi) {   // niveau de détail de la sphère d'après sa taille à l'écran ; invisible sous 1 px (son point lointain la remplace)
+          const px = pxScale * ru * (b.appearance.rings ? 2.4 : 1) / Math.max(1e-9, camera.position.distanceTo(ab)), lv = lodLevel(px, o.lod || 0, BODY_LOD.T);
+          if (lv !== o.lod) { o.lod = lv; o.mesh.geometry = BODY_LOD.seg[lv] ? sphereLod(BODY_LOD.seg[lv]) : o.lodHi; }
+          o.mesh.visible = px > 1;
+        }
         if (o.mesh) { o.mesh.position.copy(v); if (b.orientation === 'tidal-lock' && parent) moonQuat(v.clone().sub(parent).normalize(), (BODY.get(b.around).rotation ? rotationPole(BODY.get(b.around).rotation) : ECLIPTIC_POLE), o.mesh.quaternion); else if (b.rotation) rotationQuat(b.rotation, Dd, o.mesh.quaternion); }   // rotation synchrone : toujours la même face vers le corps central
         if (o.texUrl && !o.texReq && camera.position.distanceTo(ab) < 60 * ru) {   // carte de la surface : téléchargée à l'approche (moins de 60 rayons)
           o.texReq = true;
-          new THREE.TextureLoader().load(o.texUrl, t => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); o.mesh.material.map = t; o.mesh.material.color.set(0xffffff); o.mesh.material.needsUpdate = true; }, undefined, e => console.warn('Texture de ' + b.name + ' indisponible :', e && e.message));
+          new THREE.TextureLoader().load(o.texUrl, t => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); o.mesh.material.map = t; o.mesh.material.color.set(0xffffff); o.mesh.material.needsUpdate = true; o.texLoaded = true; }, undefined, e => console.warn('Texture de ' + b.name + ' indisponible :', e && e.message));
         }
         if (o.meshUrl && !o.meshReq && camera.position.distanceTo(ab) < 60 * ru) {   // modèle 3D : téléchargé à l'approche (moins de 60 rayons)
           o.meshReq = true;
           fetch(o.meshUrl).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); }).then(txt => { const old = o.mesh.geometry; o.mesh.geometry = parseObj(txt, b.appearance.kmPerUnit || 1, R_KM); old.dispose(); }).catch(e => console.warn('Modèle de ' + b.name + ' indisponible :', e && e.message));
+        }
+        if (o.texLoaded && camera.position.distanceTo(ab) > 250 * ru) {   // loin : la carte quitte la mémoire graphique (rechargée depuis le cache du navigateur au retour)
+          o.mesh.material.map.dispose(); o.mesh.material.map = null; o.mesh.material.color.set(b.appearance.color || '#cccccc'); o.mesh.material.needsUpdate = true; o.texLoaded = false; o.texReq = false;
         }
         if (o.tail) {   // queue de comète : à l'opposé de l'étoile, de plus en plus longue près d'elle, invisible au-delà de ≈ 3,5 UA
           const sv = bpos[STAR], rAU = Math.hypot(v.x - sv.x, v.y - sv.y, v.z - sv.z) / AU_U, tl = b.appearance.tail, k = Math.max(0, 1 - rAU / 3.5) / Math.pow(Math.max(0.3, rAU), 1.5), len = tl.lengthKmAt1AU / R_KM * k;
@@ -498,6 +525,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   return {
     // pour les tests et l'interface : exécute une image sans requestAnimationFrame
     _frame: frame,
+    _lod: () => ({ earth: earthLevel, bodies: Object.fromEntries(Object.entries(bodyObjs).filter(([, o]) => o.lodHi).map(([id, o]) => [id, o.mesh.visible ? o.lod : -1])), ratio }),
     _orbitsVisible: () => Object.fromEntries(Object.entries(bodyObjs).filter(([, o]) => o.orbitG).map(([id, o]) => [id, o.orbitG.visible])),
     _featuresVisible: () => Object.fromEntries(Object.entries(featInst).map(([id, inst]) => [id, inst.objects.some(o => o.visible)])),
     selectView,

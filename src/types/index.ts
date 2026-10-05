@@ -64,6 +64,7 @@ export type Engine = {
   _frame: (now: number) => void
   _featuresVisible: () => Record<string, boolean>
   _orbitsVisible: () => Record<string, boolean>
+  _lod: () => { earth: number; bodies: Record<string, number>; ratio: number }
 }
 
 export type CreateEngineOptions = {
