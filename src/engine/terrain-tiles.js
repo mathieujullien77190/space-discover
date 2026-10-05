@@ -84,9 +84,9 @@ export const DEM_MIN_Z = 8;   // sous ce niveau de zoom (tuiles de plus de 150 k
 export const horizonKm = altKm => { const h = Math.max(0, altKm) / 6378.137; return 6378.137 * Math.acos(1 / (1 + h)); };   // distance au sol jusqu'à l'horizon
 // hq (« qualité max », vue au ras du sol : sous HQ_ALT_KM) : TOUS les niveaux (même lointains) ont leur RELIEF (z ≥ DEM_MIN_Z) — sinon la tuile fine, relevée par ses montagnes, finit en falaise contre la tuile lointaine à plat —, la grille lointaine est plus large et il y a un niveau de plus.
 export const HQ_ALT_KM = 20, HQ_FAR_RADIUS = 4, HQ_LEVELS = 6;
-export function terrainLevels(lon, lat, altKm, fovDeg, aspect) {
+export function terrainLevels(lon, lat, altKm, fovDeg, aspect, boost = 0) {   // boost : niveaux de zoom ajoutés (mode photo : netteté maximale)
   const hq = altKm < HQ_ALT_KM;
-  const z0 = Math.min(terrainZoom(altKm, lat, fovDeg, aspect), TERRAIN_Z_MAX), horizon = horizonKm(altKm), levels = [], coslat = Math.max(0.05, Math.cos(lat / R2D));
+  const z0 = Math.min(terrainZoom(altKm, lat, fovDeg, aspect) + boost, TERRAIN_Z_MAX + boost), horizon = horizonKm(altKm), levels = [], coslat = Math.max(0.05, Math.cos(lat / R2D));
   let prev = null;
   for (let k = 0; k < (hq ? HQ_LEVELS : TERRAIN_LEVELS); k++) {
     const z = z0 - k; if (z < TERRAIN_Z_MIN) break;
@@ -103,12 +103,12 @@ export function terrainLevels(lon, lat, altKm, fovDeg, aspect) {
 // (distance oblique ≥ AIM_MIN_RATIO × altitude et point différent du nadir) : le zoom de ces niveaux suit la distance oblique, donc la zone qu'on regarde est nette même si elle n'est pas « pile en dessous ».
 // Sans doublon de tuile ; k = écart de zoom avec la tuile la plus fine (ordre de dessin : les plus fines par-dessus).
 export const AIM_MIN_RATIO = 1.5, AIM_LEVELS = 3;
-export function terrainWanted(lon, lat, altKm, fovDeg, aspect, aim) {
+export function terrainWanted(lon, lat, altKm, fovDeg, aspect, aim, boost = 0) {
   const want = [];
-  for (const lv of terrainLevels(lon, lat, altKm, fovDeg, aspect)) for (const tl of lv.tiles) want.push(Object.assign({}, tl, { k: lv.k, dem: lv.dem }));
+  for (const lv of terrainLevels(lon, lat, altKm, fovDeg, aspect, boost)) for (const tl of lv.tiles) want.push(Object.assign({}, tl, { k: lv.k, dem: lv.dem }));
   if (aim && aim.distKm > altKm * AIM_MIN_RATIO && Math.hypot(aim.lon - lon, aim.lat - lat) > 0.002) {
     const have = new Set(want.map(t => t.key));
-    for (const lv of terrainLevels(aim.lon, aim.lat, aim.distKm, fovDeg, aspect).slice(0, AIM_LEVELS)) for (const tl of lv.tiles) if (!have.has(tl.key)) { have.add(tl.key); want.push(Object.assign({}, tl, { k: lv.k, dem: lv.dem, aim: true })); }
+    for (const lv of terrainLevels(aim.lon, aim.lat, aim.distKm, fovDeg, aspect, boost).slice(0, AIM_LEVELS)) for (const tl of lv.tiles) if (!have.has(tl.key)) { have.add(tl.key); want.push(Object.assign({}, tl, { k: lv.k, dem: lv.dem, aim: true })); }
     const zTop = Math.max(...want.map(t => t.z)); for (const t of want) t.k = zTop - t.z;
   }
   return want;

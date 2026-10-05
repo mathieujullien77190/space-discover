@@ -1,6 +1,7 @@
 import HideUi from "@/components/HideUi";
 import IssBadge from "@/components/IssBadge";
 import ObservatoryCard from "@/components/ObservatoryCard";
+import PhotoMode from "@/components/PhotoMode";
 import MapCredit from "@/components/MapCredit";
 import MapOptions from "@/components/MapOptions";
 import BodyCard from "@/components/BodyCard";
@@ -39,6 +40,7 @@ export const App = () => {
           <StatusMessage />
           <MapCredit />
           <IssBadge />
+          <PhotoMode />
         </>
       )}
     </>

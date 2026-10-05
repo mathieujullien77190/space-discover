@@ -65,12 +65,12 @@ export function createTerrainLayer(parent, renderer, opts) {
     group, setLook,
     // à chaque image : on = couche demandée ; camAlt (km), cl / co = latitude / longitude du point regardé (°), fov (°), aspect ; renvoie vrai quand le relief est affiché
     // aim : { lon, lat, distKm } = le point du sol que vise le regard (rayon du centre de l'écran) et sa distance oblique : on y ajoute des niveaux de détail adaptés à CETTE distance (pas seulement sous la caméra)
-    update({ on, camAlt, cl, co, fov, aspect, http, aim }) {
+    update({ on, camAlt, cl, co, fov, aspect, http, aim, boost = 0 }) {
       const lim = TERRAIN_MAX_ALT_KM * (enabled ? TERRAIN_HYSTERESIS : 1);   // seuil d'affichage (hystérésis : pas de clignotement)
       enabled = !!on && !!http && camAlt < lim;
       if (!enabled) { group.visible = false; if (!on || camAlt > 3000) for (const [k, t] of [...tiles]) free(k, t); return false; }
       tick++;
-      const levels = terrainLevels(co, cl, camAlt, fov, aspect), want = terrainWanted(co, cl, camAlt, fov, aspect, aim); lastLevels = levels.length;   // niveaux emboîtés jusqu'à l'horizon, + ceux du point regardé
+      const levels = terrainLevels(co, cl, camAlt, fov, aspect, boost), want = terrainWanted(co, cl, camAlt, fov, aspect, aim, boost); lastLevels = levels.length;   // niveaux emboîtés jusqu'à l'horizon, + ceux du point regardé
       for (const tl of want) { const t = tiles.get(tl.key); if (t && tl.dem && !t.demWanted) { free(tl.key, t); if (loading < MAX_LOADING) load(tl); } else if (t) t.t = tick; else if (loading < MAX_LOADING) load(tl); }   // (une tuile de secours à plat devenue tuile fine est rechargée avec son relief)
       const fb = terrainFallbacks(want, key => { const t = tiles.get(key); return !!t && t.state === 'ready'; });   // tuile pas encore arrivée : sa parente (un cran moins détaillé) la remplace en attendant
       for (const tl of fb) { const t = tiles.get(tl.key); if (t) t.t = tick; else if (loading < MAX_LOADING) load(tl); }

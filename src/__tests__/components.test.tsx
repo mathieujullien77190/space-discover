@@ -1,3 +1,4 @@
+import PhotoMode from '@/components/PhotoMode'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import BodyCard from '@/components/BodyCard'
@@ -15,7 +16,7 @@ import { useStore } from '@/store'
 import { initialEngineState } from '@/store/initial'
 import type { Engine } from '@/types'
 
-const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), goHubble: vi.fn(), goConcorde: vi.fn(), flyConcorde: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn(), setBorders: vi.fn(), setCapitals: vi.fn(), setObservatories: vi.fn(), setStarInfo: vi.fn(), clearStar: vi.fn(), setConstellations: vi.fn(), setDayNight: vi.fn(), goObservatory: vi.fn(), setObservatoryView: vi.fn(), setRealistic: vi.fn(), setMetric: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
+const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), goHubble: vi.fn(), goConcorde: vi.fn(), flyConcorde: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn(), setBorders: vi.fn(), setCapitals: vi.fn(), setObservatories: vi.fn(), setStarInfo: vi.fn(), clearStar: vi.fn(), setConstellations: vi.fn(), setDayNight: vi.fn(), goObservatory: vi.fn(), setObservatoryView: vi.fn(), setRealistic: vi.fn(), setMetric: vi.fn(), setPhoto: vi.fn(), takePhoto: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
 
 describe('TopBar + SubMenu', () => {
   let engine: ReturnType<typeof fakeEngine>
@@ -345,5 +346,24 @@ describe('BodyCard (fiche de l’astre proche)', () => {
     expect(screen.getByText('3,73 m/s²')).toBeInTheDocument()
     expect(screen.getByText('24 h 37 min')).toBeInTheDocument()
     expect(screen.getByText('2 (Phobos et Déimos)')).toBeInTheDocument()
+  })
+})
+
+describe('PhotoMode', () => {
+  const engine = fakeEngine()
+  it('bouton « Photo » seulement dans une vue « depuis » ; viseur et « Prendre la photo » une fois activé', () => {
+    useStore.setState({ ...initialEngineState, issView: false, photo: false, engine })
+    const { unmount } = render(<PhotoMode />)
+    expect(screen.queryByText('📷 Photo')).toBeNull()
+    unmount()
+    useStore.setState({ issView: true })
+    const r = render(<PhotoMode />)
+    fireEvent.click(screen.getByText('📷 Photo'))
+    expect(engine.setPhoto).toHaveBeenLastCalledWith(true)
+    r.unmount()
+    useStore.setState({ photo: true })
+    render(<PhotoMode />)
+    fireEvent.click(screen.getByText('📸 Prendre la photo'))
+    expect(engine.takePhoto).toHaveBeenCalled()
   })
 })

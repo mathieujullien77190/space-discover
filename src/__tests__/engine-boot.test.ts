@@ -435,6 +435,11 @@ describe('createEngine (rendu factice)', () => {
     expect(state.time.speed).toBe(60)                                          // 1 min par seconde
     engine.setIssView(true); for (let i = 0; i < 4; i++) engine._frame(T + 600 + i * 100)
     expect(engine._fp()!.posErr!).toBeLessThan(1)                              // la caméra est SUR le Concorde
+    engine.setPhoto(true); engine._frame(T + 640)                             // MODE PHOTO : objectif étroit + netteté maximale
+    expect(engine._photo()).toMatchObject({ on: true, fov: 10 }); expect(engine._photo().ratio).toBeGreaterThanOrEqual(2)
+    expect((state as EngineState & { photo?: boolean }).photo).toBe(true)
+    engine.takePhoto(); expect(engine._photo().snap).toBe(true); engine._frame(T + 660); expect(engine._photo().snap).toBe(false)   // la photo est prise dans l’image suivante
+    engine.setPhoto(false); engine._frame(T + 680); expect(engine._photo()).toMatchObject({ on: false, fov: 70 })   // champ précédent rétabli
     // le ciel depuis le Concorde se comporte comme depuis un observatoire : orange du coucher / lever actif, étoiles de nuit, jour = pas d’étoiles
     expect(engine._skyObs()).toMatchObject({ on: true, orange: 1 })
     const dayConc = engine._skyObs(); expect(dayConc.day).toBeGreaterThan(0.5)   // 2 juin 2003, ≈ 10 h UTC : plein jour

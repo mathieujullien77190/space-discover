@@ -402,10 +402,14 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   hiddenByEarth = P => { const d = P.clone().sub(camera.position), L = d.length(); d.divideScalar(L); const b = camera.position.dot(d), disc = b * b - (camera.position.lengthSq() - 1); return disc > 0 && -b - Math.sqrt(disc) > 0 && -b - Math.sqrt(disc) < L; };
 
   // résolution ADAPTATIVE : si les images prennent plus de 30 ms en moyenne, la résolution du rendu baisse (jusqu'à 0,75) ; elle remonte quand la machine suit (images < 15 ms) ; délai entre deux changements
+  // MODE PHOTO (vues « depuis » : ISS, Hubble, Concorde, observatoires) : objectif à champ étroit (PHOTO_FOV), netteté MAXIMALE derrière (résolution du rendu au maximum, jamais réduite ; tuiles satellite un niveau de zoom plus fin) ;
+  // `takePhoto` enregistre l'image en PNG. Quitté dès qu'on n'est plus en vue « depuis ».
+  let photo = false, photoFov = 60, snapReq = false;
+  const PHOTO_FOV = 10, PHOTO_BOOST = 1, photoRatio = Math.min(Math.max((typeof devicePixelRatio === 'number' ? devicePixelRatio : 1) || 1, 2), 3);
   const perf = { avg: 16, cool: 0 };
   const adaptRatio = (raw, now) => {
     if (raw > 0 && raw < 250) perf.avg = perf.avg * 0.93 + raw * 0.07;   // (images trop longues = onglet en arrière-plan : ignorées)
-    if (now < perf.cool) return;
+    if (photo || now < perf.cool) return;   // en mode photo la résolution reste au maximum
     if (perf.avg > 30 && ratio > 0.75) { ratio = Math.max(0.75, ratio * 0.8); perf.cool = now + 3000; renderer.setPixelRatio(ratio); resize(); }
     else if (perf.avg < 15 && ratio < maxRatio) { ratio = Math.min(maxRatio, ratio * 1.15); perf.cool = now + 8000; renderer.setPixelRatio(ratio); resize(); }
   };
@@ -623,7 +627,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
           const d = camera.getWorldDirection(aimDir), b = camera.position.dot(d), disc = b * b - (camera.position.lengthSq() - 1);
           if (disc > 0) { const t = -b - Math.sqrt(disc); if (t > 0) { aimHit.copy(camera.position).addScaledVector(d, t); const lh = aimHit.length(); aim = { lat: Math.asin(aimHit.y / lh) / DEG, lon: Math.atan2(-aimHit.z, aimHit.x) / DEG, distKm: t * R_KM }; } }
         }
-        terrainShown = terrain.update({ on: true, camAlt, cl, co, fov: camera.fov, aspect: camera.aspect, http: isHttp(), aim });
+        terrainShown = terrain.update({ on: true, camAlt, cl, co, fov: camera.fov, aspect: camera.aspect, http: isHttp(), aim, boost: photo ? PHOTO_BOOST : 0 });
         if (terrainShown !== wasShown) publish({ terrainDetail: terrainShown }); }   // l'interface affiche les crédits seulement quand le relief est visible
       borders.visible = bordersOn && !realistic && camAlt < CONTOUR_MAX_ALT_KM; borders.scale.setScalar(terrainShown ? 1.0016 : 1);   // sur le relief satellite, les limites flottent au-dessus des montagnes (1,0014 au plus)
       for (let k = 1; k < earth.children.length; k++) if (earth.children[k].isLineSegments) earth.children[k].visible = camAlt < CONTOUR_MAX_ALT_KM && !terrainShown && !realistic;   // dézoomé : plus de trait de côte ; sur le relief satellite il flotterait au-dessus
@@ -660,6 +664,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       if (!cardId && cam.mode !== 'iss') { let best = Infinity; for (const k in moonsShown) if (moonsShown[k] < best && BODY.get(k) && BODY.get(k).card) { best = moonsShown[k]; cardId = k; } }   // lunes affichées : fiche de la planète la plus proche
       publish({ info: t, viewJson: JSON.stringify(currentView()), focus: { id: cardId }, time: { simMs, speed: simSpeed, visible: true } });
     }
+    if (photo && !cam.fp) setPhoto(false);   // on n'est plus en vue « depuis » : fin du mode photo
+    if (photo && cam.fp) cam.fp.fov = Math.max(1, Math.min(30, cam.fp.fov));   // objectif : de 1° à 30°
     // origine flottante : près de l'ISS, on recentre le monde sur elle pour rendre sans perte de précision
     const shift = obsView ? obsPos : moonView ? moonObsPos : fsat() && camera.position.distanceTo(fsat().pos) * R_KM < 3000 ? fsat().pos : null, saved = camera.position.clone();
     world.rotation.y = gm * frameF;
@@ -684,9 +690,17 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     // marqueur de l'observatoire (point + nom) quand on le regarde depuis l'extérieur, du côté visible de la Terre
     if (obsId) { const show = !obsView && !realistic && cam.mode === 'earth'; obsDot.visible = show; let on = false; if (show) { earth.updateWorldMatrix(true, false); const f = obsFrame, pw = tmpObs.set(f.ground[0], f.ground[1], f.ground[2]).applyMatrix4(earth.matrixWorld), c0 = tmpObs2.setFromMatrixPosition(earth.matrixWorld), nw = pw.clone().sub(c0).normalize(), v = camera.position.clone().sub(pw); if (nw.dot(v) > 0.02 * v.length()) { pw.project(camera); on = pw.z < 1 && Math.abs(pw.x) < 1 && Math.abs(pw.y) < 1; if (on) obsLabel.style.transform = 'translate(' + ((pw.x + 1) / 2 * innerWidth + 8) + 'px,' + ((1 - pw.y) / 2 * innerHeight - 8) + 'px)'; } } obsLabel.style.display = on ? 'block' : 'none'; }
     renderer.render(scene, camera);
+    if (snapReq) { snapReq = false; try { canvas.toBlob(b => { if (!b || typeof document === 'undefined') return; const a = document.createElement('a'), u = URL.createObjectURL(b); a.href = u; a.download = 'photo-' + date.toISOString().replace(/[:.]/g, '-') + '.png'; a.click(); setTimeout(() => URL.revokeObjectURL(u), 4000); }, 'image/png'); } catch (e) { /* pas de canvas.toBlob : pas de fichier */ } }   // lu dans la même image que le rendu (pas de preserveDrawingBuffer)
     camera.position.copy(saved); camera.updateMatrixWorld(); realistic = userRealistic;
     if (!ready) { ready = true; publish({ status: 'ready' }); }
   };
+  function setPhoto(on) {
+    on = !!on && !!cam.fp;   // seulement depuis une vue « depuis »
+    if (on === photo) return;
+    photo = on;
+    if (on) { photoFov = cam.fp.fov; cam.fp.fov = PHOTO_FOV; ratio = photoRatio; } else { if (cam.fp) cam.fp.fov = photoFov; ratio = maxRatio; }
+    renderer.setPixelRatio(ratio); resize(); publish({ photo });
+  }
   const loop = now => {
     if (stopped) return;
     try { frame(now); } catch (e) { console.error(e); publish({ status: 'error', error: 'Erreur : ' + (e && e.message || e) }); return; }
@@ -710,6 +724,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _featuresVisible: () => Object.fromEntries(Object.entries(featInst).filter(([id]) => !id.includes(':')).map(([id, inst]) => [id, inst.objects.some(o => o.visible)])),   // ISS
     _hubbleFeatures: () => Object.fromEntries(Object.entries(featInst).filter(([id]) => id.startsWith('hubble:')).map(([id, inst]) => [id.slice(7), inst.objects.some(o => o.visible)])),
     selectView,
+    setPhoto, takePhoto: () => { if (photo) snapReq = true; }, _photo: () => ({ on: photo, fov: cam.fp ? cam.fp.fov : null, ratio, snap: snapReq }),
     goIss, goHubble, goConcorde, flyConcorde, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
     setClouds: on => { cloudsOn = !!on; },
     _terrain: () => Object.assign({ shown: terrainShown }, terrain.stats()),
