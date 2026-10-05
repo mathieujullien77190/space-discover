@@ -4,10 +4,10 @@
 import * as THREE from 'three';
 
 export const METEOR_GAP_S = [3, 12];        // délai entre deux étoiles filantes (s)
-export const METEOR_DURATION_S = [0.55, 1.1];   // durée d'une traversée (s)
+export const METEOR_DURATION_S = [0.9, 1.6];    // durée totale (s) : la tête parcourt l'arc pendant les 55 premiers % ; la traînée, elle, s'efface DEPUIS SON DÉBUT jusqu'à la tête
+export const METEOR_HEAD_SHARE = 0.55, METEOR_TAIL_DELAY = 0.12;   // part de la durée où la tête avance ; moment (part de la durée) où le DÉBUT de la traînée commence à s'effacer
 export const METEOR_LENGTH_DEG = [8, 28];   // longueur de l'arc parcouru dans le ciel
 export const METEOR_ELEVATION_DEG = [14, 78];   // hauteur du point de départ au-dessus de l'horizon
-export const METEOR_TAIL = 0.35;            // longueur de la traînée (fraction de l'arc)
 export const METEOR_SLOTS = 3;              // étoiles filantes simultanées au plus
 const VERTS = 12, DEG = Math.PI / 180;
 
@@ -54,14 +54,16 @@ export function createMeteors(scene, rand = Math.random) {
         if (!s.active) continue;
         s.t += dt; const u = s.t / s.dur;
         if (u >= 1 || !enabled) { s.active = false; s.line.visible = s.head.visible = false; continue; }
-        const f = Math.sin(Math.PI * u) * s.bright, pos = s.line.geometry.attributes.position, col = s.line.geometry.attributes.color;
+        // la tête file de a vers b ; la traînée reste derrière elle et s'EFFACE EN PARTANT DU DÉBUT (son extrémité d'origine rattrape peu à peu la tête)
+        const hd = Math.min(1, u / METEOR_HEAD_SHARE), tl = Math.max(0, Math.min(hd, (u - METEOR_TAIL_DELAY) / (1 - METEOR_TAIL_DELAY))), life = Math.max(0, 1 - Math.max(0, tl - hd * 0.0) * 0.6) * (1 - Math.max(0, (u - 0.85) / 0.15));
+        const f = s.bright * life, pos = s.line.geometry.attributes.position, col = s.line.geometry.attributes.color;
         for (let k = 0; k < VERTS; k++) {
-          const uk = Math.max(0, u - METEOR_TAIL * (VERTS - 1 - k) / (VERTS - 1)), p = slerp(s.a, s.b, uk, tmp), c = Math.pow(k / (VERTS - 1), 2) * f;
+          const uk = tl + (hd - tl) * k / (VERTS - 1), p = slerp(s.a, s.b, uk, tmp), c = Math.pow(k / (VERTS - 1), 1.4) * f;   // plus clair vers la tête
           pos.setXYZ(k, p.x, p.y, p.z); col.setXYZ(k, 0.85 * c, 0.92 * c, c);
         }
         pos.needsUpdate = col.needsUpdate = true;
-        const h = slerp(s.a, s.b, u, tmp); s.head.geometry.attributes.position.setXYZ(0, h.x, h.y, h.z); s.head.geometry.attributes.position.needsUpdate = true;
-        s.head.material.opacity = f; s.line.visible = s.head.visible = true;
+        const h = slerp(s.a, s.b, hd, tmp); s.head.geometry.attributes.position.setXYZ(0, h.x, h.y, h.z); s.head.geometry.attributes.position.needsUpdate = true;
+        s.head.material.opacity = hd < 1 ? f : 0; s.line.visible = true; s.head.visible = hd < 1;   // la tête disparaît à l'arrivée, la traînée finit de s'effacer
       }
     },
     spawn,

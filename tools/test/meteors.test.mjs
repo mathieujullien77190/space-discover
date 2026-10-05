@@ -27,4 +27,25 @@ check(m.total() >= before + 2, 'sur 30 s : ' + (m.total() - before) + ' étoiles
 for (let i = 0; i < 30; i++) step(0.1, false);
 check(m.count() === 0, 'désactivé : tout s’éteint');
 check(m.group.position.equals(cam.position) && m.group.scale.x === R, 'le groupe suit la caméra et reste sur la sphère céleste (R = ' + R + ')');
+// la traînée s'efface EN PARTANT DU DÉBUT : son extrémité d'origine avance vers la tête, la longueur finit par décroître jusqu'à zéro
+{
+  seed = 777; const mm = createMeteors(new THREE.Scene(), rand), c2 = { position: new THREE.Vector3() };
+  mm.spawn(up, east, north);
+  const line = mm.group.children[0], pos = line.geometry.attributes.position, V = pos.count, get = k => new THREE.Vector3(pos.getX(k), pos.getY(k), pos.getZ(k)).normalize();
+  const ang = (p, q) => Math.acos(Math.max(-1, Math.min(1, p.dot(q))));
+  let start0 = null, prevLen = null, grewThenShrank = false, maxLen = 0, startMoved = false, shrinking = true, lastLen = 0;
+  for (let i = 0; i < 40 && mm.count() > 0; i++) {
+    mm.update({ dt: 0.04, enabled: true, camera: c2, R, up, east, north });
+    if (!line.visible) break;
+    const p0 = get(0), pn = get(V - 1), len = ang(p0, pn);
+    if (!start0) start0 = p0.clone();
+    if (ang(p0, start0) > 0.01) startMoved = true;
+    if (len > maxLen) maxLen = len;
+    if (len < maxLen - 1e-3 && prevLen !== null && len > prevLen + 1e-3) shrinking = false;
+    prevLen = len; lastLen = len;
+  }
+  check(startMoved, 'le DÉBUT de la traînée se déplace (elle s’efface en partant du début, pas à l’arrière d’une longueur fixe)');
+  check(maxLen > 0.03 && lastLen < maxLen * 0.5, 'la traînée s’allonge puis raccourcit : longueur max ' + (maxLen * 180 / Math.PI).toFixed(1) + '°, à la fin ' + (lastLen * 180 / Math.PI).toFixed(1) + '°');
+  check(shrinking, 'une fois la tête arrivée, la longueur ne fait que diminuer');
+}
 if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }
