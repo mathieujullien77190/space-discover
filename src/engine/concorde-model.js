@@ -1,6 +1,6 @@
 // Modèle 3D STYLISÉ du Concorde aux dimensions réelles (mètres) : fuselage très effilé de 61,7 m, aile delta ogivale de 25,6 m d'envergure, dérive de 12,2 m de haut, quatre réacteurs Olympus sous l'aile (deux par côté) ;
 // flammes de postcombustion, feux de bout d'aile (rouge à gauche, vert à droite) et feu blanc arrière, allumés par le moteur la nuit. Repère : x = vers l'avant (le nez), y = vers le haut, z = vers l'aile droite ; origine au milieu du fuselage.
-// Dessin détaillé mais simplifié : nez droit (le vrai se baisse au décollage), aile ogivale à bord d'attaque courbe avec élevons, pare-brise, hublots, bande bleue, dérive tricolore, nacelles avec entrées d'air et tuyères.
+// Positions des moteurs (4,69 m et 6,33 m de l'axe, tuyères à 46,3 m du nez) et du train tirées du fichier JSBSim du Concorde. Dessin détaillé mais simplifié : nez droit (le vrai se baisse au décollage), aile ogivale à bord d'attaque courbe avec élevons, pare-brise, hublots, bande bleue, dérive tricolore, nacelles avec entrées d'air et tuyères.
 import * as THREE from 'three';
 
 export const CONCORDE = { lengthM: 61.66, spanM: 25.6, heightM: 12.2, fuselageWidthM: 2.88 };
@@ -48,13 +48,16 @@ export function buildConcorde() {
   // TRAIN d'atterrissage (sorti au décollage et à l'atterrissage : `userData.setGear(bool)`) : deux bogies principaux sous les nacelles intérieures, une jambe avant ; roues = cylindres (pas des boîtes)
   const gear = new THREE.Group(), tyre = new THREE.MeshStandardMaterial({ color: 0x1c1c20, roughness: 0.9 }), wheel = (x, y, z, rad = 0.45, w = 0.38) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad, w, 14), tyre); m.rotation.x = Math.PI / 2; m.position.set(x, y, z); gear.add(m); };
   const strut = (x, y0, y1, z) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, y0 - y1, 8), grey); m.position.set(x, (y0 + y1) / 2, z); gear.add(m); };
-  for (const sgn of [1, -1]) { strut(L - 33, -0.9, -2.5, sgn * 4.9); for (const dx of [-0.9, 0.9]) for (const dz of [-0.28, 0.28]) wheel(L - 33 + dx, -2.45, sgn * 4.9 + dz); }
-  strut(L - 17, -1.5, -2.45, 0); for (const dz of [-0.22, 0.22]) wheel(L - 17, -2.45, dz, 0.4, 0.3);
+  // POSITIONS RÉELLES du train d'après le modèle de dynamique de vol JSBSim du Concorde (aircraft/Concorde/Concorde.xml, GPL ; pouces → mètres, x mesuré depuis le nez) : béquille avant à 18,70 m du nez (sol à −4,53 m), bogies principaux à 36,25 / 37,55 m (essieux écartés de 1,30 m) et ±3,86 m de l'axe (sol à −4,03 m), béquille de queue à 52,86 m
+  const MAIN_X = L - 36.9, NOSE_X = L - 18.7, TAIL_X = L - 52.86;
+  for (const sgn of [1, -1]) { strut(MAIN_X, -0.9, -3.55, sgn * 3.86); for (const dx of [-0.65, 0.65]) for (const dz of [-0.3, 0.3]) wheel(MAIN_X + dx, -3.58, sgn * 3.86 + dz); }
+  strut(NOSE_X, -1.5, -4.1, 0); for (const dz of [-0.22, 0.22]) wheel(NOSE_X, -4.1, dz, 0.43, 0.3);
+  wheel(TAIL_X, -0.9, 0, 0.25, 0.2); strut(TAIL_X, -0.6, -0.9, 0);   // béquille / roulette de queue
   gear.visible = false; g.add(gear);
   // flammes de POSTCOMBUSTION derrière les 4 réacteurs (cônes additifs orange → blanc au cœur, allumés du décollage jusqu'à l'altitude de croisière : `userData.setFlames(puissance 0–1, temps s)`)
   const flames = [], flame = (x, y, z) => { const grp = new THREE.Group(); grp.position.set(x, y, z); for (const [rad, len, col, op] of [[0.55, 9, 0xff7a1a, 0.55], [0.32, 6, 0xffd27a, 0.7], [0.16, 3.4, 0xffffff, 0.9]]) { const m = new THREE.Mesh(new THREE.ConeGeometry(rad, len, 12, 1, true), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); m.rotation.z = Math.PI / 2; m.position.x = -len / 2; grp.add(m); } grp.visible = false; g.add(grp); return grp; };
   // réacteurs : quatre nacelles sous l'aile (deux par côté), 11,5 m de long
-  for (const sgn of [1, -1]) for (const z of [4.0, 5.9]) { const e = new THREE.Mesh(new THREE.BoxGeometry(11.5, 1.15, 1.45), grey); e.position.set(L - 40, -1.3, sgn * z); g.add(e);
+  for (const sgn of [1, -1]) for (const z of [4.69, 6.33]) { const e = new THREE.Mesh(new THREE.BoxGeometry(11.5, 1.15, 1.45), grey); e.position.set(L - 40, -1.3, sgn * z); g.add(e);
     const nz = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.5, 1.4, 12), dark); nz.rotation.z = Math.PI / 2; nz.position.set(L - 40 - 6.4, -1.3, sgn * z); g.add(nz);   // tuyère
     flames.push(flame(L - 40 - 7.1, -1.3, sgn * z));   // flamme de réchauffe derrière la tuyère
     const lip = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 0.6, 12), dark); lip.rotation.z = Math.PI / 2; lip.position.set(L - 40 + 5.9, -1.3, sgn * z); g.add(lip); }   // entrée d'air

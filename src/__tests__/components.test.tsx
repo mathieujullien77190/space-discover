@@ -15,7 +15,7 @@ import { useStore } from '@/store'
 import { initialEngineState } from '@/store/initial'
 import type { Engine } from '@/types'
 
-const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), goHubble: vi.fn(), goConcorde: vi.fn(), flyConcorde: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn(), setBorders: vi.fn(), setCapitals: vi.fn(), setObservatories: vi.fn(), setStarInfo: vi.fn(), clearStar: vi.fn(), setConstellations: vi.fn(), setDayNight: vi.fn(), goObservatory: vi.fn(), setObservatoryView: vi.fn(), setRealistic: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
+const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), goHubble: vi.fn(), goConcorde: vi.fn(), flyConcorde: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn(), setBorders: vi.fn(), setCapitals: vi.fn(), setObservatories: vi.fn(), setStarInfo: vi.fn(), clearStar: vi.fn(), setConstellations: vi.fn(), setDayNight: vi.fn(), goObservatory: vi.fn(), setObservatoryView: vi.fn(), setRealistic: vi.fn(), setMetric: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
 
 describe('TopBar + SubMenu', () => {
   let engine: ReturnType<typeof fakeEngine>
@@ -56,10 +56,12 @@ describe('TopBar + SubMenu', () => {
     expect(engine.goConcorde).toHaveBeenCalled()
   })
   it('fiche du Concorde : faits et bouton « Vue depuis le Concorde »', () => {
-    useStore.setState({ ...initialEngineState, focus: { id: 'concorde' }, issView: false, cardCollapsed: false })
+    useStore.setState({ ...initialEngineState, focus: { id: 'concorde' }, issView: false, cardCollapsed: false, features: { size: true, orbit: true } })
     render(<BodyCard />)
     expect(screen.getByText('Concorde (Air France)')).toBeInTheDocument()
     expect(screen.getByText('61,66 m')).toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText('Mesures (dimensions, hauteur, vitesse)'))   // case « Mesures » des satellites : cotes + hauteur + vitesse
+    expect(engine.setFeature).toHaveBeenLastCalledWith('size', false)
     expect(screen.getByLabelText('Limites de pays')).toBeInTheDocument()       // le bloc « Terre » (limites, capitales, observatoires) reste dans la fiche : l'avion est sur la Terre
     fireEvent.click(screen.getByText('👁 Vue depuis le Concorde'))
     expect(engine.setIssView).toHaveBeenCalledWith(true)
@@ -127,6 +129,11 @@ describe('TopBar + SubMenu', () => {
     expect((screen.getByLabelText('Infos étoiles (clic)') as HTMLInputElement).checked).toBe(false)
     fireEvent.click(screen.getByLabelText('Constellations'))
     expect(engine.setConstellations).toHaveBeenLastCalledWith(true)
+    expect((screen.getByLabelText('Mesures (diamètres)') as HTMLInputElement).checked).toBe(false)
+    fireEvent.click(screen.getByLabelText('Mesures (diamètres)'))
+    expect(engine.setMetric).toHaveBeenLastCalledWith(true)
+    fireEvent.click(screen.getByLabelText('Mesures (diamètres)'))
+    expect(engine.setMetric).toHaveBeenLastCalledWith(false)
   })
   it('options de la Terre dans la fiche de la Terre et d’un observatoire : seuls les observatoires sont cochés', () => {
     const d = useStore.getInitialState()

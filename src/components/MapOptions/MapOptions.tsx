@@ -9,8 +9,10 @@ export const MapOptions = () => {
   const toggleStarInfo = useStore((s) => s.toggleStarInfo)
   const constellations = useStore((s) => s.constellations)
   const toggleConstellations = useStore((s) => s.toggleConstellations)
-  const state = { starInfo, constellations }
-  const toggle = { starInfo: toggleStarInfo, constellations: toggleConstellations }
+  const metric = useStore((s) => s.metric)
+  const toggleMetric = useStore((s) => s.toggleMetric)
+  const state = { starInfo, constellations, metric }
+  const toggle = { starInfo: toggleStarInfo, constellations: toggleConstellations, metric: toggleMetric }
   return (
     <fieldset className={styles.box}>
       <legend className={styles.title}>{MAP_OPTIONS_TITLE}</legend>

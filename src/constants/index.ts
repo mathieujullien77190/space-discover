@@ -4,6 +4,7 @@ export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
 
 export const TIME_SPEEDS: ReadonlyArray<{ speed: number; label: string }> = [
   { speed: 1, label: 'Temps réel' },
+  { speed: 10, label: '10 s/s' },
   { speed: 60, label: '1 min/s' },
   { speed: 600, label: '10 min/s' },
   { speed: 3600, label: '1 h/s' },
@@ -32,6 +33,7 @@ export const MAP_OPTIONS_TITLE = '🗺 Options de carte'   // bloc d'options du 
 export const MAP_OPTIONS = [
   { key: 'starInfo', label: 'Infos étoiles (clic)' },
   { key: 'constellations', label: 'Constellations' },
+  { key: 'metric', label: 'Mesures (diamètres)' },
 ] as const   // cases à cocher, éteintes par défaut
 // options de la Terre, dans la fiche de la Terre et celle d'un observatoire (en haut à droite) : seuls les observatoires sont cochés par défaut
 export const EARTH_OPTIONS = [

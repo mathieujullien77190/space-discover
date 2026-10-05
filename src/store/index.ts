@@ -16,6 +16,7 @@ export type UiState = {
   borders: boolean   // option de carte : limites de pays
   capitals: boolean   // option de carte : noms des capitales
   observatories: boolean   // option de carte : observatoires du monde (cliquables)
+  metric: boolean   // option générale : mesures (diamètres des astres dans leurs noms)
   starInfo: boolean   // option de carte : clic sur une étoile = sa fiche
   uiHidden: boolean   // interface cachée (petit œil en haut à gauche) : seul le moteur 3D reste affiché
   constellations: boolean   // option de carte : constellations (traits entre les étoiles et noms)
@@ -37,6 +38,7 @@ export type Store = EngineState &
     toggleCapitals: () => void
     toggleObservatories: () => void
     toggleStarInfo: () => void
+    toggleMetric: () => void
     setUiHidden: (on: boolean) => void
     toggleConstellations: () => void
     toggleRealistic: () => void
@@ -67,6 +69,7 @@ export const useStore = create<Store>((set) => ({
   capitals: false,
   observatories: true,
   starInfo: false,
+  metric: false,
   uiHidden: false,
   constellations: false,
   realistic: false,
@@ -100,6 +103,11 @@ export const useStore = create<Store>((set) => ({
     set((s) => {
       s.engine?.setCapitals(!s.capitals)
       return { capitals: !s.capitals }
+    }),
+  toggleMetric: () =>
+    set((s) => {
+      s.engine?.setMetric(!s.metric)
+      return { metric: !s.metric }
     }),
   toggleStarInfo: () =>
     set((s) => {
