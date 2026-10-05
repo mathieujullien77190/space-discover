@@ -52,7 +52,6 @@ export type Engine = {
   setStarInfo: (on: boolean) => void
   clearStar: () => void
   _hubbleFeatures: () => Record<string, boolean>
-  _milky: () => { built: boolean; visible: boolean; opacity: number; count: number }
   _meteors: () => { active: number; total: number }
   _spawnMeteor: () => boolean
   _moonBoost: () => number

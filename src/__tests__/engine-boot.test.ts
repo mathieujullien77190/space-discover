@@ -517,7 +517,6 @@ describe('createEngine (rendu factice)', () => {
     expect(day.camAltKm).toBeGreaterThan(2.9)                                 // 2 877 m + 120 m d’œil
     expect(day.camAltKm).toBeLessThan(3.1)
     expect(day.day).toBeGreaterThan(0.9)                                      // midi : plein jour (le ciel bleu est celui de l’atmosphère)
-    expect(engine._milky().visible).toBe(false)                                // ... et absente de jour
     expect(day.orange).toBe(1)                                                // couleurs du coucher : seulement depuis l’observatoire
     expect(day.atmSun).toBe(1)                                                // l’atmosphère tient compte du Soleil
     expect(day.stars).toBe(false)                                             // et pas d’étoiles
@@ -525,10 +524,6 @@ describe('createEngine (rendu factice)', () => {
     engine.setDate(Date.UTC(2026, 9, 5, 0, 0, 0)); for (let i = 0; i < 2; i++) engine._frame(performance.now() + 900 + i * 100)
     const night = engine._obs()
     expect(Math.max(...night.starOpacity)).toBeCloseTo(0.5, 1)                // toutes les étoiles deux fois moins lumineuses depuis l’observatoire
-    expect(engine._milky()).toMatchObject({ built: true, visible: true })      // pleine nuit : la Voie lactée est là...
-    expect(engine._milky().count).toBeGreaterThan(45000)                         // ≈ 50 000 toutes petites étoiles de fond, sans lueur floue
-    expect(engine._milky().opacity).toBeGreaterThan(0.15)                        // cinq fois moins lumineuses que les étoiles (0,9 × 0,2 = 0,18 au maximum)
-    expect(engine._milky().opacity).toBeLessThan(0.19)
     expect(engine._spawnMeteor()).toBe(true)                                    // étoiles filantes : on peut en lancer une de nuit depuis l’observatoire
     engine._frame(performance.now() + 960); engine._frame(performance.now() + 980)
     expect(engine._meteors().total).toBeGreaterThan(0)
