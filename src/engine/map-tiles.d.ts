@@ -1,4 +1,4 @@
-export const MAP_STYLES: Record<'street' | 'terrain', { url: string; credit: string; zMax: number }>
+export const MAP_STYLES: Record<'street' | 'clean' | 'terrain', { url: string; credit: string; zMax: number }>
 export const MAP_URL: string
 export const MAP_CREDIT: string
 export const MAP_Z_MIN: number

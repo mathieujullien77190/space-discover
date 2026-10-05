@@ -15,6 +15,7 @@ export type UiState = {
   achievements: string[]   // hauts faits débloqués (mémorisés)
   slowMotion: boolean   // histoire : ralenti aux étapes (publié par le moteur)
   mapStyle: MapStyle   // fond de carte de la Terre
+  issView: boolean   // vue depuis l'ISS (publié par le moteur)
   firstPerson: boolean   // vue à la première personne (publié par le moteur)
   bigVehicles: boolean   // mode « engins géants » : fusées, satellites et ISS 1 000 fois plus gros
   unlocked: string | null   // haut fait qu'on vient de débloquer (écran de déblocage)
@@ -58,6 +59,7 @@ export const useStore = create<Store>((set) => ({
   unlocked: null,
   bigVehicles: false,
   firstPerson: false,
+  issView: false,
   mapStyle: 'drawn',
   slowMotion: true,
   setEngine: (engine) => set({ engine }),

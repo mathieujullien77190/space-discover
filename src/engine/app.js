@@ -195,7 +195,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
 
   const syncView = m => publish({ view: { mode: m, selected: m === 'iss' ? null : m === 'solar' ? solarTarget : 'earth', align: cam.upKind } });   // en vue ISS (satellite) aucun astre n'est choisi
   const snapCam = () => { cam.lon = cam.goal.lon; cam.lat = cam.goal.lat; cam.dist = cam.goal.dist; cam.fly = cam.tfly = 0; };   // la caméra prend la pose voulue d'un coup
-  const setMode = m => {
+  const setMode = m => { if (issView && m !== 'iss') { issView = false; cam.fp = null; publish({ issView: false, firstPerson: false }); }   // changer de vue coupe la vue depuis l'ISS
+  
     if ((m === 'solar') !== (cam.mode === 'solar')) {   // changement de repère (Terre fixe ↔ inertiel) : on tourne la pose de la caméra de l'angle sidéral pour que l'image ne saute pas
       const ang = m === 'solar' ? curGm : -curGm; cam.tgt.applyAxisAngle(Y_AXIS, ang); camera.position.applyAxisAngle(Y_AXIS, ang); cam.lon += ang / DEG; cam.goal.lon += ang / DEG; frameF = m === 'solar' ? 1 : 0;
     }
@@ -340,14 +341,20 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const setBigVehicles = on => { const k = on ? VEHICLE_SCALE_BIG : 1, r = k / VK; VK = k; cam.vk = k; if (launch) launch.vk = k; if (cam.mode === 'iss') cam.goal.dist = Math.min(41 * k, Math.max(0.1 * k / R_KM, cam.goal.dist * r)); };   // fusées, satellites et ISS ×1 000 (ou taille réelle)
   const FP_DEFAULT = { yaw: 0, pitch: -20, fov: 70 };   // vue à la première personne : on regarde un peu vers le bas (la Terre), champ de 70°
   const setFirstPerson = on => { if (!launch) { publish({ firstPerson: false }); return; } if (on && !cam.fp) { cam.fp = { ...FP_DEFAULT }; cam.fpUp.set(0, 0, 0); } else if (!on) cam.fp = null; publish({ firstPerson: !!cam.fp }); };
-  const placeFirstPerson = () => {   // caméra sur la fusée : avant = sens du vol, haut = verticale du lieu ; yaw / pitch = la tête de celui qui regarde
-    const f = launch.dir, rad = launch.radial, u = tmp2.copy(rad).addScaledVector(f, -rad.dot(f));
+  const placeFirstPerson = src => {   // caméra SUR l'engin (src = { pos, dir, radial } : fusée ou ISS) : avant = sens du vol, haut = verticale du lieu ; yaw / pitch = la tête de celui qui regarde
+    const f = src.dir, rad = src.radial, u = tmp2.copy(rad).addScaledVector(f, -rad.dot(f));
     if (u.lengthSq() > 0.0025) cam.fpUp.copy(u).normalize(); else if (cam.fpUp.lengthSq() < 0.5) cam.fpUp.copy(rad).cross(tmp3.set(0, 1, 0).cross(rad)).multiplyScalar(-1).normalize(); else cam.fpUp.addScaledVector(f, -cam.fpUp.dot(f)).normalize();   // près de la verticale : on garde le « haut » précédent
     const up0 = cam.fpUp, right0 = tmp3.crossVectors(f, up0).normalize();
     const yaw = -cam.fp.yaw * DEG, pit = cam.fp.pitch * DEG, d = tmp4.copy(f).applyAxisAngle(up0, yaw), r2 = right0.clone().applyAxisAngle(up0, yaw), u2 = up0.clone().applyAxisAngle(up0, yaw);
     d.applyAxisAngle(r2, pit); u2.applyAxisAngle(r2, pit);
-    camera.position.copy(launch.pos); camera.quaternion.setFromRotationMatrix(fpM.makeBasis(r2, u2, d.clone().negate())); camera.fov = cam.fp.fov || 70;
-    launch.rocket.visible = false; launch.dotRocket.visible = false; launch.satG.visible = false;   // on est dedans : ni la fusée ni le satellite ne cachent la vue
+    camera.position.copy(src.pos); camera.quaternion.setFromRotationMatrix(fpM.makeBasis(r2, u2, d.clone().negate())); camera.fov = cam.fp.fov || 70;
+  };
+  const issSrc = { pos: null, dir: new THREE.Vector3(), radial: new THREE.Vector3() };   // l'ISS vue de l'intérieur : sens de la marche = vitesse, haut = à l'opposé de la Terre
+  let issView = false;
+  const setIssView = on => {   // « vue depuis l'ISS » : la caméra est sur la station, on regarde autour en glissant ; couper = retour à la vue d'accès de l'ISS
+    if (on && iss && !launch) { setMode('iss'); cam.fp = { yaw: 0, pitch: -35, fov: 70 }; cam.fpUp.set(0, 0, 0); issView = true; }
+    else { const was = issView; issView = false; if (was) { cam.fp = null; if (iss) viewIss(); } }
+    publish({ issView, firstPerson: !!cam.fp });
   };
   let storySlow = true;   // ralenti aux étapes (boosters qui se détachent…) pendant une histoire ; désactivable
   const setStorySlowMotion = on => { storySlow = !!on; if (launch && story) launch.stepPause = storySlow; publish({ slowMotion: storySlow }); };
@@ -375,6 +382,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   };
   const quitStory = () => { if (!story) return; const wasBig = story.autoBig; story = null; stopRocket(); if (wasBig) { setBigVehicles(false); publish({ bigVehicles: false }); } resetTime(); publishStory(); };
   const startStory = id => {
+    if (issView) setIssView(false);
     const def = STORIES[id]; if (!def) return Promise.resolve();
     if (launch) stopRocket();
     setDate(Date.parse(def.date)); setSimSpeed(1);   // saut dans le temps : le jour du lancement
@@ -479,7 +487,9 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     ll(cam.lon, cam.lat, dirv);
     camera.position.copy(cam.tgt).addScaledVector(dirv, cam.dist);
     camera.up.copy(cam.userUp || Y_AXIS);   // « haut » de l'écran : l'axe du monde, ou celui demandé (nord de l'astre, normale de son orbite) ; la souris tourne autour de lui ; un changement de vue le remet à zéro
-    if (cam.fp && cam.mode === 'launch' && launch) placeFirstPerson(); else { if (camera.fov !== cam.fov) camera.fov = cam.fov; camera.lookAt(cam.tgt); }
+    if (cam.fp && cam.mode === 'launch' && launch) { placeFirstPerson(launch); launch.rocket.visible = false; launch.dotRocket.visible = false; launch.satG.visible = false; }   // on est dedans : ni la fusée ni le satellite ne cachent la vue
+    else if (cam.fp && cam.mode === 'iss' && iss && issView) { issSrc.pos = iss.pos; issSrc.dir.copy(iss.vel).normalize(); issSrc.radial.copy(iss.pos).normalize(); placeFirstPerson(issSrc); }
+    else { if (camera.fov !== cam.fov) camera.fov = cam.fov; camera.lookAt(cam.tgt); }
     camera.updateMatrixWorld();
     const closest = Math.max(1e-7, Math.min(cam.dist, camera.position.length() - 1) * 0.05);
     pxScale = innerHeight / 2 / Math.tan(camera.fov * DEG / 2);   // pixels par unité de rayon vu à 1 unité de distance
@@ -585,6 +595,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       }
     }
     const issHidden = solarMode || (camera.position.length() - 1) * R_KM > 20000;   // l'ISS cachée cache aussi tout ce qui lui appartient : cotes, hauteur, trajectoire
+    if (issView && cam.fp) { issModel.visible = false; dot.visible = false; }   // vue depuis l'ISS : on est dedans (ni le modèle ni le repère jaune)
     if (issHidden) { issScreen = null; issLabel.style.display = 'none'; dot.visible = false; issModel.visible = false; }   // dézoomé : l'ISS est cachée (point, nom et modèle)
     // caractéristiques 3D : mise à jour puis étiquettes projetées à l'écran
     for (const f of ISS_FEATURES) {   // une caractéristique « onlyIss » (taille, hauteur) n'apparaît que sur la vue de l'ISS
@@ -719,10 +730,10 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     selectView,
     goIss, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
     setStorySpeed: v => { if (launch && Number.isFinite(v) && v > 0) launch.speed = v; },   // vitesse du temps pendant une histoire (ne relance pas une étape en pause)
-    setMapStyle: style => { mapStyle = style === 'street' || style === 'terrain' ? style : 'drawn'; },   // 'drawn' (Natural Earth), 'street' (plan type Google Maps) ou 'terrain' (relief, forêts, montagnes)
+    setMapStyle: style => { mapStyle = style === 'street' || style === 'clean' || style === 'terrain' ? style : 'drawn'; },   // 'drawn' (Natural Earth), 'street' (plan type Google Maps) ou 'terrain' (relief, forêts, montagnes)
     _map: () => Object.assign({ style: mapStyle, shown: mapShown }, mapLayer.stats()),
-    setBigVehicles, setFirstPerson, setViewInset, setStorySlowMotion,
-    _fp: () => cam.fp ? { yaw: cam.fp.yaw, pitch: cam.fp.pitch, fov: camera.fov, posErr: launch ? camera.position.distanceTo(launch.pos) * R_KM * 1000 : null, dir: new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray(), up: new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion).toArray(), radial: launch ? launch.radial.toArray() : null, flight: launch ? launch.dir.toArray() : null } : null,
+    setBigVehicles, setFirstPerson, setIssView, setViewInset, setStorySlowMotion,
+    _fp: () => cam.fp ? { yaw: cam.fp.yaw, pitch: cam.fp.pitch, fov: camera.fov, posErr: launch ? camera.position.distanceTo(launch.pos) * R_KM * 1000 : iss && issView ? camera.position.distanceTo(iss.pos) * R_KM * 1000 : null, dir: new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray(), up: new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion).toArray(), radial: launch ? launch.radial.toArray() : issView ? issSrc.radial.toArray() : null, flight: launch ? launch.dir.toArray() : null } : null,
 
     startRocket, stopRocket, launchMission, followMission, startStory, storyNext, storyPrev, quitStory,
     _vehicle: () => launch ? { vk: launch.vk, scale: launch.rocket.scale.x, camKm: camera.position.distanceTo(launch.center) * R_KM, lenKm: launch.rocketLen * launch.vk / 1000 } : null,

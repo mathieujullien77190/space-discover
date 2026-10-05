@@ -37,3 +37,4 @@ export const setStorySpeed = (speed: number): void => engine()?.setStorySpeed(sp
 export const setFirstPerson = (on: boolean): void => engine()?.setFirstPerson(on)
 export const setViewInset = (right: number, bottom: number): void => engine()?.setViewInset(right, bottom)
 export const setStorySlowMotion = (on: boolean): void => engine()?.setStorySlowMotion(on)
+export const setIssView = (on: boolean): void => engine()?.setIssView(on)

@@ -475,6 +475,17 @@ describe('createEngine (rendu factice)', () => {
     engine.setMapStyle('drawn'); engine._frame(performance.now() + 300)
     expect(engine._map().style).toBe('drawn')
   })
+  it('vue depuis l’ISS : caméra sur la station, tête vers le haut, coupée par un changement de vue', () => {
+    engine.resetTime(); engine._frame(performance.now() + 350)               // la date a pu être changée par un test précédent (l’ISS n’existe qu’à partir de 1998)
+    engine.setIssView(true)
+    for (let i = 0; i < 5; i++) engine._frame(performance.now() + 400 + i * 100)
+    const fp = engine._fp()!
+    const dot = (a: number[], b: number[]) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+    expect(fp.posErr!).toBeLessThan(1)
+    expect(dot(fp.up, fp.radial!)).toBeGreaterThan(0.5)
+    engine.selectView('moon'); engine._frame(performance.now() + 1500)
+    expect(engine._fp()).toBeNull()
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)

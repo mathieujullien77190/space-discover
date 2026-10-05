@@ -11,7 +11,7 @@ import { useStore } from '@/store'
 import { initialEngineState } from '@/store/initial'
 import type { Engine } from '@/types'
 
-const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), startRocket: vi.fn(() => Promise.resolve()), stopRocket: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setRocketSpeed: vi.fn(), setBigVehicles: vi.fn(), setMapStyle: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
+const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), startRocket: vi.fn(() => Promise.resolve()), stopRocket: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setRocketSpeed: vi.fn(), setBigVehicles: vi.fn(), setMapStyle: vi.fn(), setIssView: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
 
 describe('TopBar + SubMenu', () => {
   let engine: ReturnType<typeof fakeEngine>
@@ -34,6 +34,12 @@ describe('TopBar + SubMenu', () => {
     fireEvent.click(screen.getByText('🔭 Engins ×1000'))
     expect(engine.setBigVehicles).toHaveBeenLastCalledWith(false)
   })
+  it('bouton « Vue depuis l’ISS » : active la vue à la première personne sur la station', () => {
+    useStore.setState({ issView: false })
+    render(<TopBar />)
+    fireEvent.click(screen.getByText('🛰 Vue depuis l’ISS'))
+    expect(engine.setIssView).toHaveBeenCalledWith(true)
+  })
   it('bouton fond de carte : dessiné → plan → relief → dessiné, avec crédit pour les fonds en ligne', () => {
     useStore.setState({ mapStyle: 'drawn' })
     render(<><TopBar /><MapCredit /></>)
@@ -42,6 +48,8 @@ describe('TopBar + SubMenu', () => {
     expect(engine.setMapStyle).toHaveBeenLastCalledWith('street')
     expect(screen.getByText(/Esri/)).toBeInTheDocument()
     fireEvent.click(screen.getByText('🗺 Plan'))
+    expect(engine.setMapStyle).toHaveBeenLastCalledWith('clean')
+    fireEvent.click(screen.getByText('🗺 Sans noms'))
     expect(engine.setMapStyle).toHaveBeenLastCalledWith('terrain')
     expect(screen.getByText(/OpenTopoMap/)).toBeInTheDocument()
     fireEvent.click(screen.getByText('⛰ Relief'))
@@ -116,14 +124,14 @@ describe('TopBar + SubMenu', () => {
   it('Satellites : seulement le bouton de l’ISS (plus de boutons Dimensions ni Trajectoire)', () => {
     render(<><TopBar /><SubMenu /></>)
     act(() => useStore.setState({ panel: 'satellites' }))   // panneau conservé dans le code, plus de bouton
-    expect(screen.getByText(/ISS/)).toBeInTheDocument()
+    expect(screen.getByText('🛰 ISS')).toBeInTheDocument()
     expect(screen.queryByText(/Dimensions/)).toBeNull()
     expect(screen.queryByText(/Trajectoire/)).toBeNull()
   })
   it('Satellites : l’ISS mène à la vue ISS', () => {
     render(<><TopBar /><SubMenu /></>)
     act(() => useStore.setState({ panel: 'satellites' }))   // panneau conservé dans le code, plus de bouton
-    fireEvent.click(screen.getByText(/ISS/))
+    fireEvent.click(screen.getByText('🛰 ISS'))
     expect(engine.goIss).toHaveBeenCalled()
   })
   it('Fusées : un clic sur une fusée la lance', () => {

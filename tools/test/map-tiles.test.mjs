@@ -22,4 +22,5 @@ check(pole.every(t => t.y >= 0 && t.y < 64), 'près du pôle : lignes limitées 
 check(tileUrl(5, 1, 2, MAP_STYLES.street.url) === 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/5/2/1' && !/carto/i.test(MAP_STYLES.street.url), 'URL Esri : ordre {z}/{y}/{x}, plus de CARTO (clé exigée)');
 check(tileUrl(5, 1, 2, MAP_STYLES.terrain.url) === 'https://a.tile.opentopomap.org/5/1/2.png' && /\{z\}/.test(MAP_STYLES.street.url), 'URLs : remplacement de {z}/{x}/{y}');
 check(MAP_STYLES.street.credit.includes('Esri') && MAP_STYLES.terrain.credit.includes('OpenTopoMap'), 'crédits des deux fonds présents');
+check(MAP_STYLES.clean.zMax === 10 && MAP_STYLES.clean.url.includes('World_Ocean_Base'), 'fond sans noms : Esri World Ocean Base, niveau 10 au plus');
 if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }

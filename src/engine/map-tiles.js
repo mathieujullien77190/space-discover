@@ -4,6 +4,7 @@
 // Ce sont des SERVICES EN LIGNE tiers : il faut citer leurs crédits (MAP_STYLES[style].credit) et respecter leurs règles d'usage (usage raisonnable, pas de téléchargement en masse).
 export const MAP_STYLES = {
   street: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', credit: 'Esri, HERE, Garmin, USGS, NGA, © OpenStreetMap contributors', zMax: 17 },
+  clean: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}', credit: 'Esri, GEBCO, NOAA, National Geographic, DeLorme, HERE, Geonames.org, and other contributors', zMax: 10 },   // SANS noms de villes : relief, forêts, lacs et rivières, côtes (au-delà du niveau 10 : pas de données)
   terrain: { url: 'https://a.tile.opentopomap.org/{z}/{x}/{y}.png', credit: '© OpenStreetMap contributors, SRTM · style © OpenTopoMap (CC-BY-SA)', zMax: 17 },
 };
 export const MAP_URL = MAP_STYLES.street.url;

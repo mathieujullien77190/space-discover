@@ -51,7 +51,7 @@ export function createMapLayer(parent, renderer) {
       enabled = !!on && !!http && camAlt < MAP_MAX_ALT_KM;
       if (!enabled) { group.visible = false; if (!on || camAlt > 3000) for (const [k, t] of [...tiles]) free(k, t); return false; }
       tick++;
-      const z = mapZoom(camAlt, cl, fov, aspect), want = mapTiles(co, cl, z);
+      const z = Math.min(mapZoom(camAlt, cl, fov, aspect), MAP_STYLES[style].zMax), want = mapTiles(co, cl, z);
       for (const tl of want) { const t = tiles.get(tl.key); if (t) t.t = tick; else if (loading < MAX_LOADING) load(tl); }
       if (tiles.size > MAX_CACHED) for (const [k, t] of [...tiles].sort((a, b) => a[1].t - b[1].t)) { if (tiles.size <= MAX_CACHED) break; if (t.t !== tick) free(k, t); }
       const wantKeys = new Set(want.map(t => t.key));
