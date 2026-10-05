@@ -380,6 +380,18 @@ describe('createEngine (rendu factice)', () => {
     engine.selectView('earth'); engine._frame(performance.now() + 100)
     expect(engine._terrain()).toMatchObject({ shown: false, tiles: 0, loading: 0 })
   })
+  it('boutons Nord en haut / Orbite à plat de la Terre : fonctionnent aussi pendant la vue au sol', () => {
+    engine.selectView('earth'); engine._frame(performance.now() + 100)
+    engine._click(innerWidth / 2, innerHeight / 2); engine._frame(performance.now() + 200)
+    engine._egSet(40, 70); engine._frame(performance.now() + 300)
+    engine.alignNorth('earth'); engine._frame(performance.now() + 400)
+    expect(engine._eg()!.yaw).toBe(0)                                           // nord en haut : cap nord, la vue au sol reste
+    expect(state.view.align).toBe('north')
+    engine.alignOrbit('earth'); engine._frame(performance.now() + 500)
+    expect(engine._eg()).toBeNull()                                             // orbite à plat : on quitte la vue au sol
+    expect(state.view.align).toBe('orbit')
+    engine.selectView('earth'); engine._frame(performance.now() + 600)
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)

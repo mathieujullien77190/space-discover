@@ -197,14 +197,16 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const toCam = v => v.clone().applyAxisAngle(Y_AXIS, solar.rotation.y);
   const aimFrom = (d, up, kind) => { cam.goal.lat = Math.asin(Math.max(-1, Math.min(1, d.y))) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; cam.userUp = up.clone(); cam.upKind = kind; publish({ view: { align: kind } }); snapCam(); };
   const alignNorth = id => {   // le pôle nord de l'astre en haut de l'écran, caméra un peu au-dessus de son équateur
+    if (cam.eg) { cam.eg.yaw = 0; publish({ view: { align: 'north' } }); return; }   // vue au sol : « nord en haut » = le cap est le nord (les boutons restaient sans effet : la vue au sol écrase la pose de la caméra à chaque image)
     const b = BODY.get(id), pole = b && poleOf(b); if (!pole) return;
     const up = toCam(pole).normalize(), d = ll(cam.lon, cam.lat, new THREE.Vector3());
     let side = d.clone().addScaledVector(up, -d.dot(up)); if (side.length() < 1e-3) side = new THREE.Vector3(1, 0, 0).cross(up); side.normalize();
     aimFrom(side.addScaledVector(up, 0.3).normalize(), up, 'north');
   };
-  const resetUp = () => { cam.userUp = null; cam.upKind = null; publish({ view: { align: null } }); };   // « haut » = celui du monde (axe y)
+  const resetUp = () => { if (cam.eg) { publish({ view: { align: 'ground' } }); return; } cam.userUp = null; cam.upKind = null; publish({ view: { align: null } }); };   // « haut » = celui du monde (axe y)
   const alignOrbit = id => {   // la trajectoire de l'astre autour de son corps central vue de côté : plan de l'orbite à l'horizontale, le corps central derrière l'astre
     const b = BODY.get(id); if (!b || !b.around) return;
+    cam.eg = null;   // « orbite à plat » n'a pas de sens au sol : on quitte la vue au sol (la pose « boule » est tenue à jour : pas de saut) puis on place la vue de côté
     const r0 = BODY.rel(id, curD), r1 = BODY.rel(id, curD + 0.01), n = new THREE.Vector3(r0[1] * r1[2] - r0[2] * r1[1], r0[2] * r1[0] - r0[0] * r1[2], r0[0] * r1[1] - r0[1] * r1[0]);
     if (n.length() < 1e-9) return;
     const up = toCam(n.normalize()), radial = toCam(new THREE.Vector3(r0[0], r0[1], r0[2]).normalize()), el = 12 * DEG;   // radial : du corps central vers l'astre
