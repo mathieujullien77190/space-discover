@@ -14,7 +14,7 @@ import { FLIGHT_OBJECTS, FLIGHT_OBJECT_FILES } from './data/objects.js';
 import { FLIGHT_PLANS, FLIGHT_PLAN_FILES } from './data/plans.js';
 import { LAUNCH_SITES, Launch, fmtT, launchOptDefault } from './launch-3d.js';
 import { AU_U, ECLIPTIC_POLE, astroD, buildMoonMesh, gmstOf, moonQuat, rotationQuat } from './moon.js';
-import { attachControls } from './controls.js';
+import { EARTH_MAX_DIST, attachControls } from './controls.js';
 import { assetUrl, setBaseUrl } from './config.js';
 import { KM_AL, KM_UA, fmtAlt, fmtBig, fmtMass } from './format.js';
 import { createOverlay } from './overlay.js';
@@ -158,7 +158,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       applyLocal(((yaw + 540) % 360) - 180, pitch, dist, true);
     } else if (cam.mode === 'earth') {
       if (kind[0] === 'y') cam.goal.lon += sgn * st; else if (kind[0] === 'p') cam.goal.lat = Math.max(-89.5, Math.min(89.5, cam.goal.lat + sgn * st));
-      else cam.goal.dist = 1 + Math.min(150, Math.max(2 / R_KM, (cam.goal.dist - 1) * (sgn > 0 ? f : 1 / f)));
+      else cam.goal.dist = 1 + Math.min(EARTH_MAX_DIST, Math.max(2 / R_KM, (cam.goal.dist - 1) * (sgn > 0 ? f : 1 / f)));
       cam.lon = cam.goal.lon; cam.lat = cam.goal.lat; cam.fly = 0;
     }
   };
@@ -314,7 +314,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
           const sv = bpos[STAR], rAU = Math.hypot(v.x - sv.x, v.y - sv.y, v.z - sv.z) / AU_U, tl = b.appearance.tail, k = Math.max(0, 1 - rAU / 3.5) / Math.pow(Math.max(0.3, rAU), 1.5), len = tl.lengthKmAt1AU / R_KM * k;
           o.tail.visible = len > ru * 4; if (o.tail.visible) { const dir = v.clone().sub(sv).normalize(); o.tail.position.copy(v); o.tail.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir); const w = tl.widthKm / 2 / R_KM * Math.sqrt(Math.min(1, k)); o.tail.scale.set(Math.max(w, ru), len, Math.max(w, ru)); }
         }
-        if (o.orbitG) { o.orbitG.position.copy(parent || bpos[BODY.origin()]); o.orbitG.visible = solarMode; }
+        if (o.orbitG) { o.orbitG.position.copy(parent || bpos[BODY.origin()]); o.orbitG.visible = solarMode || camera.position.length() > 300; }   // l'orbite de la Terre se voit aussi en vue Terre, dézoomée
+
         if (o.dot) { const d = b.dot, shown = (!d.onlyInSolarView || solarMode) && cam.dist > (d.minDistanceUnits || 0) && !(solarMode && solarTarget === id && cam.dist < (d.hideBelowUnits || 0)); o.dot.visible = shown && !masked(id); const at = o.dot.geometry.attributes.position; at.setXYZ(0, v.x, v.y, v.z); at.needsUpdate = true; }
         if (o.loop) {   // trace de la trajectoire autour du corps central : passé et avenir, recalculée tous les 0,05 jour, collée à l'astre à chaque image
           const N = 120, NF = 60;
@@ -330,7 +331,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
         }
         if (o.label) {   // étiquette : nom (mesures : diamètre) ; la Terre n'est écrite que de loin ou en mode mesures
           const lb = b.label, dKm = fr(2 * b.radiusKm), txt = metric && lb.metricText ? lb.metricText.replace('{diameterKm}', dKm).replace('{earths}', fr(2 * b.radiusKm / (2 * R_KM))) : lb.text; if (o.label.textContent !== txt) o.label.textContent = txt;
-          const on = b.sceneOrigin ? (solarMode && cam.dist > 300) || (metric && cam.mode === 'earth' && cam.dist > 6) : camera.position.distanceTo(ab) > (lb.minDistanceRadii != null ? lb.minDistanceRadii * ru : lb.minDistanceUnits || 0);
+          const on = b.sceneOrigin ? ((solarMode || cam.mode === 'earth') && cam.dist > 300) || (metric && cam.mode === 'earth' && cam.dist > 6) : camera.position.distanceTo(ab) > (lb.minDistanceRadii != null ? lb.minDistanceRadii * ru : lb.minDistanceUnits || 0);
           o.screen = proj(o.label, ab, on && !masked(id)); if (b.sceneOrigin) o.screen = null;
         }
       }

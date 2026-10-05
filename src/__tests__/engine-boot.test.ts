@@ -50,6 +50,15 @@ describe('createEngine (rendu factice)', () => {
     expect(label('Terre')?.style.display).toBe('block')
     expect(label('Lune')?.style.display).toBe('none')
   })
+  it('vue Terre dézoomée à fond : la Terre est marquée (son orbite autour du Soleil devient visible)', async () => {
+    await new Promise((r) => setTimeout(r, 450))
+    engine._frame(performance.now() + 1000)
+    for (let i = 0; i < 60; i++) engine.nudge('d+', 15)
+    for (let i = 0; i < 40; i++) engine._frame(performance.now() + 2000 + i * 100)
+    expect(JSON.parse(state.viewJson).altKm).toBeGreaterThan(1e8)   // plus de 100 millions de km d'altitude
+    const terre = [...overlay.querySelectorAll<HTMLElement>('.eng-l3d')].find((e) => e.textContent === 'Terre')
+    expect(terre?.style.display).toBe('block')
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)

@@ -1,12 +1,13 @@
 import { DEG, R_KM } from './earth.js';
 
 // Contrôles : glisser = tourner autour de la cible, molette / pincement = zoom, clic sans bouger = onClick(x, y).
+export const EARTH_MAX_DIST = 1.5e5;   // zoom arrière maximal de la vue Terre (rayons terrestres) : assez pour voir toute l'orbite de la Terre autour du Soleil (1 UA = 23 455 rayons)
 export function attachControls(canvas, cam, onClick) {
   const ptrs = new Map(); let pinch = 0, moved = 0; const offs = [], on = (t, ev, fn, o) => { t.addEventListener(ev, fn, o); offs.push(() => t.removeEventListener(ev, fn, o)); };
   const tanH = () => Math.tan(cam.fov * DEG / 2);
   const zoom = f => {   // f > 1 = on s'éloigne
     if (cam.mode === 'launch') { cam.zoomFit = false; cam.launchK = Math.max(1e-7, Math.min(1e7, cam.launchK * f)); }   // zoom manuel sur la caméra auto de la fusée
-    else if (cam.mode === 'earth') cam.goal.dist = 1 + Math.min(150, Math.max(2 / R_KM, (cam.goal.dist - 1) * f));   // on zoome sur l'altitude (min 2 km)
+    else if (cam.mode === 'earth') cam.goal.dist = 1 + Math.min(EARTH_MAX_DIST, Math.max(2 / R_KM, (cam.goal.dist - 1) * f));   // on zoome sur l'altitude (min 2 km)
     else if (cam.mode === 'solar') cam.goal.dist = Math.min(3e5, Math.max(1.5, cam.goal.dist * f));   // vue Soleil / Lune : de 1,5 rayon terrestre à 3·10⁵ (≈ 13 UA)
     else cam.goal.dist = Math.min(41, Math.max(0.1 / R_KM, cam.goal.dist * f));                                    // autour de l'ISS (min 100 m)
     
