@@ -1,6 +1,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AchievementScreen from '@/components/AchievementScreen'
+import CabinView from '@/components/CabinView'
+import { buildCabin } from '@/components/CabinView/helpers'
 import StoryList from '@/components/StoryList'
 import StoryPlayer from '@/components/StoryPlayer'
 import { useStore } from '@/store'
@@ -37,6 +39,13 @@ describe('mode histoire (interface)', () => {
     render(<StoryPlayer />)
     fireEvent.change(screen.getByLabelText('Vitesse du temps'), { target: { value: '100' } })
     expect(engine.setStorySpeed).toHaveBeenLastCalledWith(200)
+  })
+  it('cabine 3D : un chien dans une cabine, légende affichée même sans WebGL', () => {
+    const cabin = buildCabin()
+    expect(cabin.children.length).toBeGreaterThanOrEqual(4)
+    expect(cabin.children.some((c) => c.children.length > 5)).toBe(true)   // le chien (groupe de formes)
+    render(<CabinView />)
+    expect(screen.getByText(/cabine de Laïka/)).toBeInTheDocument()
   })
   it('fin d’histoire : le haut fait est débloqué, mémorisé et affiché', () => {
     useStore.setState({ story: { active: true, id: 'laika', title: 'Laïka', index: 2, total: 3, phase: 'showing', finished: true, canNext: true, step } })

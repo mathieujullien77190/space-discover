@@ -29,6 +29,7 @@ export type StoryStep = {
   text: string
   pause?: boolean
   camera?: { follow?: string }
+  scene?: 'cabin'   // illustration 3D affichée dans l'étape
   image?: { src: string; alt: string; credit: string; license: string }
   source?: string
 }
@@ -52,7 +53,7 @@ export type EngineState = {
 // Correctif envoyé par le moteur : chaque tranche peut être partielle (fusion superficielle dans le store).
 export type EnginePatch = {
   [K in keyof EngineState]?: EngineState[K] extends object ? Partial<EngineState[K]> : EngineState[K]
-}
+} & { bigVehicles?: boolean }   // le moteur peut aussi activer le mode engins géants (histoire : à 50 km d'altitude)
 
 export type BodyFact = { label: string; value: string }
 export type BodyCardData = { id: string; name: string; kind: string; canNorth: boolean; canOrbit: boolean; image: string; facts: BodyFact[] }   // canNorth / canOrbit : boutons « Nord en haut » / « Orbite à plat » de la fiche

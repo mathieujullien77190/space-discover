@@ -24,6 +24,7 @@ import { storyTriggers } from './story.js';
 import { probeDef, probeFrom, probeIds, probeMission } from './probes.js';
 import { buildProbeModel } from './probe-model.js';
 
+export const STORY_BIG_ALT_M = 50000;   // histoire : le mode engins géants s'active quand la fusée passe cette altitude
 export const VEHICLE_SCALE_BIG = 1000;   // mode « engins géants » : fusées, satellites et ISS 1 000 fois plus gros que la réalité
 const VIEW_ISS = { yaw: -28.8, pitch: 24.9, dist: 0.393 };   // accès DIRECT à l'ISS, sans transition : vue réglée par l'utilisateur, un peu de derrière et au-dessus, à 393 m (yaw °, pitch °, distance km)
 const Z_AXIS = new THREE.Vector3(0, 0, 1), Y_AXIS = new THREE.Vector3(0, 1, 0), KMU = 1 / (R_KM * 1000), SITE_FALLBACK = LAUNCH_SITES[0];
@@ -334,6 +335,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const followMission = () => { const id = curMission; if (!id) return; stopRocket(); setDate(Date.parse(probeDef(id).mission.launch.date) + 2 * 86400000); selectView(id); setSimSpeed(86400); };
   // ---------- MODE HISTOIRE (src/engine/story.js, public/stories/) ----------
   // Une histoire lance un objet (fusée) à une date et met la simulation en PAUSE à chaque étape : texte court, cadrage de caméra, quiz éventuel. L'interface (React) affiche l'étape ; « Suivant » relance la simulation jusqu'à la suivante.
+  const setBigVehicles = on => { const k = on ? VEHICLE_SCALE_BIG : 1, r = k / VK; VK = k; cam.vk = k; if (launch) launch.vk = k; if (cam.mode === 'iss') cam.goal.dist = Math.min(41 * k, Math.max(0.1 * k / R_KM, cam.goal.dist * r)); };   // fusées, satellites et ISS ×1 000 (ou taille réelle)
   let story = null;   // { def, trig (instants de vol de chaque étape), index (étape affichée, −1 au départ), next (prochaine à afficher), phase: 'showing' (en pause) | 'running', finished }
   const STORY_OFF = { active: false, id: null, title: '', index: -1, total: 0, phase: 'running', finished: false, canNext: false, step: null };
   const publishStory = () => publish({ story: !story ? STORY_OFF : { active: true, id: story.def.id, title: story.def.title, index: story.index, total: story.def.steps.length, phase: story.phase, finished: story.finished, canNext: story.phase === 'showing', step: story.index >= 0 ? story.def.steps[story.index] : null } });
@@ -343,13 +345,15 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     if (cam.mode !== 'launch') setMode('launch');
   };
   const storyShow = i => { const st = story.def.steps[i]; story.index = i; story.next = i + 1; storyCamera(st.camera); if (st.pause === false) { story.phase = 'running'; launch.playing = true; } else { story.phase = 'showing'; launch.playing = false; } publishStory(); };
-  const storyTick = () => { if (story && launch && story.phase === 'running' && !story.finished && story.next < story.def.steps.length && launch.T >= story.trig[story.next] - 1e-9) storyShow(story.next); };
+  const storyTick = () => {
+    if (story && launch && !story.autoBig && launch.altM >= STORY_BIG_ALT_M) { story.autoBig = true; setBigVehicles(true); publish({ bigVehicles: true }); }   // à 50 km d'altitude : zoom « engins × 1000 » d'office (une seule fois : l'utilisateur peut le désactiver ensuite)
+    if (story && launch && story.phase === 'running' && !story.finished && story.next < story.def.steps.length && launch.T >= story.trig[story.next] - 1e-9) storyShow(story.next); };
   const storyNext = () => {
     if (!story || story.phase !== 'showing' || story.finished) return;
     if (story.next >= story.def.steps.length) { story.finished = true; publishStory(); return; }   // dernière étape : l'histoire est finie
     if (story.trig[story.next] <= launch.T + 1e-9) storyShow(story.next); else { story.phase = 'running'; launch.playing = true; publishStory(); }
   };
-  const quitStory = () => { if (!story) return; story = null; stopRocket(); resetTime(); publishStory(); };
+  const quitStory = () => { if (!story) return; const wasBig = story.autoBig; story = null; stopRocket(); if (wasBig) { setBigVehicles(false); publish({ bigVehicles: false }); } resetTime(); publishStory(); };
   const startStory = id => {
     const def = STORIES[id]; if (!def) return Promise.resolve();
     if (launch) stopRocket();
@@ -678,7 +682,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     selectView,
     goIss, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
     setStorySpeed: v => { if (launch && Number.isFinite(v) && v > 0) launch.speed = v; },   // vitesse du temps pendant une histoire (ne relance pas une étape en pause)
-    setBigVehicles: on => { const k = on ? VEHICLE_SCALE_BIG : 1, r = k / VK; VK = k; cam.vk = k; if (launch) launch.vk = k; if (cam.mode === 'iss') cam.goal.dist = Math.min(41 * k, Math.max(0.1 * k / R_KM, cam.goal.dist * r)); },   // fusées, satellites et ISS ×1 000 (ou taille réelle)
+    setBigVehicles,
 
     startRocket, stopRocket, launchMission, followMission, startStory, storyNext, quitStory,
     _vehicle: () => launch ? { vk: launch.vk, scale: launch.rocket.scale.x, camKm: camera.position.distanceTo(launch.center) * R_KM, lenKm: launch.rocketLen * launch.vk / 1000 } : null,

@@ -422,8 +422,9 @@ describe('createEngine (rendu factice)', () => {
       expect(s.T).toBeLessThan(Math.max(s.trig[state.story.index], 0) + 60)
       seen.push(state.story.step!.id)
     }
-    expect(seen).toEqual(['mouches', 'moscou', 'entrainement', 'decollage', 'boosters', 'orbite', 'tour', 'adieu', 'heritage'])
+    expect(seen).toEqual(['mouches', 'moscou', 'entrainement', 'decollage', 'boosters', 'orbite', 'tour', 'adieu', 'espoir', 'heritage'])
     expect(state.story.finished).toBe(true)
+    expect(engine._vehicle()!.vk).toBe(1000)                                    // passé 50 km : engins × 1 000 d’office
     engine.quitStory(); frames(2)
     expect(state.story.active).toBe(false)
     expect(state.rocket.running).toBe(false)

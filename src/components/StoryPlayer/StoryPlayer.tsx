@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import CabinView from '@/components/CabinView'
 import StorySpeed from '@/components/StorySpeed'
 import { BASE_PATH } from '@/constants'
 import { storyOf } from '@/engine/catalog'
@@ -54,6 +55,7 @@ export const StoryPlayer = () => {
         </button>
       </div>
       <h2 className={styles.title}>{step.title}</h2>
+      {step.scene === 'cabin' && <CabinView />}
       {step.image && (
         <figure className={styles.figure}>
           <img src={step.image.src.startsWith('http') ? step.image.src : `${BASE_PATH}/${step.image.src}`} alt={step.image.alt} className={styles.image} />

@@ -13,7 +13,9 @@
       "at": "before",
       "title": "Le savais-tu ?",
       "text": "Avant Laïka, des animaux étaient déjà montés dans l’espace. Les tout premiers voyageurs ont été des mouches des fruits, en 1947. Mais elles ont fait un saut très court, sans faire le tour de la Terre.",
-      "camera": { "follow": "pad" },
+      "camera": {
+        "follow": "pad"
+      },
       "source": "NASA et histoire du vol spatial : mouches des fruits lancées par les États-Unis en février 1947 (vol court, hors orbite)"
     },
     {
@@ -21,24 +23,36 @@
       "at": "before",
       "title": "Une chienne de Moscou",
       "text": "En 1957, les savants soviétiques veulent savoir si un être vivant peut survivre dans l’espace. Ils choisissent Laïka, une petite chienne trouvée dans les rues de Moscou. Elle est calme et courageuse.",
-      "camera": { "follow": "pad" },
-      "image": { "src": "stories/laika/laika.jpg", "alt": "Laïka en 1957", "credit": "Musée de la cosmonautique / Archives de Moscou, via Wikimedia Commons", "license": "CC BY 4.0" },
+      "camera": {
+        "follow": "pad"
+      },
+      "image": {
+        "src": "stories/laika/laika.jpg",
+        "alt": "Laïka en 1957",
+        "credit": "Musée de la cosmonautique / Archives de Moscou, via Wikimedia Commons",
+        "license": "CC BY 4.0"
+      },
       "source": "Space.com et Wikipédia (Laïka) : chienne errante de Moscou choisie pour Spoutnik 2"
     },
     {
       "id": "entrainement",
       "at": "before",
       "title": "Un entraînement pour la cabine",
-      "text": "Laïka s’entraîne à vivre dans une petite cabine, comme celle du satellite. Elle apprend à rester tranquille dans son harnais. La cabine est rembourrée et assez grande pour qu’elle puisse se coucher ou se lever.",
-      "camera": { "follow": "pad" },
-      "source": "Space.com et Wikipédia (Laïka) : cabine rembourrée, harnais, entraînement dans des cages de plus en plus petites"
+      "text": "Laïka s’entraîne à vivre dans une petite cabine, comme celle du satellite. Elle apprend à rester tranquille dans son harnais. La cabine est rembourrée et assez grande pour qu’elle puisse se coucher ou se lever, avec de l’air frais et de la nourriture en gelée.",
+      "scene": "cabin",
+      "camera": {
+        "follow": "pad"
+      },
+      "source": "Space.com et Wikipédia (Laïka) : cabine rembourrée avec régénération d’air, nourriture en gelée, harnais, entraînement dans des cages de plus en plus petites ; la 3D est un dessin simplifié"
     },
     {
       "id": "decollage",
       "at": "t0",
       "title": "Décollage !",
       "text": "Nous sommes le 3 novembre 1957, à Baïkonour. La fusée R-7 s’élève dans un énorme nuage de fumée. Dans le satellite, Laïka est installée dans sa cabine.",
-      "camera": { "follow": "rocket" },
+      "camera": {
+        "follow": "rocket"
+      },
       "source": "NASA : lancement de Spoutnik 2 le 3 novembre 1957 depuis Baïkonour"
     },
     {
@@ -47,14 +61,18 @@
       "offsetS": -4,
       "title": "Les boosters se détachent",
       "text": "Les quatre fusées du côté se détachent, car elles n’ont plus de carburant. Elles retombent, et la fusée du milieu continue seule vers le haut.",
-      "camera": { "follow": "rocket" }
+      "camera": {
+        "follow": "rocket"
+      }
     },
     {
       "id": "orbite",
       "at": "objectOrbit",
       "title": "En orbite !",
       "text": "Spoutnik 2 est en orbite autour de la Terre. Laïka est le premier être vivant à tourner autour de notre planète. Le satellite pèse environ 508 kilos.",
-      "camera": { "follow": "rocket" },
+      "camera": {
+        "follow": "rocket"
+      },
       "source": "NASA / NSSDCA Spoutnik 2 (1957-002A) : masse 508 kg, orbite 212 × 1 660 km"
     },
     {
@@ -63,7 +81,9 @@
       "offsetS": 1500,
       "title": "Un tour de la Terre",
       "text": "De là-haut, Laïka passe au-dessus des océans et des continents. Un tour complet dure environ une heure et quarante-cinq minutes. C’est plus court qu’un film !",
-      "camera": { "follow": "rocket" },
+      "camera": {
+        "follow": "rocket"
+      },
       "source": "NASA / NSSDCA Spoutnik 2 : période orbitale 103,7 minutes"
     },
     {
@@ -71,16 +91,30 @@
       "at": "end",
       "title": "Un adieu plein de reconnaissance",
       "text": "Laïka n’est jamais revenue sur Terre. À cette époque, personne ne savait encore faire revenir un satellite en toute sécurité. Elle n’a vécu que quelques heures dans l’espace, et elle a rendu un immense service à toute l’humanité.",
-      "camera": { "follow": "rocket" },
+      "camera": {
+        "follow": "rocket"
+      },
       "source": "NASA : Laïka n’a probablement survécu que quelques heures ; le satellite est retombé le 14 avril 1958"
+    },
+    {
+      "id": "espoir",
+      "at": "end",
+      "title": "L’espoir",
+      "text": "Trois ans plus tard, deux chiennes, Belka et Strelka, sont parties à leur tour, et elles sont revenues en pleine forme. Puis ce fut le tour d’un homme : Youri Gagarine.",
+      "camera": {
+        "follow": "rocket"
+      },
+      "source": "Wikipédia (Belka et Strelka : vol de Spoutnik 5 le 19 août 1960, retour en vie) ; Gagarine : Vostok 1, 12 avril 1961 (NASA, à vérifier)"
     },
     {
       "id": "heritage",
       "at": "end",
-      "title": "Grâce à elle, d’autres ont osé",
-      "text": "Le vol de Laïka a montré qu’un être vivant peut résister au lancement et à l’apesanteur. Quatre ans plus tard, le 12 avril 1961, Youri Gagarine est devenu le premier humain dans l’espace. Aujourd’hui, une statue de Laïka se trouve à Moscou.",
-      "camera": { "follow": "rocket" },
-      "source": "Wikipédia (Laïka) : statue inaugurée à Moscou le 11 avril 2008 ; Gagarine, vol Vostok 1 du 12 avril 1961 (NASA)"
+      "title": "Merci, Laïka",
+      "text": "Le vol de Laïka a montré qu’un être vivant peut résister au lancement et à l’apesanteur. Aujourd’hui, une statue de Laïka se trouve à Moscou.",
+      "camera": {
+        "follow": "rocket"
+      },
+      "source": "Wikipédia (Laïka) : statue inaugurée à Moscou le 11 avril 2008"
     }
   ],
   "achievement": {
