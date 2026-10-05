@@ -3,8 +3,9 @@
 import * as THREE from 'three';
 import { wrapLighting } from './wrap-light.js';
 import { ll } from './earth.js';
-import { DEM_URL, IMAGERY_URL, SEA_LEVEL_OFFSET, TERRAIN_EXAGGERATION, TERRAIN_GLOW, TERRAIN_HYSTERESIS, TERRAIN_MAX_ALT_KM, mercY, terrainTiles, terrainFallbacks, terrainLevels, tileBounds, tileSegments, tileHeights, tileUrl, vertexRadius } from './terrain-tiles.js';
+import { HQ_ALT_KM, DEM_URL, IMAGERY_URL, SEA_LEVEL_OFFSET, TERRAIN_EXAGGERATION, TERRAIN_GLOW, TERRAIN_HYSTERESIS, TERRAIN_MAX_ALT_KM, mercY, terrainTiles, terrainFallbacks, terrainLevels, tileBounds, tileSegments, tileHeights, tileUrl, vertexRadius } from './terrain-tiles.js';
 
+const MAX_CACHED_HQ = 560;   // qualité max (au ras du sol) : plus de niveaux, tous avec relief
 const MAX_CACHED = 320;   // tuiles gardées en mémoire (≈ 320 × (image 350 Ko + relief) de mémoire graphique) : les plus anciennes sont libérées
 const MAX_LOADING = 16;   // images en cours de téléchargement
 export const TILE_SEGMENTS = 32;   // facettes par côté d'une tuile
@@ -73,7 +74,8 @@ export function createTerrainLayer(parent, renderer, opts) {
       for (const tl of want) { const t = tiles.get(tl.key); if (t && tl.dem && !t.demWanted) { free(tl.key, t); if (loading < MAX_LOADING) load(tl); } else if (t) t.t = tick; else if (loading < MAX_LOADING) load(tl); }   // (une tuile de secours à plat devenue tuile fine est rechargée avec son relief)
       const fb = terrainFallbacks(want, key => { const t = tiles.get(key); return !!t && t.state === 'ready'; });   // tuile pas encore arrivée : sa parente (un cran moins détaillé) la remplace en attendant
       for (const tl of fb) { const t = tiles.get(tl.key); if (t) t.t = tick; else if (loading < MAX_LOADING) load(tl); }
-      if (tiles.size > MAX_CACHED) for (const [k, t] of [...tiles].sort((a, b) => a[1].t - b[1].t)) { if (tiles.size <= MAX_CACHED) break; if (t.t !== tick) free(k, t); }
+      const cap = camAlt < HQ_ALT_KM ? MAX_CACHED_HQ : MAX_CACHED;
+      if (tiles.size > cap) for (const [k, t] of [...tiles].sort((a, b) => a[1].t - b[1].t)) { if (tiles.size <= cap) break; if (t.t !== tick) free(k, t); }
       const wantKeys = new Set(want.concat(fb).map(t => t.key));
       for (const [k, t] of tiles) if (t.mesh) t.mesh.visible = wantKeys.has(k);   // seules les tuiles du niveau courant sont affichées (pas de mélange de niveaux)
       group.visible = true;

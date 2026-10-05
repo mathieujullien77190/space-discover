@@ -82,14 +82,17 @@ export const vertexRadius = (elevM, exag = TERRAIN_EXAGGERATION) => 1 + SEA_LEVE
 export const TERRAIN_LEVELS = 5, TERRAIN_FAR_RADIUS = 3;
 export const DEM_MIN_Z = 8;   // sous ce niveau de zoom (tuiles de plus de 150 km) le relief est invisible : pas de téléchargement d'altitudes (économie de ≈ 11 Mo à 4 000 km)
 export const horizonKm = altKm => { const h = Math.max(0, altKm) / 6378.137; return 6378.137 * Math.acos(1 / (1 + h)); };   // distance au sol jusqu'à l'horizon
+// hq (« qualité max », vue au ras du sol : sous HQ_ALT_KM) : TOUS les niveaux (même lointains) ont leur RELIEF (z ≥ DEM_MIN_Z) — sinon la tuile fine, relevée par ses montagnes, finit en falaise contre la tuile lointaine à plat —, la grille lointaine est plus large et il y a un niveau de plus.
+export const HQ_ALT_KM = 20, HQ_FAR_RADIUS = 4, HQ_LEVELS = 6;
 export function terrainLevels(lon, lat, altKm, fovDeg, aspect) {
+  const hq = altKm < HQ_ALT_KM;
   const z0 = Math.min(terrainZoom(altKm, lat, fovDeg, aspect), TERRAIN_Z_MAX), horizon = horizonKm(altKm), levels = [], coslat = Math.max(0.05, Math.cos(lat / R2D));
   let prev = null;
-  for (let k = 0; k < TERRAIN_LEVELS; k++) {
+  for (let k = 0; k < (hq ? HQ_LEVELS : TERRAIN_LEVELS); k++) {
     const z = z0 - k; if (z < TERRAIN_Z_MIN) break;
-    const r = k === 0 ? TERRAIN_RADIUS : TERRAIN_FAR_RADIUS, grid = terrainTiles(lon, lat, z, r), keys = new Set(grid.map(t => t.key));
+    const r = k === 0 ? TERRAIN_RADIUS : hq ? HQ_FAR_RADIUS : TERRAIN_FAR_RADIUS, grid = terrainTiles(lon, lat, z, r), keys = new Set(grid.map(t => t.key));
     const covered = t => prev && [0, 1].every(dx => [0, 1].every(dy => prev.has((z + 1) + '/' + (2 * t.x + dx) + '/' + (2 * t.y + dy))));
-    levels.push({ k, z, dem: k === 0 && z >= DEM_MIN_Z, tiles: k === 0 ? grid : grid.filter(t => !covered(t)) });
+    levels.push({ k, z, dem: (k === 0 || hq) && z >= DEM_MIN_Z, tiles: k === 0 ? grid : grid.filter(t => !covered(t)) });
     prev = keys;
     if ((r + 0.5) * EARTH_CIRC_KM * coslat / Math.pow(2, z) >= horizon) break;   // la grille de ce niveau atteint l'horizon
   }

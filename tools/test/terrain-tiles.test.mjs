@@ -50,3 +50,11 @@ check(TERRAIN_MAX_ALT_KM === 4000, 'le fond de carte détaillé apparaît dès 4
 check(high.length >= 2 && high[0].z < DEM_MIN_Z && !high[0].dem, 'à 4 000 km : ' + high.length + ' niveaux (z ' + high.map(l => l.z).join(', ') + '), le plus fin sans téléchargement d’altitudes (z < ' + DEM_MIN_Z + ')');
 check((3 + 0.5) * 40075 * Math.cos(48 * Math.PI / 180) / Math.pow(2, lastH.z) >= hh * 0.9 || lastH.z === 3, 'les niveaux atteignent l’horizon (' + Math.round(hh) + ' km) ou le zoom minimal');
 if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }
+// qualité max au ras du sol (observatoire, 3 km) : tous les niveaux ont leur relief, pas de falaise contre une tuile lointaine à plat
+{
+  const hq = terrainLevels(0.1426, 42.9369, 3, 70, 1.6), hqLast = hq[hq.length - 1];
+  check(hq.length >= 3 && hq.every(l => l.dem === (l.z >= DEM_MIN_Z)), 'à 3 km : ' + hq.length + ' niveaux (z ' + hq.map(l => l.z).join(', ') + '), TOUS avec relief (z ≥ ' + DEM_MIN_Z + ')');
+  check(hq[0].tiles.length === 81 && hq.length > 1 && hq[1].tiles.length > 0, 'niveau fin : 81 tuiles ; niveaux lointains présents');
+  const ext = (4 + 0.5) * 40075 * Math.cos(42.9369 * Math.PI / 180) / Math.pow(2, hqLast.z);
+  check(ext >= horizonKm(3) || hq.length === 6, 'la grille du dernier niveau atteint l’horizon (' + Math.round(ext) + ' km ≥ ' + Math.round(horizonKm(3)) + ' km) ou six niveaux');
+}
