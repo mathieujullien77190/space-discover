@@ -11,9 +11,7 @@ export const TERRAIN_RADIUS = 4;                       // grille de (2 × 4 + 1)
 export const TERRAIN_MAX_ALT_KM = 1000;                // au-dessus : la carte dessinée de la Terre reste affichée (fondu entre 900 et 1 000 km : tuiles pleinement visibles à 900 km)
 export const TERRAIN_HYSTERESIS = 1.12;                // une fois affiché, le relief ne disparaît qu'à 12 % au-dessus du seuil
 export const TERRAIN_EXAGGERATION = 1;                 // relief à l'échelle réelle ×1 (c'était ×2 : « les montagnes sont trop hautes ») (à 6 378 km de rayon, l'Everest ne fait que 0,14 % : invisible sinon)
-export const TERRAIN_OPACITY = 0.85;                   // opacité maximale des tuiles : la carte dessinée (claire) transparaît dessous et ÉCLAIRCIT l'imagerie satellite (souvent sombre)
 export const TERRAIN_GLOW = 0.3;                       // lumière propre ajoutée à l'imagerie (relève les ombres du relief : la face à l'ombre du Soleil n'est plus noire)
-export const TERRAIN_FADE_START = 0.9;                 // le fondu démarre à 900 km (90 % de 1 000 km) : l'imagerie apparaît en douceur au lieu de surgir
 export const EARTH_R_M = 6378137;
 export const SEA_LEVEL_OFFSET = 8e-6;                  // le niveau de la mer des tuiles est ≈ 50 m au-dessus du maillage de la Terre (dont les facettes plongent jusqu'à 30 m sous la sphère)
 const R2D = 180 / Math.PI, EARTH_CIRC_KM = 40075.017;
@@ -77,11 +75,6 @@ export function tileHeights(rgba, w, h, nx, ny, bounds) {
 // rayon d'un sommet (rayons terrestres) : niveau de la mer (un souffle au-dessus du maillage de la Terre) + altitude exagérée
 export const vertexRadius = (elevM, exag = TERRAIN_EXAGGERATION) => 1 + SEA_LEVEL_OFFSET + Math.max(0, elevM) * exag / EARTH_R_M;
 
-// opacité des tuiles selon l'altitude de la caméra : 0 au seuil (TERRAIN_MAX_ALT_KM), pleine (TERRAIN_OPACITY) sous TERRAIN_FADE_START × seuil, fondu progressif entre les deux
-export function terrainOpacity(altKm) {
-  const hi = TERRAIN_MAX_ALT_KM, lo = hi * TERRAIN_FADE_START, t = Math.max(0, Math.min(1, (hi - altKm) / (hi - lo)));
-  return TERRAIN_OPACITY * t * t * (3 - 2 * t);   // marche lissée
-}
 
 // RELIEF JUSQU'À L'HORIZON : plusieurs niveaux de zoom emboîtés autour du point regardé. Niveau 0 = le plus fin (z0, grille de (2 · TERRAIN_RADIUS + 1)², avec le RELIEF) ; niveaux suivants = zoom z0 − k, grille de 7 × 7, image seulement,
 // en ne gardant que les tuiles NON recouvertes par le niveau plus fin (les 4 tuiles enfants toutes présentes) : on s'arrête quand la grille atteint l'horizon (depuis l'ISS : ≈ 2 300 km), au plus TERRAIN_LEVELS niveaux.

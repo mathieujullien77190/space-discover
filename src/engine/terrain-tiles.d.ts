@@ -7,9 +7,7 @@ export const TERRAIN_RADIUS: number
 export const TERRAIN_MAX_ALT_KM: number
 export const TERRAIN_HYSTERESIS: number
 export const TERRAIN_EXAGGERATION: number
-export const TERRAIN_OPACITY: number
 export const TERRAIN_GLOW: number
-export const TERRAIN_FADE_START: number
 export const EARTH_R_M: number
 export const SEA_LEVEL_OFFSET: number
 export function tileUrl(z: number, x: number, y: number, template: string): string
@@ -25,7 +23,6 @@ export function terrariumElevation(r: number, g: number, b: number): number
 export function sampleDem(rgba: ArrayLike<number>, w: number, h: number, u: number, v: number): number
 export function tileHeights(rgba: ArrayLike<number>, w: number, h: number, nx: number, ny: number, bounds?: [number, number, number, number]): Float32Array
 export function vertexRadius(elevM: number, exag?: number): number
-export function terrainOpacity(altKm: number): number
 export const TERRAIN_LEVELS: number
 export const TERRAIN_FAR_RADIUS: number
 export function horizonKm(altKm: number): number
