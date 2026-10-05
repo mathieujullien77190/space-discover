@@ -347,6 +347,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     camera.position.copy(launch.pos); camera.quaternion.setFromRotationMatrix(fpM.makeBasis(r2, u2, d.clone().negate())); camera.fov = cam.fp.fov || 70;
     launch.rocket.visible = false; launch.dotRocket.visible = false; launch.satG.visible = false;   // on est dedans : ni la fusée ni le satellite ne cachent la vue
   };
+  let storySlow = true;   // ralenti aux étapes (boosters qui se détachent…) pendant une histoire ; désactivable
+  const setStorySlowMotion = on => { storySlow = !!on; if (launch && story) launch.stepPause = storySlow; publish({ slowMotion: storySlow }); };
   let story = null;   // { def, trig (instants de vol de chaque étape), index (étape affichée, −1 au départ), next (prochaine à afficher), phase: 'showing' (en pause) | 'running', finished }
   const STORY_OFF = { active: false, id: null, title: '', index: -1, total: 0, phase: 'running', finished: false, canNext: false, step: null };
   const publishStory = () => publish({ story: !story ? STORY_OFF : { active: true, id: story.def.id, title: story.def.title, index: story.index, total: story.def.steps.length, phase: story.phase, finished: story.finished, canNext: story.phase === 'showing', step: story.index >= 0 ? story.def.steps[story.index] : null } });
@@ -372,7 +374,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     setDate(Date.parse(def.date)); setSimSpeed(1);   // saut dans le temps : le jour du lancement
     return loadObject(def.launch).then(launchObject).then(() => {
       if (!launch) return;
-      launch.stepPause = true;   // ralenti extrême autour de chaque étape du vol (les boosters qui se détachent se voient au ralenti)
+      launch.stepPause = storySlow; publish({ slowMotion: storySlow });   // ralenti extrême autour de chaque étape du vol (les boosters qui se détachent se voient au ralenti)
       launch.playing = false; launch.speed = def.playbackSpeed || 10; launch.Tmax = launch.tEnd + (def.extraS != null ? def.extraS : 900);   // en pause au départ ; on peut suivre l'orbite après l'insertion (extraS secondes)
       story = { def, trig: storyTriggers(def, launch.sim.events, launch.tEnd, def.extraS), index: -1, next: 0, phase: 'running', finished: false };
       storyTick();   // les étapes « avant le départ » s'affichent tout de suite
@@ -701,7 +703,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     selectView,
     goIss, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
     setStorySpeed: v => { if (launch && Number.isFinite(v) && v > 0) launch.speed = v; },   // vitesse du temps pendant une histoire (ne relance pas une étape en pause)
-    setBigVehicles, setFirstPerson, setViewInset,
+    setBigVehicles, setFirstPerson, setViewInset, setStorySlowMotion,
     _fp: () => cam.fp ? { yaw: cam.fp.yaw, pitch: cam.fp.pitch, fov: camera.fov, posErr: launch ? camera.position.distanceTo(launch.pos) * R_KM * 1000 : null, dir: new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray(), up: new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion).toArray(), radial: launch ? launch.radial.toArray() : null, flight: launch ? launch.dir.toArray() : null } : null,
 
     startRocket, stopRocket, launchMission, followMission, startStory, storyNext, quitStory,

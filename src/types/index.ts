@@ -28,7 +28,7 @@ export type StoryStep = {
   title: string
   text: string
   pause?: boolean
-  camera?: { follow?: string; firstPerson?: boolean }
+  camera?: { follow?: string; firstPerson?: boolean; slowMotion?: boolean }
   scene?: 'cabin'   // illustration 3D affichée dans l'étape
   image?: { src: string; alt: string; credit: string; license: string }
   source?: string
@@ -79,6 +79,7 @@ export type Engine = {
   setBigVehicles: (on: boolean) => void
   setFirstPerson: (on: boolean) => void
   setViewInset: (right: number, bottom: number) => void
+  setStorySlowMotion: (on: boolean) => void
   _fp: () => { yaw: number; pitch: number; fov: number; posErr: number | null; dir: number[]; up: number[]; radial: number[] | null; flight: number[] | null } | null
   setStorySpeed: (speed: number) => void
   startRocket: (key: string, custom?: unknown) => Promise<unknown>

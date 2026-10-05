@@ -6,7 +6,7 @@ import Button from '@/components/ui/Button'
 import { BASE_PATH } from '@/constants'
 import { storyOf } from '@/engine/catalog'
 import { useStore } from '@/store'
-import { quitStory, setFirstPerson, setStorySpeed, setViewInset, storyNext } from '@/store/commands'
+import { quitStory, setFirstPerson, setStorySlowMotion, setStorySpeed, setViewInset, storyNext } from '@/store/commands'
 import { FP_OFF_LABEL, FP_ON_LABEL, MOBILE_QUERY, RUNNING_TITLE } from './constants'
 import styles from './StoryPlayer.module.css'
 
@@ -17,6 +17,8 @@ export const StoryPlayer = () => {
   const story = useStore((s) => s.story)
   const speed = useStore((s) => s.rocket.speed)
   const firstPerson = useStore((s) => s.firstPerson)
+  const effective = useStore((s) => s.rocket.telemetry.eff)
+  const slowMotion = useStore((s) => s.slowMotion)
   const unlockAchievement = useStore((s) => s.unlockAchievement)
   const done = useRef(false)
   const panel = useRef<HTMLElement>(null)
@@ -94,7 +96,7 @@ export const StoryPlayer = () => {
         )}
       </div>
       <div className={styles.foot}>
-        <StorySpeed speed={speed} onChange={setStorySpeed} />
+        <StorySpeed speed={speed} effective={effective} slowMotion={slowMotion} onSlowMotion={setStorySlowMotion} onChange={setStorySpeed} />
         <div className={styles.actions}>
           {fpButton}
           {showing ? (

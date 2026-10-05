@@ -414,6 +414,7 @@ describe('createEngine (rendu factice)', () => {
     engine.setStorySpeed(50); frames(2)                                        // le curseur règle la vitesse sans relancer une étape en pause
     expect(engine._story()).toMatchObject({ playing: false, speed: 50, T: 0 })
     engine.setStorySpeed(12)
+    engine.setStorySlowMotion(false); expect(engine._story()).toBeTruthy(); engine.setStorySlowMotion(true)
     // on clique « Suivant » à chaque étape : la simulation est en pause sur chaque texte, et chaque étape tombe juste après son événement
     const seen: string[] = [state.story.step!.id]
     for (let guard = 0; guard < 40 && !state.story.finished; guard++) {

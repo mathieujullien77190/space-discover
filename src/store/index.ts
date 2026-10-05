@@ -12,6 +12,7 @@ export type UiState = {
   nudgeStep: number   // index dans NUDGE_STEPS
   cardCollapsed: boolean   // fiche d'astre réduite en mini bouton-icône (mémorisé)
   achievements: string[]   // hauts faits débloqués (mémorisés)
+  slowMotion: boolean   // histoire : ralenti aux étapes (publié par le moteur)
   firstPerson: boolean   // vue à la première personne (publié par le moteur)
   bigVehicles: boolean   // mode « engins géants » : fusées, satellites et ISS 1 000 fois plus gros
   unlocked: string | null   // haut fait qu'on vient de débloquer (écran de déblocage)
@@ -54,6 +55,7 @@ export const useStore = create<Store>((set) => ({
   unlocked: null,
   bigVehicles: false,
   firstPerson: false,
+  slowMotion: true,
   setEngine: (engine) => set({ engine }),
   applyPatch: (patch) => set((s) => mergePatch(s, patch)),
   togglePanel: (panel) => set((s) => ({ panel: s.panel === panel ? null : panel })),

@@ -1,3 +1,7 @@
 .speed { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #cfe0ff; }
 .speed input { flex: 1 1 120px; min-width: 100px; height: 28px; accent-color: #ffd54a; touch-action: manipulation; }
 .speed output { min-width: 52px; text-align: right; font-variant-numeric: tabular-nums; color: #ffd54a; }
+.wrap { display: flex; flex-direction: column; gap: 4px; }
+.slow { margin: 0; font-size: 13px; color: #ffb36b; }
+.check { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #cfe0ff; }
+.check input { accent-color: #ffd54a; }
