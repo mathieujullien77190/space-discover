@@ -1,17 +1,15 @@
-import { observatoryById } from '@/engine/observatories'
 import { useStore } from '@/store'
 import styles from './IssBadge.module.css'
 
-// Bandeau « Vue depuis l'ISS » / « Vue depuis l'observatoire » (le nom en texte) : affiché tant qu'on regarde depuis la station ou depuis l'observatoire.
+// Bandeau « Vue depuis l'ISS » / « Vue depuis Hubble » : affiché tant qu'on regarde depuis la station ou le télescope.
+// (Plus de bandeau en vue depuis un observatoire : demande de l'utilisateur.)
 export const IssBadge = () => {
   const issView = useStore((s) => s.issView)
   const focus = useStore((s) => s.focus.id)
-  const { id, view } = useStore((s) => s.observatory)
-  const obs = id && view ? observatoryById(id) : null
-  if (!issView && !obs) return null
+  if (!issView) return null
   return (
     <p className={styles.badge} role="status">
-      {obs ? `🔭 Vue depuis l’${obs.name.replace(/^Observatoire/, 'observatoire')} · glisse pour regarder autour` : (focus === 'hubble' ? '🔭 Vue depuis Hubble' : '🛰 Vue depuis l’ISS') + ' · glisse pour regarder autour'}
+      {(focus === 'hubble' ? '🔭 Vue depuis Hubble' : '🛰 Vue depuis l’ISS') + ' · glisse pour regarder autour'}
     </p>
   )
 }

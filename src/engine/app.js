@@ -17,6 +17,7 @@ import { pickNearest } from './star-info.js';
 import { precessionQuaternion } from './precession.js';
 import { createMeteors } from './meteors.js';
 import { createPlanes } from './planes.js';
+import { A320, AIRLINER_MIN_ELEVATION_DEG, airlinerAt, airlinerWorld, buildA320, elevationFrom, makeAirlinerTrack } from './airliner.js';
 import { createSunGlare } from './sun-glare.js';
 import { occludedBy } from './occlusion.js';
 import { createTerrainLayer } from './terrain-layer.js';
@@ -181,6 +182,14 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const hubDg = new THREE.BufferGeometry(); hubDg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
   const hubDot = new THREE.Points(hubDg, roundPointsMaterial({ color: 0x7fe3ff, size: 10, sizeAttenuation: false })); hubDot.frustumCulled = false; hubDot.visible = false; world.add(hubDot);
   const hubLabel = overlay.label('Hubble', 'iss'); let hubScreen = null;
+  // AVION SCÉNARIO (Airbus A320) : apparaît quand on lance la vue observatoire, passe plus ou moins au-dessus (jour et nuit), continue de voler si on quitte la vue, disparaît d'un coup quand l'observatoire ne le voit plus (< 12° d'élévation)
+  const airModel = buildA320(); airModel.visible = false; world.add(airModel);
+  const airDotG = new THREE.BufferGeometry(); airDotG.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
+  const airDot = new THREE.Points(airDotG, roundPointsMaterial({ color: 0xffffff, size: 5, sizeAttenuation: false })); airDot.frustumCulled = false; airDot.visible = false; world.add(airDot);   // de jour : un point blanc
+  const airLG = new THREE.BufferGeometry(); airLG.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3)); airLG.setAttribute('color', new THREE.BufferAttribute(new Float32Array([1, 0.12, 0.1, 0.15, 1, 0.25]), 3));
+  const airLights = new THREE.Points(airLG, roundPointsMaterial({ size: 4.5, sizeAttenuation: false, vertexColors: true })); airLights.frustumCulled = false; airLights.visible = false; world.add(airLights);   // de nuit : deux points, rouge (aile gauche) et vert (aile droite)
+  const tmpAirE = new THREE.Vector3(), tmpAirN = new THREE.Vector3();
+  let airliner = null; const airPos = new THREE.Vector3(), airFw = new THREE.Vector3(), airRt = new THREE.Vector3(), airUp = new THREE.Vector3(), airBasis = new THREE.Matrix4();
   const capitals = createCapitals(overlay, earth); let capitalsOn = false, lastOcc = [];   // éteinte par défaut
   let observatoriesOn = true;   // cochée par défaut   // option Observatoires : les observatoires du monde, cliquables (clic = y aller, fiche + vue depuis)
   const obsSites = createCapitals(overlay, earth, { data: OBSERVATORIES.map(o => [o.short, o.lat, o.lon, o.id]), cls: 'obssite', prefix: '🔭 ', onClick: id => goObservatory(id) });   // option « Capitales »
@@ -312,6 +321,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   };
   const setObservatoryView = on => {   // « vue depuis l'observatoire » : la caméra est sur l'observatoire (œil à 120 m au-dessus du sol), plein sud, on regarde le ciel et l'horizon en glissant
     if (!obsId) return;
+    if (on && !airliner && obsFrame) airliner = { tr: makeAirlinerTrack(), t: 0, frame: obsFrame, groundR: Math.hypot(...obsFrame.ground), eye: new THREE.Vector3().fromArray(obsFrame.eye) };   // un A320 apparaît au bon endroit, déjà dans le ciel de l'observatoire
     if (on) { const f = obsFrame; obsPos.set(f.eye[0], f.eye[1], f.eye[2]); obsSrc.dir.set(f.south[0], f.south[1], f.south[2]); obsSrc.radial.set(f.up[0], f.up[1], f.up[2]); cam.fp = { yaw: 0, pitch: OBS_VIEW_PITCH, fov: OBS_VIEW_FOV }; cam.fpUp.set(0, 0, 0); obsView = true; }
     else { obsView = false; cam.fp = null; }
     publish({ observatory: { id: obsId, view: obsView } });
@@ -518,6 +528,24 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       if (!hiddenByEarth(hub.pos) && p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1) { hubScreen = [(p.x + 1) / 2 * innerWidth, (1 - p.y) / 2 * innerHeight]; hubLabel.style.display = 'block'; hubLabel.style.transform = `translate(${hubScreen[0] + 10}px,${hubScreen[1] - 8}px)`; }
       if (realistic || issHidden || (issView && cam.fp && focusSat === 'hubble')) { hubScreen = null; hubLabel.style.display = 'none'; hubDot.visible = false; hubModel.visible = false; }   // vue réaliste, dézoomé ou vue DEPUIS Hubble : ni modèle, ni repère, ni nom
     }
+    // AVION SCÉNARIO : vol à altitude constante ; DISPARAÎT D'UN COUP dès qu'il passe sous 12° d'élévation vu de l'observatoire (ou à la fin du trajet) ; modèle 3D à la taille réelle quand il fait ≥ 6 px, sinon point (blanc de jour, rouge + vert de nuit)
+    airModel.visible = airDot.visible = airLights.visible = false;
+    if (airliner) {
+      airliner.t += dt; const st = airlinerAt(airliner.tr, airliner.t); airlinerWorld(st.local, airliner.frame, airliner.groundR, airPos);
+      const el = elevationFrom(airPos, airliner.eye, airliner.frame.up);
+      if (st.done || el < AIRLINER_MIN_ELEVATION_DEG) airliner = null;
+      else {
+        airUp.copy(airPos).normalize(); airFw.set(0, 0, 0).addScaledVector(tmpAirE.fromArray(airliner.frame.east), st.heading[0]).addScaledVector(tmpAirN.fromArray(airliner.frame.north), st.heading[1]);
+        airFw.addScaledVector(airUp, -airFw.dot(airUp)).normalize(); airRt.crossVectors(airFw, airUp);
+        const dKm = camera.position.distanceTo(airPos) * R_KM, px = (A320.lengthM / 1000 / Math.max(1e-9, dKm)) / (2 * Math.tan(camera.fov * DEG / 2)) * innerHeight;
+        const hideAir = solarMode || (camera.position.length() - 1) * R_KM > 2000 || hiddenByEarth(airPos), night = airPos.clone().normalize().dot(babs[STAR].clone().normalize()) < 0.05 && tmpAirE.fromArray(airliner.frame.up).dot(babs[STAR].clone().normalize()) < -0.03;
+        airModel.quaternion.setFromRotationMatrix(airBasis.makeBasis(airFw, airUp, airRt)); airModel.position.copy(airPos); airModel.scale.setScalar(1e-3 / R_KM);
+        const half = A320.spanM / 2 / (R_KM * 1000), lp = airLG.attributes.position;
+        lp.setXYZ(0, airPos.x - airRt.x * half, airPos.y - airRt.y * half, airPos.z - airRt.z * half); lp.setXYZ(1, airPos.x + airRt.x * half, airPos.y + airRt.y * half, airPos.z + airRt.z * half); lp.needsUpdate = true;
+        airDotG.attributes.position.setXYZ(0, airPos.x, airPos.y, airPos.z); airDotG.attributes.position.needsUpdate = true;
+        airModel.visible = !hideAir && px >= 6; airDot.visible = !hideAir && px < 6 && !night; airLights.visible = !hideAir && px < 6 && night;
+      }
+    }
     // caractéristiques 3D : mise à jour puis étiquettes projetées à l'écran
     for (const [sat, st] of [['iss', iss], ['hubble', hub]]) for (const f of ISS_FEATURES) {   // une caractéristique « onlyIss » (cotes, hauteur) n'apparaît que sur la vue du satellite regardé
       const inst = featInst[sat === 'iss' ? f.id : 'hubble:' + f.id]; if (!inst) continue;
@@ -634,6 +662,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     setStarInfo: on => { starInfoOn = !!on; if (!starInfoOn) clearStar(); }, clearStar,
     _moonBright: () => (bodyObjs.moon && bodyObjs.moon.mesh && bodyObjs.moon.mesh.material.color ? bodyObjs.moon.mesh.material.color.r : 1),
     _moonBoost: () => (bodyObjs.moon && bodyObjs.moon.mesh ? bodyObjs.moon.mesh.scale.x / (bodyObjs.moon.baseScale || 1) : 1),
+    _airliner: () => airliner ? { active: true, t: airliner.t, elevation: elevationFrom(airPos, airliner.eye, airliner.frame.up), model: airModel.visible, dot: airDot.visible, lights: airLights.visible } : { active: false, t: 0, elevation: 0, model: airModel.visible, dot: airDot.visible, lights: airLights.visible },
+    _airlinerSkip: sec => { if (airliner) airliner.t += sec; },
     _planes: () => ({ active: planes.count(), total: planes.total() }),
     _spawnPlane: () => (obsFrame ? planes.spawn() : false),
     _meteors: () => ({ active: meteors.count(), total: meteors.total() }),

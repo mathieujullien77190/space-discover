@@ -379,6 +379,25 @@ describe('createEngine (rendu factice)', () => {
     expect(engine._moonBoost()).toBe(1)
     expect(engine._moonBright()).toBe(1)
   })
+  it('avion A320 : apparaît à l’entrée de la vue observatoire, continue de voler hors de la vue, disparaît d’un coup quand l’observatoire ne le voit plus', async () => {
+    await new Promise((r) => setTimeout(r, 500))
+    const T = performance.now() + 150000
+    engine.resetTime(); engine.setSimSpeed(1); engine._frame(T + 100)
+    expect(engine._airliner().active).toBe(false)                              // rien avant la vue observatoire
+    engine.goObservatory('pic-du-midi'); engine.setObservatoryView(true)
+    for (let i = 0; i < 3; i++) engine._frame(T + 200 + i * 100)
+    const a = engine._airliner()
+    expect(a.active).toBe(true)                                                // un avion est apparu
+    expect(a.elevation).toBeGreaterThan(20)                                    // déjà haut dans le ciel de l’observatoire
+    expect(a.model || a.dot || a.lights).toBe(true)                            // et affiché
+    engine.selectView('earth'); engine._frame(T + 700); engine._frame(T + 800)
+    expect(engine._airliner().active).toBe(true)                               // on a quitté la vue : l’avion vole toujours
+    engine._airlinerSkip(2000); engine._frame(T + 900)
+    expect(engine._airliner()).toMatchObject({ active: false, model: false, dot: false, lights: false })   // disparu d’un coup
+    engine.goObservatory('pic-du-midi'); engine.setObservatoryView(true); engine._frame(T + 1000)
+    expect(engine._airliner().active).toBe(true)                               // une nouvelle entrée en vue : un nouvel avion
+    engine.selectView('earth'); engine._frame(T + 1100)
+  })
   it('infos étoiles : option, clic sur une étoile visible = sa fiche + anneau, fermeture', async () => {
     const T = performance.now() + 100000                                       // horloge des images toujours croissante : un dt négatif (temps plus petit que celui d'un test précédent) déplaçait la caméra
     await new Promise((r) => setTimeout(r, 500))                               // astres construits (400 ms) : la vue ne change plus en cours de test

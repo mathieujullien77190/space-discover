@@ -45,6 +45,11 @@ describe('TopBar + SubMenu', () => {
     render(<IssBadge />)
     expect(screen.getByText(/Vue depuis l’ISS/)).toBeInTheDocument()
   })
+  it('plus de bandeau en vue depuis un observatoire', () => {
+    useStore.setState({ ...initialEngineState, issView: false, observatory: { id: 'pic-du-midi', view: true } })
+    const { container } = render(<IssBadge />)
+    expect(container.textContent).toBe('')
+  })
   it('bouton « Vue depuis l’ISS » : dans la fiche de l’ISS (plus dans la barre du haut)', () => {
     useStore.setState({ ...initialEngineState, focus: { id: 'iss' }, issView: false, cardCollapsed: false })
     render(<><TopBar /><BodyCard /></>)
