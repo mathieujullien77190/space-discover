@@ -4,6 +4,8 @@ export const METEOR_GAP_S: number[]
 export const METEOR_DURATION_S: number[]
 export const METEOR_LENGTH_DEG: number[]
 export const METEOR_ELEVATION_DEG: number[]
+export const METEOR_DRIFT: number
+export const METEOR_END_MIN_DEG: number
 export const METEOR_HEAD_SHARE: number
 export const METEOR_TAIL_DELAY: number
 export const METEOR_SLOTS: number

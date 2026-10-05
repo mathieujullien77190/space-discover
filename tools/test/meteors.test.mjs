@@ -27,6 +27,21 @@ check(m.total() >= before + 2, 'sur 30 s : ' + (m.total() - before) + ' étoiles
 for (let i = 0; i < 30; i++) step(0.1, false);
 check(m.count() === 0, 'désactivé : tout s’éteint');
 check(m.group.position.equals(cam.position) && m.group.scale.x === R, 'le groupe suit la caméra et reste sur la sphère céleste (R = ' + R + ')');
+// elles vont VERS L'HORIZON : l'arrivée est toujours plus basse que le départ, et jamais sous l'horizon
+{
+  seed = 4242; let lower = 0, n = 300, minEnd = 90, nonVertical = 0;
+  for (let i = 0; i < n; i++) {
+    const mm = createMeteors(new THREE.Scene(), rand); mm.spawn(up, east, north);
+    const line = mm.group.children[0]; mm.update({ dt: 0.001, enabled: true, camera: cam, R, up, east, north });
+    // première position de la tête = départ ; on avance jusqu'à la fin de la course de la tête
+    const head = mm.group.children[1], ha = () => new THREE.Vector3(head.geometry.attributes.position.getX(0), head.geometry.attributes.position.getY(0), head.geometry.attributes.position.getZ(0)).normalize();
+    const e0 = Math.asin(ha().y) * 180 / Math.PI; let e1 = e0;
+    for (let k = 0; k < 400 && head.visible !== false; k++) { mm.update({ dt: 0.004, enabled: true, camera: cam, R, up, east, north }); if (!head.visible) break; e1 = Math.asin(ha().y) * 180 / Math.PI; }
+    if (e1 < e0) lower++; minEnd = Math.min(minEnd, e1); if (Math.abs(e1 - e0) > 0.5) nonVertical++; void line; mm.dispose();
+  }
+  check(lower / n > 0.97, 'elles descendent vers l’horizon : ' + lower + ' sur ' + n + ' finissent plus bas qu’elles ont commencé');
+  check(minEnd > 2, 'jamais sous l’horizon (hauteur minimale d’arrivée ' + minEnd.toFixed(1) + '°)');
+}
 // la traînée s'efface EN PARTANT DU DÉBUT : son extrémité d'origine avance vers la tête, la longueur finit par décroître jusqu'à zéro
 {
   seed = 777; const mm = createMeteors(new THREE.Scene(), rand), c2 = { position: new THREE.Vector3() };

@@ -2,9 +2,12 @@
 //  - plan galactique réel (pôle nord galactique à α = 192,86°, δ = +27,13° ; centre galactique à α = 266,40°, δ = −28,94°), donc bien placée parmi les vraies étoiles ;
 //  - lueur plus brillante et plus large vers le centre (Sagittaire, bulbe), plus faible et bleutée vers l'anticentre ; nuages d'étoiles (bruit fractal) ;
 //  - bandes de poussière sombres (la « Grande Faille » du Cygne à Antarès) ;
+//  - PLUS DE 45 000 petites étoiles de fond semées selon le VRAI contour de la Voie lactée (cinq niveaux de luminosité du relevé d3-celestial, tools/make-milkyway.mjs) : c'est ce qui fait la texture « grains de sable » ;
 // fondue avec la hauteur du Soleil : absente tant qu'il fait même un peu jour, pleine seulement quand le Soleil est à plus de 18° sous l'horizon.
 // Le dessin est un peu stylisé : ce n'est pas la vraie répartition de la lumière (pas de nébuleuses nommées, pas de Nuages de Magellan).
 import * as THREE from 'three';
+import { MILKY_POINTS_B64, MILKY_POINTS_N } from './data/milkyway-points.js';
+import { starVector } from './stars.js';
 
 // matrice équatorial J2000 → galactique (IAU 1958 / Hipparcos), lignes
 export const GALACTIC_FROM_EQUATORIAL = [
@@ -71,16 +74,42 @@ export function milkyWayQuaternion(out = new THREE.Quaternion()) {
   return out.setFromRotationMatrix(new THREE.Matrix4().multiplyMatrices(M, At).multiply(R));
 }
 
+// décode les points de fond : positions (vecteurs unitaires de la scène), luminosité 0–1 et couleur (blanc bleuté → jaune-orangé vers le centre galactique)
+export function milkyWayStars() {
+  const bin = Uint8Array.from(atob(MILKY_POINTS_B64), c => c.charCodeAt(0)), n = MILKY_POINTS_N;   // atob : navigateur et Node ≥ 16
+  const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), lum = new Float32Array(n), v = new THREE.Vector3();
+  for (let i = 0; i < n; i++) {
+    const o = i * 5, ra = (bin[o] | (bin[o + 1] << 8)) / 65536 * 360, dec = (bin[o + 2] | (bin[o + 3] << 8)) / 65535 * 180 - 90, b = bin[o + 4] / 255;
+    starVector(ra, dec, v); pos[3 * i] = v.x; pos[3 * i + 1] = v.y; pos[3 * i + 2] = v.z; lum[i] = b;
+    const e = [v.x, -v.z, v.y], g = GALACTIC_FROM_EQUATORIAL.map(r => r[0] * e[0] + r[1] * e[1] + r[2] * e[2]), l = Math.atan2(g[1], g[0]) * 180 / Math.PI;
+    const warm = Math.min(1, gauss(l / 55) * 0.85 + ((i * 2654435761) % 1000) / 1000 * 0.25);   // centre jaune, ailleurs plutôt blanc-bleu
+    const k = 0.35 + 0.65 * b;   // les faibles sont ternes
+    col[3 * i] = k * (0.80 + 0.20 * warm); col[3 * i + 1] = k * (0.88 - 0.04 * warm); col[3 * i + 2] = k * (1.0 - 0.38 * warm);
+  }
+  return { n, pos, col, lum };
+}
+
 export function createMilkyWay(starsGroup, size = [1024, 512]) {
   const tex = new THREE.DataTexture(paintMilkyWay(size[0], size[1]), size[0], size[1], THREE.RGBAFormat);
   tex.colorSpace = THREE.SRGBColorSpace; tex.wrapS = THREE.RepeatWrapping; tex.magFilter = tex.minFilter = THREE.LinearFilter; tex.needsUpdate = true;
   const mat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
   const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.985, 64, 32), mat); mesh.renderOrder = -1; mesh.frustumCulled = false; mesh.visible = false;
   milkyWayQuaternion(mesh.quaternion); starsGroup.add(mesh);
+  // les petites étoiles : deux objets Points (faibles : 1,4 px ; les plus brillantes, ≈ 12 % : 2,4 px)
+  const { n, pos, col, lum } = milkyWayStars(), faint = [], bright = [];
+  for (let i = 0; i < n; i++) (lum[i] > 0.62 ? bright : faint).push(i);
+  const mk = (idx, px) => {
+    const g = new THREE.BufferGeometry(), p = new Float32Array(idx.length * 3), c = new Float32Array(idx.length * 3);
+    idx.forEach((i, j) => { p.set(pos.subarray(3 * i, 3 * i + 3), 3 * j); c.set(col.subarray(3 * i, 3 * i + 3), 3 * j); });
+    g.setAttribute('position', new THREE.BufferAttribute(p, 3)); g.setAttribute('color', new THREE.BufferAttribute(c, 3));
+    const m = new THREE.PointsMaterial({ size: px, sizeAttenuation: false, vertexColors: true, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+    const pts = new THREE.Points(g, m); pts.renderOrder = -1; pts.frustumCulled = false; pts.visible = false; starsGroup.add(pts); return pts;
+  };
+  const pf = mk(faint, 1.4), pb = mk(bright, 2.4), parts = [pf, pb];
   return {
-    mesh,
-    // opacity 0 à MILKY_MAX_OPACITY ; invisible quand elle est nulle
-    update(opacity) { mat.opacity = opacity; mesh.visible = opacity > 0.01; },
-    dispose() { starsGroup.remove(mesh); mesh.geometry.dispose(); mat.dispose(); tex.dispose(); },
+    mesh, points: parts, count: n,
+    // opacity 0 à MILKY_MAX_OPACITY ; invisible quand elle est nulle ; la lueur est discrète (× 0,55), les petites étoiles portent la texture
+    update(opacity) { mat.opacity = opacity * 0.55; mesh.visible = opacity > 0.01; const a = Math.min(1, opacity / MILKY_MAX_OPACITY) * 0.9; for (const p of parts) { p.material.opacity = a; p.visible = opacity > 0.01; } },
+    dispose() { starsGroup.remove(mesh, ...parts); mesh.geometry.dispose(); mat.dispose(); tex.dispose(); for (const p of parts) { p.geometry.dispose(); p.material.dispose(); } },
   };
 }

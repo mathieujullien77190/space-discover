@@ -5,9 +5,10 @@ import * as THREE from 'three';
 
 export const METEOR_GAP_S = [3, 12];        // délai entre deux étoiles filantes (s)
 export const METEOR_DURATION_S = [0.9, 1.6];    // durée totale (s) : la tête parcourt l'arc pendant les 55 premiers % ; la traînée, elle, s'efface DEPUIS SON DÉBUT jusqu'à la tête
+export const METEOR_DRIFT = 0.9, METEOR_END_MIN_DEG = 4;   // dérive latérale aléatoire de la course ; hauteur minimale de l'arrivée
 export const METEOR_HEAD_SHARE = 0.55, METEOR_TAIL_DELAY = 0.12;   // part de la durée où la tête avance ; moment (part de la durée) où le DÉBUT de la traînée commence à s'effacer
 export const METEOR_LENGTH_DEG = [8, 28];   // longueur de l'arc parcouru dans le ciel
-export const METEOR_ELEVATION_DEG = [14, 78];   // hauteur du point de départ au-dessus de l'horizon
+export const METEOR_ELEVATION_DEG = [20, 80];   // hauteur du point de départ au-dessus de l'horizon (elles descendent ensuite vers l'horizon)
 export const METEOR_SLOTS = 3;              // étoiles filantes simultanées au plus
 const VERTS = 12, DEG = Math.PI / 180;
 
@@ -36,10 +37,11 @@ export function createMeteors(scene, rand = Math.random) {
     U.fromArray(up); E.fromArray(east); N.fromArray(north);
     const el = range(rand(), METEOR_ELEVATION_DEG) * DEG, az = rand() * 2 * Math.PI;
     s.a.copy(U).multiplyScalar(Math.sin(el)).addScaledVector(N, Math.cos(az) * Math.cos(el)).addScaledVector(E, Math.sin(az) * Math.cos(el)).normalize();
-    // direction de la course : tangente aléatoire ; si l'arc plonge sous 5° d'élévation on la retourne
-    const r = tmp.set(rand() - 0.5, rand() - 0.5, rand() - 0.5).normalize(), t = tmp2.crossVectors(s.a, r).normalize(), L = range(rand(), METEOR_LENGTH_DEG) * DEG;
-    s.b.copy(s.a).multiplyScalar(Math.cos(L)).addScaledVector(t, Math.sin(L)).normalize();
-    if (s.b.dot(U) < Math.sin(5 * DEG)) s.b.copy(s.a).multiplyScalar(Math.cos(L)).addScaledVector(t, -Math.sin(L)).normalize();
+    // direction de la course : VERS L'HORIZON (la tangente qui descend le plus, avec un peu de dérive aléatoire sur le côté) ; l'arc est raccourci pour ne pas passer sous 4° d'élévation
+    const down = tmp.copy(U).multiplyScalar(-1).addScaledVector(s.a, U.dot(s.a)).normalize(), r = tmp2.set(rand() - 0.5, rand() - 0.5, rand() - 0.5).normalize();
+    const side = r.addScaledVector(s.a, -r.dot(s.a)).normalize(), t = down.addScaledVector(side, (rand() - 0.5) * METEOR_DRIFT).normalize();
+    let L = range(rand(), METEOR_LENGTH_DEG) * DEG;
+    for (let k = 0; k < 12; k++) { s.b.copy(s.a).multiplyScalar(Math.cos(L)).addScaledVector(t, Math.sin(L)).normalize(); if (s.b.dot(U) >= Math.sin(METEOR_END_MIN_DEG * DEG)) break; L *= 0.8; }
     s.t = 0; s.dur = range(rand(), METEOR_DURATION_S); s.bright = 0.6 + 0.4 * rand(); s.active = true; total++;
     return true;
   };
