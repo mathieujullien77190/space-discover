@@ -60,6 +60,7 @@ describe('TopBar + SubMenu', () => {
     render(<BodyCard />)
     expect(screen.getByText('Concorde (Air France)')).toBeInTheDocument()
     expect(screen.getByText('61,66 m')).toBeInTheDocument()
+    expect(screen.getByLabelText('Limites de pays')).toBeInTheDocument()       // le bloc « Terre » (limites, capitales, observatoires) reste dans la fiche : l'avion est sur la Terre
     fireEvent.click(screen.getByText('👁 Vue depuis le Concorde'))
     expect(engine.setIssView).toHaveBeenCalledWith(true)
   })

@@ -54,6 +54,7 @@ export function buildConcorde() {
   const redL = lamp(0xff2a1a, L - 47, -0.5, -12.7), greenL = lamp(0x28ff55, L - 47, -0.5, 12.7), whiteL = lamp(0xfff2e0, 0.3, 0.2, 0), strobeL = lamp(0xffffff, L - 47, -0.5, -12.7, 2), strobeR = lamp(0xffffff, L - 47, -0.5, 12.7, 2);
   g.add(redL, greenL, whiteL, strobeL, strobeR);
   g.children.forEach(c => { c.position.x -= cx; });   // origine au milieu du fuselage
+  g.traverse(o => { o.frustumCulled = false; });   // jamais écarté par le test de cône de vue (objet minuscule et loin de l'origine)
   g.userData.setFlames = (power, t = 0) => { for (let i = 0; i < flames.length; i++) { const k = power * (0.88 + 0.12 * Math.sin(t * 38 + i * 2.1) * Math.sin(t * 23 + i)); flames[i].visible = power > 0.01; flames[i].scale.set(0.6 + 0.4 * k, k, k); } };
   g.userData.flames = flames;
   g.userData.lights = { left: redL, right: greenL, tail: whiteL, strobes: [strobeL, strobeR] };

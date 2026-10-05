@@ -34,7 +34,7 @@ export const BodyCard = () => {
         <h2 className={styles.name}>{card.name}</h2>
         <div className={styles.kind}>{card.kind}</div>
         <BodyFacts facts={card.facts} />
-        {card.id === 'earth' && <EarthOptions />}
+        {(card.id === 'earth' || card.id === 'iss' || card.id === 'hubble' || card.id === 'concorde') && <EarthOptions />}
         {(card.canNorth || card.canOrbit || card.id === 'iss' || card.id === 'hubble' || card.id === 'concorde') && (
           <div className={styles.actions}>
             {(card.id === 'iss' || card.id === 'hubble' || card.id === 'concorde') && <Button label={issView ? (card.id === 'hubble' ? '↩ Quitter la vue Hubble' : card.id === 'concorde' ? '↩ Quitter la vue Concorde' : ISS_VIEW_LABELS.off) : card.id === 'hubble' ? '👁 Vue depuis Hubble' : card.id === 'concorde' ? '👁 Vue depuis le Concorde' : ISS_VIEW_LABELS.on} active={issView} title={card.id === 'concorde' ? 'Voir la courbure de la Terre depuis le Concorde à 18 000 m : glisser pour regarder autour, molette pour le champ' : card.id === 'hubble' ? 'Voir la Terre et le ciel depuis Hubble : glisser pour regarder autour, molette pour le champ' : 'Voir la Terre depuis la station spatiale : glisser pour regarder autour, molette pour le champ'} onClick={() => setIssView(!issView)} />}
