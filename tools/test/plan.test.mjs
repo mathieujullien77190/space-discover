@@ -1,6 +1,7 @@
 // Plan de vol (data/plans/kourou-ariane5-500km.json) rejoué SANS guidage par js/flight-plan.js : doit retrouver la trajectoire de la simulation avec guidage. node tools/test/plan.test.js
 import fs from 'node:fs'; import vm from 'node:vm'; import path from 'node:path';
-import { loadEngine, loadEngineInto, root } from './engine-loader.mjs';
+import { loadEngine, root } from './engine-loader.mjs';
+
 const ctx = await loadEngine();
 ctx.PLAN = JSON.parse(fs.readFileSync(path.join(root, 'public', 'data', 'plans/kourou-ariane5-500km.json'), 'utf8'));
 console.log(vm.runInContext(`(() => {

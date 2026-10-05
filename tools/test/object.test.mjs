@@ -1,7 +1,8 @@
 // Objet générique décrit par un JSON minimal (js/flight-object.js, objects/*/*.json) : doit atteindre l'orbite si les paliers sont bons, retomber sinon, et l'ISS reste en orbite.
 // node tools/test/object.test.js
-import fs from 'node:fs'; import vm from 'node:vm'; import path from 'node:path';
-import { loadEngine, loadEngineInto, root } from './engine-loader.mjs';
+import fs from 'node:fs'; import path from 'node:path';
+import { loadEngine, root } from './engine-loader.mjs';
+
 const ctx = await loadEngine();
 const load = n => JSON.parse(fs.readFileSync(path.join(root, 'public', 'objects', n, n + '.json'), 'utf8')), fails = [], RE = 6378137;
 const check = (c, msg) => { console.log((c ? 'ok   ' : 'ÉCHEC ') + msg); if (!c) fails.push(msg); };

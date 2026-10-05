@@ -13,7 +13,9 @@
     "typecheck": "tsc --noEmit",
     "test": "npm run test:engine && npm run test:ui",
     "test:engine": "node tools/test/run-all.mjs",
-    "test:ui": "vitest run"
+    "test:ui": "vitest run",
+    "lint": "eslint .",
+    "check": "npm run lint && npm run typecheck && npm test"
   },
   "dependencies": {
     "next": "16.3.8",
@@ -24,6 +26,7 @@
     "zustand": "5.0.15"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@testing-library/jest-dom": "^6.6.0",
     "@testing-library/react": "^16.1.0",
     "@types/node": "^22.10.0",
@@ -31,8 +34,12 @@
     "@types/react-dom": "^19.0.0",
     "@types/three": "0.160.0",
     "esbuild": "^0.28.2",
+    "eslint": "^10.12.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
     "jsdom": "^26.0.0",
     "typescript": "^5.7.0",
+    "typescript-eslint": "^8.71.0",
     "vitest": "5.0.3"
   },
   "license": "MIT"

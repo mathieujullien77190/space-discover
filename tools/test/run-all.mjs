@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const dir = path.dirname(fileURLToPath(import.meta.url));
 let failed = 0;
 for (const f of readdirSync(dir).filter(n => n.endsWith('.test.mjs')).sort()) {
-  let out = '';
+  let out;
   try { out = execFileSync(process.execPath, [path.join(dir, f)], { encoding: 'utf8', maxBuffer: 1 << 26 }); } catch (e) { out = (e.stdout || '') + (e.stderr || ''); failed++; console.log('✗ ' + f + '\n' + out); continue; }
   const bad = out.split('\n').filter(l => l.startsWith('ÉCHEC'));
   if (bad.length) { failed++; console.log('✗ ' + f + '\n' + bad.join('\n')); } else console.log('✓ ' + f);

@@ -133,7 +133,7 @@ export function flyObject(obj, opt) {
     } else if (k.label || k.key) record(k);
   };
   const tEnd = opt && opt.tmax ? opt.tmax : (obj.maxDurationS || 20000);
-  let orbit = null, escaping = false; const escapeR = obj.escapeDistanceM || 1e9;
+  let orbit, escaping = false; const escapeR = obj.escapeDistanceM || 1e9;
   while (t < tEnd) {
     while (next < tl.length && t >= tl[next].t - 1e-6) apply(tl[next++]);
     const r = Math.hypot(x, y), ux = x / r, uy = y / r, ex = -uy, ey = ux, h = r - L.RE, vr = vx * ux + vy * uy, vt = vx * ex + vy * ey, air = Math.exp(-h / 7200);

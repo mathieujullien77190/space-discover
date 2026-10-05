@@ -1,7 +1,8 @@
 // Lancement 3D (Launch), Lune et Soleil réels, section « jettison » du plan JSON, Starship et son booster : construits avec le vrai three.js (sans WebGL ni DOM : faux canvas).
 // node tools/test/launch.test.js
 import fs from 'node:fs'; import vm from 'node:vm'; import path from 'node:path';
-import { loadEngine, loadEngineInto, root } from './engine-loader.mjs';
+import { loadEngineInto, root } from './engine-loader.mjs';
+
 const ctx2d = new Proxy({}, { get: (t, k) => (k === 'createLinearGradient' || k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : k in t ? t[k] : () => {}), set: (t, k, v) => { t[k] = v; return true; } });
 const sandbox = { console, Math, Date, JSON, Float32Array, Float64Array, Uint8Array, Uint16Array, Uint32Array, Int32Array, ArrayBuffer, Promise, setTimeout, performance: { now: () => Date.now() }, innerHeight: 900, innerWidth: 1400,
   document: { createElement: () => ({ width: 0, height: 0, getContext: () => ctx2d, style: {}, addEventListener() {} }), createElementNS: () => ({ style: {}, addEventListener() {}, setAttribute() {} }), getElementById: () => null } };

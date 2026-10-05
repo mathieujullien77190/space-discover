@@ -1,7 +1,8 @@
 // L'ISS de la scène est UNE SEULE : celle du JSON (objects/iss/iss.json, dossier = JSON + modèle 3D). issState(date) (js/iss.js) doit donner pile la position SGP4 du TLE d'origine, et le dossier doit contenir le modèle.
 // node tools/test/iss-object.test.js   (ISS_DATE=2026-10-12T03:00:00Z pour une autre date)
 import fs from 'node:fs'; import vm from 'node:vm'; import path from 'node:path';
-import { loadEngine, loadEngineInto, root } from './engine-loader.mjs';
+import { loadEngineInto, root } from './engine-loader.mjs';
+
 const sandbox = { console, Math, Date, JSON, Float32Array, Float64Array, Uint8Array, Uint16Array, Uint32Array, Int32Array, ArrayBuffer, Promise, setTimeout, document: { createElement: () => ({ getContext: () => ({}), style: {} }) }, innerHeight: 900, innerWidth: 1400 };
 sandbox.window = sandbox; sandbox.self = sandbox; 
 await loadEngineInto(sandbox);
