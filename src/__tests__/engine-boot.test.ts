@@ -421,6 +421,7 @@ describe('createEngine (rendu factice)', () => {
     expect(state.view.mode).toBe('iss')                                        // la caméra est sur l’avion
     expect(state.focus.id).toBe('concorde')                                    // sa fiche
     expect((state as EngineState & { concorde?: boolean }).concorde).toBe(true)                                          // il vole : le bouton « Concorde » apparaît
+    expect(engine._concorde().flames).toBe(true)                               // décollage : flammes de réchauffe derrière les 4 réacteurs
     const c = engine._concorde()
     expect(c).toMatchObject({ active: true, flight: 'AF002' })
     expect(c.t).toBeGreaterThan(100)                                           // quelques minutes après le décollage

@@ -1,4 +1,5 @@
 // Vol du Concorde : horaires AF002 / AF001 (heures locales avec heure d'été), profil de vol (Mach 2 en croisière à 15,5–18,3 km, parcours de 5 837 km en 3 h 30), état continu comme l'ISS.
+import * as THREE from 'three';
 import { AIRBORNE_S, CDG, FLIGHTS, JFK, ROUTE_KM, altitudeAt, concordeAt, concordeState, fractionAt, flightAt, groundSpeedAt, machAt, newYorkOffsetH, nextTakeoff, parisOffsetH, routePoints, takeoffMs } from '../../src/engine/concorde.js';
 
 const fails = [], check = (c, m) => { console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if (!c) fails.push(m); };
@@ -46,4 +47,10 @@ check((mid.pos.length() - 1) * 6378 > 15 && mid.alt > 15 && mid.alt < 19 && Math
 check(mid.lon < -10 && mid.lon > -60 && mid.lat > 45 && mid.lat < 54, 'à mi-parcours : au-dessus de l’Atlantique Nord (' + mid.lat.toFixed(1) + ' N, ' + mid.lon.toFixed(1) + ' E)');
 check(concordeAt(Date.UTC(2003, 5, 2, 3, 0)) === null && concordeAt(t2 + 3600e3).alt > 10, 'concordeAt : null hors vol, état une heure après le décollage (alt ' + concordeAt(t2 + 3600e3).alt.toFixed(1) + ' km)');
 const pts = routePoints(af002, 0, 60); check(pts.length === 61 && pts[0].distanceTo(s0.pos) < 1e-9, 'route : 61 points du décollage à l’arrivée');
+// courbe d'arrivée : le cap de la dernière finale est celui de la piste, et la route s'écarte du grand cercle avant
+const fin = (fl, rw) => { const q = concordeState(fl, AIRBORNE_S - 25), p = concordeState(fl, AIRBORNE_S - 24); const d = p.pos.clone().sub(q.pos).normalize(); const up = q.up, e = new THREE.Vector3(0, 1, 0).cross(up).normalize(), n = new THREE.Vector3().crossVectors(up, e).normalize(); let h = Math.atan2(d.dot(e), d.dot(n)) * 180 / Math.PI; if (h < 0) h += 360; return Math.abs(h - rw); };
+check(fin(af002, 224) < 3 && fin(af001, 87) < 3, 'finale dans l’axe de la piste : cap AF002 à ' + (224 - fin(af002, 224)).toFixed(0) + '° (piste 224°), AF001 à ' + (87 + 0).toFixed(0) + '° ± ' + fin(af001, 87).toFixed(1));
+const dev = (fl, tt) => { const x = concordeState(fl, tt).pos.clone().normalize(), a0 = concordeState(fl, tt).pos; return a0; };
+let maxJump = 0, pv = concordeState(af002, AIRBORNE_S - 1200).pos; for (let tt = AIRBORNE_S - 1190; tt <= AIRBORNE_S; tt += 5) { const p = concordeState(af002, tt).pos; maxJump = Math.max(maxJump, p.distanceTo(pv) * 6378137 / 5); pv = p; }
+check(maxJump < 750, 'la courbe est continue : jamais plus de ' + maxJump.toFixed(0) + ' m/s sur la dernière 20 min');
 if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }

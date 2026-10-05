@@ -10,10 +10,10 @@ export const AIRBORNE_S = 12600;       // 3 h 30 en l'air
 export const CRUISE_MACH = 2.02, SOUND_MS = 295;   // vitesse du son à 17 km d'altitude
 export const R_EARTH_M = 6378137;
 
-// vols programmés : heure locale de départ (h, min) et du lieu ; AF002 = Paris → New York, AF001 = New York → Paris
+// vols programmés (`runwayHeadingDeg` = cap de la piste d'atterrissage : JFK 22L ≈ 224°, Roissy 09 ≈ 87° : DE MÉMOIRE, à vérifier) : heure locale de départ (h, min) et du lieu ; AF002 = Paris → New York, AF001 = New York → Paris
 export const FLIGHTS = [
-  { id: 'AF002', label: 'AF002 · Paris → New York', from: CDG, to: JFK, localDeparture: [10, 30], zone: 'paris', arrival: '8 h 25 (New York)', taxiOutS: 600, taxiInS: 900 },
-  { id: 'AF001', label: 'AF001 · New York → Paris', from: JFK, to: CDG, localDeparture: [8, 0], zone: 'ny', arrival: '17 h 45 (Paris)', taxiOutS: 300, taxiInS: 600 },   // roulages réglés pour retrouver les heures d'arrivée programmées
+  { id: 'AF002', label: 'AF002 · Paris → New York', from: CDG, to: JFK, localDeparture: [10, 30], zone: 'paris', arrival: '8 h 25 (New York)', taxiOutS: 600, taxiInS: 900, runwayHeadingDeg: 224 },
+  { id: 'AF001', label: 'AF001 · New York → Paris', from: JFK, to: CDG, localDeparture: [8, 0], zone: 'ny', arrival: '17 h 45 (Paris)', taxiOutS: 300, taxiInS: 600, runwayHeadingDeg: 87 },   // roulages réglés pour retrouver les heures d'arrivée programmées
 ];
 
 // décalage horaire (heures par rapport à UTC) selon la date : Europe (heure d'été du dernier dimanche de mars au dernier dimanche d'octobre, 1 h UTC) ; États-Unis (avant 2007 : du premier dimanche d'avril au dernier dimanche d'octobre, 2 h locales)
@@ -71,11 +71,24 @@ export const altitudeAt = t => lerpKeys(ALT_KEYS, t);
 export const machAt = t => groundSpeedAt(t) / SOUND_MS * (altitudeAt(t) > 11000 ? 1 : 0.88);   // le Mach compte la vitesse du son locale (plus élevée près du sol)
 
 // état du Concorde pour un vol (flight, t s après le décollage) : même forme que l'ISS (pos en rayons terrestres dans le repère de la Terre, up, vel unitaire horizontal, alt en km, speed en km/s, lon, lat)
+// ARRIVÉE : le grand cercle ne tombe pas dans l'axe de la piste ; sur les derniers kilomètres l'avion fait une COURBE pour s'aligner (virage progressif entre 110 km et 30 km de l'arrivée, puis finale rectiligne
+// de 30 km dans l'axe de la piste d'atterrissage : QFU `runwayHeadingDeg`, 0 = nord, 90 = est). Même avancement le long de la route (à distance restante égale), seule la position latérale change.
+export const TURN_START_KM = 110, FINAL_KM = 30;
+const smooth = x => { const u = Math.max(0, Math.min(1, x)); return u * u * (3 - 2 * u); };
+const east = d => new THREE.Vector3(0, 1, 0).cross(d).normalize(), north = d => new THREE.Vector3().crossVectors(d, east(d)).normalize();
+function groundDir(flight, a, f) {
+  const ang = a.angle * f, s = Math.sin(a.angle) || 1, dRem = (1 - f) * ROUTE_KM;
+  const dir = new THREE.Vector3().copy(a.u).multiplyScalar(Math.sin(a.angle - ang) / s).addScaledVector(a.v, Math.sin(ang) / s).normalize();   // grand cercle
+  const w = smooth((TURN_START_KM - dRem) / (TURN_START_KM - FINAL_KM));
+  if (w <= 0 || flight.runwayHeadingDeg === undefined) return dir;
+  const A = a.v, h = flight.runwayHeadingDeg * Math.PI / 180, hd = north(A).multiplyScalar(Math.cos(h)).addScaledVector(east(A), Math.sin(h)), th = dRem / 6371.0088;
+  const q = A.clone().multiplyScalar(Math.cos(th)).addScaledVector(hd, -Math.sin(th));   // point de l'axe de piste prolongé, à la même distance restante
+  return dir.multiplyScalar(1 - w).addScaledVector(q, w).normalize();
+}
 export function concordeState(flight, t) {
-  const a = arc(flight.from, flight.to), f = fractionAt(t), ang = a.angle * f, s = Math.sin(a.angle) || 1;
-  const dir = new THREE.Vector3().copy(a.u).multiplyScalar(Math.sin(a.angle - ang) / s).addScaledVector(a.v, Math.sin(ang) / s).normalize();   // position au sol
-  const ahead = new THREE.Vector3().copy(a.u).multiplyScalar(Math.sin(a.angle - ang - 0.002) / s).addScaledVector(a.v, Math.sin(ang + 0.002) / s).normalize();
-  const vel = ahead.clone().sub(dir).normalize(), alt = altitudeAt(t), r = 1 + alt / R_EARTH_M;
+  const a = arc(flight.from, flight.to), f = fractionAt(t), dir = groundDir(flight, a, f);
+  const df = 2e-4, ahead = f + df <= 1 ? groundDir(flight, a, f + df) : groundDir(flight, a, f - df), sg = f + df <= 1 ? 1 : -1;   // cap : sens de la route (au bout du trajet on regarde en arrière)
+  const vel = ahead.clone().sub(dir).multiplyScalar(sg).normalize(), alt = altitudeAt(t), r = 1 + alt / R_EARTH_M;
   const lat = Math.asin(dir.y) * 180 / Math.PI, lon = Math.atan2(-dir.z, dir.x) * 180 / Math.PI;
   return { pos: dir.clone().multiplyScalar(r), up: dir.clone(), vel, alt: alt / 1000, speed: groundSpeedAt(t) / 1000, mach: machAt(t), lon, lat, approx: false, t, flight };
 }
