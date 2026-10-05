@@ -390,18 +390,19 @@ describe('createEngine (rendu factice)', () => {
     expect(a.active).toBe(true)                                                // un avion est apparu
     expect(a.elevation).toBeGreaterThan(8)                                     // déjà dans le ciel de l’observatoire, mais DE LOIN (bas sur l’horizon)
     expect(a.elevation).toBeLessThan(20)
-    expect(a.trail).toBe(true)                                                 // traînée de condensation (jour)
     expect(a.px).toBeGreaterThan(0.5)                                          // modèle 3D à la taille réelle : seul affichage possible (aucun point) ; visible seulement s’il fait ≥ 2 px
     expect(a.model).toBe(a.px >= 2)
     expect(a.lights).toBe(false)                                               // de jour : pas de feux
     engine.selectView('earth'); engine._frame(T + 700); engine._frame(T + 800)
     expect(engine._airliner().active).toBe(true)                               // on a quitté la vue : l’avion vole toujours
     engine._airlinerSkip(2000); engine._frame(T + 900)
-    expect(engine._airliner()).toMatchObject({ active: false, count: 0, model: false, trail: false, lights: false })   // disparu d’un coup (avion et traînée)
+    expect(engine._airliner()).toMatchObject({ active: false, count: 0, model: false, lights: false })   // disparu d’un coup
     engine.setDate(Date.UTC(2026, 9, 5, 0, 0, 0))                              // minuit UTC : nuit
     engine.goObservatory('pic-du-midi'); engine.setObservatoryView(true); engine._frame(T + 1000); engine._frame(T + 1100)
     expect(engine._airliner().active).toBe(true)                               // une nouvelle entrée en vue : un nouvel avion
-    expect(engine._airliner()).toMatchObject({ night: true, lights: true, glow: true, trail: false })   // de nuit : feux de navigation fixes (+ strobes blancs clignotants) allumés, traînée cachée
+    expect(engine._airliner()).toMatchObject({ night: true, lights: false, glow: false })   // de nuit mais loin (> 30 km) : pas encore de feux
+    engine._airlinerSkip(150); engine._frame(T + 1150)                         // l’avion s’est rapproché (< 30 km)
+    expect(engine._airliner()).toMatchObject({ night: true, lights: true, glow: true })   // feux de navigation fixes (+ strobes blancs clignotants) allumés
     expect(engine._airlinerSpawnMore()).toBe(true)                             // d’autres avions peuvent arriver pendant la vue observatoire
     expect(engine._airliner().count).toBe(2)
     engine.selectView('earth'); engine._frame(T + 1200)
