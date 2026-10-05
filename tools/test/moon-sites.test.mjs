@@ -3,9 +3,9 @@ import * as THREE from 'three';
 import { MOON_EYE_M, MOON_RADIUS_M, MOON_SITES, SITE_LAYOUT, buildFlag, buildLander, buildMoonSite, buildRover, flagPixels, groundGeometry, makeTerrain, moonSiteById, moonSiteFrame, regolithPixels } from '../../src/engine/moon-sites.js';
 
 const fails = [], check = (c, m) => { console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if (!c) fails.push(m); };
-check(MOON_SITES.length === 3 && new Set(MOON_SITES.map(s => s.id)).size === 3, 'trois sites Apollo : ' + MOON_SITES.map(s => s.short).join(', '));
+check(MOON_SITES.length === 1 && MOON_SITES[0].id === 'apollo-11', 'un seul site : ' + MOON_SITES.map(s => s.short).join(', ') + ' (le plus connu)');
 check(MOON_SITES.every(s => s.body === 'moon' && Math.abs(s.lat) < 90 && Math.abs(s.lon) <= 180 && s.facts.length >= 4 && /vérifier/.test(s.note) && s.image.endsWith(s.id + '.png')), 'coordonnées valides, fiches complètes « à vérifier »');
-check(!moonSiteById('apollo-11').rover && moonSiteById('apollo-15').rover && moonSiteById('apollo-17').rover, 'rover lunaire à Apollo 15 et 17 seulement (pas à Apollo 11)');
+check(moonSiteById('apollo-11').rover && moonSiteById('apollo-15') === null && /choix/.test(moonSiteById('apollo-11').facts.map(f => f.value).join(' ')), 'rover présent à Apollo 11 (ajouté par choix, signalé dans la fiche) ; Apollo 15 et 17 retirés');
 // repère local : la Lune représentée par une sphère de rayon 0,272 unité (rayon terrestre = 1), centre à (60, 0, 0)
 const unit = MOON_RADIUS_M / 6378137, m = new THREE.Matrix4().compose(new THREE.Vector3(60, 0, 0), new THREE.Quaternion(), new THREE.Vector3(unit, unit, unit));
 for (const s of MOON_SITES) {
@@ -41,7 +41,7 @@ check(wheels.length === 4 && rb.x > 3 && rb.x < 3.9 && rb.z > 2 && rb.z < 3 && r
 const ld = buildLander(), lb = new THREE.Box3().setFromObject(ld).getSize(new THREE.Vector3());
 check(lb.y > 3.2 && lb.y < 5 && lb.x > 5 && lb.x < 10, 'module lunaire (étage de descente) : ' + lb.x.toFixed(1) + ' m d’empattement, ' + lb.y.toFixed(1) + ' m de haut');
 // site complet
-const s11 = buildMoonSite(moonSiteById('apollo-11')), s15 = buildMoonSite(moonSiteById('apollo-15'));
-check(s11.userData.flag && s11.userData.lander && !s11.userData.rover && s15.userData.rover, 'site complet : drapeau + module lunaire (+ rover à Apollo 15)');
+const s15 = buildMoonSite(moonSiteById('apollo-11'));
+check(s15.userData.flag && s15.userData.lander && s15.userData.rover, 'site complet : drapeau + module lunaire + rover');
 check(Math.abs(s15.userData.flag.position.y - s15.userData.height(SITE_LAYOUT.flag.x, SITE_LAYOUT.flag.z)) < 1e-9 && s15.userData.ground.geometry.attributes.position.count > 20000, 'objets posés sur le sol (altitude du relief à leur place)');
 if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }

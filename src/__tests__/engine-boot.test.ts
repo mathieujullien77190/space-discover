@@ -407,20 +407,20 @@ describe('createEngine (rendu factice)', () => {
     engine.selectView('earth'); engine._frame(T + 1200)
     engine.resetTime()
   })
-  it('observatoire LUNAIRE (Apollo 15) : étiquette cliquable sur la Lune, fiche, vue debout sur le sol à 1,8 m, quitter', async () => {
+  it('observatoire LUNAIRE (Apollo 11) : étiquette cliquable sur la Lune, fiche, vue debout sur le sol à 1,8 m, quitter', async () => {
     await new Promise((r) => setTimeout(r, 500))
     const T = performance.now() + 200000
     engine.resetTime(); engine.setSimSpeed(1); engine.setObservatories(true); engine._frame(T + 100)
-    engine.goMoonSite('apollo-15'); for (let i = 0; i < 3; i++) engine._frame(T + 200 + i * 100)
-    expect(state.observatory).toEqual({ id: 'apollo-15', view: false })        // fiche du site
+    engine.goMoonSite('apollo-11'); for (let i = 0; i < 3; i++) engine._frame(T + 200 + i * 100)
+    expect(state.observatory).toEqual({ id: 'apollo-11', view: false })        // fiche du site
     expect(state.view.mode).toBe('solar')                                      // on regarde la Lune
-    const lab = [...overlay.querySelectorAll<HTMLElement>('.eng-l3d.obssite')].find((e) => e.style.display === 'block' && /Apollo 15/.test(e.textContent ?? ''))
+    const lab = [...overlay.querySelectorAll<HTMLElement>('.eng-l3d.obssite')].find((e) => e.style.display === 'block' && /Apollo 11/.test(e.textContent ?? ''))
     expect(lab).toBeTruthy()                                                   // l’étiquette du site est affichée sur la Lune
     lab?.click(); engine._frame(T + 600)
-    expect(state.observatory.id).toBe('apollo-15')
+    expect(state.observatory.id).toBe('apollo-11')
     engine.setObservatoryView(true); for (let i = 0; i < 4; i++) engine._frame(T + 700 + i * 100)
     const m = engine._moonSite()
-    expect(m).toMatchObject({ id: 'apollo-15', view: true, group: true })      // sol, drapeau, module lunaire, rover
+    expect(m).toMatchObject({ id: 'apollo-11', view: true, group: true })      // sol, drapeau, module lunaire, rover
     expect(m.eyeErrM!).toBeLessThan(1)                                         // la caméra est sur le site (1,8 m au-dessus du sol)
     expect(m.near).toBeLessThan(1e-6)                                          // plan proche de quelques millimètres
     expect(state.observatory.view).toBe(true)

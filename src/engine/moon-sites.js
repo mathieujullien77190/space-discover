@@ -1,5 +1,5 @@
-// OBSERVATOIRES LUNAIRES : trois sites Apollo où l'on peut se tenir debout sur la Lune (vue depuis le sol, ciel noir, la Terre dans le ciel) avec le drapeau américain, le module lunaire (étage de descente)
-// et, pour Apollo 15 et 17, le rover lunaire (LRV). Modèles 3D STYLISÉS aux dimensions réelles ; sol procédural (régolithe, cratères, rochers) ; positions et faits de MÉMOIRE (à vérifier).
+// OBSERVATOIRE LUNAIRE : le site d'Apollo 11 (le plus connu ; Apollo 15 et 17 ont été retirés à la demande de l'utilisateur) où l'on peut se tenir debout sur la Lune (vue depuis le sol, ciel noir, la Terre dans le ciel) avec le drapeau américain, le module lunaire (étage de descente)
+// et le rover lunaire (LRV, anachronique à Apollo 11 : ajouté à la demande). Modèles 3D STYLISÉS aux dimensions réelles ; sol procédural (régolithe, cratères, rochers) ; positions et faits de MÉMOIRE (à vérifier).
 // Repère local d'un site (mètres) : x = est, y = haut, z = sud ; origine = le sol sous l'œil.
 import * as THREE from 'three';
 
@@ -8,12 +8,8 @@ export const MOON_EYE_M = 1.8;                  // hauteur de l'œil d'un astron
 
 // sites (latitude / longitude sélénographiques en degrés, est positif)
 export const MOON_SITES = [
-  { id: 'apollo-11', name: 'Apollo 11 · Base de la Tranquillité', short: 'Apollo 11', kind: 'Site d’alunissage (Mare Tranquillitatis)', lat: 0.6741, lon: 23.4730, altM: 0, eyeM: MOON_EYE_M, body: 'moon', scene: 'moon', image: 'data/observatories/apollo-11.png', rover: false, seed: 11,
-    facts: [{ label: 'Lieu', value: 'Mer de la Tranquillité (face visible de la Lune)' }, { label: 'Date', value: '20 juillet 1969' }, { label: 'Équipage au sol', value: 'Neil Armstrong et Buzz Aldrin' }, { label: 'Première', value: 'premiers pas d’un humain sur la Lune' }, { label: 'Sur place', value: 'drapeau, module lunaire Eagle (étage de descente)' }] },
-  { id: 'apollo-15', name: 'Apollo 15 · Hadley–Apennins', short: 'Apollo 15', kind: 'Site d’alunissage (Hadley Rille)', lat: 26.1322, lon: 3.6333, altM: 0, eyeM: MOON_EYE_M, body: 'moon', scene: 'moon', image: 'data/observatories/apollo-15.png', rover: true, seed: 15,
-    facts: [{ label: 'Lieu', value: 'Au pied des monts Apennins, près de la rille Hadley' }, { label: 'Date', value: '30 juillet 1971' }, { label: 'Équipage au sol', value: 'David Scott et James Irwin' }, { label: 'Rover', value: 'premier rover lunaire (LRV), ≈ 28 km parcourus' }, { label: 'Sur place', value: 'drapeau, module lunaire Falcon, rover' }] },
-  { id: 'apollo-17', name: 'Apollo 17 · Taurus–Littrow', short: 'Apollo 17', kind: 'Site d’alunissage (vallée de Taurus–Littrow)', lat: 20.1908, lon: 30.7717, altM: 0, eyeM: MOON_EYE_M, body: 'moon', scene: 'moon', image: 'data/observatories/apollo-17.png', rover: true, seed: 17,
-    facts: [{ label: 'Lieu', value: 'Vallée de Taurus–Littrow, au bord de la Mer de la Sérénité' }, { label: 'Date', value: '11 décembre 1972' }, { label: 'Équipage au sol', value: 'Eugene Cernan et Harrison Schmitt' }, { label: 'Dernière', value: 'dernière mission humaine sur la Lune à ce jour' }, { label: 'Sur place', value: 'drapeau, module lunaire Challenger, rover' }] },
+  { id: 'apollo-11', name: 'Apollo 11 · Base de la Tranquillité', short: 'Apollo 11', kind: 'Site d’alunissage (Mare Tranquillitatis)', lat: 0.6741, lon: 23.4730, altM: 0, eyeM: MOON_EYE_M, body: 'moon', scene: 'moon', image: 'data/observatories/apollo-11.png', rover: true, seed: 11,
+    facts: [{ label: 'Lieu', value: 'Mer de la Tranquillité (face visible de la Lune)' }, { label: 'Date', value: '20 juillet 1969' }, { label: 'Équipage au sol', value: 'Neil Armstrong et Buzz Aldrin' }, { label: 'Première', value: 'premiers pas d’un humain sur la Lune' }, { label: 'Sur place', value: 'drapeau, module lunaire Eagle (étage de descente)' }, { label: 'Rover', value: 'ajouté ici par choix : en vrai il n’a roulé que lors d’Apollo 15, 16 et 17' }] },
 ].map(s => ({ ...s, note: 'Position, dates et faits écrits de mémoire : à vérifier. Modèles 3D stylisés (non historiques).' }));
 
 export const moonSiteById = id => MOON_SITES.find(s => s.id === id) || null;
