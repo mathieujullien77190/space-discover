@@ -33,7 +33,7 @@ import { createOverlay } from './overlay.js';
 import { parseObj } from './obj-mini.js';
 const CONTOUR_MAX_ALT_KM = 1200;   // trait de côte (contours pays / mer) et limites de pays : seulement sous 1 200 km (en vue Terre dézoomée la carte dessinée suffit)
 const OBS_STAR_DIM = 0.5;
-const TWINKLE_AMP = 0.12;   // scintillement LENT des étoiles en vue observatoire (± 12 % de luminosité)   // vue depuis un observatoire : toutes les étoiles DEUX FOIS moins lumineuses (demande)
+const TWINKLE_AMP = 0.3;   // scintillement LENT d'une étoile sur cinq en vue observatoire (± 30 % de luminosité)   // vue depuis un observatoire : toutes les étoiles DEUX FOIS moins lumineuses (demande)
 const STAR_DARK_SIN = 0.12;   // sin de la hauteur du Soleil sous l'horizon (≈ −7°) où toutes les étoiles sont là (opacité 0 quand le Soleil est à moitié caché) : même seuil que le ciel qui devient transparent
 
 export const ISS_MIN_DIST_KM = 0.001;   // zoom minimal autour de l'ISS : 1 m (c'était 100 m, puis 10 cm)

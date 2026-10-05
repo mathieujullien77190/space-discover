@@ -5,6 +5,8 @@ export function bvColor(bv: number): number[]
 export const STAR_BINS: { max: number; size: number; light: number }[]
 export function starBin(mag: number): number
 export function createStars(scene: Scene): Group
+export const TWINKLE_SHARE: number
+export function twinkles(k: number): boolean
 export const TWINKLE_MIN_RAD_S: number
 export const TWINKLE_MAX_RAD_S: number
 export function twinkleFactor(timeS: number, phase: number, freq: number, amp: number): number
