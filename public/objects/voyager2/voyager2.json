@@ -1,0 +1,102 @@
+{
+  "kind": "probe",
+  "name": "Voyager 2",
+  "massKg": 722,
+  "exists": {
+    "_note": "La sonde n'existe qu'à partir de son lancement (+ 1 jour : avant, c'est le lanceur qui est simulé).",
+    "from": "1977-08-20T14:29:00Z"
+  },
+  "mission": {
+    "_note": "Mission REJOUÉE d'après l'histoire (src/engine/mission.js) : la trajectoire est calculée d'après les dates des rendez-vous et les positions des planètes. Dates, périgées (distance au centre de la planète), latitude de sortie, masse et faits ÉCRITS DE MÉMOIRE (à vérifier).",
+    "launch": {
+      "date": "1977-08-20T14:29:00Z",
+      "from": "earth",
+      "vehicle": "Titan IIIE-Centaur, Cap Canaveral"
+    },
+    "waypoints": [
+      {
+        "body": "jupiter",
+        "date": "1979-07-09T22:29:00Z",
+        "periapsisKm": 641492,
+        "label": "Survol de Jupiter"
+      },
+      {
+        "body": "saturn",
+        "date": "1981-08-26T03:24:00Z",
+        "periapsisKm": 161268,
+        "label": "Survol de Saturne"
+      },
+      {
+        "body": "uranus",
+        "date": "1986-01-24T17:59:00Z",
+        "periapsisKm": 107059,
+        "label": "Survol d’Uranus"
+      },
+      {
+        "body": "neptune",
+        "date": "1989-08-25T03:56:00Z",
+        "periapsisKm": 29714,
+        "label": "Survol de Neptune",
+        "exitLatitudeDeg": -48
+      }
+    ]
+  },
+  "appearance": {
+    "color": "#ffd54a",
+    "dishM": 3.7
+  },
+  "trace": {
+    "color": "#ffd54a"
+  },
+  "dot": {
+    "color": "#ffd54a",
+    "minDistanceUnits": 0
+  },
+  "label": {
+    "text": "Voyager 2",
+    "minDistanceUnits": 0
+  },
+  "menu": {
+    "order": 7.2,
+    "icon": "🛰",
+    "view": {
+      "distanceUnits": 0.00002,
+      "text": "Vue de Voyager 2 : trajectoire rejouée d’après l’histoire (positions des planètes aux dates des survols)"
+    }
+  },
+  "card": {
+    "_note": "Mission REJOUÉE d'après l'histoire (src/engine/mission.js) : la trajectoire est calculée d'après les dates des rendez-vous et les positions des planètes. Dates, périgées (distance au centre de la planète), latitude de sortie, masse et faits ÉCRITS DE MÉMOIRE (à vérifier).",
+    "kind": "Sonde spatiale",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Lancement",
+        "value": "20 août 1977 (Titan IIIE-Centaur)"
+      },
+      {
+        "label": "Jupiter",
+        "value": "9 juillet 1979"
+      },
+      {
+        "label": "Saturne",
+        "value": "26 août 1981"
+      },
+      {
+        "label": "Uranus",
+        "value": "24 janvier 1986 (seule sonde à y être passée)"
+      },
+      {
+        "label": "Neptune",
+        "value": "25 août 1989 (seule sonde à y être passée)"
+      },
+      {
+        "label": "Masse",
+        "value": "≈ 722 kg"
+      },
+      {
+        "label": "Statut",
+        "value": "dans l’espace interstellaire depuis novembre 2018"
+      }
+    ]
+  }
+}

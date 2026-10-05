@@ -1,0 +1,77 @@
+{
+  "kind": "probe",
+  "name": "Pioneer 10",
+  "massKg": 258,
+  "exists": {
+    "_note": "La sonde n'existe qu'à partir de son lancement (+ 1 jour : avant, c'est le lanceur qui est simulé).",
+    "from": "1972-03-03T01:49:00Z"
+  },
+  "mission": {
+    "_note": "Mission REJOUÉE d'après l'histoire (src/engine/mission.js) : la trajectoire est calculée d'après les dates des rendez-vous et les positions des planètes. Dates, périgées (distance au centre de la planète), latitude de sortie, masse et faits ÉCRITS DE MÉMOIRE (à vérifier).",
+    "launch": {
+      "date": "1972-03-03T01:49:00Z",
+      "from": "earth",
+      "vehicle": "Atlas-Centaur, Cap Canaveral"
+    },
+    "waypoints": [
+      {
+        "body": "jupiter",
+        "date": "1973-12-03T02:26:00Z",
+        "periapsisKm": 201492,
+        "label": "Survol de Jupiter",
+        "plane": "in",
+        "sign": 1
+      }
+    ]
+  },
+  "appearance": {
+    "color": "#9fd0ff",
+    "dishM": 2.74
+  },
+  "trace": {
+    "color": "#9fd0ff"
+  },
+  "dot": {
+    "color": "#9fd0ff",
+    "minDistanceUnits": 0
+  },
+  "label": {
+    "text": "Pioneer 10",
+    "minDistanceUnits": 0
+  },
+  "menu": {
+    "order": 7.3,
+    "icon": "🛰",
+    "view": {
+      "distanceUnits": 0.00002,
+      "text": "Vue de Pioneer 10 : trajectoire rejouée d’après l’histoire (positions des planètes aux dates des survols)"
+    }
+  },
+  "card": {
+    "_note": "Mission REJOUÉE d'après l'histoire (src/engine/mission.js) : la trajectoire est calculée d'après les dates des rendez-vous et les positions des planètes. Dates, périgées (distance au centre de la planète), latitude de sortie, masse et faits ÉCRITS DE MÉMOIRE (à vérifier).",
+    "kind": "Sonde spatiale",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Lancement",
+        "value": "3 mars 1972 (Atlas-Centaur)"
+      },
+      {
+        "label": "Jupiter",
+        "value": "3 décembre 1973 : première sonde à y passer"
+      },
+      {
+        "label": "Masse",
+        "value": "≈ 258 kg"
+      },
+      {
+        "label": "Dernier signal",
+        "value": "janvier 2003"
+      },
+      {
+        "label": "Plaque",
+        "value": "message gravé pour d’éventuels extraterrestres"
+      }
+    ]
+  }
+}

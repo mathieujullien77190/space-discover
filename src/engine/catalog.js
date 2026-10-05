@@ -4,7 +4,7 @@ import { FLIGHT_OBJECTS } from './data/objects.js';
 import { FLIGHT_PLANS } from './data/plans.js';
 import { ISS_FEATURES } from './iss.js';
 
-const flyable = k => !!FLIGHT_OBJECTS[k] && FLIGHT_OBJECTS[k].kind !== 'body' && !FLIGHT_OBJECTS[k].live;
+const flyable = k => !!FLIGHT_OBJECTS[k] && FLIGHT_OBJECTS[k].kind !== 'body' && FLIGHT_OBJECTS[k].kind !== 'probe' && !FLIGHT_OBJECTS[k].live;
 
 export const viewMenu = () => BODY.menu().map(b => ({ id: b.id, type: b.bodyType, around: b.around || null, label: (b.menu.icon ? b.menu.icon + ' ' : '') + b.name }));   // le menu des planètes = les astres décrits en JSON (menu.order)
 export const issFeatures = () => ISS_FEATURES.map(f => ({ id: f.id, label: f.label }));

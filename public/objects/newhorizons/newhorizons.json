@@ -1,0 +1,87 @@
+{
+  "kind": "probe",
+  "name": "New Horizons",
+  "massKg": 478,
+  "exists": {
+    "_note": "La sonde n'existe qu'à partir de son lancement (+ 1 jour : avant, c'est le lanceur qui est simulé).",
+    "from": "2006-01-19T19:00:00Z"
+  },
+  "mission": {
+    "_note": "Mission REJOUÉE d'après l'histoire (src/engine/mission.js) : la trajectoire est calculée d'après les dates des rendez-vous et les positions des planètes. Dates, périgées (distance au centre de la planète), latitude de sortie, masse et faits ÉCRITS DE MÉMOIRE (à vérifier).",
+    "launch": {
+      "date": "2006-01-19T19:00:00Z",
+      "from": "earth",
+      "vehicle": "Atlas V 551, Cap Canaveral"
+    },
+    "waypoints": [
+      {
+        "body": "jupiter",
+        "date": "2007-02-28T05:43:00Z",
+        "periapsisKm": 2300000,
+        "label": "Survol de Jupiter"
+      },
+      {
+        "body": "pluto",
+        "date": "2015-07-14T11:49:00Z",
+        "periapsisKm": 13688,
+        "label": "Survol de Pluton",
+        "plane": "in",
+        "sign": 1
+      }
+    ]
+  },
+  "appearance": {
+    "color": "#ffb36b",
+    "dishM": 2.1
+  },
+  "trace": {
+    "color": "#ffb36b"
+  },
+  "dot": {
+    "color": "#ffb36b",
+    "minDistanceUnits": 0
+  },
+  "label": {
+    "text": "New Horizons",
+    "minDistanceUnits": 0
+  },
+  "menu": {
+    "order": 7.5,
+    "icon": "🛰",
+    "view": {
+      "distanceUnits": 0.00002,
+      "text": "Vue de New Horizons : trajectoire rejouée d’après l’histoire (positions des planètes aux dates des survols)"
+    }
+  },
+  "card": {
+    "_note": "Mission REJOUÉE d'après l'histoire (src/engine/mission.js) : la trajectoire est calculée d'après les dates des rendez-vous et les positions des planètes. Dates, périgées (distance au centre de la planète), latitude de sortie, masse et faits ÉCRITS DE MÉMOIRE (à vérifier).",
+    "kind": "Sonde spatiale",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Lancement",
+        "value": "19 janvier 2006 (Atlas V 551)"
+      },
+      {
+        "label": "Jupiter",
+        "value": "28 février 2007"
+      },
+      {
+        "label": "Pluton",
+        "value": "14 juillet 2015 : première visite"
+      },
+      {
+        "label": "Arrokoth",
+        "value": "1er janvier 2019"
+      },
+      {
+        "label": "Masse",
+        "value": "≈ 478 kg"
+      },
+      {
+        "label": "Vitesse au départ",
+        "value": "la plus rapide jamais lancée depuis la Terre (≈ 16 km/s)"
+      }
+    ]
+  }
+}
