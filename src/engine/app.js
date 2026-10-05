@@ -11,7 +11,7 @@ import { createConstellations } from './constellations.js';
 import { createStars } from './stars.js';
 import { occludedBy } from './occlusion.js';
 import { createTerrainLayer } from './terrain-layer.js';
-import { TERRAIN_GLOW } from './terrain-tiles.js';
+import { TERRAIN_DAY_GAIN, TERRAIN_GLOW } from './terrain-tiles.js';
 import { DEG, buildBorders, R_KM, buildEarth, earthGeometry, ll } from './earth.js';
 import { loadGlb } from './gltf-mini.js';
 import { FLIGHT_OBJECTS, FLIGHT_OBJECT_FILES } from './data/objects.js';
@@ -521,7 +521,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     setBorders: on => { bordersOn = !!on; },
     setCapitals: on => { capitalsOn = !!on; },
     setConstellations: on => { constellationsOn = !!on; },
-    setDayNight: on => { dayNight = !!on; terrain.setGlow(dayNight ? 0 : TERRAIN_GLOW); },
+    setDayNight: on => { dayNight = !!on; terrain.setLook(dayNight ? 0 : TERRAIN_GLOW, dayNight ? TERRAIN_DAY_GAIN : 1); },
     _sun: () => { const v = babs[STAR].clone().normalize(); return { lon: Math.atan2(-v.z, v.x) / DEG, lat: Math.asin(v.y) / DEG }; },   // point subsolaire dans le repère de la scène (vue Terre fixe)
     _mapOptions: () => ({ borders: bordersOn && borders.visible, capitals: capitals.count(), constellations: constellations.lines.visible, constellationNames: constellations.count(), dayNight, ambient: amb.intensity, sunPoint: sunPoint.visible }),
     _clouds: () => Object.assign({ on: cloudsOn }, clouds.stats()),

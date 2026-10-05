@@ -8,6 +8,7 @@ export const TERRAIN_MAX_ALT_KM: number
 export const TERRAIN_HYSTERESIS: number
 export const TERRAIN_EXAGGERATION: number
 export const TERRAIN_GLOW: number
+export const TERRAIN_DAY_GAIN: number
 export const EARTH_R_M: number
 export const SEA_LEVEL_OFFSET: number
 export function tileUrl(z: number, x: number, y: number, template: string): string

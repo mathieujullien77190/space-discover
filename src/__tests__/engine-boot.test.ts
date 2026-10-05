@@ -369,6 +369,7 @@ describe('createEngine (rendu factice)', () => {
     expect(on.constellationNames).toBeGreaterThan(0)                           // au moins un nom de constellation à l’écran autour de la Terre
     expect(on.dayNight && on.sunPoint).toBe(true)                              // jour / nuit : le vrai Soleil éclaire, l’ambiance est sombre
     expect(on.ambient).toBeLessThan(0.4)
+    expect(engine._terrain()).toMatchObject({ glow: 0, gain: 1.6 })           // tuiles de relief plus claires le jour, sans lumière propre la nuit
     engine.setBorders(false); engine.setCapitals(false); engine.setConstellations(false); engine.setDayNight(false)
     engine._frame(performance.now() + 300)
     expect(engine._mapOptions()).toMatchObject({ borders: false, capitals: 0, constellations: false, constellationNames: 0, dayNight: false, sunPoint: false })

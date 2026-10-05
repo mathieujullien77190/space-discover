@@ -12,6 +12,7 @@ export const TERRAIN_MAX_ALT_KM = 1000;                // au-dessus : la carte d
 export const TERRAIN_HYSTERESIS = 1.12;                // une fois affiché, le relief ne disparaît qu'à 12 % au-dessus du seuil
 export const TERRAIN_EXAGGERATION = 1;                 // relief à l'échelle réelle ×1 (c'était ×2 : « les montagnes sont trop hautes ») (à 6 378 km de rayon, l'Everest ne fait que 0,14 % : invisible sinon)
 export const TERRAIN_GLOW = 0.3;                       // lumière propre ajoutée à l'imagerie (relève les ombres du relief : la face à l'ombre du Soleil n'est plus noire)
+export const TERRAIN_DAY_GAIN = 1.6;                   // mode jour / nuit : coefficient de luminosité des tuiles (l'imagerie satellite est sombre : éclairée par le Soleil elle paraissait terne)
 export const EARTH_R_M = 6378137;
 export const SEA_LEVEL_OFFSET = 8e-6;                  // le niveau de la mer des tuiles est ≈ 50 m au-dessus du maillage de la Terre (dont les facettes plongent jusqu'à 30 m sous la sphère)
 const R2D = 180 / Math.PI, EARTH_CIRC_KM = 40075.017;
