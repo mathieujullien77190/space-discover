@@ -1,6 +1,6 @@
 // Éclat du Soleil : image (cœur blanc, halo, aigrettes), opacité devant / derrière la Terre, taille selon la distance.
 import { createCanvas } from '@napi-rs/canvas';
-import { AU_UNITS, GLARE_MIN_SCALE, GLARE_PX, GLARE_SIZE, SUN_HIDE_UNITS, glareOpacity, glarePixels, paintGlare } from '../../src/engine/sun-glare.js';
+import { AU_UNITS, GLARE_MIN_SCALE, GLARE_PX, GLARE_SIZE, SUN_HIDE_UNITS, glarePixels, paintGlare } from '../../src/engine/sun-glare.js';
 
 const fails = [], check = (c, m) => { console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if (!c) fails.push(m); };
 const cv = createCanvas(GLARE_SIZE, GLARE_SIZE), g = cv.getContext('2d'); paintGlare(g, GLARE_SIZE);
@@ -17,10 +17,6 @@ const halo = px(c + c * 0.12, c + c * 0.12 * 0.5);
 check(halo[3] > 30, 'halo lumineux autour du cœur (alpha ' + halo[3] + ')');
 const bluish = px(c + c * 0.3, c + c * 0.05);
 check(bluish[2] >= bluish[0], 'le halo extérieur est bleuté (' + bluish.slice(0, 3) + ')');
-const ang = Math.asin(1 / 1.1);
-check(glareOpacity(0, ang) === 0 && glareOpacity(ang * 0.5, ang) === 0 && glareOpacity(ang - 0.0047, ang) === 0, 'Soleil sous l’horizon (derrière le disque de la Terre) : éblouissement éteint');
-check(glareOpacity(ang * 1.2, ang) === 1 && glareOpacity(ang + 0.0047, ang) === 1, 'Soleil entièrement au-dessus de l’horizon : éblouissement plein');
-check(Math.abs(glareOpacity(ang, ang) - 0.5) < 1e-9 && glareOpacity(ang - 0.002, ang) < glareOpacity(ang + 0.002, ang), 'Soleil à moitié caché : moitié, croissant à mesure qu’il monte');
 check(glarePixels(AU_UNITS) === GLARE_PX && glarePixels(4 * AU_UNITS) < glarePixels(AU_UNITS) && glarePixels(1e9) === GLARE_PX * GLARE_MIN_SCALE, 'taille : ' + GLARE_PX + ' px à 1 UA, plus petite au loin (plancher ' + GLARE_PX * GLARE_MIN_SCALE + ' px)');
 check(glarePixels(SUN_HIDE_UNITS - 1) === 0, 'dans le Soleil : pas d’éblouissement');
 if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }

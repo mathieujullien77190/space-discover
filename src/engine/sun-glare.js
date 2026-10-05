@@ -7,6 +7,7 @@ export const GLARE_SIZE = 512;          // côté de l'image (pixels)
 export const GLARE_PX = 900;            // côté du sprite à l'écran à 1 UA (pixels) : le halo remplit une bonne part de l'écran
 export const AU_UNITS = 23455;          // 1 UA en unités de la scène (rayons terrestres)
 export const SUN_HIDE_UNITS = 4000;     // plus près que ça du Soleil (on est « dedans ») : pas d'éblouissement
+export const GLARE_OPACITY = 0.7;       // luminosité de l'éclat (moins lumineux qu'avant, MÊME taille)
 export const GLARE_MIN_SCALE = 0.18;    // facteur de taille minimal (très loin du Soleil)
 
 // dessine l'éblouissement sur un contexte 2D carré de côté `size`
@@ -33,35 +34,25 @@ export function paintGlare(g, size) {
   g.globalCompositeOperation = 'source-over';
 }
 
-const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-
-// opacité de l'éblouissement : sep = écart angulaire (rad) entre le Soleil et le centre de la Terre vus de la caméra, angEarth = rayon angulaire de la Terre
-// nulle dès que le Soleil est ENTIÈREMENT sous l'horizon (centre à plus d'un rayon solaire derrière le limbe), moitié quand il est à moitié caché, pleine dès qu'il est entièrement au-dessus (demande : « on voit le Soleil sous l'horizon, c'est pas bon »)
-export const SUN_ANG_RADIUS = 0.00465;   // rayon apparent du Soleil (rad, 0,267°)
-export const glareOpacity = (sep, angEarth) => smooth(angEarth - SUN_ANG_RADIUS, angEarth + SUN_ANG_RADIUS, sep);
-
 // taille du sprite (pixels) selon la distance au Soleil (unités de la scène) : pleine à 1 UA, plus petite au loin (racine de la distance, au moins GLARE_MIN_SCALE), nulle dans le Soleil
 export const glarePixels = dist => (dist < SUN_HIDE_UNITS ? 0 : GLARE_PX * Math.max(GLARE_MIN_SCALE, Math.min(1, Math.sqrt(AU_UNITS / dist))));
 
 export function createSunGlare(scene) {
   const canvas = document.createElement('canvas'); canvas.width = canvas.height = GLARE_SIZE; paintGlare(canvas.getContext('2d'), GLARE_SIZE);
   const tex = new THREE.CanvasTexture(canvas); tex.colorSpace = THREE.SRGBColorSpace;
-  const mat = new THREE.SpriteMaterial({ map: tex, blending: THREE.AdditiveBlending, depthTest: false, depthWrite: false, transparent: true, fog: false });
+  const mat = new THREE.SpriteMaterial({ map: tex, blending: THREE.AdditiveBlending, depthTest: true, depthWrite: false, transparent: true, fog: false });
   const sprite = new THREE.Sprite(mat); sprite.renderOrder = 50; sprite.frustumCulled = false; sprite.visible = false; scene.add(sprite);
-  const dir = new THREE.Vector3(), ec = new THREE.Vector3();
+  const dir = new THREE.Vector3();
   return {
     sprite,
-    // sunPos : position du Soleil dans le monde (même repère que la caméra) ; earthCenter : centre de la Terre ; width / height : écran ; renvoie l'opacité appliquée (0 = caché)
-    update({ camera, sunPos, earthCenter, height, limit = 1 }) {
+    // sunPos : position du Soleil dans le monde (même repère que la caméra) ; width / height : écran ; renvoie 1 (affiché) ou 0
+    update({ camera, sunPos, height, tint = 0 }) {   // tint : 0 (blanc) à 1 (rouge-orangé du coucher)
       dir.copy(sunPos).sub(camera.position); const d = dir.length(), px = glarePixels(d);
       if (!(d > 0) || px === 0) { sprite.visible = false; return 0; }
       dir.divideScalar(d);
-      let op = limit;   // limit : facteur imposé de l'extérieur (0 à 1), ex. le Soleil sous l'horizon local d'un observatoire
-      if (earthCenter) { ec.copy(earthCenter).sub(camera.position); const de = ec.length(); if (de > 1) { ec.divideScalar(de); op *= glareOpacity(Math.acos(Math.max(-1, Math.min(1, ec.dot(dir)))), Math.asin(1 / de)); } }
-      if (op <= 0.002) { sprite.visible = false; return 0; }
       const R = camera.far * 0.45, pxAng = 2 * Math.tan(camera.fov * Math.PI / 360) / height;   // même distance que les étoiles ; taille monde d'un pixel à cette distance = R · pxAng
       sprite.position.copy(camera.position).addScaledVector(dir, R); sprite.scale.setScalar(R * pxAng * px);
-      mat.opacity = op; sprite.visible = true; return op;
+      mat.opacity = GLARE_OPACITY; mat.color.setRGB(1, 1 - 0.45 * tint, 1 - 0.75 * tint); sprite.visible = true; return 1;
     },
     dispose() { scene.remove(sprite); tex.dispose(); mat.dispose(); },
   };
