@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { BODY } from './bodies.js';
 import { ISS_FEATURES, ISS_EPOCH, ISS_FROM, ISS_MODEL, ISS_W, issState } from './iss.js';
 import { createClouds } from './clouds.js';
+import { createStars } from './stars.js';
 import { occludedBy } from './occlusion.js';
 import { createTerrainLayer } from './terrain-layer.js';
 import { DEG, R_KM, buildEarth, earthGeometry, ll } from './earth.js';
@@ -123,11 +124,9 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   };
   const solarTimer = setTimeout(buildSolar, 400);
 
-  // fond d'étoiles (rayon 3 000 000 unités : au-delà de Neptune, à 704 000)
-  const sp = new Float32Array(3 * 3000), tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3(), tmp3 = new THREE.Vector3(), tmp4 = new THREE.Vector3(), fpM = new THREE.Matrix4();
-  for (let i = 0; i < 3000; i++) { tmp.set(Math.random() - .5, Math.random() - .5, Math.random() - .5).normalize(); sp.set([tmp.x, tmp.y, tmp.z], 3 * i); }
-  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3));
-  const stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: 1.3, sizeAttenuation: false, depthWrite: false })); stars.frustumCulled = false; scene.add(stars);   // sphère de rayon 1, replacée sur la caméra et grossie à chaque image : le fond est toujours « à l'infini », quel que soit le zoom arrière
+  // VRAI ciel étoilé (≈ 5 000 étoiles, vraies positions / couleurs / éclats : stars.js), sphère de rayon 1 replacée sur la caméra et grossie à chaque image, tournée avec le temps sidéral
+  const tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3(), tmp3 = new THREE.Vector3(), tmp4 = new THREE.Vector3(), fpM = new THREE.Matrix4();
+  const stars = createStars(scene);
   const amb = new THREE.AmbientLight(0xffffff, 0.55), sun = new THREE.DirectionalLight(0xffffff, 1.0);
   scene.add(amb, sun, sun.target);
 
@@ -477,7 +476,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     world.rotation.y = gm * frameF;
     if (shift) { world.position.copy(shift).negate(); camera.position.sub(shift); camera.updateMatrixWorld(); } else world.position.set(0, 0, 0);
     inertial.position.copy(world.position); solar.position.copy(world.position);
-    stars.position.copy(camera.position); stars.scale.setScalar(camera.far * 0.45);
+    stars.position.copy(camera.position); stars.scale.setScalar(camera.far * 0.45); stars.rotation.y = solar.rotation.y;   // les étoiles suivent le repère « solaire » : fixes en vue inertielle, elles tournent avec le temps sidéral quand la Terre est fixe
     renderer.render(scene, camera);
     camera.position.copy(saved); camera.updateMatrixWorld();
     if (!ready) { ready = true; publish({ status: 'ready' }); }

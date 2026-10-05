@@ -1,0 +1,44 @@
+// Le VRAI ciel étoilé : ≈ 5 000 étoiles (magnitude ≤ 6) à leur vraie position (ascension droite / déclinaison J2000), avec leur couleur (B−V) et leur éclat (magnitude).
+// Repère : le même que celui de la scène en vues « inertielles » : l'axe x = le point vernal, y = le pôle nord de la Terre, donc une étoile (α, δ) est en ll(α, δ) ; le moteur fait tourner le groupe avec le temps sidéral.
+import * as THREE from 'three';
+import { STARS } from './data/stars.js';
+
+// vecteur unitaire de l'étoile (mêmes axes que ll() de earth.js : x vers α = 0, y nord, z vers α = 270°)
+export function starVector(raDeg, decDeg, out) {
+  const a = raDeg * Math.PI / 180, d = decDeg * Math.PI / 180;
+  return out.set(Math.cos(d) * Math.cos(a), Math.sin(d), -Math.cos(d) * Math.sin(a));
+}
+
+// couleur approchée d'après l'indice B−V : bleu-blanc (négatif) → blanc → jaune → orange → rouge (> 1,5)
+const RAMP = [[-0.3, [0.6, 0.72, 1]], [0, [0.78, 0.85, 1]], [0.4, [1, 0.97, 0.92]], [0.8, [1, 0.88, 0.7]], [1.2, [1, 0.75, 0.5]], [1.8, [1, 0.6, 0.4]]];
+export function bvColor(bv) {
+  const v = Math.max(RAMP[0][0], Math.min(RAMP[RAMP.length - 1][0], bv));
+  let i = 0; while (i < RAMP.length - 2 && v > RAMP[i + 1][0]) i++;
+  const [b0, c0] = RAMP[i], [b1, c1] = RAMP[i + 1], t = (v - b0) / (b1 - b0);
+  return c0.map((c, k) => c + (c1[k] - c) * t);
+}
+
+// classes d'éclat : taille (pixels) et luminosité d'une étoile d'après sa magnitude (plus c'est petit, plus c'est brillant)
+export const STAR_BINS = [
+  { max: 1.5, size: 5.2, light: 1 },
+  { max: 2.5, size: 4, light: 1 },
+  { max: 3.5, size: 3, light: 0.95 },
+  { max: 4.5, size: 2.3, light: 0.85 },
+  { max: 5.5, size: 1.7, light: 0.7 },
+  { max: 99, size: 1.3, light: 0.55 },
+];
+export const starBin = mag => STAR_BINS.findIndex(b => mag < b.max);
+
+// groupe de points (une classe d'éclat = un objet Points : PointsMaterial n'a qu'une taille) de rayon 1, à replacer sur la caméra et agrandir à chaque image
+export function createStars(scene) {
+  const group = new THREE.Group(), tmp = new THREE.Vector3(), bins = STAR_BINS.map(() => []);
+  for (const [ra, dec, mag, bv] of STARS) { const b = starBin(mag); starVector(ra, dec, tmp); const c = bvColor(bv), l = STAR_BINS[b].light; bins[b].push(tmp.x, tmp.y, tmp.z, c[0] * l, c[1] * l, c[2] * l); }
+  bins.forEach((arr, i) => {
+    const n = arr.length / 6, pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+    for (let k = 0; k < n; k++) { pos.set(arr.slice(6 * k, 6 * k + 3), 3 * k); col.set(arr.slice(6 * k + 3, 6 * k + 6), 3 * k); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    const p = new THREE.Points(g, new THREE.PointsMaterial({ size: STAR_BINS[i].size, sizeAttenuation: false, vertexColors: true, depthWrite: false })); p.frustumCulled = false; group.add(p);
+  });
+  group.frustumCulled = false; scene.add(group);
+  return group;
+}
