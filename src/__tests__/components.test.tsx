@@ -19,9 +19,9 @@ describe('TopBar + SubMenu', () => {
     engine = fakeEngine()
     useStore.setState({ ...initialEngineState, panel: null, bodyCategory: 'planets', features: {}, engine })
   })
-  it('barre du haut : Astres, Terre, ISS, Vue depuis l’ISS, Nuages ; ni Histoires, ni Fusées, ni Satellites, aucun sous-menu au départ', () => {
+  it('barre du haut : Astres, Terre, ISS, Nuages ; ni Histoires, ni Fusées, ni Satellites, aucun sous-menu au départ', () => {
     render(<><TopBar /><SubMenu /></>)
-    for (const l of ['🌌 Astres', '🌍 Terre', '🛰 ISS', '👁 Vue depuis l’ISS', '☁ Nuages']) expect(screen.getByText(l)).toBeInTheDocument()
+    for (const l of ['🌌 Astres', '🌍 Terre', '🛰 ISS', '☁ Nuages']) expect(screen.getByText(l)).toBeInTheDocument()
     for (const l of [/Histoires/, /Fusées/, /Satellites/, /Engins/]) expect(screen.queryByText(l)).toBeNull()
     expect(screen.queryByText(/Lune/)).toBeNull()
   })
@@ -41,9 +41,10 @@ describe('TopBar + SubMenu', () => {
     render(<IssBadge />)
     expect(screen.getByText(/Vue depuis l’ISS/)).toBeInTheDocument()
   })
-  it('bouton « Vue depuis l’ISS » : active la vue à la première personne sur la station', () => {
-    useStore.setState({ issView: false })
-    render(<TopBar />)
+  it('bouton « Vue depuis l’ISS » : dans la fiche de l’ISS (plus dans la barre du haut)', () => {
+    useStore.setState({ ...initialEngineState, focus: { id: 'iss' }, issView: false, cardCollapsed: false })
+    render(<><TopBar /><BodyCard /></>)
+    expect(screen.getAllByText('👁 Vue depuis l’ISS')).toHaveLength(1)
     fireEvent.click(screen.getByText('👁 Vue depuis l’ISS'))
     expect(engine.setIssView).toHaveBeenCalledWith(true)
   })

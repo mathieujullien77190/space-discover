@@ -8,9 +8,12 @@ export const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/
 export const TERRAIN_CREDIT = 'Imagerie : Esri, Maxar, Earthstar Geographics, USDA, USGS… · Altitudes : AWS Terrain Tiles (SRTM, GMTED, USGS 3DEP, GEBCO)';
 export const TERRAIN_Z_MIN = 3, TERRAIN_Z_MAX = 14;   // niveaux de zoom utilisés (14 ≈ 10 m par pixel d'image)
 export const TERRAIN_RADIUS = 3;                       // grille de (2 × 3 + 1)² = 49 tuiles autour du point regardé
-export const TERRAIN_MAX_ALT_KM = 800;                 // au-dessus : la carte dessinée de la Terre reste affichée
+export const TERRAIN_MAX_ALT_KM = 600;                 // au-dessus : la carte dessinée de la Terre reste affichée (fondu entre 500 et 600 km : tuiles pleinement visibles à 500 km)
 export const TERRAIN_HYSTERESIS = 1.12;                // une fois affiché, le relief ne disparaît qu'à 12 % au-dessus du seuil
 export const TERRAIN_EXAGGERATION = 2;                 // relief exagéré ×2 (à 6 378 km de rayon, l'Everest ne fait que 0,14 % : invisible sinon)
+export const TERRAIN_OPACITY = 0.85;                   // opacité maximale des tuiles : la carte dessinée (claire) transparaît dessous et ÉCLAIRCIT l'imagerie satellite (souvent sombre)
+export const TERRAIN_GLOW = 0.3;                       // lumière propre ajoutée à l'imagerie (relève les ombres du relief : la face à l'ombre du Soleil n'est plus noire)
+export const TERRAIN_FADE_START = 5 / 6;               // le fondu démarre à 500 km (5/6 de 600 km) : l'imagerie apparaît en douceur au lieu de surgir
 export const EARTH_R_M = 6378137;
 export const SEA_LEVEL_OFFSET = 8e-6;                  // le niveau de la mer des tuiles est ≈ 50 m au-dessus du maillage de la Terre (dont les facettes plongent jusqu'à 30 m sous la sphère)
 const R2D = 180 / Math.PI, EARTH_CIRC_KM = 40075.017;
@@ -73,3 +76,9 @@ export function tileHeights(rgba, w, h, nx, ny, bounds) {
 
 // rayon d'un sommet (rayons terrestres) : niveau de la mer (un souffle au-dessus du maillage de la Terre) + altitude exagérée
 export const vertexRadius = (elevM, exag = TERRAIN_EXAGGERATION) => 1 + SEA_LEVEL_OFFSET + Math.max(0, elevM) * exag / EARTH_R_M;
+
+// opacité des tuiles selon l'altitude de la caméra : 0 au seuil (TERRAIN_MAX_ALT_KM), pleine (TERRAIN_OPACITY) sous TERRAIN_FADE_START × seuil, fondu progressif entre les deux
+export function terrainOpacity(altKm) {
+  const hi = TERRAIN_MAX_ALT_KM, lo = hi * TERRAIN_FADE_START, t = Math.max(0, Math.min(1, (hi - altKm) / (hi - lo)));
+  return TERRAIN_OPACITY * t * t * (3 - 2 * t);   // marche lissée
+}

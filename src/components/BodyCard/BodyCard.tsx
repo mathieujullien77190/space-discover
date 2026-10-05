@@ -1,17 +1,18 @@
 import { useMemo } from 'react'
 import BodyFacts from '@/components/BodyFacts'
 import Button from '@/components/ui/Button'
-import { BASE_PATH } from '@/constants'
+import { BASE_PATH, ISS_VIEW_LABELS } from '@/constants'
 import { bodyCard } from '@/engine/catalog'
 import { useStore } from '@/store'
-import { alignNorth, alignOrbit, resetUp } from '@/store/commands'
+import { alignNorth, alignOrbit, resetUp, setIssView } from '@/store/commands'
 import styles from './BodyCard.module.css'
 
 // Fiche de l'astre choisi : illustration dessinée + caractéristiques (calculées d'après le JSON de l'astre + quelques faits écrits dedans)
-// + deux boutons de vue à bascule : « Nord en haut » et « Orbite à plat ». Réductible en un mini bouton-icône (l'illustration de l'astre) : un clic la rouvre ; le choix est mémorisé.
+// + deux boutons de vue à bascule : « Nord en haut » et « Orbite à plat » ; pour l'ISS : « Vue depuis l'ISS ». Réductible en un mini bouton-icône (l'illustration de l'astre) : un clic la rouvre ; le choix est mémorisé.
 export const BodyCard = () => {
   const id = useStore((s) => s.focus.id)
   const align = useStore((s) => s.view.align)
+  const issView = useStore((s) => s.issView)
   const collapsed = useStore((s) => s.cardCollapsed)
   const setCollapsed = useStore((s) => s.setCardCollapsed)
   const card = useMemo(() => (id ? bodyCard(id) : null), [id])
@@ -31,8 +32,9 @@ export const BodyCard = () => {
         <h2 className={styles.name}>{card.name}</h2>
         <div className={styles.kind}>{card.kind}</div>
         <BodyFacts facts={card.facts} />
-        {(card.canNorth || card.canOrbit) && (
+        {(card.canNorth || card.canOrbit || card.id === 'iss') && (
           <div className={styles.actions}>
+            {card.id === 'iss' && <Button label={issView ? ISS_VIEW_LABELS.off : ISS_VIEW_LABELS.on} active={issView} title="Voir la Terre depuis la station spatiale : glisser pour regarder autour, molette pour le champ" onClick={() => setIssView(!issView)} />}
             {card.canNorth && <Button label="🧭 Nord en haut" active={align === 'north'} title="Met le pôle nord en haut de l’écran (activé : revient à la verticale du monde)" onClick={() => (align === 'north' ? resetUp() : alignNorth(card.id))} />}
             {card.canOrbit && <Button label="↔ Orbite à plat" active={align === 'orbit'} title="Montre sa trajectoire autour de son corps central à l’horizontale (activé : revient à « Nord en haut »)" onClick={() => (align === 'orbit' ? alignNorth(card.id) : alignOrbit(card.id))} />}
           </div>
