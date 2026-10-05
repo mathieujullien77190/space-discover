@@ -4,4 +4,5 @@ export type RocketControlsProps = {
   speed: number
   onSpeed: (speed: number) => void
   onStop: () => void
+  onFollow?: () => void
 }

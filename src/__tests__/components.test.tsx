@@ -140,6 +140,23 @@ describe('DatePicker (saut de date)', () => {
   })
 })
 
+describe('Missions historiques (menu Fusées)', () => {
+  it('« 🚀 Voyager 2 — 20 août 1977 » lance la mission ; en vol, « Suivre la sonde » apparaît', () => {
+    const engine = fakeEngine()
+    ;(engine as unknown as Record<string, unknown>).launchMission = vi.fn(() => Promise.resolve())
+    ;(engine as unknown as Record<string, unknown>).followMission = vi.fn()
+    useStore.setState({ ...initialEngineState, panel: 'rockets', engine })
+    const { unmount } = render(<SubMenu />)
+    fireEvent.click(screen.getByText(/Voyager 2 — 20 août 1977/))
+    expect((engine as unknown as { launchMission: ReturnType<typeof vi.fn> }).launchMission).toHaveBeenCalledWith('voyager2')
+    unmount()
+    act(() => useStore.setState({ rocket: { ...initialEngineState.rocket, running: true, mission: 'voyager2', T: 10, playing: true, speed: 1 } }))
+    render(<SubMenu />)
+    fireEvent.click(screen.getByText('🛰 Suivre la sonde'))
+    expect((engine as unknown as { followMission: ReturnType<typeof vi.fn> }).followMission).toHaveBeenCalled()
+  })
+})
+
 describe('RocketControls (feuille : uniquement des props)', () => {
   it('appelle onSpeed et surligne la vitesse courante', () => {
     const onSpeed = vi.fn()

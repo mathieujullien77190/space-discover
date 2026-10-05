@@ -371,6 +371,30 @@ describe('createEngine (rendu factice)', () => {
     expect(jupiter).toBeLessThan(1e6 * 1.2)   // moins de 1,2 million de km de Jupiter (périgée ≈ 0,69 million)
     expect(near.shown).toBe(true)
   })
+  it('lancer Voyager 2 : saut à la date historique, fusée lancée à cette date ; « suivre la sonde » : 2 jours plus tard, sonde en vue, temps accéléré', async () => {
+    await new Promise((r) => setTimeout(r, 450))
+    let t = 1000
+    const frames = (n: number) => { for (let i = 0; i < n; i++) engine._frame(performance.now() + (t += 100)) }
+    frames(4)
+    await engine.launchMission('voyager2')
+    const launch = Date.UTC(1977, 7, 20, 14, 29)
+    expect(Math.abs(state.time.simMs - launch)).toBeLessThan(60000)   // saut de date : 20 août 1977, 14 h 29 UTC
+    expect(state.rocket.running).toBe(true)
+    expect(state.rocket.mission).toBe('voyager2')
+    expect(state.view.mode).toBe('launch')
+    frames(2)
+    expect(engine._probe('voyager2')!.shown).toBe(false)   // pendant le lancement c'est la fusée qui est simulée, pas la sonde rejouée
+    engine.followMission(); frames(4)
+    expect(state.rocket.running).toBe(false)
+    expect(state.rocket.mission).toBeNull()
+    expect(Math.abs(state.time.simMs - (launch + 2 * 86400000))).toBeLessThan(3600000)   // (le temps a déjà commencé à filer à 1 jour par seconde)
+    expect(state.time.speed).toBe(86400)
+    expect(state.view).toMatchObject({ mode: 'solar', selected: 'voyager2' })
+    expect(engine._probe('voyager2')!.shown).toBe(true)
+    // un an plus tard, la sonde est loin de la Terre (Jupiter n'est atteint qu'en 1979)
+    engine.setDate(launch + 365 * 86400000); frames(3)
+    expect(engine._probe('voyager2')!.r).not.toBeNull()
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)

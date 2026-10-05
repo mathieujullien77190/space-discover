@@ -10,5 +10,5 @@ export const initialEngineState: EngineState = {
   scale: { widthPx: 100, label: '' },
   features: {},
   focus: { id: null },
-  rocket: { running: false, loading: false, message: '', steps: [], components: [], T: 0, playing: false, speed: 0, telemetry: { eff: 1, alt: 0, v: 0 } },
+  rocket: { mission: null, running: false, loading: false, message: '', steps: [], components: [], T: 0, playing: false, speed: 0, telemetry: { eff: 1, alt: 0, v: 0 } },
 }

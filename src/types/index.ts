@@ -10,6 +10,7 @@ export type RocketStep = { t: number; label: string }
 export type RocketComponent = { id: string; name: string; follow: boolean; infoOn: boolean; hasInfo: boolean; value: string }
 export type RocketTelemetry = { eff: number; alt: number; v: number }
 export type RocketState = {
+  mission: string | null   // mission historique en cours de lancement (id de la sonde)
   running: boolean
   loading: boolean
   message: string
@@ -45,6 +46,7 @@ export type MenuItem = { id: string; label: string; type: string; around: string
 export type FeatureItem = { id: string; label: string }
 export type SatelliteItem = { key: string; name: string; kind: 'iss' | 'probe'; from: number }   // from : date (ms) à partir de laquelle l'objet existe
 export type RocketOption = { key: string; label: string }
+export type MissionLaunch = { key: string; label: string; date: number }   // lancement d'une mission historique (sonde + date)
 
 // Commandes du moteur (voir createEngine dans src/engine/app.js).
 export type Engine = {
@@ -61,6 +63,8 @@ export type Engine = {
   setMetric: (on: boolean) => void
   startRocket: (key: string, custom?: unknown) => Promise<unknown>
   stopRocket: () => void
+  launchMission: (id: string) => Promise<unknown>
+  followMission: () => void
   setRocketSpeed: (speed: number) => void
   followComponent: (id: string) => void
   toggleComponentInfo: (id: string) => void

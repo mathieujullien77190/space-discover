@@ -50,6 +50,10 @@ Moteur 3D en **JavaScript pur** (three.js), interface en **React / Next.js / Zus
 
 Terre, Lune, Soleil, Mars, **Mercure, Vénus, Jupiter, Saturne (anneaux), Uranus, Neptune, Pluton**, la comète de Halley et **22 lunes** (Phobos, Déimos, les lunes galiléennes, Titan, Encelade, Triton, Charon…) décrits en JSON (un dossier par astre dans `public/objects/`), avec leurs cartes dessinées et leurs fiches. Générés par `tools/make-planets.mjs`. Valeurs écrites de mémoire : à vérifier avant de les citer.
 
+## Missions historiques
+
+Voyager 1 et 2, Pioneer 10 et 11 et New Horizons sont rejouées d'après l'histoire : leur trajectoire est **calculée** (arcs de Lambert entre les planètes aux dates des survols, `src/engine/mission.js`) et validée contre des faits connus (énergie de départ, périgées de survol, distance du Soleil aujourd'hui). Un saut de date (📅 dans la barre de temps) replace tout à cette date ; « 🚀 Voyager 2 — 20 août 1977 » saute au lancement. Valeurs écrites de mémoire : à vérifier.
+
 ## Limites
 
 Les fusées sont modélisées **de mémoire, avec des valeurs simplifiées** (masses, poussées, durées de combustion) et ajustées pour atteindre l'orbite : à vérifier avant de les citer. Mouvement dans le plan orbital, guidage idéal, pas de vent. Les chiffres historiques de Spoutnik viennent de sources courantes et sont à vérifier.

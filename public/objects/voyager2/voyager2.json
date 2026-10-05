@@ -2,6 +2,7 @@
   "kind": "probe",
   "name": "Voyager 2",
   "massKg": 722,
+  "launcher": "voyager",
   "exists": {
     "_note": "La sonde n'existe qu'à partir de son lancement (+ 1 jour : avant, c'est le lanceur qui est simulé).",
     "from": "1977-08-20T14:29:00Z"

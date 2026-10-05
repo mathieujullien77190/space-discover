@@ -10,7 +10,7 @@ import { createCanvas } from '@napi-rs/canvas';
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..'), R = { jupiter: 71492, saturn: 60268, uranus: 25559, neptune: 24764, pluto: 1188 };
 const NOTE = "Mission REJOUÉE d'après l'histoire (src/engine/mission.js) : la trajectoire est calculée d'après les dates des rendez-vous et les positions des planètes. Dates, périgées (distance au centre de la planète), latitude de sortie, masse et faits ÉCRITS DE MÉMOIRE (à vérifier).";
 const PROBES = [
-  { id: 'voyager2', name: 'Voyager 2', order: 7.2, color: '#ffd54a', dish: 3.7, launch: '1977-08-20T14:29:00Z', vehicle: 'Titan IIIE-Centaur, Cap Canaveral', massKg: 722,
+  { id: 'voyager2', name: 'Voyager 2', launcher: 'voyager', order: 7.2, color: '#ffd54a', dish: 3.7, launch: '1977-08-20T14:29:00Z', vehicle: 'Titan IIIE-Centaur, Cap Canaveral', massKg: 722,
     waypoints: [['jupiter', '1979-07-09T22:29:00Z', 570000 + R.jupiter, 'Survol de Jupiter'], ['saturn', '1981-08-26T03:24:00Z', 101000 + R.saturn, 'Survol de Saturne'], ['uranus', '1986-01-24T17:59:00Z', 81500 + R.uranus, 'Survol d’Uranus'], ['neptune', '1989-08-25T03:56:00Z', 4950 + R.neptune, 'Survol de Neptune', -48]],
     facts: [['Lancement', '20 août 1977 (Titan IIIE-Centaur)'], ['Jupiter', '9 juillet 1979'], ['Saturne', '26 août 1981'], ['Uranus', '24 janvier 1986 (seule sonde à y être passée)'], ['Neptune', '25 août 1989 (seule sonde à y être passée)'], ['Masse', '≈ 722 kg'], ['Statut', 'dans l’espace interstellaire depuis novembre 2018']] },
   { id: 'voyager1', name: 'Voyager 1', order: 7.1, color: '#ffe38a', dish: 3.7, launch: '1977-09-05T12:56:00Z', vehicle: 'Titan IIIE-Centaur, Cap Canaveral', massKg: 722,
@@ -42,7 +42,7 @@ const out = (id, f) => path.join(root, 'public', 'objects', id, f);
 for (const p of PROBES) {
   fs.mkdirSync(path.dirname(out(p.id, 'x')), { recursive: true });
   const json = {
-    kind: 'probe', name: p.name, massKg: p.massKg, exists: { _note: 'La sonde n\'existe qu\'à partir de son lancement (+ 1 jour : avant, c\'est le lanceur qui est simulé).', from: p.launch },
+    kind: 'probe', name: p.name, massKg: p.massKg, ...(p.launcher ? { launcher: p.launcher } : {}), exists: { _note: 'La sonde n\'existe qu\'à partir de son lancement (+ 1 jour : avant, c\'est le lanceur qui est simulé).', from: p.launch },
     mission: { _note: NOTE, launch: { date: p.launch, from: 'earth', vehicle: p.vehicle }, waypoints: p.waypoints.map(([body, date, periapsisKm, label, exitLatitudeDeg, plane, sign]) => Object.assign({ body, date, periapsisKm, label }, exitLatitudeDeg !== undefined ? { exitLatitudeDeg } : {}, plane ? { plane, sign } : {})) },
     appearance: { color: p.color, dishM: p.dish }, trace: { color: p.color }, dot: { color: p.color, minDistanceUnits: 0 },
     label: { text: p.name, minDistanceUnits: 0 },

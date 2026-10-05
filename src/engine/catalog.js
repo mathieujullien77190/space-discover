@@ -51,3 +51,5 @@ export const bodyCard = id => {
   for (const f of b.card.facts || []) facts.push({ label: f.label, value: f.value });
   return { id, name: b.name, kind: KIND[b.bodyType] || '', canNorth: !!(b.rotation || b.sceneOrigin || b.orientation === 'tidal-lock'), canOrbit: !!b.around, image: 'objects/' + id + '/' + (b.card.image || 'card.png'), facts };
 };
+// missions historiques lançables : sonde dont le JSON a un `launcher` (fusée simulée) ; date = jour du lancement
+export const missionLaunches = () => probeIds().filter(k => probeDef(k).launcher).map(k => { const d = Date.parse(probeDef(k).mission.launch.date); return { key: k, date: d, label: '🚀 ' + FLIGHT_OBJECTS[k].name + ' — ' + new Date(d).toLocaleDateString('fr-FR', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' }) }; });

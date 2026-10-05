@@ -284,8 +284,10 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   // étapes du vol écrites SUR la trajectoire prévue : « T+2:10 Séparation des boosters · 72 km »
   const makeEvLabels = () => { evLabels.forEach(e => overlay.remove(e)); evLabels = launch.markers.map(mk => overlay.label(fmtT(mk.t) + ' ' + mk.label + ' · ' + fmtAlt(mk.altKm), 'evl')); };
   const makeTags = () => { tagEls.forEach(e => overlay.remove(e)); tagEls = launch.tagList.map(t => { const el = overlay.label(t.text, 'tag'); el.title = 'Cliquer pour suivre'; el.onclick = () => followComponent(t.id); return el; }); };
-  const rocketBase = () => ({ running: false, loading: false, message: '', steps: [], components: [], T: 0, playing: false, speed: 0, telemetry: { eff: 1, alt: 0, v: 0 } });
+  let curMission = null;   // mission historique en cours de lancement (id de la sonde) : « Voyager 2 — 1977 »
+  const rocketBase = () => ({ mission: curMission, running: false, loading: false, message: '', steps: [], components: [], T: 0, playing: false, speed: 0, telemetry: { eff: 1, alt: 0, v: 0 } });
   const stopRocket = () => {
+    curMission = null;
     if (launch) { launch.dispose(); launch = null; }
     clearLabels(); rocketRows = [];
     publish({ rocket: rocketBase(), time: { visible: true } });
@@ -322,6 +324,10 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   };
   const failLaunch = e => { console.error(e); publish({ rocket: { ...rocketBase(), message: 'Lancement impossible : ' + (e && e.message || e) } }); };
   const startRocket = (key, custom) => (custom ? custom.timeline : key.startsWith('obj:')) ? loadObject(key.replace(/^obj:/, ''), custom).then(launchObject).catch(failLaunch) : loadPlan(key, custom).then(launchPlan).catch(failLaunch);
+  // MISSION HISTORIQUE : saut dans le temps à la date du lancement (la Terre, la Lune, les planètes et les autres sondes se replacent), puis lancement de la fusée de la sonde (JSON « launcher ») à cette date.
+  const launchMission = id => { const def = probeDef(id); if (!def || !def.launcher) return Promise.resolve(); setDate(Date.parse(def.mission.launch.date)); curMission = id; return startRocket('obj:' + def.launcher); };
+  // après l'injection : on quitte la fusée, on saute 2 jours après le lancement (la sonde rejouée est alors affichée), on la regarde et le temps file (1 jour par seconde)
+  const followMission = () => { const id = curMission; if (!id) return; stopRocket(); setDate(Date.parse(probeDef(id).mission.launch.date) + 2 * 86400000); selectView(id); setSimSpeed(86400); };
   const setRocketSpeed = v => { if (!launch) return; if (v === 0) launch.playing = false; else { launch.playing = true; launch.speed = v; } };
   const toggleComponentInfo = id => { if (!launch) return; const eo = launch.elOpt(id), v = !(eo.traj && eo.speed && eo.mass); for (const k of ['traj', 'speed', 'mass']) eo[k] = v; };   // UN seul bouton : tout afficher / tout masquer
   const publishRocket = () => {   // état de la fusée pour le panneau (5 fois par seconde) : télémétrie, composants (suivi, options, valeurs en direct)
@@ -631,7 +637,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _featuresVisible: () => Object.fromEntries(Object.entries(featInst).map(([id, inst]) => [id, inst.objects.some(o => o.visible)])),
     selectView,
     goIss, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
-    startRocket, stopRocket, setRocketSpeed, followComponent, toggleComponentInfo,
+    startRocket, stopRocket, launchMission, followMission, setRocketSpeed, followComponent, toggleComponentInfo,
     dispose() {
       stopped = true; cancelAnimationFrame(raf); clearTimeout(solarTimer); disposers.forEach(d => d()); clearLabels(); overlay.dispose();
       if (launch) launch.dispose();

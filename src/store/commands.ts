@@ -23,3 +23,7 @@ export const nudge = (kind: string): void => {
 export const alignNorth = (id: string): void => engine()?.alignNorth(id)
 export const alignOrbit = (id: string): void => engine()?.alignOrbit(id)
 export const resetUp = (): void => engine()?.resetUp()
+export const launchMission = (id: string): void => {
+  void engine()?.launchMission(id)
+}
+export const followMission = (): void => engine()?.followMission()
