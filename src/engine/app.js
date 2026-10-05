@@ -22,6 +22,7 @@ import { KM_AL, KM_UA, fmtBig } from './format.js';
 import { createOverlay } from './overlay.js';
 import { parseObj } from './obj-mini.js';
 
+const SUN_INTENSITY = 3.6, NIGHT_AMBIENT = 0.25;   // jour / nuit : éclairage PHYSIQUE de three.js (la BRDF de Lambert divise par π) : un Soleil d'intensité 1 ne donnait que 32 % de la couleur au zénith, donc « la nuit » partout, même sur la face éclairée ; ≈ π × 1,15 au zénith, ambiance 0,25 (≈ 8 % la nuit)
 const VIEW_ISS = { yaw: -28.8, pitch: 24.9, dist: 0.393 };   // accès DIRECT à l'ISS, sans transition : vue réglée par l'utilisateur, un peu de derrière et au-dessus, à 393 m (yaw °, pitch °, distance km)
 const Y_AXIS = new THREE.Vector3(0, 1, 0), KMU = 1 / (R_KM * 1000);
 const defaultRenderer = canvas => new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true });
@@ -133,7 +134,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const stars = createStars(scene);
   const constellations = createConstellations(stars, overlay); let constellationsOn = false;   // option « Constellations » : traits entre les étoiles + noms
   const amb = new THREE.AmbientLight(0xffffff, 0.55), sun = new THREE.DirectionalLight(0xffffff, 1.0);
-  const sunPoint = new THREE.PointLight(0xffffff, 1.0, 0, 0); sunPoint.visible = false; scene.add(amb, sun, sun.target, sunPoint);   // sunPoint : le VRAI Soleil (option jour / nuit)
+  const sunPoint = new THREE.PointLight(0xffffff, SUN_INTENSITY, 0, 0); sunPoint.visible = false; scene.add(amb, sun, sun.target, sunPoint);   // sunPoint : le VRAI Soleil (option jour / nuit)
   let dayNight = false;
 
   // ISS : modèle (taille réelle) + repère ; modèle détaillé NASA (~14 Mo) chargé quand on s'approche, remplace le repère jaune
@@ -399,7 +400,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       }
     } else { for (const id in bodyObjs) { const o = bodyObjs[id]; if (o.label) o.label.style.display = 'none'; o.screen = null; } }
     // lumière : toujours « jour » (la Terre et la Lune sont éclairées de face)
-    if (dayNight) { sun.visible = false; sunPoint.visible = true; amb.intensity = 0.05; }   // JOUR / NUIT : éclairage par le vrai Soleil (un point à sa position), la face cachée est sombre
+    if (dayNight) { sun.visible = false; sunPoint.visible = true; amb.intensity = NIGHT_AMBIENT; }   // JOUR / NUIT : éclairage par le vrai Soleil (un point à sa position), la face cachée est sombre
     else { sun.visible = true; sunPoint.visible = false; }
     if (!dayNight) sun.position.copy(cam.mode === 'solar' ? camera.position.clone().sub(cam.tgt).normalize() : camera.position.clone().normalize()).add(tmp.set(0.4, 0.5, 0.2)).multiplyScalar(10);
     if (!dayNight) amb.intensity = 0.55;
@@ -521,6 +522,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     setCapitals: on => { capitalsOn = !!on; },
     setConstellations: on => { constellationsOn = !!on; },
     setDayNight: on => { dayNight = !!on; terrain.setGlow(dayNight ? 0 : TERRAIN_GLOW); },
+    _sun: () => { const v = babs[STAR].clone().normalize(); return { lon: Math.atan2(-v.z, v.x) / DEG, lat: Math.asin(v.y) / DEG }; },   // point subsolaire dans le repère de la scène (vue Terre fixe)
     _mapOptions: () => ({ borders: bordersOn && borders.visible, capitals: capitals.count(), constellations: constellations.lines.visible, constellationNames: constellations.count(), dayNight, ambient: amb.intensity, sunPoint: sunPoint.visible }),
     _clouds: () => Object.assign({ on: cloudsOn }, clouds.stats()),
     setIssView,

@@ -47,6 +47,7 @@ export type Engine = {
   setCapitals: (on: boolean) => void
   setConstellations: (on: boolean) => void
   setDayNight: (on: boolean) => void
+  _sun: () => { lon: number; lat: number }
   _mapOptions: () => { borders: boolean; capitals: number; constellations: boolean; constellationNames: number; dayNight: boolean; ambient: number; sunPoint: boolean }
   _terrain: () => { levels: number; shown: boolean; tiles: number; ready: number; loading: number; seaOffset: number }
   _clouds: () => { on: boolean; state: string | null; level: string | null; visible: boolean; opacity: number }

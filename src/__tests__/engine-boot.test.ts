@@ -368,11 +368,22 @@ describe('createEngine (rendu factice)', () => {
     expect(on.constellations).toBe(true)
     expect(on.constellationNames).toBeGreaterThan(0)                           // au moins un nom de constellation à l’écran autour de la Terre
     expect(on.dayNight && on.sunPoint).toBe(true)                              // jour / nuit : le vrai Soleil éclaire, l’ambiance est sombre
-    expect(on.ambient).toBeLessThan(0.1)
+    expect(on.ambient).toBeLessThan(0.4)
     engine.setBorders(false); engine.setCapitals(false); engine.setConstellations(false); engine.setDayNight(false)
     engine._frame(performance.now() + 300)
     expect(engine._mapOptions()).toMatchObject({ borders: false, capitals: 0, constellations: false, constellationNames: 0, dayNight: false, sunPoint: false })
     expect(engine._mapOptions().ambient).toBeGreaterThan(0.5)                  // retour à l’éclairage « de face »
+  })
+  it('jour / nuit : le point subsolaire est au bon endroit (5 oct. 2026 à 12 h UTC : longitude ≈ −3°, latitude ≈ −5,7°)', () => {
+    engine.selectView('earth')
+    engine.setDate(Date.UTC(2026, 9, 5, 12, 0, 0)); engine._frame(performance.now() + 100); engine._frame(performance.now() + 200)
+    const a = engine._sun()
+    expect(Math.abs(a.lat + 5.7)).toBeLessThan(1.5)
+    expect(Math.abs(a.lon + 2.6)).toBeLessThan(2.5)
+    engine.setDate(Date.UTC(2026, 9, 5, 18, 0, 0)); engine._frame(performance.now() + 300); engine._frame(performance.now() + 400)
+    const b = engine._sun()
+    expect(Math.abs(((b.lon - a.lon + 540) % 360) - 180 + 90)).toBeLessThan(2.5)   // 6 h plus tard : le Soleil est 90° plus à l'ouest
+    engine.resetTime()
   })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)

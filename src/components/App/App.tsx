@@ -9,7 +9,6 @@ import StatusMessage from '@/components/StatusMessage'
 import SubMenu from '@/components/SubMenu'
 import TimeBar from '@/components/TimeBar'
 import TopBar from '@/components/TopBar'
-import ViewParams from '@/components/ViewParams'
 import styles from './App.module.css'
 
 export const App = () => (
@@ -24,7 +23,6 @@ export const App = () => (
     <TimeBar />
     <div className={styles.bottomLeft}>
       <MapOptions />
-      <ViewParams />
       <ScaleBar />
     </div>
     <StatusMessage />
