@@ -67,7 +67,8 @@ const TOTAL = CUM[STEPS];
 export const fractionAt = t => { const x = Math.max(0, Math.min(D, t)) / 5, i = Math.min(STEPS - 1, Math.floor(x)); return (CUM[i] + (CUM[i + 1] - CUM[i]) * (x - i)) / TOTAL; };
 const SCALE = ROUTE_KM * 1000 / (TOTAL * V);   // le profil brut parcourt TOTAL·V mètres ; on le met à l'échelle du trajet réel
 export const groundSpeedAt = t => lerpKeys(SPEED_KEYS, t) * V * SCALE;
-export const altitudeAt = t => lerpKeys(ALT_KEYS, t);
+export const MIN_ALT_M = 10;   // au sol (roulage, décollage, atterrissage) l'avion reste à 10 m au-dessus du sol : le modèle ne s'enfonce pas dans le relief
+export const altitudeAt = t => Math.max(MIN_ALT_M, lerpKeys(ALT_KEYS, t));
 export const machAt = t => groundSpeedAt(t) / SOUND_MS * (altitudeAt(t) > 11000 ? 1 : 0.88);   // le Mach compte la vitesse du son locale (plus élevée près du sol)
 
 // état du Concorde pour un vol (flight, t s après le décollage) : même forme que l'ISS (pos en rayons terrestres dans le repère de la Terre, up, vel unitaire horizontal, alt en km, speed en km/s, lon, lat)

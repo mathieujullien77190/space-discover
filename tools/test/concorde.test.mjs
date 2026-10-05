@@ -26,7 +26,7 @@ check(flightAt(t2 + 3600e3).flight.id === 'AF002' && flightAt(t1 + 3600e3).fligh
 check(flightAt(Date.UTC(2003, 5, 2, 3, 0)) === null, 'la nuit (03 h UTC) : aucun vol en cours');
 const nx = nextTakeoff(Date.UTC(2003, 5, 2, 3, 0)); check(nx && nx.flight.id === 'AF002' && Math.abs(nx.takeoff - t2) < 1000, 'prochain décollage à 03 h UTC : AF002 à ' + hhmm(nx.takeoff) + ' UTC');
 // profil
-check(altitudeAt(0) === 0 && altitudeAt(AIRBORNE_S) === 0 && Math.abs(groundSpeedAt(0)) < 1 && Math.abs(groundSpeedAt(AIRBORNE_S)) < 1, 'au sol au décollage et à l’atterrissage, vitesse nulle');
+check(altitudeAt(0) === 10 && altitudeAt(AIRBORNE_S) === 10 && Math.abs(groundSpeedAt(0)) < 1 && Math.abs(groundSpeedAt(AIRBORNE_S)) < 1, 'à 10 m du sol au décollage et à l’atterrissage, vitesse nulle');
 let maxAlt = 0, maxMach = 0, maxV = 0, cruiseOk = true;
 for (let t = 0; t <= AIRBORNE_S; t += 30) { maxAlt = Math.max(maxAlt, altitudeAt(t)); maxMach = Math.max(maxMach, machAt(t)); maxV = Math.max(maxV, groundSpeedAt(t)); }
 for (let t = 3400; t <= AIRBORNE_S - 2800; t += 120) if (altitudeAt(t) < 15400 || altitudeAt(t) > 18400 || machAt(t) < 1.95 || machAt(t) > 2.1) cruiseOk = false;

@@ -16,7 +16,7 @@ import { STARS } from './data/stars.js';
 import { pickNearest } from './star-info.js';
 import { precessionQuaternion } from './precession.js';
 import { createMeteors } from './meteors.js';
-import { createAirliners } from './airliners.js';
+import { createAirliners, strobeFlash } from './airliners.js';
 import { elevationFrom } from './airliner.js';
 import { concordeAt, FLIGHTS, takeoffMs, AIRBORNE_S } from './concorde.js';
 import { CONCORDE, CONCORDE_DIMS, buildConcorde } from './concorde-model.js';
@@ -201,7 +201,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const cam = { fov: 50, mode: 'earth', tgt: new THREE.Vector3(), lon: 0, lat: 50, dist: 3.4, fly: 0, tfly: 0, userDir: false, fp: null, fpUp: new THREE.Vector3(), upKind: 'north', goal: { lon: 0, lat: 50, dist: 3.4 } };   // départ : la Terre vue du nord (nord en haut), le méridien de Greenwich (0°) en face de la caméra
   const moonsShown = {};   // planète → distance de la caméra, pour les planètes dont les lunes sont affichées
   let poseStale = false;   // juste après un changement de vue la caméra garde l'ancienne position jusqu'à la prochaine image : on n'en déduit pas « trop loin de l'ISS »
-  let concPub = false;
+  let concPub = false, concLit = false;
   let iss = null, hub = null, conc = null, concPrefer = null, focusSat = 'iss', frameF = 0, curGm = 0, curD = 0;
   const fsat = () => (focusSat === 'hubble' ? hub : focusSat === 'concorde' ? conc : iss);   // l'objet regardé en vue « iss » (ISS, Hubble ou Concorde)
   const viewOf = () => (focusSat === 'concorde' ? VIEW_CONCORDE : VIEW_ISS);
@@ -581,6 +581,12 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       concModel.quaternion.setFromRotationMatrix(basis.makeBasis(fw, conc.up, zz)); concModel.position.copy(conc.pos); concModel.scale.setScalar(1e-3 / R_KM); concModel.updateMatrix();
       const px = (CONCORDE.lengthM / 1000 / Math.max(1e-9, dKm)) / (2 * Math.tan(camera.fov * DEG / 2)) * innerHeight;
       concModel.visible = px >= 6; concDot.visible = !concModel.visible;
+      {   // FEUX DE NUIT (Soleil sous l'horizon de l'avion) : navigation fixes (rouge gauche, vert droite, blanc arrière) + strobes blancs clignotants aux bouts d'ailes ; agrandis avec la distance pour rester visibles
+        const night = tmpObs.copy(babs[STAR]).sub(conc.pos).normalize().dot(conc.up) < -0.02, L = concModel.userData.lights, k = Math.max(1, Math.min(40, dKm * 1000 / 300)), tt = performance.now() / 1000;
+        for (const l of [L.left, L.right, L.tail]) { l.visible = night; l.scale.setScalar(k); }
+        L.strobes.forEach((l, j) => { l.visible = night && strobeFlash(tt, j * 0.31) > 0; l.scale.setScalar(k); });
+        concLit = night;
+      }
       concModel.userData.setFlames(conc.t < AIRBORNE_S / 2 ? 1 - smoothstepFlame((conc.alt - 15.5) / 0.5) : 0, performance.now() / 1000);   // flammes de réchauffe du décollage jusqu'à l'altitude de croisière (≈ 15,5 km)
       concDg.attributes.position.setXYZ(0, conc.pos.x, conc.pos.y, conc.pos.z); concDg.attributes.position.needsUpdate = true;
       const p = conc.pos.clone().project(camera);
@@ -697,7 +703,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _localOrbit: id => { const o = bodyObjs[id]; if (!o || !o.localLine) return null; const at = o.localLine.geometry.attributes.position; return { visible: o.localLine.visible, coarse: o.orbitG.visible, n: at.count, mid: [at.getX(LOCAL_N), at.getY(LOCAL_N), at.getZ(LOCAL_N)], pos: o.localLine.position.toArray(), end: [at.getX(0), at.getY(0), at.getZ(0)] }; },
     _concordeFeatures: () => Object.fromEntries(Object.entries(featInst).filter(([id]) => id.startsWith('concorde:')).map(([id, inst]) => [id.slice(9), inst.objects.some(o => o.visible)])),
     _skyObs: () => ({ on: obsView || (issView && !!cam.fp && focusSat === 'concorde' && !!conc), orange: atmMat.uniforms.uOrange.value, day: obsDay, stars: stars.children.some(c => c.userData.bin !== undefined && c.visible && c.material.opacity > 0.4), moonBoost: bodyObjs.moon && bodyObjs.moon.mesh ? bodyObjs.moon.mesh.scale.x / (bodyObjs.moon.baseScale || 1) : 1 }),
-    _concorde: () => (conc ? { active: true, flight: conc.flight.id, alt: conc.alt, mach: conc.mach, speedKmh: conc.speed * 3600, t: conc.t, model: concModel.visible, flames: concModel.userData.flames.some(x => x.visible), dot: concDot.visible } : { active: false, flight: null, alt: 0, mach: 0, speedKmh: 0, t: 0, model: false, flames: false, dot: concDot.visible }),
+    _concorde: () => (conc ? { active: true, flight: conc.flight.id, alt: conc.alt, mach: conc.mach, speedKmh: conc.speed * 3600, t: conc.t, model: concModel.visible, lights: concLit && concModel.userData.lights.left.visible, flames: concModel.userData.flames.some(x => x.visible), dot: concDot.visible } : { active: false, flight: null, alt: 0, mach: 0, speedKmh: 0, t: 0, model: false, lights: false, flames: false, dot: concDot.visible }),
     _featuresVisible: () => Object.fromEntries(Object.entries(featInst).filter(([id]) => !id.includes(':')).map(([id, inst]) => [id, inst.objects.some(o => o.visible)])),   // ISS
     _hubbleFeatures: () => Object.fromEntries(Object.entries(featInst).filter(([id]) => id.startsWith('hubble:')).map(([id, inst]) => [id.slice(7), inst.objects.some(o => o.visible)])),
     selectView,
