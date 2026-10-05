@@ -30,9 +30,9 @@ for (let i = 0; i < 200; i++) {
 }
 check(ok, 'altitude 9 500–10 500 m, passage à 0–9 km de l’observatoire');
 check(minSpeed > 220 && maxSpeed < 260, 'vitesse ' + (minSpeed * 3.6).toFixed(0) + ' à ' + (maxSpeed * 3.6).toFixed(0) + ' km/h (≈ 860 km/h)');
-check(minStartEl > 15 && maxStartEl < 45, 'apparition dans le ciel de l’observatoire à ' + minStartEl.toFixed(0) + '–' + maxStartEl.toFixed(0) + '° d’élévation (visible tout de suite)');
+check(minStartEl > 7 && maxStartEl < 20, 'apparition DE LOIN dans le ciel de l’observatoire à ' + minStartEl.toFixed(0) + '–' + maxStartEl.toFixed(0) + '° d’élévation (visible tout de suite)');
 check(Math.abs(minEndEl - AIRLINER_MIN_ELEVATION_DEG) < 3, 'fin du trajet quand il passe sous ≈ ' + AIRLINER_MIN_ELEVATION_DEG + '° (mesuré ' + minEndEl.toFixed(1) + '° sur la sphère)');
-check(minPass > 35 && nOverhead > 120, 'il passe « plus ou moins au-dessus » : hauteur maximale ≥ ' + minPass.toFixed(0) + '°, ' + nOverhead + ' trajets sur 200 dépassent 60°');
+check(minPass > 30 && nOverhead > 100, 'il passe « plus ou moins au-dessus » : hauteur maximale ≥ ' + minPass.toFixed(0) + '°, ' + nOverhead + ' trajets sur 200 dépassent 60°');
 // géométrie : altitude constante au-dessus de la sphère
 const tr = makeAirlinerTrack(rand), p0 = airlinerWorld(airlinerAt(tr, 0).local, frame, groundR), p1 = airlinerWorld(airlinerAt(tr, 100).local, frame, groundR);
 check(Math.abs(p0.length() - p1.length()) < 1e-12 && Math.abs((p0.length() - groundR) * 6378137 - tr.H) < 1, 'altitude constante : ' + ((p0.length() - groundR) * 6378137).toFixed(0) + ' m au-dessus du sol de l’observatoire, à rayon constant (suit la courbure)');

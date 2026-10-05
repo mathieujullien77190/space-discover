@@ -7,8 +7,8 @@ import * as THREE from 'three';
 export const A320 = { lengthM: 37.57, spanM: 35.8, heightM: 11.76, fuselageDiameterM: 3.95 };
 export const AIRLINER_ALTITUDE_M = [9500, 10500], AIRLINER_SPEED_MS = [230, 250];
 export const AIRLINER_CLOSEST_M = [0, 9000];        // distance horizontale minimale de passage : de « pile au-dessus » à 9 km de côté
-export const AIRLINER_START_ELEVATION_DEG = [22, 38];   // hauteur à laquelle il apparaît dans le ciel de l'observatoire
-export const AIRLINER_MIN_ELEVATION_DEG = 12;       // en dessous, il n'est plus visible de l'observatoire : il disparaît d'un coup
+export const AIRLINER_START_ELEVATION_DEG = [9, 17];   // hauteur à laquelle il apparaît dans le ciel de l'observatoire : DE LOIN (≈ 35 à 65 km de distance horizontale)
+export const AIRLINER_MIN_ELEVATION_DEG = 8;        // en dessous, il n'est plus visible de l'observatoire : il disparaît d'un coup
 const DEG = Math.PI / 180, R_M = 6378137;
 const range = (r, [a, b]) => a + (b - a) * r;
 
@@ -16,8 +16,8 @@ const range = (r, [a, b]) => a + (b - a) * r;
 export function makeAirlinerTrack(rand = Math.random) {
   const H = range(rand(), AIRLINER_ALTITUDE_M), speed = range(rand(), AIRLINER_SPEED_MS), c = range(rand(), AIRLINER_CLOSEST_M);
   const heading = rand() * 2 * Math.PI, side = rand() < 0.5 ? 1 : -1, hx = Math.sin(heading), hy = Math.cos(heading), nx = side * -hy, ny = side * hx;
-  const d0 = H / Math.tan(range(rand(), AIRLINER_START_ELEVATION_DEG) * DEG), s0 = -Math.sqrt(Math.max(1, d0 * d0 - c * c));   // il apparaît déjà à 22–38° d'élévation
-  const dEnd = H / Math.tan(AIRLINER_MIN_ELEVATION_DEG * DEG), S = Math.sqrt(Math.max(1, dEnd * dEnd - c * c));               // et disparaît à 12°
+  const d0 = H / Math.tan(range(rand(), AIRLINER_START_ELEVATION_DEG) * DEG), s0 = -Math.sqrt(Math.max(1, d0 * d0 - c * c));   // il apparaît déjà à 9–17° d'élévation
+  const dEnd = H / Math.tan(AIRLINER_MIN_ELEVATION_DEG * DEG), S = Math.sqrt(Math.max(1, dEnd * dEnd - c * c));               // et disparaît à 8°
   return { H, speed, c, hx, hy, nx, ny, s0, S };
 }
 

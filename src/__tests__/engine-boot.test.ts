@@ -388,7 +388,8 @@ describe('createEngine (rendu factice)', () => {
     for (let i = 0; i < 3; i++) engine._frame(T + 200 + i * 100)
     const a = engine._airliner()
     expect(a.active).toBe(true)                                                // un avion est apparu
-    expect(a.elevation).toBeGreaterThan(20)                                    // déjà haut dans le ciel de l’observatoire
+    expect(a.elevation).toBeGreaterThan(8)                                     // déjà dans le ciel de l’observatoire, mais DE LOIN (bas sur l’horizon)
+    expect(a.elevation).toBeLessThan(20)
     expect(a.trail).toBe(true)                                                 // traînée de condensation (jour)
     expect(a.px).toBeGreaterThan(0.5)                                          // modèle 3D à la taille réelle : seul affichage possible (aucun point) ; visible seulement s’il fait ≥ 2 px
     expect(a.model).toBe(a.px >= 2)
@@ -400,7 +401,7 @@ describe('createEngine (rendu factice)', () => {
     engine.setDate(Date.UTC(2026, 9, 5, 0, 0, 0))                              // minuit UTC : nuit
     engine.goObservatory('pic-du-midi'); engine.setObservatoryView(true); engine._frame(T + 1000); engine._frame(T + 1100)
     expect(engine._airliner().active).toBe(true)                               // une nouvelle entrée en vue : un nouvel avion
-    expect(engine._airliner()).toMatchObject({ night: true, lights: true, trail: true })   // de nuit : feux de navigation fixes (+ strobes blancs clignotants) et traînée plus pâle
+    expect(engine._airliner()).toMatchObject({ night: true, lights: true, glow: true, trail: false })   // de nuit : feux de navigation fixes (+ strobes blancs clignotants) allumés, traînée cachée
     expect(engine._airlinerSpawnMore()).toBe(true)                             // d’autres avions peuvent arriver pendant la vue observatoire
     expect(engine._airliner().count).toBe(2)
     engine.selectView('earth'); engine._frame(T + 1200)
