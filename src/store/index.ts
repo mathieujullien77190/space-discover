@@ -19,7 +19,6 @@ export type UiState = {
   uiHidden: boolean   // interface cachée (petit œil en haut à gauche) : seul le moteur 3D reste affiché
   constellations: boolean   // option de carte : constellations (traits entre les étoiles et noms)
   realistic: boolean   // vue réaliste : sans trajectoires, noms, repères ni rien de ce qui n'existe pas
-  dayNight: boolean   // option de carte : jour / nuit (éclairage par le vrai Soleil)
   clouds: boolean   // couverture nuageuse affichée
   issView: boolean   // vue depuis l'ISS (publié par le moteur)
 }
@@ -39,7 +38,6 @@ export type Store = EngineState &
     toggleStarInfo: () => void
     setUiHidden: (on: boolean) => void
     toggleConstellations: () => void
-    toggleDayNight: () => void
     toggleRealistic: () => void
   }
 
@@ -70,7 +68,6 @@ export const useStore = create<Store>((set) => ({
   starInfo: false,
   uiHidden: false,
   constellations: false,
-  dayNight: true,
   realistic: false,
   terrainDetail: false,
   setEngine: (engine) => set({ engine }),
@@ -96,11 +93,6 @@ export const useStore = create<Store>((set) => ({
     set((s) => {
       s.engine?.setRealistic(!s.realistic)
       return { realistic: !s.realistic }
-    }),
-  toggleDayNight: () =>
-    set((s) => {
-      s.engine?.setDayNight(!s.dayNight)
-      return { dayNight: !s.dayNight }
     }),
   toggleCapitals: () =>
     set((s) => {

@@ -40,4 +40,3 @@ export const EARTH_OPTIONS = [
   { key: 'observatories', label: 'Observatoires' },
 ] as const
 export const REALISTIC_LABEL = '🎬 Vue réaliste'   // retire trajectoires, noms, repères et tout ce qui n'existe pas dans la réalité
-export const DAY_NIGHT_LABEL = '🌗 Jour / nuit'   // option GLOBALE (toutes les vues, tous les astres) : le vrai Soleil éclaire, la face cachée est sombre ; cochée par défaut

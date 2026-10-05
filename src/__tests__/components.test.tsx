@@ -25,7 +25,7 @@ describe('TopBar + SubMenu', () => {
   })
   it('barre du haut : Astres, Terre, ISS, Nuages ; ni Histoires, ni Fusées, ni Satellites, aucun sous-menu au départ', () => {
     render(<><TopBar /><SubMenu /></>)
-    for (const l of ['🌌 Astres', '🌍 Terre', '🛰 ISS', '🔭 Hubble', '🌗 Jour / nuit', '🎬 Vue réaliste']) expect(screen.getByText(l)).toBeInTheDocument()
+    for (const l of ['🌌 Astres', '🌍 Terre', '🛰 ISS', '🔭 Hubble', '🎬 Vue réaliste']) expect(screen.getByText(l)).toBeInTheDocument()
     for (const l of [/Histoires/, /Fusées/, /Satellites/, /Engins/]) expect(screen.queryByText(l)).toBeNull()
     expect(screen.queryByText(/Lune/)).toBeNull()
   })
@@ -57,13 +57,11 @@ describe('TopBar + SubMenu', () => {
     fireEvent.click(screen.getByText('👁 Vue depuis l’ISS'))
     expect(engine.setIssView).toHaveBeenCalledWith(true)
   })
-  it('option GLOBALE « Jour / nuit » : dans la barre du haut, cochée par défaut, présente dans toutes les vues', () => {
-    useStore.setState({ ...initialEngineState, dayNight: true, view: { ...initialEngineState.view, mode: 'solar', selected: 'mars' } })
+  it('plus de bouton « Jour / nuit » : le Soleil réel éclaire toujours (vraie simulation) ; le bloc général reste dans toutes les vues', () => {
+    useStore.setState({ ...initialEngineState, view: { ...initialEngineState.view, mode: 'solar', selected: 'mars' } })
     render(<><TopBar /><MapOptions /></>)
-    expect(screen.getByText('🗺 Options de carte')).toBeInTheDocument()                                     // devant Mars : le bloc général (étoiles, constellations) reste là...
-    fireEvent.click(screen.getByText('🌗 Jour / nuit'))                                                    // ... et jour / nuit aussi
-    expect(engine.setDayNight).toHaveBeenLastCalledWith(false)
-    expect(useStore.getState().dayNight).toBe(false)
+    expect(screen.queryByText('🌗 Jour / nuit')).toBeNull()
+    expect(screen.getByText('🗺 Options de carte')).toBeInTheDocument()       // devant Mars : le bloc général (étoiles, constellations) reste là
   })
   it('infos étoiles : case à cocher et fiche de l’étoile choisie (Sirius), fermeture', () => {
     useStore.setState({ ...initialEngineState, starInfo: false, star: { hip: null } })
