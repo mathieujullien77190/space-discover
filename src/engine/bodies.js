@@ -10,7 +10,7 @@ import { EPH } from './ephemeris.js';
 //                model "meeus-moon" | "meeus-sun" : formules de js/ephemeris.js (position géocentrique)
 //                model "inverse", of: "sun" : position = opposé de celle d'un autre corps (la Terre vue du Soleil)
 //                model "kepler" : éléments orbitaux autour de `around` (ecliptique J2000) : semiMajorAxisKm, eccentricity, inclinationDeg, nodeDeg, argPerigeeDeg, meanAnomalyDeg à l'époque epochD2000 (jours depuis J2000), periodDays
-//   appearance { kind: "earth" | "painted" (painter) | "star" | "sphere" | "comet" (tail), color … }, orientation: "tidal-lock", trace { fullOrbit | pastDays, futureDays, color }, dot { color, minDistanceUnits }, label { text, metricText, minDistanceUnits | minDistanceRadii },
+//   appearance { kind: "earth" | "painted" (painter) | "star" | "sphere" | "comet" (tail), color … }, orientation: "tidal-lock", trace { fullOrbit | pastDays, futureDays, closeLoop, color }, dot { color, minDistanceUnits }, label { text, metricText, minDistanceUnits | minDistanceRadii },
 //   thirdBody : true = son attraction agit sur les engins (marée, voir ephThirdBody), info : sa distance est écrite dans l'info, menu { order, icon, mode | view { distanceUnits, text } } : entrée du sélecteur de vues.
 export const BODY = {
   get(id) { return typeof FLIGHT_OBJECTS !== 'undefined' && FLIGHT_OBJECTS[id] && FLIGHT_OBJECTS[id].kind === 'body' ? FLIGHT_OBJECTS[id] : null; },

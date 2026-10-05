@@ -20,6 +20,7 @@
   "orientation": "tidal-lock",
   "trace": {
     "pastDays": 27.32,
+    "closeLoop": true,
     "futureDays": 13.66
   },
   "dot": {

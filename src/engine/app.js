@@ -311,7 +311,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
           const N = 120, NF = 60;
           if (Math.abs(Dd - o.loopD) > 0.05) {
             o.loopD = Dd; const P = o.past.geometry.attributes, F = o.fut.geometry.attributes, pd = tr.pastDays, fd = tr.futureDays;
-            for (let k = 0; k <= N; k++) { const q = BODY.geo(id, Dd - pd + k * pd / N), f = 0.12 + 0.88 * k / N; P.position.setXYZ(k, q[0] * KMU, q[1] * KMU, q[2] * KMU); P.color.setXYZ(k, 0.62 * f, 0.78 * f, 1 * f); }
+            const q0 = BODY.geo(id, Dd - pd), qN = BODY.geo(id, Dd), gap = tr.closeLoop ? [qN[0] - q0[0], qN[1] - q0[1], qN[2] - q0[2]] : [0, 0, 0];   // closeLoop : l'orbite réelle n'est pas fermée (perturbée) ; l'écart de fermeture est réparti en rampe (nul à l'astre, plein au début de la trace) pour que la boucle revienne pile à sa position actuelle
+            for (let k = 0; k <= N; k++) { const q = BODY.geo(id, Dd - pd + k * pd / N), f = 0.12 + 0.88 * k / N, w = 1 - k / N; P.position.setXYZ(k, (q[0] + gap[0] * w) * KMU, (q[1] + gap[1] * w) * KMU, (q[2] + gap[2] * w) * KMU); P.color.setXYZ(k, 0.62 * f, 0.78 * f, 1 * f); }
             for (let k = 0; k <= NF; k++) { const q = BODY.geo(id, Dd + k * fd / NF); F.position.setXYZ(k, q[0] * KMU, q[1] * KMU, q[2] * KMU); F.color.setXYZ(k, 0.45, 0.5, 0.6); }
             P.color.needsUpdate = true; F.color.needsUpdate = true; P.position.needsUpdate = true; F.position.needsUpdate = true;
           }
