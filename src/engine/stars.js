@@ -44,6 +44,6 @@ export function createStars(scene) {
     const p = new THREE.Points(g, new THREE.PointsMaterial({ size: STAR_BINS[i].size, sizeAttenuation: false, vertexColors: true, depthWrite: false, transparent: true })); p.userData.bin = i; p.frustumCulled = false; group.add(p);
   });
   group.frustumCulled = false; scene.add(group);
-  group.userData.setDay = day => { for (const p of group.children) { if (p.userData.bin === undefined) continue; p.material.opacity = starOpacity(p.userData.bin, day); p.visible = p.material.opacity > 0.003; } };   // day : 0 = nuit (toutes les étoiles), 1 = plein jour (aucune)
+  group.userData.setDay = (day, dim = 1) => { for (const p of group.children) { if (p.userData.bin === undefined) continue; p.material.opacity = starOpacity(p.userData.bin, day) * dim; p.visible = p.material.opacity > 0.003; } };   // day : 0 = nuit (toutes les étoiles), 1 = plein jour (aucune) ; dim : luminosité globale (0,5 depuis un observatoire : étoiles deux fois moins lumineuses)
   return group;
 }

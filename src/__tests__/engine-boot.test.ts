@@ -380,21 +380,22 @@ describe('createEngine (rendu factice)', () => {
     expect(engine._moonBright()).toBe(1)
   })
   it('infos étoiles : option, clic sur une étoile visible = sa fiche + anneau, fermeture', async () => {
+    const T = performance.now() + 100000                                       // horloge des images toujours croissante : un dt négatif (temps plus petit que celui d'un test précédent) déplaçait la caméra
     await new Promise((r) => setTimeout(r, 500))                               // astres construits (400 ms) : la vue ne change plus en cours de test
-    engine.resetTime(); engine.setSimSpeed(1); engine._frame(performance.now() + 100)
-    engine.selectView('earth'); engine.setObservatories(false); engine._frame(performance.now() + 150)
+    engine.resetTime(); engine.setSimSpeed(1); engine._frame(T + 100)
+    engine.selectView('earth'); engine.setObservatories(false); engine._frame(T + 150)
     expect(engine._starInfo()).toMatchObject({ on: false, hip: null })
     const cx = innerWidth / 2, cy = innerHeight / 2
     const list = engine._starsOnScreen(40).sort((p, q) => Math.hypot(p.x - cx, p.y - cy) - Math.hypot(q.x - cx, q.y - cy)).slice(0, 3)   // les plus proches du centre : loin du bord de l'écran et du limbe de la Terre
     expect(list.length).toBeGreaterThan(0)                                     // vue de départ : des étoiles brillantes visibles autour de la Terre
     expect(engine._pickStarAt(list[0].x, list[0].y)).toBe(list[0].hip)         // la visée marche (même sans l'option, la fonction est testable)
-    engine.setStarInfo(true); engine._pickStarAt(list[0].x, list[0].y); engine._frame(performance.now() + 200)
+    engine.setStarInfo(true); engine._pickStarAt(list[0].x, list[0].y); engine._frame(T + 200); engine._frame(T + 250)
     expect(state.star.hip).toBe(list[0].hip)                                   // publié à l'interface
     expect(engine._starInfo()).toMatchObject({ on: true, hip: list[0].hip, ring: 'block' })   // anneau jaune sur l'étoile
     engine._pickStarAt(-500, -500); expect(state.star.hip).toBeNull()          // clic dans le vide : rien
     engine._pickStarAt(list[0].x, list[0].y); engine.setStarInfo(false)        // option éteinte : tout disparaît
     expect(state.star.hip).toBeNull()
-    engine._frame(performance.now() + 250)
+    engine._frame(T + 250)
     expect(engine._starInfo().ring).toBe('none')
   })
   it('nuages : option prise en compte (rien n’est chargé tant qu’elle est éteinte)', () => {
@@ -405,11 +406,10 @@ describe('createEngine (rendu factice)', () => {
     engine.setClouds(false); engine._frame(performance.now() + 300)
     expect(engine._clouds().visible).toBe(false)
   })
-  it('options de carte : limites de pays, capitales et observatoires cochées par défaut ; constellations à la demande', () => {
+  it('options de carte : observatoires cochés par défaut ; limites de pays, capitales et constellations à la demande', () => {
     engine.selectView('earth'); engine._frame(performance.now() + 100)
-    expect(engine._mapOptions()).toMatchObject({ borders: true, constellations: false, dayNight: true, sunPoint: true })   // cochées par défaut
-    expect(engine._mapOptions().capitals).toBeGreaterThan(0)
-    expect(engine._mapOptions().observatories).toBeGreaterThan(0)   // jour / nuit : coché par défaut
+    expect(engine._mapOptions()).toMatchObject({ borders: false, capitals: 0, constellations: false, dayNight: true, sunPoint: true })
+    expect(engine._mapOptions().observatories).toBeGreaterThan(0)              // seuls les observatoires sont cochés au départ   // jour / nuit : coché par défaut
     expect(engine._mapOptions().ambient).toBeLessThan(0.1)
     engine.setDayNight(false); engine._frame(performance.now() + 150)
     expect(engine._mapOptions()).toMatchObject({ dayNight: false, sunPoint: false })
@@ -514,6 +514,7 @@ describe('createEngine (rendu factice)', () => {
     expect(day.starOpacity.every((o) => o < 0.1)).toBe(true)
     engine.setDate(Date.UTC(2026, 9, 5, 0, 0, 0)); for (let i = 0; i < 2; i++) engine._frame(performance.now() + 900 + i * 100)
     const night = engine._obs()
+    expect(Math.max(...night.starOpacity)).toBeCloseTo(0.5, 1)                // toutes les étoiles deux fois moins lumineuses depuis l’observatoire
     expect(night.stars).toBe(true)                                            // minuit : ciel étoilé
     expect(night.day).toBeLessThan(0.05)                                      // nuit : l’atmosphère est transparente
     engine.selectView('earth'); engine._frame(performance.now() + 1500)

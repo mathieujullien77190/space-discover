@@ -1,4 +1,5 @@
 import BodyFacts from '@/components/BodyFacts'
+import EarthOptions from '@/components/EarthOptions'
 import Button from '@/components/ui/Button'
 import { BASE_PATH } from '@/constants'
 import { observatoryById } from '@/engine/observatories'
@@ -20,6 +21,7 @@ export const ObservatoryCard = () => {
         <div className={styles.kind}>{obs.kind}</div>
         <BodyFacts facts={obs.facts} />
         <p className={styles.note}>{obs.note}</p>
+        <EarthOptions />
         <div className={styles.actions}>
           <Button label={view ? OBS_VIEW_LABELS.off : OBS_VIEW_LABELS.on} active={view} title="Se placer à l’observatoire et regarder le ciel et l’horizon : glisser pour tourner la tête, molette pour le champ" onClick={() => setObservatoryView(!view)} />
         </div>

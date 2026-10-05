@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import BodyCard from '@/components/BodyCard'
 import IssBadge from '@/components/IssBadge'
+import HideUi from '@/components/HideUi'
 import ObservatoryCard from '@/components/ObservatoryCard'
 import StarInfo from '@/components/StarInfo'
 import MapOptions from '@/components/MapOptions'
@@ -54,8 +55,8 @@ describe('TopBar + SubMenu', () => {
   it('option GLOBALE « Jour / nuit » : dans la barre du haut, cochée par défaut, présente dans toutes les vues', () => {
     useStore.setState({ ...initialEngineState, dayNight: true, view: { ...initialEngineState.view, mode: 'solar', selected: 'mars' } })
     render(<><TopBar /><MapOptions /></>)
-    expect(screen.queryByText('🌍 Terre et observatoires')).toBeNull()                                          // devant Mars : pas d'options de carte...
-    fireEvent.click(screen.getByText('🌗 Jour / nuit'))                                                    // ... mais jour / nuit reste disponible
+    expect(screen.getByText('🗺 Options de carte')).toBeInTheDocument()                                     // devant Mars : le bloc général (étoiles, constellations) reste là...
+    fireEvent.click(screen.getByText('🌗 Jour / nuit'))                                                    // ... et jour / nuit aussi
     expect(engine.setDayNight).toHaveBeenLastCalledWith(false)
     expect(useStore.getState().dayNight).toBe(false)
   })
@@ -96,45 +97,50 @@ describe('TopBar + SubMenu', () => {
     expect(engine.setClouds).toHaveBeenLastCalledWith(true)
     expect(screen.getByText(/matteason/)).toBeInTheDocument()
   })
-  it('bloc « Terre et observatoires » : cases cochées par défaut dans le magasin, et basculables', () => {
-    const d = useStore.getInitialState()
-    expect(d.borders && d.capitals && d.observatories).toBe(true)              // cochées au démarrage
-    expect(d.constellations || d.starInfo).toBe(false)                         // les autres restent éteintes
-  })
-  it('bloc « Terre et observatoires » : limites de pays, capitales, observatoires, constellations', () => {
-    useStore.setState({ ...initialEngineState, borders: false, capitals: false, observatories: false, constellations: false, dayNight: true })
+  it('bloc GÉNÉRAL « Options de carte » (bas à gauche) : infos étoiles et constellations, éteintes par défaut', () => {
+    useStore.setState({ ...initialEngineState, starInfo: false, constellations: false })
     render(<MapOptions />)
-    const borders = screen.getByLabelText('Limites de pays') as HTMLInputElement
-    expect(screen.getByLabelText('Observatoires')).toBeInTheDocument()
-    fireEvent.click(screen.getByLabelText('Observatoires'))
-    expect(engine.setObservatories).toHaveBeenCalledWith(true)
-    const capitals = screen.getByLabelText('Capitales') as HTMLInputElement
-    expect(screen.getByText('🌍 Terre et observatoires')).toBeInTheDocument()
-    expect(borders.checked).toBe(false)
-    expect(capitals.checked).toBe(false)
-    fireEvent.click(borders)
-    expect(engine.setBorders).toHaveBeenLastCalledWith(true)
-    fireEvent.click(capitals)
-    expect(engine.setCapitals).toHaveBeenLastCalledWith(true)
-    expect(borders.checked).toBe(true)
-    fireEvent.click(borders)
-    expect(engine.setBorders).toHaveBeenLastCalledWith(false)
+    expect(screen.getByText('🗺 Options de carte')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Limites de pays')).toBeNull()               // elles sont dans la fiche de la Terre
+    expect((screen.getByLabelText('Constellations') as HTMLInputElement).checked).toBe(false)
+    expect((screen.getByLabelText('Infos étoiles (clic)') as HTMLInputElement).checked).toBe(false)
     fireEvent.click(screen.getByLabelText('Constellations'))
     expect(engine.setConstellations).toHaveBeenLastCalledWith(true)
   })
-  it('options de carte liées à la planète regardée : Terre et ISS oui, Mars, Lune ou Soleil non', () => {
-    useStore.setState({ ...initialEngineState })
-    const { rerender } = render(<MapOptions />)
-    expect(screen.getByText('🌍 Terre et observatoires')).toBeInTheDocument()                                  // vue Terre
-    act(() => useStore.setState({ view: { ...initialEngineState.view, mode: 'iss', selected: null } }))
-    rerender(<MapOptions />)
-    expect(screen.getByText('🌍 Terre et observatoires')).toBeInTheDocument()                                  // vue ISS : la planète est la Terre
-    act(() => useStore.setState({ view: { ...initialEngineState.view, mode: 'solar', selected: 'mars' } }))
-    rerender(<MapOptions />)
-    expect(screen.queryByText('🌍 Terre et observatoires')).toBeNull()                                         // Mars : pas d'options de carte
-    act(() => useStore.setState({ view: { ...initialEngineState.view, mode: 'solar', selected: 'earth' } }))
-    rerender(<MapOptions />)
-    expect(screen.getByText('🌍 Terre et observatoires')).toBeInTheDocument()                                  // la Terre vue de loin
+  it('options de la Terre dans la fiche de la Terre et d’un observatoire : seuls les observatoires sont cochés', () => {
+    const d = useStore.getInitialState()
+    expect([d.borders, d.capitals, d.observatories]).toEqual([false, false, true])
+    useStore.setState({ ...initialEngineState, borders: false, capitals: false, observatories: true, focus: { id: 'earth' }, cardCollapsed: false })
+    render(<BodyCard />)
+    expect((screen.getByLabelText('Observatoires') as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByLabelText('Limites de pays') as HTMLInputElement).checked).toBe(false)
+    fireEvent.click(screen.getByLabelText('Limites de pays'))
+    expect(engine.setBorders).toHaveBeenLastCalledWith(true)
+    fireEvent.click(screen.getByLabelText('Capitales'))
+    expect(engine.setCapitals).toHaveBeenLastCalledWith(true)
+    fireEvent.click(screen.getByLabelText('Observatoires'))
+    expect(engine.setObservatories).toHaveBeenLastCalledWith(false)
+  })
+  it('petit œil en haut à gauche : cache l’interface et passe en plein écran, un second clic la remet', () => {
+    const request = vi.fn(() => Promise.resolve())
+    Object.defineProperty(document.documentElement, 'requestFullscreen', { value: request, configurable: true })
+    useStore.setState({ ...initialEngineState, uiHidden: false })
+    render(<HideUi />)
+    fireEvent.click(screen.getByLabelText('Cacher l’interface'))
+    expect(useStore.getState().uiHidden).toBe(true)
+    expect(request).toHaveBeenCalled()                                         // plein écran (comme F11)
+    fireEvent.click(screen.getByLabelText('Afficher l’interface'))
+    expect(useStore.getState().uiHidden).toBe(false)
+    act(() => useStore.setState({ uiHidden: true }))
+    document.dispatchEvent(new Event('fullscreenchange'))                      // sortie du plein écran (Échap) : l’interface revient
+    expect(useStore.getState().uiHidden).toBe(false)
+  })
+  it('options de la Terre aussi dans la fiche d’un observatoire', () => {
+    useStore.setState({ ...initialEngineState, observatory: { id: 'pic-du-midi', view: false }, cardCollapsed: false })
+    render(<ObservatoryCard />)
+    expect(screen.getByLabelText('Limites de pays')).toBeInTheDocument()
+    expect(screen.getByLabelText('Capitales')).toBeInTheDocument()
+    expect(screen.getByLabelText('Observatoires')).toBeInTheDocument()
   })
   it('crédit du relief satellite : affiché seulement quand le relief est visible', () => {
     useStore.setState({ clouds: false, terrainDetail: false })

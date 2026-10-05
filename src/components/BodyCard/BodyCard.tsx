@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import BodyFacts from '@/components/BodyFacts'
+import EarthOptions from '@/components/EarthOptions'
 import Button from '@/components/ui/Button'
 import { BASE_PATH, ISS_VIEW_LABELS } from '@/constants'
 import { bodyCard } from '@/engine/catalog'
@@ -33,6 +34,7 @@ export const BodyCard = () => {
         <h2 className={styles.name}>{card.name}</h2>
         <div className={styles.kind}>{card.kind}</div>
         <BodyFacts facts={card.facts} />
+        {card.id === 'earth' && <EarthOptions />}
         {(card.canNorth || card.canOrbit || card.id === 'iss' || card.id === 'hubble') && (
           <div className={styles.actions}>
             {(card.id === 'iss' || card.id === 'hubble') && <Button label={issView ? (card.id === 'hubble' ? '↩ Quitter la vue Hubble' : ISS_VIEW_LABELS.off) : card.id === 'hubble' ? '👁 Vue depuis Hubble' : ISS_VIEW_LABELS.on} active={issView} title={card.id === 'hubble' ? 'Voir la Terre et le ciel depuis Hubble : glisser pour regarder autour, molette pour le champ' : 'Voir la Terre depuis la station spatiale : glisser pour regarder autour, molette pour le champ'} onClick={() => setIssView(!issView)} />}

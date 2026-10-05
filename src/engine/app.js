@@ -27,6 +27,7 @@ import { assetUrl, setBaseUrl } from './config.js';
 import { KM_AL, KM_UA, fmtBig } from './format.js';
 import { createOverlay } from './overlay.js';
 import { parseObj } from './obj-mini.js';
+const OBS_STAR_DIM = 0.5;   // vue depuis un observatoire : toutes les étoiles DEUX FOIS moins lumineuses (demande)
 const STAR_DARK_SIN = 0.12;   // sin de la hauteur du Soleil sous l'horizon (≈ −7°) où toutes les étoiles sont là (opacité 0 quand le Soleil est à moitié caché) : même seuil que le ciel qui devient transparent
 
 export const ISS_MIN_DIST_KM = 0.001;   // zoom minimal autour de l'ISS : 1 m (c'était 100 m, puis 10 cm)
@@ -52,7 +53,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const earth = buildEarth(renderer); world.add(earth);
 
   const terrain = createTerrainLayer(earth, renderer); terrain.setLook(0, TERRAIN_DAY_GAIN); let terrainShown = false;   // Terre en RELIEF avec imagerie satellite sous 800 km d'altitude (automatique, hors ligne : la carte dessinée reste)
-  const borders = buildBorders(); earth.add(borders); let bordersOn = true;   // option « Limites de pays » (cochée par défaut)
+  const borders = buildBorders(); earth.add(borders); let bordersOn = false;   // option « Limites de pays » (éteinte par défaut)
   const atmMat = earth.getObjectByName('atmosphere').material;   // halo de l'atmosphère : tient compte du Soleil (bleu le jour, orange au crépuscule, transparent la nuit)
   const clouds = createClouds(earth, renderer); let cloudsOn = false;   // couverture nuageuse quasi temps réel (option)
   // NIVEAUX DE DÉTAIL selon la taille à l'écran (en pixels de rayon) : la Terre (1 048 576 triangles !) et les ~35 sphères d'astres (9 000 triangles chacune) n'étaient pas allégées quand elles ne font que quelques pixels.
@@ -179,7 +180,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const hubDg = new THREE.BufferGeometry(); hubDg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
   const hubDot = new THREE.Points(hubDg, new THREE.PointsMaterial({ color: 0x7fe3ff, size: 10, sizeAttenuation: false })); hubDot.frustumCulled = false; hubDot.visible = false; world.add(hubDot);
   const hubLabel = overlay.label('Hubble', 'iss'); let hubScreen = null;
-  const capitals = createCapitals(overlay, earth); let capitalsOn = true, lastOcc = [];   // cochée par défaut
+  const capitals = createCapitals(overlay, earth); let capitalsOn = false, lastOcc = [];   // éteinte par défaut
   let observatoriesOn = true;   // cochée par défaut   // option Observatoires : les observatoires du monde, cliquables (clic = y aller, fiche + vue depuis)
   const obsSites = createCapitals(overlay, earth, { data: OBSERVATORIES.map(o => [o.short, o.lat, o.lon, o.id]), cls: 'obssite', prefix: '🔭 ', onClick: id => goObservatory(id) });   // option « Capitales »
 
@@ -350,8 +351,9 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   let hiddenByEarth;
   const starProject = s => { starVector(s[0], s[1], sv); sv.applyMatrix4(stars.matrixWorld); if (hiddenByEarth(sv)) return null; sv.project(camera); if (sv.z >= 1 || Math.abs(sv.x) > 1.05 || Math.abs(sv.y) > 1.05) return null; return [(sv.x + 1) / 2 * innerWidth, (1 - sv.y) / 2 * innerHeight]; };
   const starVisible = i => { const c = byBin[starBins[i]]; return !!c && c.visible && c.material.opacity > 0.15; };
-  const refreshBins = () => { stars.children.forEach(c => { if (c.userData.bin !== undefined) byBin[c.userData.bin] = c; }); };
-  const pickStarAt = (x, y) => { refreshBins(); starSel = pickNearest(starProject, x, y, 14, starVisible); publish({ star: { hip: starSel >= 0 ? STARS[starSel][4] : null } }); return starSel >= 0 ? STARS[starSel][4] : null; };
+  const refreshBins = () => { stars.updateMatrixWorld(true); stars.children.forEach(c => { if (c.userData.bin !== undefined) byBin[c.userData.bin] = c; }); };
+  const pickStarAt = (x, y) => { refreshBins();   // (matrices à jour : le rendu les met à jour de la même façon)
+    starSel = pickNearest(starProject, x, y, 14, starVisible); publish({ star: { hip: starSel >= 0 ? STARS[starSel][4] : null } }); return starSel >= 0 ? STARS[starSel][4] : null; };
   const clearStar = () => { if (starSel >= 0) { starSel = -1; publish({ star: { hip: null } }); } };
   hiddenByEarth = P => { const d = P.clone().sub(camera.position), L = d.length(); d.divideScalar(L); const b = camera.position.dot(d), disc = b * b - (camera.position.lengthSq() - 1); return disc > 0 && -b - Math.sqrt(disc) > 0 && -b - Math.sqrt(disc) < L; };
 
@@ -581,11 +583,11 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     sunGlare.update({ camera, sunPos: sunPoint.position, height: innerHeight, tint: sunRed, rise: atmMat.uniforms.uRise.value });
     { const sm = bodyObjs[STAR] && bodyObjs[STAR].mesh; if (sm && sm.material.color) sm.material.color.setRGB(1, 1 - (0.4 - 0.05 * atmMat.uniforms.uRise.value) * sunRed, 1 - (0.7 - 0.45 * atmMat.uniforms.uRise.value) * sunRed); }   // son disque aussi   // l'éclat est testé en PROFONDEUR : la Terre (et le relief) le cache, il est donc DERRIÈRE la Terre au lieu de s'affaiblir avant
     constellations.update({ on: constellationsOn && !realistic, camera, width: innerWidth, height: innerHeight, earthCenter: new THREE.Vector3().setFromMatrixPosition(earth.matrixWorld) });
-    if (starSel >= 0 && starInfoOn) { const p = starProject(STARS[starSel]); if (p) { starRing.style.display = 'block'; starRing.style.transform = `translate(${p[0] - 13}px,${p[1] - 13}px)`; } else starRing.style.display = 'none'; } else starRing.style.display = 'none';
+    if (starSel >= 0 && starInfoOn) { stars.updateMatrixWorld(true); const p = starProject(STARS[starSel]); if (p) { starRing.style.display = 'block'; starRing.style.transform = `translate(${p[0] - 13}px,${p[1] - 13}px)`; } else starRing.style.display = 'none'; } else starRing.style.display = 'none';
     obsSites.update({ on: observatoriesOn && !realistic && !obsView, camera, width: innerWidth, height: innerHeight, hidden: p => occludedBy(camera.position.toArray(), [p.x, p.y, p.z], lastOcc.filter(o => o.id !== 'earth'), 0, 0) !== null });
     capitals.update({ on: capitalsOn && !realistic, camera, width: innerWidth, height: innerHeight, hidden: p => occludedBy(camera.position.toArray(), [p.x, p.y, p.z], lastOcc.filter(o => o.id !== 'earth'), 0, 0) !== null });   // juste avant le rendu : pose de la Terre et de la caméra à jour (rotation du temps sidéral comprise) ; cachée par la Lune / une planète = pas de nom
     // ciel de l'observatoire : bleu le jour, noir étoilé la nuit (selon la hauteur du Soleil au-dessus de l'horizon de l'observatoire)
-    if (obsView) { const se = tmpObs.copy(babs[STAR]).sub(obsPos).normalize().dot(obsSrc.radial), t = Math.max(0, Math.min(1, (se + 0.12) / 0.22)); obsDay = t * t * (3 - 2 * t); const ds = Math.max(0, Math.min(1, -se / STAR_DARK_SIN)), ts = 1 - ds * ds * (3 - 2 * ds); stars.userData.setDay(ts); skyOn = true; }   // les étoiles s'éteignent peu à peu au lever du jour (les plus faibles d'abord)   // le ciel n'est PAS une couleur de fond : c'est l'atmosphère (bleu le jour, orange au crépuscule, transparent la nuit) ; le jour les étoiles disparaissent
+    if (obsView) { const se = tmpObs.copy(babs[STAR]).sub(obsPos).normalize().dot(obsSrc.radial), t = Math.max(0, Math.min(1, (se + 0.12) / 0.22)); obsDay = t * t * (3 - 2 * t); const ds = Math.max(0, Math.min(1, -se / STAR_DARK_SIN)), ts = 1 - ds * ds * (3 - 2 * ds); stars.userData.setDay(ts, OBS_STAR_DIM); skyOn = true; }   // les étoiles s'éteignent peu à peu au lever du jour (les plus faibles d'abord)   // le ciel n'est PAS une couleur de fond : c'est l'atmosphère (bleu le jour, orange au crépuscule, transparent la nuit) ; le jour les étoiles disparaissent
     else if (skyOn) { stars.userData.setDay(0); obsDay = 0; skyOn = false; }
     // marqueur de l'observatoire (point + nom) quand on le regarde depuis l'extérieur, du côté visible de la Terre
     if (obsId) { const show = !obsView && !realistic && cam.mode === 'earth'; obsDot.visible = show; let on = false; if (show) { earth.updateWorldMatrix(true, false); const f = obsFrame, pw = tmpObs.set(f.ground[0], f.ground[1], f.ground[2]).applyMatrix4(earth.matrixWorld), c0 = tmpObs2.setFromMatrixPosition(earth.matrixWorld), nw = pw.clone().sub(c0).normalize(), v = camera.position.clone().sub(pw); if (nw.dot(v) > 0.02 * v.length()) { pw.project(camera); on = pw.z < 1 && Math.abs(pw.x) < 1 && Math.abs(pw.y) < 1; if (on) obsLabel.style.transform = 'translate(' + ((pw.x + 1) / 2 * innerWidth + 8) + 'px,' + ((1 - pw.y) / 2 * innerHeight - 8) + 'px)'; } } obsLabel.style.display = on ? 'block' : 'none'; }
@@ -626,7 +628,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _starsOnScreen: (n = 5) => { refreshBins(); const out = []; for (let i = 0; i < STARS.length && out.length < n; i++) { if (!starVisible(i)) continue; const p = starProject(STARS[i]); if (p) out.push({ hip: STARS[i][4], x: p[0], y: p[1] }); } return out; },
     _pickStarAt: pickStarAt,
     goObservatory, setObservatoryView,
-    _obs: () => ({ id: obsId, view: obsView, label: obsLabel.style.display, dot: obsDot.visible, camAltKm: (camera.position.length() - 1) * R_KM, posErr: obsView ? camera.position.distanceTo(obsPos) * R_KM * 1000 : null, day: obsDay, stars: stars.children.some(c => c.userData.bin !== undefined && c.visible && c.material.opacity > 0.5), starOpacity: stars.children.filter(c => c.userData.bin !== undefined).map(c => c.material.opacity), atmSun: atmMat.uniforms.uUseSun.value, orange: atmMat.uniforms.uOrange.value }),
+    _obs: () => ({ id: obsId, view: obsView, label: obsLabel.style.display, dot: obsDot.visible, camAltKm: (camera.position.length() - 1) * R_KM, posErr: obsView ? camera.position.distanceTo(obsPos) * R_KM * 1000 : null, day: obsDay, stars: stars.children.some(c => c.userData.bin !== undefined && c.visible && c.material.opacity > 0.4), starOpacity: stars.children.filter(c => c.userData.bin !== undefined).map(c => c.material.opacity), atmSun: atmMat.uniforms.uUseSun.value, orange: atmMat.uniforms.uOrange.value }),
     setRealistic: on => { realistic = !!on; },
     setConstellations: on => { constellationsOn = !!on; },
     setDayNight: on => { dayNight = !!on; terrain.setLook(dayNight ? 0 : TERRAIN_GLOW, dayNight ? TERRAIN_DAY_GAIN : 1); },

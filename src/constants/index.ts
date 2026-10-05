@@ -29,13 +29,16 @@ export const NUDGE_REPEAT_MS = 70
 export const ISS_VIEW_LABELS = { on: '👁 Vue depuis l’ISS', off: '↩ Quitter la vue ISS', go: '🛰 ISS', hubble: '🔭 Hubble' } as const   // bouton de la barre du haut
 export const CLOUDS_LABEL = '☁ Nuages'   // couverture nuageuse quasi temps réel
 export const EARTH_LABEL = '🌍 Terre'   // retour à la vue Terre, de n'importe quelle vue
-export const MAP_OPTIONS_TITLE = '🌍 Terre et observatoires'   // bloc d'options de la Terre et des observatoires (en bas à gauche) : limites de pays, capitales, observatoires (cochées par défaut), infos étoiles, constellations
+export const MAP_OPTIONS_TITLE = '🗺 Options de carte'   // bloc d'options du ciel (en bas à gauche) : infos étoiles, constellations
 export const MAP_OPTIONS = [
+  { key: 'starInfo', label: 'Infos étoiles (clic)' },
+  { key: 'constellations', label: 'Constellations' },
+] as const   // cases à cocher, éteintes par défaut
+// options de la Terre, dans la fiche de la Terre et celle d'un observatoire (en haut à droite) : seuls les observatoires sont cochés par défaut
+export const EARTH_OPTIONS = [
   { key: 'borders', label: 'Limites de pays' },
   { key: 'capitals', label: 'Capitales' },
   { key: 'observatories', label: 'Observatoires' },
-  { key: 'starInfo', label: 'Infos étoiles (clic)' },
-  { key: 'constellations', label: 'Constellations' },
-] as const   // chaque option est une case à cocher, éteinte par défaut
+] as const
 export const REALISTIC_LABEL = '🎬 Vue réaliste'   // retire trajectoires, noms, repères et tout ce qui n'existe pas dans la réalité
 export const DAY_NIGHT_LABEL = '🌗 Jour / nuit'   // option GLOBALE (toutes les vues, tous les astres) : le vrai Soleil éclaire, la face cachée est sombre ; cochée par défaut

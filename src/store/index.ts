@@ -16,6 +16,7 @@ export type UiState = {
   capitals: boolean   // option de carte : noms des capitales
   observatories: boolean   // option de carte : observatoires du monde (cliquables)
   starInfo: boolean   // option de carte : clic sur une étoile = sa fiche
+  uiHidden: boolean   // interface cachée (petit œil en haut à gauche) : seul le moteur 3D reste affiché
   constellations: boolean   // option de carte : constellations (traits entre les étoiles et noms)
   realistic: boolean   // vue réaliste : sans trajectoires, noms, repères ni rien de ce qui n'existe pas
   dayNight: boolean   // option de carte : jour / nuit (éclairage par le vrai Soleil)
@@ -37,6 +38,7 @@ export type Store = EngineState &
     toggleCapitals: () => void
     toggleObservatories: () => void
     toggleStarInfo: () => void
+    setUiHidden: (on: boolean) => void
     toggleConstellations: () => void
     toggleDayNight: () => void
     toggleRealistic: () => void
@@ -63,10 +65,11 @@ export const useStore = create<Store>((set) => ({
   cardCollapsed: readCardCollapsed(),
   issView: false,
   clouds: false,
-  borders: true,   // les trois options du bloc « Terre et observatoires » sont cochées par défaut
-  capitals: true,
+  borders: false,   // options de la Terre (fiche de la Terre et d'un observatoire) : seuls les observatoires sont cochés par défaut
+  capitals: false,
   observatories: true,
   starInfo: false,
+  uiHidden: false,
   constellations: false,
   dayNight: true,
   realistic: false,
@@ -75,6 +78,7 @@ export const useStore = create<Store>((set) => ({
   applyPatch: (patch) => set((s) => mergePatch(s, patch)),
   togglePanel: (panel) => set((s) => ({ panel: s.panel === panel ? null : panel })),
   setBodyCategory: (bodyCategory) => set({ bodyCategory }),
+  setUiHidden: (uiHidden) => set({ uiHidden }),
   setCardCollapsed: (cardCollapsed) => {
     writeCardCollapsed(cardCollapsed)
     set({ cardCollapsed })
