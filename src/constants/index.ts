@@ -14,10 +14,7 @@ export const TIME_SPEEDS: ReadonlyArray<{ speed: number; label: string }> = [
   { speed: 31557600, label: '1 an/s' },
   { speed: 315576000, label: '10 ans/s' },
 ]
-export const PANEL_BUTTONS: ReadonlyArray<{ panel: 'planets' | 'concorde'; label: string }> = [
-  { panel: 'planets', label: '🌌 Astres' },
-  { panel: 'concorde', label: '✈ Concorde' },
-]
+export const PANEL_BUTTONS: ReadonlyArray<{ panel: 'planets'; label: string }> = [{ panel: 'planets', label: '🌌 Astres' }]
 
 // catégories d'astres du sous-menu « Astres » : types (bodyType du JSON) regroupés par bouton
 export const BODY_CATEGORIES: ReadonlyArray<{ id: 'planets' | 'comets' | 'stars'; label: string; types: ReadonlyArray<string> }> = [
@@ -29,11 +26,6 @@ export const BODY_CATEGORIES: ReadonlyArray<{ id: 'planets' | 'comets' | 'stars'
 export const NUDGE_STEPS: ReadonlyArray<number> = [0.5, 1, 5, 15]   // pas de réglage fin de la vue (°)
 export const NUDGE_FIRST_DELAY_MS = 350   // délai avant la répétition en maintenant le bouton
 export const NUDGE_REPEAT_MS = 70
-// vols du Concorde proposés par le sous-menu « Concorde » (horaires des dernières années d'exploitation, 2001-2003)
-export const CONCORDE_FLIGHTS: ReadonlyArray<{ id: string; label: string; arrival: string }> = [
-  { id: 'AF002', label: '🛫 AF002 · Paris → New York', arrival: '8 h 25 (heure de New York)' },
-  { id: 'AF001', label: '🛫 AF001 · New York → Paris', arrival: '17 h 45 (heure de Paris)' },
-]
 export const ISS_VIEW_LABELS = { on: '👁 Vue depuis l’ISS', off: '↩ Quitter la vue ISS', go: '🛰 ISS', hubble: '🔭 Hubble' } as const   // bouton de la barre du haut
 export const EARTH_LABEL = '🌍 Terre'   // retour à la vue Terre, de n'importe quelle vue
 export const MAP_OPTIONS_TITLE = '🗺 Options de carte'   // bloc d'options du ciel (en bas à gauche) : infos étoiles, constellations

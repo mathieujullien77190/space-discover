@@ -200,6 +200,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const cam = { fov: 50, mode: 'earth', tgt: new THREE.Vector3(), lon: 0, lat: 50, dist: 3.4, fly: 0, tfly: 0, userDir: false, fp: null, fpUp: new THREE.Vector3(), upKind: 'north', goal: { lon: 0, lat: 50, dist: 3.4 } };   // départ : la Terre vue du nord (nord en haut), le méridien de Greenwich (0°) en face de la caméra
   const moonsShown = {};   // planète → distance de la caméra, pour les planètes dont les lunes sont affichées
   let poseStale = false;   // juste après un changement de vue la caméra garde l'ancienne position jusqu'à la prochaine image : on n'en déduit pas « trop loin de l'ISS »
+  let concPub = false;
   let iss = null, hub = null, conc = null, concPrefer = null, focusSat = 'iss', frameF = 0, curGm = 0, curD = 0;
   const fsat = () => (focusSat === 'hubble' ? hub : focusSat === 'concorde' ? conc : iss);   // l'objet regardé en vue « iss » (ISS, Hubble ou Concorde)
   const viewOf = () => (focusSat === 'concorde' ? VIEW_CONCORDE : VIEW_ISS);
@@ -414,6 +415,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     const realNow = Date.now(); simMs += (realNow - lastReal) * simSpeed; lastReal = realNow; const date = new Date(simMs);   // horloge simulée : temps réel par défaut, accélérable
     iss = issState(date); hub = hubbleState(date); conc = concordeAt(date.getTime(), concPrefer);
     if (cam.mode === 'iss' && !fsat()) setMode('earth');   // le vol est fini : retour à la vue Terre
+    if (!!conc !== concPub) { concPub = !!conc; publish({ concorde: concPub }); }   // l'interface n'affiche le bouton « Concorde » que s'il vole à la date simulée
     // LE CIEL DU CONCORDE SE COMPORTE COMME CELUI D'UN OBSERVATOIRE (atmosphère bleue / orange / rose / noire selon le Soleil, étoiles qui apparaissent, scintillement, étoiles filantes, Lune agrandie)
     const concView = issView && !!cam.fp && focusSat === 'concorde' && !!conc, skyObs = obsView || concView;
     if (concView) { skyPos.copy(conc.pos); skyUp.copy(conc.up); skyEast.set(0, 1, 0).cross(skyUp).normalize(); skyNorth.crossVectors(skyUp, skyEast).normalize(); }

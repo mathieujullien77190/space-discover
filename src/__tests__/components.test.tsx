@@ -25,7 +25,7 @@ describe('TopBar + SubMenu', () => {
   })
   it('barre du haut : Astres, Terre, ISS, Nuages ; ni Histoires, ni Fusées, ni Satellites, aucun sous-menu au départ', () => {
     render(<><TopBar /><SubMenu /></>)
-    for (const l of ['🌌 Astres', '🌍 Terre', '🛰 ISS', '🔭 Hubble', '✈ Concorde', '🎬 Vue réaliste']) expect(screen.getByText(l)).toBeInTheDocument()
+    for (const l of ['🌌 Astres', '🌍 Terre', '🛰 ISS', '🔭 Hubble', '🎬 Vue réaliste']) expect(screen.getByText(l)).toBeInTheDocument()
     for (const l of [/Histoires/, /Fusées/, /Satellites/, /Engins/]) expect(screen.queryByText(l)).toBeNull()
     expect(screen.queryByText(/Lune/)).toBeNull()
   })
@@ -45,15 +45,14 @@ describe('TopBar + SubMenu', () => {
     render(<IssBadge />)
     expect(screen.getByText(/Vue depuis l’ISS/)).toBeInTheDocument()
   })
-  it('menu « Concorde » : un bouton par vol, saute au vol choisi', () => {
-    useStore.setState({ ...initialEngineState, panel: null })
-    render(<><TopBar /><SubMenu /></>)
+  it('bouton « Concorde » : seulement quand un Concorde vole à la date simulée', () => {
+    useStore.setState({ ...initialEngineState, panel: null, concorde: false })
+    const { unmount } = render(<TopBar />)
+    expect(screen.queryByText('✈ Concorde')).toBeNull()
+    unmount()
+    useStore.setState({ concorde: true })
+    render(<TopBar />)
     fireEvent.click(screen.getByText('✈ Concorde'))
-    expect(screen.getByText('🛫 AF002 · Paris → New York')).toBeInTheDocument()
-    expect(screen.getByText('🛫 AF001 · New York → Paris')).toBeInTheDocument()
-    fireEvent.click(screen.getByText('🛫 AF001 · New York → Paris'))
-    expect(engine.flyConcorde).toHaveBeenCalledWith('AF001')
-    fireEvent.click(screen.getByText('🔎 Voir le Concorde'))
     expect(engine.goConcorde).toHaveBeenCalled()
   })
   it('fiche du Concorde : faits et bouton « Vue depuis le Concorde »', () => {

@@ -38,6 +38,8 @@ export const HUBBLE_PERIOD_MS = objectPeriodS(HUBBLE_OBJ) * 1000;
 // Ajouter une caractéristique = une entrée ici (la case à cocher apparaît dans le panneau).
 export const lineMat = c => new THREE.LineBasicMaterial({ color: c });
 export function seg(pts, c) { const g = new THREE.BufferGeometry().setFromPoints(pts); return new THREE.LineSegments(g, lineMat(c)); }
+// texte de vitesse en direct : « Vitesse : 7,66 km/s · 27 576 km/h » (+ « Mach 2,02 » pour un avion)
+export const speedText = st => 'Vitesse : ' + (st.speed >= 1 ? st.speed.toFixed(2).replace('.', ',') + ' km/s · ' : '') + Math.round(st.speed * 3600).toLocaleString('fr-FR') + ' km/h' + (st.mach ? ' · Mach ' + st.mach.toFixed(2).replace('.', ',') : '');
 export const ISS_FEATURES = [
   { id: 'size', label: '📐 Dimensions', onlyIss: true, build(ctx) {   // onlyIss : affiché seulement quand la caméra est sur l'ISS
     const col = 0x4fd8ff, tk = 4, V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -54,6 +56,7 @@ export const ISS_FEATURES = [
     const hg = new THREE.BufferGeometry(); hg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
     const hcol = 0xffa040, hl = new THREE.Line(hg, new THREE.LineBasicMaterial({ color: hcol })); hl.frustumCulled = false; hl.material.depthTest = false; hl.renderOrder = 5; ctx.scene.add(hl); objects.push(hl);
     const lh = ctx.label('Hauteur'); lh.el.style.color = '#ffa040'; lh.alongLine = true; labels.push(lh);
+    const lv = ctx.label('Vitesse'); lv.el.style.color = '#7dff9a'; labels.push(lv);   // vitesse EN DIRECT (ISS, Hubble, Concorde), posée sur l'objet
     return {
       objects, labels,
       update(iss) {
@@ -64,6 +67,7 @@ export const ISS_FEATURES = [
         }
         const a = iss.pos, g = iss.up.clone(), arr = hg.attributes.position; arr.setXYZ(0, a.x, a.y, a.z); arr.setXYZ(1, g.x, g.y, g.z); arr.needsUpdate = true;
         lh.line = [a.clone(), g]; lh.el.textContent = 'Hauteur : ' + Math.round(iss.alt) + ' km';
+        lv.world.copy(a); lv.el.textContent = speedText(iss);
       },
     };
   } },
