@@ -1,0 +1,2 @@
+.hud { position: fixed; left: 12px; top: 12px; right: 84px; padding-top: env(safe-area-inset-top); pointer-events: none; z-index: 2; }
+.hud button { pointer-events: auto; }

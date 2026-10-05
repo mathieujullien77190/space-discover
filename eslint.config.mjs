@@ -17,7 +17,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['tools/**/*.{js,mjs}', '*.mjs', 'vitest.config.ts'],
+    files: ['tools/**/*.{js,mjs}', '*.mjs', 'vitest.config.mts'],
     languageOptions: { globals: { ...globals.node }, sourceType: 'module' },
     rules: { 'no-unused-vars': ['warn', { args: 'none', caughtErrors: 'none' }], 'no-empty': ['error', { allowEmptyCatch: true }], 'no-useless-escape': 'off', 'no-prototype-builtins': 'off' },
   },

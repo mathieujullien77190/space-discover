@@ -456,7 +456,7 @@
   },
   "returns": {
     "stage1": {
-      "_note": "Plan de retour du booster Super Heavy, rejoué par flyReturn (js/flight-plan.js) à partir de l’état à la séparation : boostback décrit par des tables (direction, poussée), atterrissage « hoverslam » décrit par des paramètres (bloc \"landing\"). Les valeurs \"expected\" sont calculées (informatives).",
+      "_note": "Plan de retour du booster Super Heavy, rejoué par flyReturn (src/engine/flight-plan.js) à partir de l’état à la séparation : boostback décrit par des tables (direction, poussée), atterrissage « hoverslam » décrit par des paramètres (bloc \"landing\"). Les valeurs \"expected\" sont calculées (informatives).",
       "vehicle": {
         "dryKg": 275000,
         "propKg": 600000,

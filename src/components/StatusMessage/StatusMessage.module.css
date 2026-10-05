@@ -1,0 +1,2 @@
+.loading { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 18px; text-shadow: 0 1px 4px #000; pointer-events: none; }
+.error { position: fixed; left: 12px; right: 12px; top: 60px; z-index: 20; padding: 8px 10px; background: rgba(120, 20, 20, 0.92); color: #fff; font: 12px ui-monospace, Consolas, monospace; white-space: pre-wrap; border-radius: 8px; }

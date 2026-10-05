@@ -1,14 +1,14 @@
 // node tools/make-plan.js : écrit le plan de vol du lancement fixe (Kourou, Ariane 5 ECA, orbite circulaire de 500 km) :
 //   data/plans/kourou-ariane5-500km.json   (le fichier à lire et à modifier à la main)
-//   js/data/plans.js                        (même contenu en variable JavaScript : la page s'ouvre aussi en file://)
-// Le plan est EXTRAIT d'une simulation avec guidage (simulateLaunch) : instants des événements, direction de la poussée au cours du temps, masses ; ensuite js/flight-plan.js le rejoue SANS guidage et retrouve la même trajectoire.
-// Après avoir modifié le JSON à la main : `node tools/make-plan.js --wrap` régénère seulement js/data/plans.js ; sur http(s) la page relit le JSON directement (pas besoin de régénérer).
+//   src/engine/data/plans.js                        (même contenu en variable JavaScript : la page s'ouvre aussi en file://)
+// Le plan est EXTRAIT d'une simulation avec guidage (simulateLaunch) : instants des événements, direction de la poussée au cours du temps, masses ; ensuite src/engine/flight-plan.js le rejoue SANS guidage et retrouve la même trajectoire.
+// Après avoir modifié le JSON à la main : `node tools/make-plan.js --wrap` régénère seulement src/engine/data/plans.js ; sur http(s) la page relit le JSON directement (pas besoin de régénérer).
 const fs = require('fs'), vm = require('vm'), path = require('path');
 const root = path.join(__dirname, '..'), ctx = { console, Math, Date, JSON }; vm.createContext(ctx);
-for (const f of ['js/physics.js', 'js/launch.js', 'js/rockets.js', 'js/flight-plan.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f });
-const jsonPath = path.join(root, 'data', 'plans', 'kourou-ariane5-500km.json'), jsPath = path.join(root, 'js', 'data', 'plans.js');
+require('./lib-engine').loadEngineIntoSync(ctx);
+const jsonPath = path.join(root, 'public', 'data', 'plans', 'kourou-ariane5-500km.json'), jsPath = path.join(root, 'src', 'engine', 'data', 'plans.js');
 const { writePlansJs } = require('./lib-plans'), wrap = () => writePlansJs(root);
-if (process.argv.includes('--wrap')) { wrap(); console.log('écrit js/data/plans.js'); process.exit(0); }
+if (process.argv.includes('--wrap')) { wrap(); console.log('écrit src/engine/data/plans.js'); process.exit(0); }
 const out = vm.runInContext(`(() => {
   const rk = ROCKETS.ariane5, L = Object.assign({}, LCH, rk.phys), N = Object.assign({}, LCH_NAMES, rk.names);
   const SITE = { name: 'Kourou (Guyane)', lat: 5.2408, lon: -52.7688, azimuthDeg: 90 }, KM = 500, PAYLOAD = 3000;

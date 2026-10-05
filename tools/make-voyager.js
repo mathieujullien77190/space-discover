@@ -2,9 +2,9 @@
 // ⚠ Valeurs de MÉMOIRE (ordres de grandeur, à vérifier avant de les citer) : masse au décollage ≈ 626 t ; 2 boosters à poudre UA1205 (33 t à vide, 193 t de poudre, 115 s) ; étage principal LR87 (6 t + 113 t, 147 s, Isp 302 s dans le vide) allumé
 // vers T+105 s ; 2e étage LR91 (4,3 t + 29,7 t, 207 s, Isp 316 s) ; Centaur D-1T (2,7 t + 13,2 t d'hydrogène-oxygène, 2 RL10 : 133 kN, Isp 444 s) qui fait deux poussées (orbite de parking puis injection) ; sonde Voyager 825 kg + moteur à poudre
 // Star-37E (≈ 1,07 t dont 1,01 t de poudre, 68 kN, Isp 289 s, 42 s). Les durées des poussées du Centaur et le programme de tangage sont RÉGLÉS PAR RECHERCHE pour viser l'orbite de parking (≈ 165 × 185 km) puis une énergie de libération C3 ≈ 102 km²/s²
-// (Voyager 2). Lune et Soleil attirent la sonde (js/ephemeris.js) ; les autres planètes ne sont pas simulées (pas d'assistance gravitationnelle). node tools/make-voyager.js puis node tools/make-objects.js
-const fs = require('fs'), vm = require('vm'), path = require('path'), root = path.join(__dirname, '..'), out = path.join(root, 'objects', 'voyager'), ctx = { console, Math, Date, JSON }; vm.createContext(ctx);
-for (const f of ['js/physics.js', 'js/launch.js', 'js/data/objects.js', 'js/ephemeris.js', 'js/bodies.js', 'js/flight-object.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f });
+// (Voyager 2). Lune et Soleil attirent la sonde (src/engine/ephemeris.js) ; les autres planètes ne sont pas simulées (pas d'assistance gravitationnelle). node tools/make-voyager.js puis node tools/make-objects.js
+const fs = require('fs'), vm = require('vm'), path = require('path'), root = path.join(__dirname, '..'), out = path.join(root, 'public', 'objects', 'voyager'), ctx = { console, Math, Date, JSON }; vm.createContext(ctx);
+require('./lib-engine').loadEngineIntoSync(ctx);
 const G0 = 9.80665, MU = 3.986004418e14, RE = 6378137, r1 = (x, n) => Math.round(x * (n || 10)) / (n || 10);
 const TF = +process.env.TITAN_F || 1.05;   // facteur de rendement (Isp) des étages Titan : réglé (1,05) pour que la sonde atteigne C3 ≈ 102 km²/s² en consommant presque tous les ergols du Centaur ; les Isp de mémoire sont un peu trop faibles
 const SRM = { n: 2, dry: 33000, prop: 193000, burn: 115, ispV: 263 * TF, ispS: 236 * TF }, T1 = { dry: 6000, prop: 113000, burn: 147, ispV: 302 * TF, ispS: 259 * TF, ign: 105 }, T2 = { dry: 4300, prop: 29700, burn: 207, isp: 316 * TF, ign: 255 };

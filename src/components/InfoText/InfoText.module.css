@@ -1,0 +1,2 @@
+.info { margin-top: 10px; font-size: 13px; line-height: 1.5; text-shadow: 0 1px 3px #000; white-space: pre-line; pointer-events: none; }
+@media (max-width: 700px), (pointer: coarse) { .info { font-size: 12px; max-width: 78%; } }

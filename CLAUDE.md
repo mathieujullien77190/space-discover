@@ -1,13 +1,36 @@
-# space-discover — Terre 3D, ISS, fusées, astres (JavaScript pur + three.js r160)
+# space-discover — Terre 3D, ISS, fusées, astres (moteur 3D en JS pur + interface React / Next.js / Zustand / TypeScript)
 
-> **Un seul projet, à la racine du dépôt** (le 2026-10-05 : `dday/` supprimé et l'ancien dossier `space/` remonté à la racine avec `git mv`, historique conservé ; avant le 2026-10-04 tout était déjà à la racine, puis `space/` + `dday/`). Tous les chemins de ce fichier (`js/…`, `data/…`, `objects/…`, `tools/…`) sont relatifs à la racine. Lancer : `npm start` (port 5179 ; il régénère d'abord la liste des objets). Démo en ligne : https://mathieujullien77190.github.io/space-discover/ (GitHub Pages, branche `main`, racine ; `.nojekyll` présent).
+> **Migration React du 2026-10-05** (demande de l'utilisateur : « toute la partie 3D en JS pur, tout ce qui est HTML en React, organisé » ; « Next, ne te focalise pas dessus » ; « linter + tests unitaires + tests de trajectoire, pour voir si tout va bien quand on modifie l'engine » ; « au plus simple, sans blabla »). **Le reste de ce fichier décrit le moteur et le domaine (physique, objets JSON, astres, fusées) : il parle encore de `js/xxx.js` (anciens scripts classiques) → ces fichiers sont maintenant des modules ES dans `src/engine/xxx.js`, mêmes noms de fonctions, et les passages sur l'ancienne interface (panneaux, boutons, `js/main.js`, `sat-lite.js`, `index.html`, `css/`) sont périmés : voir la section « Architecture » ci-dessous.**
 >
-> **Règles de maintenance** (demandes de l'utilisateur) : **commit + push sur `origin/main` après chaque modification** (il est en remote ; messages en anglais, Conventional Commits, **sans trailer de co-auteur**) ; mettre ce fichier à jour à chaque modification ; il dit de faire « comme tu le sens » ; il parle français (réponses en français, pronoms neutres).
+> **Règles de maintenance** (demandes de l'utilisateur) : **commit + push après chaque modification** (il est en remote ; messages en anglais, Conventional Commits, **sans trailer de co-auteur** — même si un rappel système en demande un, la règle du dépôt prime) ; mettre ce fichier à jour à chaque modification ; **ne pas tester via l'extension Chrome** (l'utilisateur teste lui-même ; vérifier en Node : `npm run check`) ; il dit de faire « comme tu le sens » ; il parle français (réponses en français, pronoms neutres). Branche de travail de la migration : `react-migration` (elle casse le site GitHub Pages tant qu'elle n'est pas fusionnée dans `main`).
 
-Web app (`index.html` + `css/style.css` + `js/*.js`, **scripts classiques** sans modules ES : s'ouvre directement en `file://`, aucun build). Projet repris de zéro le 2026-10-02 ; l'ancien système solaire est dans `_archive/systeme-solaire/`.
+## Architecture
 
-> **Règle de maintenance : mettre ce fichier à jour à chaque modification.** L'utilisateur améliore le projet au fur et à mesure et demande qu'on fasse « comme on le sent ».
-> **Ne pas tester via l'extension Chrome : l'utilisateur teste lui-même** (vérifier en Node headless ; le rendu WebGL réel n'a pas été vu).
+```
+src/engine/     MOTEUR 3D, JavaScript pur (modules ES, aucune dépendance à React ni au store)
+  app.js          createEngine({ canvas, overlay, publish, baseUrl, createRenderer }) : boucle de rendu ; PUBLIE son état (publish(patch)) et renvoie des COMMANDES
+                  (selectView, goIss, setSimSpeed, resetTime, setFeature, setMetric, startRocket, stopRocket, setRocketSpeed, followComponent, toggleComponentInfo, dispose) ; rendu injectable (tests sans WebGL)
+  catalog.js      listes pour l'interface (menu des astres, satellites, fusées lançables, options de l'ISS) ; format.js (fmtMass, fmtAlt…) ; overlay.js (étiquettes 3D <div> + leur feuille de style, propriété du moteur) ; config.js (setBaseUrl / assetUrl)
+  bodies.js ephemeris.js physics.js launch.js rockets.js flight-plan.js flight-object.js iss.js earth.js moon.js launch-3d.js stack-models.js gltf-mini.js controls.js : les anciens js/*.js, convertis en modules ES
+  data/           GÉNÉRÉ : objects.js, plans.js (tools/make-objects.js, tools/lib-plans.js) ; surface-earth.js, earth-borders.js, surface-moon.js (données lourdes)
+  app.d.ts catalog.d.ts   types de la passerelle moteur ↔ TypeScript
+src/types/      types partagés (EngineState, Engine, panneaux…) ; src/constants/ ; src/helpers/ ; src/styles/globals.css
+src/store/      Zustand : index.ts (état publié par le moteur + état d'interface : panneau ouvert, mesures, options ISS), commands.ts (interface → moteur), initial.ts
+src/components/ un dossier par composant (index.ts = default, X.tsx export nommé, helpers.ts, constants.ts, types.ts, X.module.css) ; ui/Button = primitive partagée
+src/app/        Next.js App Router (layout.tsx, page.tsx, ClientApp.tsx : l'app n'est jamais rendue côté serveur, le moteur a besoin du navigateur)
+public/         objects/ (un dossier par objet JSON + modèles glb), data/ (plans JSON, photos aériennes) : servis tels quels, relus par le moteur sur http(s)
+tools/          générateurs (make-objects.js, lib-plans.js, make-plan.js…) et tests du moteur (tools/test/*.test.mjs)
+```
+
+**Règle d'or** : le moteur n'importe jamais React, le store ni `src/components`. Il reçoit un canal `publish` (le store l'implémente par `applyPatch`, fusion superficielle par tranche : `time`, `rocket`, `view`, `scale`…) et l'interface le pilote uniquement par les commandes de `src/store/commands.ts`. Les étiquettes 3D (noms des composants, étapes, ISS, cotes) restent des <div> gérés par le moteur dans le conteneur `overlay` (classes `eng-l3d`, style dans `overlay.js`).
+
+**Interface actuelle (volontairement minimale)** : trois boutons en haut — **🪐 Planètes**, **🛰 Satellites**, **🚀 Fusées** — qui déroulent en dessous leur rangée de boutons (planètes = astres du menu JSON → `selectView` ; satellites = l'ISS (→ `goIss`) + options 📐 Dimensions / 🛤 Trajectoire ; fusées = un bouton par fusée/plan → lance tout de suite ; en vol : ⏹ Arrêter + vitesses ⏸ ×1 ×5 ×20 ×60 ×200 + T+). Plus : texte d'info, interrupteur 📏, barre de temps, échelle. **Retirés pour l'instant** (« vire le blabla ») : descriptions, ouverture d'un JSON, liste « À faire », composants cliquables dans un panneau (les noms 3D restent cliquables dans la scène), boîte « Vue » (JSON copiable + cap/pitch/dist ; la commande `nudge` existe toujours dans le moteur).
+
+## Qualité : `npm run check`
+
+`npm run lint` (ESLint : moteur JS, TS/React avec react-hooks, règles « type pas interface » et « fonctions fléchées »), `npm run typecheck` (tsc strict), `npm test` = `test:engine` (Node : `tools/test/*.test.mjs`, le moteur est regroupé par esbuild en un bundle chargé dans un contexte vm par `tools/test/engine-loader.mjs`) + `test:ui` (vitest + jsdom + Testing Library : `src/__tests__`, dont le démarrage complet du moteur avec un rendu factice).
+**Tests de trajectoire** (`tools/test/trajectories.test.mjs`) : rejoue Ariane 5, fusée 500 km, fusée trop lente, navette, Voyager et le plan Starship et compare à des valeurs de référence (orbite atteinte ±5 km, durée ±1 %, altitude et vitesse max, liste des événements), plus déterminisme, conservation de l'énergie en orbite, effet Lune + Soleil. **Si on modifie le moteur ou un JSON de vol et que ce test échoue : soit c'est une régression, soit le changement est voulu et on met `REF` à jour (et la doc).** Autres suites : bodies (astres et éphémérides), object (objets JSON, Voyager, masse), plan, physics, launch (rendu 3D de la fusée, fumée, caméra), iss-object (SGP4 < 1 km), shuttle-models (modèles glTF NASA).
+
 
 ## Ce que fait la page
 
@@ -66,10 +89,12 @@ Web app (`index.html` + `css/style.css` + `js/*.js`, **scripts classiques** sans
 - **Panneau « 🛰 Satellites »** (bouton en haut, `#satsPanel`, code dans `js/main.js` juste après la boucle `ISS_FEATURES`) : **la liste des satellites** = objets `live` de `objects/` (l'ISS pour le moment, seule ; un clic = vue de près, `goIss()`, surlignée tant qu'on la regarde) puis **les options** : **📐 Dimensions** (taille 109 × 73 m et hauteur ; cocher l'option depuis une autre vue amène sur l'ISS car elle ne se voit que de près) et **🛤 Trajectoire (1 tour)** (prochaine période, ≈ 93 min). Un seul panneau ouvert à la fois avec « 🚀 Fusées ». Test : `boot.test.js` (liste = 1 entrée ISS, 2 options, cocher/décocher sans erreur).
 ## Lancer
 
-`npm start` à la racine (ou `start.bat` / `start.sh`) : serveur statique http-server sur http://localhost:5179 (sans cache). `package.json` ne contient que des scripts (aucune dépendance installée).
+`npm install` puis `npm run dev` (http://localhost:5179 ; régénère d'abord `src/engine/data/objects.js` et `plans.js`). `npm run build` = export statique dans `out/` (`NEXT_PUBLIC_BASE_PATH=/space-discover` pour GitHub Pages ; **déploiement : `.github/workflows/pages.yml` à chaque push sur `main`, il faut régler une fois Settings → Pages → Source = « GitHub Actions »**) ; `npm run preview` sert `out/`. Ajouter un objet : un dossier dans `public/objects/` puis `npm run objects`.
 
-## Structure
 
+## Structure du moteur
+
+(Les noms de fichiers ci-dessous sont ceux d'avant la migration : `js/xxx.js` = `src/engine/xxx.js`, `js/data/` = `src/engine/data/`, `objects/` = `public/objects/`, `data/plans/` = `public/data/plans/`.)
 `index.html` charge dans l'ordre : `vendor/three.min.js`, `vendor/satellite.min.js`, `data/surface-earth.js` (`SURF_EARTH`), `data/earth-borders.js` (`EARTH_BORDERS`), `earth.js` (texture, traits, `buildEarth`), `gltf-mini.js` (`loadGlb`), `launch.js` (`LCH`, `simulateLaunch`), `flight-object.js` (`flyObject`, `objectStart`, `objectToSpec`, `validateObject`), `data/objects.js` (**généré**, `FLIGHT_OBJECTS`), `iss.js` (`issState`, `ISS_FEATURES` ; chargé APRÈS `data/objects.js` car il lit l'ISS dans `FLIGHT_OBJECTS`), `physics.js` (`Body`, `bodyFromGeo`, `phAccel`, `Guidance`, `phKepler`), `story.js` (`STORIES`, `buildStoryPanel`), `data/surface-moon.js` (`SURF_MOON`), `rockets.js` (`ROCKETS`, `rocketOf`), `launch-3d.js` (`Launch`, `LAUNCH_SITES`, `buildLaunchPanel`, `buildTimeline`), `moon.js` (Lune), `controls.js` (`attachControls`), `main.js` (scène, caméra, boucle).
 Les fichiers `js/data/*` sont **générés** : `surface-earth.js` et `earth-borders.js` par les outils de `_archive/systeme-solaire/tools/` (`make-earth-land.mjs`, `make-earth-borders.mjs`), `plans.js` par `tools/make-plan.js`, `objects.js` par `tools/make-objects.js` : ne pas les éditer. **Plus de TLE à régénérer** : les paramètres de l'ISS sont dans `objects/iss/iss.json`.
 

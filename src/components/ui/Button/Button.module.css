@@ -1,0 +1,15 @@
+.button {
+  background: rgba(20, 30, 50, 0.75);
+  color: #e8eef7;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  white-space: nowrap;
+  touch-action: manipulation;
+}
+.button:hover:not(:disabled) { background: rgba(40, 60, 100, 0.85); }
+.button:disabled { opacity: 0.5; cursor: default; }
+.on { border-color: #ffd54a; color: #ffd54a; }

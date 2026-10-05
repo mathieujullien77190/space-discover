@@ -26,27 +26,23 @@ Une web app en **JavaScript pur + three.js** (aucune dépendance à installer, a
 ## Lancer en local
 
 ```bash
-cd space
-npm start        # ou double-clic sur start.bat (Windows) / ./start.sh
+npm install
+npm run dev      # http://localhost:5179
 ```
 
-(équivalent : `npx --yes http-server -p 5179 -c-1`)
-
-puis ouvrir <http://localhost:5179>. La page doit être servie en **http** (le modèle 3D de l'ISS et les photos sont chargés à la demande).
-
-Tests de calcul (Node, sans navigateur) : `npm test` (`tools/test/physics.test.js`), `node tools/test/object.test.js`, `node tools/test/launch.test.js`, `node tools/test/plan.test.js`, `node tools/test/boot.test.js`.
+Autres commandes : `npm run build` (export statique dans `out/`), `npm run lint`, `npm run typecheck`, `npm test` (moteur + interface), `npm run check` (tout).
 
 ## Organisation
 
-| Dossier / fichier | Rôle |
+Moteur 3D en **JavaScript pur** (three.js), interface en **React / Next.js / Zustand / TypeScript** (export statique pour GitHub Pages).
+
+| Dossier | Rôle |
 |---|---|
-| `index.html`, `css/` | page et styles |
-| `js/earth.js`, `main.js`, `controls.js` | globe, scène, caméra, interface |
-| `js/iss.js`, `gltf-mini.js` | ISS (SGP4) et chargeur de modèles 3D |
-| `js/physics.js` | moteur physique générique (`Body`, guidages, orbites képlériennes) |
-| `js/launch.js`, `rockets.js`, `launch-3d.js` | simulation de montée, fusées de chaque base, lancement en 3D, frise, options |
-| `js/story.js` | missions historiques (texte et photos) |
-| `data/` | cartes, photos aériennes, images d'illustration, modèle 3D de l'ISS |
+| `src/engine/` | moteur 3D (aucune dépendance à React) : globe, ISS (SGP4), astres, physique, fusées, `app.js` = point d'entrée `createEngine` |
+| `src/components/`, `src/store/`, `src/types/` | interface React : un dossier par composant, état Zustand, types |
+| `src/app/` | Next.js (App Router) |
+| `public/objects/`, `public/data/` | objets JSON (un dossier par objet, modèles 3D) et plans de vol, photos aériennes |
+| `tools/` | générateurs et tests du moteur (dont les tests de trajectoire) |
 | `_archive/` | travaux précédents (système solaire à l'échelle, frise, jeu de tir…) |
 | `CLAUDE.md` | documentation détaillée du projet |
 

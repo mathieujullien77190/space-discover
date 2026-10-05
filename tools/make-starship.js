@@ -1,12 +1,12 @@
 // node tools/make-starship.js : plan de vol Starship + Super Heavy depuis Starbase (Texas) vers une orbite circulaire de 500 km, AVEC retour du booster sur la tour :
 //   data/plans/starbase-starship-500km.json   (montée du vaisseau + plan de retour du booster)
-//   js/data/plans.js                           (copie embarquée de tous les plans, file://)
+//   src/engine/data/plans.js                           (copie embarquée de tous les plans, file://)
 // Montée : extraite d'une simulation avec guidage (comme tools/make-plan.js). Retour : le booster est guidé en boucle fermée par cet outil (boostback, chute libre, allumage d'atterrissage, guidage polynomial vers la tour) ;
-// les commandes appliquées (direction, poussée) sont enregistrées dans des TABLES ; js/flight-plan.js (flyReturn) les rejoue sans guidage et retrouve le même atterrissage.
+// les commandes appliquées (direction, poussée) sont enregistrées dans des TABLES ; src/engine/flight-plan.js (flyReturn) les rejoue sans guidage et retrouve le même atterrissage.
 const fs = require('fs'), vm = require('vm'), path = require('path');
 const root = path.join(__dirname, '..'), ctx = { console, Math, Date, JSON }; vm.createContext(ctx);
-for (const f of ['js/physics.js', 'js/launch.js', 'js/rockets.js', 'js/flight-plan.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f });
-const jsonPath = path.join(root, 'data', 'plans', 'starbase-starship-500km.json');
+require('./lib-engine').loadEngineIntoSync(ctx);
+const jsonPath = path.join(root, 'public', 'data', 'plans', 'starbase-starship-500km.json');
 ctx.DBG = process.env.DBG ? 1 : undefined; if (!process.env.DBG) delete ctx.DBG;
 const out = vm.runInContext(`(() => {
   const NL = String.fromCharCode(10), rk = ROCKETS.starship, L = Object.assign({}, LCH, rk.phys), N = Object.assign({}, LCH_NAMES, rk.names), DEG = Math.PI / 180;
@@ -66,7 +66,7 @@ const out = vm.runInContext(`(() => {
     pitch: { unit: 'degrés au-dessus de l’horizontale locale (90 = vertical), interpolé linéairement entre les points [temps en s, angle]', table },
     events,
     jettison: { _note: 'Le booster (stage1) revient : voir "returns.stage1". separationSpeedMs : m/s le long de la trajectoire (négatif = vers l’arrière).', stage1: { dryKg: 275e3, returns: true, separationSpeedMs: dvSep, atSeparation: { t: round(sep.t, 10), altitudeKm: round(sep.alt / 1000, 10), speedMs: round(sep.v, 10) } }, payload: { dryKg: PAYLOAD, separationSpeedMs: -0.6, atSeparation: { t: round(E.sat.t, 10), altitudeKm: round(E.sat.alt / 1000, 10), speedMs: round(E.sat.v, 10) } } },
-    returns: { stage1: Object.assign({ _note: 'Plan de retour du booster Super Heavy, rejoué par flyReturn (js/flight-plan.js) à partir de l’état à la séparation : boostback décrit par des tables (direction, poussée), atterrissage « hoverslam » décrit par des paramètres (bloc "landing"). Les valeurs "expected" sont calculées (informatives).' }, ret, { expected: { boostbackS: round(best.tbDur, 100), landingBurnStartS: round(tL - sep.t, 10), flightS: round(tdr.t - sep.t, 10), touchdownMissM: round(tdr.missM, 100), touchdownSpeedMs: round(tdr.speedMs, 100), touchdownVerticalMs: round(tdr.verticalMs, 100), propLeftKg: Math.round(tdr.propLeftKg), ok: tdr.ok } }) },
+    returns: { stage1: Object.assign({ _note: 'Plan de retour du booster Super Heavy, rejoué par flyReturn (src/engine/flight-plan.js) à partir de l’état à la séparation : boostback décrit par des tables (direction, poussée), atterrissage « hoverslam » décrit par des paramètres (bloc "landing"). Les valeurs "expected" sont calculées (informatives).' }, ret, { expected: { boostbackS: round(best.tbDur, 100), landingBurnStartS: round(tL - sep.t, 10), flightS: round(tdr.t - sep.t, 10), touchdownMissM: round(tdr.missM, 100), touchdownSpeedMs: round(tdr.speedMs, 100), touchdownVerticalMs: round(tdr.verticalMs, 100), propLeftKg: Math.round(tdr.propLeftKg), ok: tdr.ok } }) },
   });
 })()`, ctx);
 const plan = JSON.parse(out);

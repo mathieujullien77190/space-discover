@@ -1,9 +1,9 @@
 // Fabrique objects/ariane5/ (Ariane 5 ECA en JSON « objet » + une pièce larguable par fichier) à partir des données du plan de vol d'origine (data/plans/kourou-ariane5-500km.json : masses, moteurs, instants des
-// événements, courbe de tangage). Les paliers du JSON reprennent le débit et l'Isp de chaque moteur : le moteur d'objet (js/flight-object.js) retrouve la trajectoire du plan. Ensuite : node tools/make-objects.js.
+// événements, courbe de tangage). Les paliers du JSON reprennent le débit et l'Isp de chaque moteur : le moteur d'objet (src/engine/flight-object.js) retrouve la trajectoire du plan. Ensuite : node tools/make-objects.js.
 // Sortie : objects/ariane5/{ariane5,booster,fairing,stage1,satellite}.json ; compare l'orbite et la masse avec flyPlan. node tools/make-ariane5.js
-const fs = require('fs'), vm = require('vm'), path = require('path'), root = path.join(__dirname, '..'), out = path.join(root, 'objects', 'ariane5'), ctx = { console, Math, Date, JSON }; vm.createContext(ctx);
-for (const f of ['js/physics.js', 'js/launch.js', 'js/rockets.js', 'js/flight-plan.js', 'js/flight-object.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f });
-const plan = JSON.parse(fs.readFileSync(path.join(root, 'data/plans/kourou-ariane5-500km.json'), 'utf8')), V = plan.vehicle, B = V.boosters, S1 = V.stage1, S2 = V.stage2, G0 = 9.80665, r1 = (x, n) => Math.round(x * (n || 10)) / (n || 10);
+const fs = require('fs'), vm = require('vm'), path = require('path'), root = path.join(__dirname, '..'), out = path.join(root, 'public', 'objects', 'ariane5'), ctx = { console, Math, Date, JSON }; vm.createContext(ctx);
+require('./lib-engine').loadEngineIntoSync(ctx);
+const plan = JSON.parse(fs.readFileSync(path.join(root, 'public/data/plans/kourou-ariane5-500km.json'), 'utf8')), V = plan.vehicle, B = V.boosters, S1 = V.stage1, S2 = V.stage2, G0 = 9.80665, r1 = (x, n) => Math.round(x * (n || 10)) / (n || 10);
 const ev = k => plan.events.find(e => e.key === k).t;
 // --- pièces larguables : un JSON chacune ---
 const parts = {

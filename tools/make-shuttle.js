@@ -4,8 +4,8 @@
 // dynamique maximale (≈ 70 %) puis en fin de vol (limite de 3 g) ; arrêt MECO vers T+8:30, séparation du réservoir 18 s plus tard ; orbiteur ≈ 110 t avec deux moteurs OMS (2 × 26,7 kN, Isp 316 s) qui circularisent à l'apogée.
 // « Pas sur l'ISS, juste une trajectoire quelconque à l'altitude » (demande de l'utilisateur) : plein est depuis le pas de tir 39A, orbite visée ≈ 215 × 225 km.
 // Les modèles 3D (NASA) sont dans le même dossier. node tools/make-shuttle.js puis node tools/make-objects.js
-const fs = require('fs'), vm = require('vm'), path = require('path'), root = path.join(__dirname, '..'), out = path.join(root, 'objects', 'shuttle'), ctx = { console, Math, Date, JSON }; vm.createContext(ctx);
-for (const f of ['js/physics.js', 'js/launch.js', 'js/flight-object.js']) vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f });
+const fs = require('fs'), vm = require('vm'), path = require('path'), root = path.join(__dirname, '..'), out = path.join(root, 'public', 'objects', 'shuttle'), ctx = { console, Math, Date, JSON }; vm.createContext(ctx);
+require('./lib-engine').loadEngineIntoSync(ctx);
 const G0 = 9.80665, r1 = (x, n) => Math.round(x * (n || 10)) / (n || 10);
 const SRB = { n: 2, dry: 87000, prop: 503000, burn: 124, ispV: 268, ispS: 242 }, ET = { dry: 26500, resid: 2000, prop: 733000 }, ORBITER = 110000;
 const SSME = { n: 3, thrustV: 2279e3, ispV: 452.3, ispS: 366 }, SSME_FLOW = SSME.n * SSME.thrustV / (SSME.ispV * G0), OMS = { thrust: 53400, isp: 316 }, OMS_FLOW = OMS.thrust / (OMS.isp * G0), CDA = 60;
