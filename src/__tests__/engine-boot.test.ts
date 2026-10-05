@@ -450,6 +450,7 @@ describe('createEngine (rendu factice)', () => {
     expect(day.starOpacity.every((o) => o < 0.1)).toBe(true)
     engine.setDate(Date.UTC(2026, 9, 5, 0, 0, 0)); for (let i = 0; i < 2; i++) engine._frame(performance.now() + 900 + i * 100)
     const night = engine._obs()
+    expect(engine._glare().visible).toBe(false)                               // minuit : Soleil sous l’horizon, aucun éclat
     expect(night.stars).toBe(true)                                            // minuit : ciel étoilé
     expect(night.day).toBeLessThan(0.05)                                      // nuit : l’atmosphère est transparente
     engine.selectView('earth'); engine._frame(performance.now() + 1500)

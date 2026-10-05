@@ -52,12 +52,12 @@ export function createSunGlare(scene) {
   return {
     sprite,
     // sunPos : position du Soleil dans le monde (même repère que la caméra) ; earthCenter : centre de la Terre ; width / height : écran ; renvoie l'opacité appliquée (0 = caché)
-    update({ camera, sunPos, earthCenter, height }) {
+    update({ camera, sunPos, earthCenter, height, limit = 1 }) {
       dir.copy(sunPos).sub(camera.position); const d = dir.length(), px = glarePixels(d);
       if (!(d > 0) || px === 0) { sprite.visible = false; return 0; }
       dir.divideScalar(d);
-      let op = 1;
-      if (earthCenter) { ec.copy(earthCenter).sub(camera.position); const de = ec.length(); if (de > 1) { ec.divideScalar(de); op = glareOpacity(Math.acos(Math.max(-1, Math.min(1, ec.dot(dir)))), Math.asin(1 / de)); } }
+      let op = limit;   // limit : facteur imposé de l'extérieur (0 à 1), ex. le Soleil sous l'horizon local d'un observatoire
+      if (earthCenter) { ec.copy(earthCenter).sub(camera.position); const de = ec.length(); if (de > 1) { ec.divideScalar(de); op *= glareOpacity(Math.acos(Math.max(-1, Math.min(1, ec.dot(dir)))), Math.asin(1 / de)); } }
       if (op <= 0.002) { sprite.visible = false; return 0; }
       const R = camera.far * 0.45, pxAng = 2 * Math.tan(camera.fov * Math.PI / 360) / height;   // même distance que les étoiles ; taille monde d'un pixel à cette distance = R · pxAng
       sprite.position.copy(camera.position).addScaledVector(dir, R); sprite.scale.setScalar(R * pxAng * px);

@@ -45,8 +45,8 @@ void main() {
     float tStar = max(0.0, -dot(ray, oc));                    // point le plus bas du rayon vers l'avant (la caméra si le rayon monte)
     vec3 n = normalize(oc + ray * tStar);                       // la verticale en ce point
     float s = dot(n, uSun);                                     // sinus de la hauteur du Soleil en ce point
-    float lit = smoothstep(-0.22, 0.28, s);                     // jour : 1, nuit : 0 (transparent)
-    float tw = exp(-pow((s - 0.02) / 0.16, 2.0));              // crépuscule : fort quand le Soleil est près de l'horizon
+    float lit = max(smoothstep(-0.02, 0.28, s), 0.85 * smoothstep(-0.12, 0.0, s));   // jour : 1 ; après le coucher le ciel rougeoyant s'éteint jusqu'à NOIR (transparent) quand le Soleil est ≈ 7° sous l'horizon (s = −0,12)
+    float tw = smoothstep(-0.12, 0.0, s) * (1.0 - smoothstep(0.02, 0.3, s));   // crépuscule : rouge au coucher, de plus en plus faible ensuite, nul à s = −0,12
     vec3 up = normalize(oc);
     float e = dot(ray, up);                                     // hauteur du rayon au-dessus de l'horizon local
     vec3 rayH = ray - up * e, sunH = uSun - up * dot(uSun, up);
