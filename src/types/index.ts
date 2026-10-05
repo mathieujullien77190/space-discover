@@ -51,6 +51,7 @@ export type Engine = {
   setObservatories: (on: boolean) => void
   setStarInfo: (on: boolean) => void
   clearStar: () => void
+  _hubbleFeatures: () => Record<string, boolean>
   _moonBoost: () => number
   _moonBright: () => number
   _starInfo: () => { on: boolean; hip: number | null; ring: string }

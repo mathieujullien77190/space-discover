@@ -3,6 +3,15 @@
 import * as THREE from 'three';
 
 export const HUBBLE_LENGTH_M = 13.2, HUBBLE_DIAMETER_M = 4.2;
+// modèle NASA détaillé (« Hubble Space Telescope (A) », science.nasa.gov/3d-resources, libre de droits NASA) : public/objects/hubble/hubble-nasa.glb, unités = pouces, axe du télescope = y du fichier une fois la racine (−90° autour de x) appliquée ;
+// `transform` (3 × 3 par lignes : repère du fichier → scène) met l'axe du télescope sur x (sens de marche), l'axe des panneaux sur z (côté), haut = y
+export const HUBBLE_MODEL = 'objects/hubble/hubble-nasa.glb';
+export const HUBBLE_MODEL_CFG = { scale: 0.0254, transform: [0, 1, 0, 0, 0, 1, 1, 0, 0] };
+// cotes (repère du modèle, mètres) : longueur du tube au-dessus, envergure des panneaux solaires devant
+export const HUBBLE_DIMS = [
+  { a: [-6.6, 7.6, 0], b: [6.6, 7.6, 0], text: 'Longueur 13,2 m', up: [0, 0, 1] },   // au-dessus des panneaux (qui montent à ≈ 6,4 m de l'axe)
+  { a: [-9.8, 0, -5.8], b: [-9.8, 0, 5.8], text: 'Envergure ≈ 12 m', up: [1, 0, 0] },   // derrière le télescope
+];
 
 export function buildHubble() {
   const g = new THREE.Group(), mat = (color, o = {}) => new THREE.MeshStandardMaterial({ color, metalness: 0.35, roughness: 0.5, ...o });

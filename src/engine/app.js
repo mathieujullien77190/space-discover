@@ -4,8 +4,8 @@
 // Le rendu est injectable (createRenderer) pour tester sans WebGL.
 import * as THREE from 'three';
 import { BODY } from './bodies.js';
-import { ISS_FEATURES, ISS_EPOCH, ISS_FROM, ISS_MODEL, ISS_MODEL_CFG, ISS_W, issState, hubbleState } from './iss.js';
-import { HUBBLE_LENGTH_M, buildHubble } from './hubble-model.js';
+import { ISS_FEATURES, ISS_EPOCH, ISS_FROM, ISS_MODEL, ISS_MODEL_CFG, ISS_W, issState, hubbleState, HUBBLE_PERIOD_MS } from './iss.js';
+import { HUBBLE_LENGTH_M, HUBBLE_MODEL, HUBBLE_MODEL_CFG, HUBBLE_DIMS, buildHubble } from './hubble-model.js';
 import { createClouds } from './clouds.js';
 import { createCapitals } from './capitals.js';
 import { OBSERVATORIES, OBS_MOON_BOOST, OBS_MOON_BRIGHT, OBS_VIEW_ALT_KM, OBS_VIEW_FOV, OBS_VIEW_PITCH, observatoryById, observatoryFrame } from './observatories.js';
@@ -164,7 +164,17 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const dot = new THREE.Points(dg, new THREE.PointsMaterial({ color: 0xffd54a, size: 10, sizeAttenuation: false })); dot.frustumCulled = false; world.add(dot);
   const issLabel = overlay.label('ISS', 'iss');
   // HUBBLE : même mécanique que l'ISS (état SGP4 du TLE, modèle stylisé à la taille réelle, repère bleu clair, nom) ; la caméra le suit comme l'ISS (cam.mode 'iss' + focusSat)
-  const hubModel = buildHubble(); hubModel.visible = false; world.add(hubModel);
+  const hubModel = new THREE.Group(), hubProc = buildHubble(), hubHi = new THREE.Group(); hubModel.add(hubProc, hubHi); hubModel.visible = false; world.add(hubModel);
+  let hubHiState = 'idle';
+  const loadHubHi = () => {   // modèle NASA « Hubble Space Telescope (A) » (unités : pouces ; décompressé de Draco, 2,3 Mo) chargé à l'approche (< 500 km) : remplace le dessin simplifié
+    hubHiState = 'loading';
+    loadGlb(HUBBLE_MODEL).then(root => {
+      const c = new THREE.Box3().setFromObject(root).getCenter(new THREE.Vector3()); root.position.sub(c);
+      const k = HUBBLE_MODEL_CFG.scale, m3 = HUBBLE_MODEL_CFG.transform, w = new THREE.Group(); w.matrixAutoUpdate = false;
+      w.matrix.set(m3[0] * k, m3[1] * k, m3[2] * k, 0, m3[3] * k, m3[4] * k, m3[5] * k, 0, m3[6] * k, m3[7] * k, m3[8] * k, 0, 0, 0, 0, 1);
+      w.add(root); hubHi.add(w); hubProc.visible = false; hubHiState = 'ready';
+    }).catch(e => { hubHiState = 'error'; console.warn('Modèle Hubble détaillé indisponible :', e.message); });
+  };
   const hubDg = new THREE.BufferGeometry(); hubDg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
   const hubDot = new THREE.Points(hubDg, new THREE.PointsMaterial({ color: 0x7fe3ff, size: 10, sizeAttenuation: false })); hubDot.frustumCulled = false; hubDot.visible = false; world.add(hubDot);
   const hubLabel = overlay.label('Hubble', 'iss'); let hubScreen = null;
@@ -213,7 +223,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   };
   const viewIss = () => { if (fsat()) { setMode('iss'); applyLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist, true); } };   // accès DIRECT à l'ISS, sans transition
   const goIss = () => { focusSat = 'iss'; viewIss(); for (const f of ISS_FEATURES) setFeature(f.id, true); };   // choisir l'ISS (menu ou clic) : vue directe + options allumées d'office (dimensions, hauteur, trajectoire)
-  const goHubble = () => { focusSat = 'hubble'; viewIss(); };   // Hubble : vue d'accès comme l'ISS (sans cotes ni trajectoire : ce sont des options de l'ISS)
+  const goHubble = () => { focusSat = 'hubble'; viewIss(); for (const f of ISS_FEATURES) setFeature(f.id, true); };   // Hubble : comme l'ISS, vue d'accès directe + cotes, hauteur et trajectoire allumées d'office
   const currentView = () => {
     const rd = x => Math.round(x * 10) / 10, altCam = (camera.position.length() - 1) * R_KM;
     if (cam.mode === 'iss' && fsat()) { const F = frameIss(), d = camera.position.clone().sub(cam.tgt).normalize(); return { mode: 'iss', yaw: rd(Math.atan2(d.dot(F.s), -d.dot(F.f)) / DEG), pitch: rd(Math.asin(Math.max(-1, Math.min(1, d.dot(F.u)))) / DEG), distKm: Math.round(cam.dist * R_KM * 1e6) / 1e6, fov: camera.fov }; }
@@ -254,12 +264,15 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
 
   // caractéristiques 3D de l'ISS (Dimensions, Trajectoire : ISS_FEATURES, iss.js) ; leurs étiquettes sont projetées à l'écran à chaque image
   const l3d = [], featOn = {}, featInst = {};
-  const fctx = { scene: world, model: issModel, label(text) { const l = { el: overlay.label(text), world: new THREE.Vector3(), needModel: false }; l3d.push(l); return l; } };
+  const mkLabel = (sat, model) => text => { const l = { el: overlay.label(text), world: new THREE.Vector3(), needModel: false, sat, modelObj: model }; l3d.push(l); return l; };
+  const fctx = { scene: world, model: issModel, label: mkLabel('iss', issModel) };
+  const hctx = { scene: world, model: hubModel, label: mkLabel('hubble', hubModel), dims: HUBBLE_DIMS, stateOf: hubbleState, periodMs: HUBBLE_PERIOD_MS, orbitColor: 0x7fe3ff };   // mêmes caractéristiques que l'ISS (cotes, hauteur, trajectoire), propres à Hubble
   const setFeature = (id, on) => {
     const f = ISS_FEATURES.find(x => x.id === id); if (!f) return;
     featOn[id] = on; publish({ features: { ...featOn } }); if (id === 'size' && on && cam.mode !== 'iss') viewIss();   // « Dimensions » ne se voit que sur le satellite : on s'en approche
     if (on && !featInst[id]) featInst[id] = f.build(fctx);
-    const inst = featInst[id]; if (inst) { inst.objects.forEach(o => { o.visible = on; }); inst.labels.forEach(l => { if (!on) l.el.style.display = 'none'; }); }
+    if (on && !featInst['hubble:' + id]) featInst['hubble:' + id] = f.build(hctx);
+    for (const key of [id, 'hubble:' + id]) { const inst = featInst[key]; if (inst) { inst.objects.forEach(o => { o.visible = on; }); inst.labels.forEach(l => { if (!on) l.el.style.display = 'none'; }); } }
   };
 
   // ---------- fusées : plan de vol ou objet JSON, avec liste d'étapes, composants et lecture ----------
@@ -491,6 +504,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       fw.copy(hub.vel).addScaledVector(hub.up, -hub.vel.dot(hub.up)).normalize(); zz.crossVectors(fw, hub.up);
       hubModel.quaternion.setFromRotationMatrix(basis.makeBasis(fw, hub.up, zz)); hubModel.position.copy(hub.pos); hubModel.scale.setScalar(1e-3 / R_KM); hubModel.updateMatrix();
       const px = (HUBBLE_LENGTH_M / 1000 / dKm) / (2 * Math.tan(camera.fov * DEG / 2)) * innerHeight;
+      if (hubHiState === 'idle' && dKm < 500) loadHubHi();
       hubModel.visible = px >= 6; hubDot.visible = !hubModel.visible;
       hubDg.attributes.position.setXYZ(0, hub.pos.x, hub.pos.y, hub.pos.z); hubDg.attributes.position.needsUpdate = true;
       const p = hub.pos.clone().project(camera);
@@ -498,14 +512,14 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       if (realistic || issHidden || (issView && cam.fp && focusSat === 'hubble')) { hubScreen = null; hubLabel.style.display = 'none'; hubDot.visible = false; hubModel.visible = false; }   // vue réaliste, dézoomé ou vue DEPUIS Hubble : ni modèle, ni repère, ni nom
     }
     // caractéristiques 3D : mise à jour puis étiquettes projetées à l'écran
-    for (const f of ISS_FEATURES) {   // une caractéristique « onlyIss » (taille, hauteur) n'apparaît que sur la vue de l'ISS
-      const inst = featInst[f.id]; if (!inst) continue;
-      const act = !!featOn[f.id] && !!iss && !issHidden && !realistic && !(issView && cam.fp) && (!f.onlyIss || (cam.mode === 'iss' && focusSat === 'iss'));
+    for (const [sat, st] of [['iss', iss], ['hubble', hub]]) for (const f of ISS_FEATURES) {   // une caractéristique « onlyIss » (cotes, hauteur) n'apparaît que sur la vue du satellite regardé
+      const inst = featInst[sat === 'iss' ? f.id : 'hubble:' + f.id]; if (!inst) continue;
+      const act = !!featOn[f.id] && !!st && !issHidden && !realistic && !(issView && cam.fp) && (!f.onlyIss || (cam.mode === 'iss' && focusSat === sat));
       inst.objects.forEach(o => { o.visible = act; }); inst.labels.forEach(l => { l.active = act; });
-      if (act && iss) inst.update(iss, camera, date);
+      if (act && st) inst.update(st, camera, date);
     }
     for (const l of l3d) {
-      const on = iss && l.active && !(l.needModel && !issModel.visible);
+      const on = (l.sat === 'hubble' ? hub : iss) && l.active && !(l.needModel && !l.modelObj.visible);
       if (!on) { l.el.style.display = 'none'; continue; }
       if (l.alongLine && l.line) { placeAlong(l.el, l.line[0], l.line[1]); continue; }   // texte posé sur le trait, incliné comme lui
       const p = l.world.clone().project(camera);
@@ -594,7 +608,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _lod: () => ({ earth: earthLevel, bodies: Object.fromEntries(Object.entries(bodyObjs).filter(([, o]) => o.lodHi).map(([id, o]) => [id, o.mesh.visible ? o.lod : -1])), ratio }),
     _orbitsVisible: () => Object.fromEntries(Object.entries(bodyObjs).filter(([, o]) => o.orbitG).map(([id, o]) => [id, o.orbitG.visible || (!!o.localLine && o.localLine.visible)])),
     _localOrbit: id => { const o = bodyObjs[id]; if (!o || !o.localLine) return null; const at = o.localLine.geometry.attributes.position; return { visible: o.localLine.visible, coarse: o.orbitG.visible, n: at.count, mid: [at.getX(LOCAL_N), at.getY(LOCAL_N), at.getZ(LOCAL_N)], pos: o.localLine.position.toArray(), end: [at.getX(0), at.getY(0), at.getZ(0)] }; },
-    _featuresVisible: () => Object.fromEntries(Object.entries(featInst).map(([id, inst]) => [id, inst.objects.some(o => o.visible)])),
+    _featuresVisible: () => Object.fromEntries(Object.entries(featInst).filter(([id]) => !id.startsWith('hubble:')).map(([id, inst]) => [id, inst.objects.some(o => o.visible)])),   // ISS
+    _hubbleFeatures: () => Object.fromEntries(Object.entries(featInst).filter(([id]) => id.startsWith('hubble:')).map(([id, inst]) => [id.slice(7), inst.objects.some(o => o.visible)])),
     selectView,
     goIss, goHubble, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
     setClouds: on => { cloudsOn = !!on; },

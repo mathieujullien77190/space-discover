@@ -358,6 +358,8 @@ describe('createEngine (rendu factice)', () => {
     expect(Number(m![1].replace(/[^0-9]/g, ''))).toBeLessThan(620)
     expect(Number(m![3])).toBeLessThanOrEqual(28.6)
     expect(state.info).toMatch(/de Hubble/)
+    expect(engine._hubbleFeatures()).toEqual({ size: true, orbit: true })      // cotes + hauteur et trajectoire allumées d’office, comme pour l’ISS
+    expect(engine._featuresVisible().size).toBe(false)                         // les cotes de l’ISS ne s’affichent pas pendant qu’on regarde Hubble
     engine.setIssView(true)
     for (let i = 0; i < 4; i++) engine._frame(performance.now() + 400 + i * 100)
     expect(engine._fp()!.posErr!).toBeLessThan(1)                              // la caméra est SUR Hubble

@@ -29,6 +29,7 @@ export const issState = d => satState(ISS_OBJ, ISS_EPOCH, ISS_FROM, d);
 export const HUBBLE_OBJ = FLIGHT_OBJECTS.hubble;
 export const HUBBLE_EPOCH = Date.parse(HUBBLE_OBJ.start.orbit.epoch), HUBBLE_FROM = HUBBLE_OBJ.exists && HUBBLE_OBJ.exists.from ? Date.parse(HUBBLE_OBJ.exists.from) : -Infinity;
 export const hubbleState = d => satState(HUBBLE_OBJ, HUBBLE_EPOCH, HUBBLE_FROM, d);
+export const HUBBLE_PERIOD_MS = objectPeriodS(HUBBLE_OBJ) * 1000;
 
 // Le modèle 3D (NASA, texturé) est chargé par js/main.js (ISS_MODEL, dans le dossier de l'objet) ; repère du modèle en mètres : x = sens du vol, y = vers le haut (zénith), z = poutre (perpendiculaire à l'orbite).
 
@@ -42,7 +43,7 @@ export const ISS_FEATURES = [
     const col = 0x4fd8ff, tk = 4, V = (x, y, z) => new THREE.Vector3(x, y, z);
     // (positions absolues = matrice locale du modèle, PAS localToWorld : le groupe `world` est décalé au rendu — origine flottante)
     // cotes dans le repère du modèle (suivent son orientation et son agrandissement) : largeur = poutre (z), longueur = modules (x), posées à l'écart du modèle
-    const dims = [{ a: V(50, 0, -54.5), b: V(50, 0, 54.5), text: 'Largeur 109 m', up: V(1, 0, 0) }, { a: V(-36.5, 0, 62), b: V(36.5, 0, 62), text: 'Longueur 73 m', up: V(0, 0, 1) }];
+    const dims = ctx.dims ? ctx.dims.map(d => ({ a: V(...d.a), b: V(...d.b), text: d.text, up: V(...d.up) })) : [{ a: V(50, 0, -54.5), b: V(50, 0, 54.5), text: 'Largeur 109 m', up: V(1, 0, 0) }, { a: V(-36.5, 0, 62), b: V(36.5, 0, 62), text: 'Longueur 73 m', up: V(0, 0, 1) }];   // ctx.dims : cotes d'un autre satellite (Hubble), dans le repère de son modèle
     const objects = [], labels = [];
     for (const d of dims) {
       const t1 = d.up.clone().multiplyScalar(tk), pts = [d.a, d.b, d.a.clone().sub(t1), d.a.clone().add(t1), d.b.clone().sub(t1), d.b.clone().add(t1)];
@@ -69,15 +70,15 @@ export const ISS_FEATURES = [
   // trajectoire future sur un tour (une période, ~93 min), dans le repère de la Terre qui tourne (ce que verrait le sol), à l'altitude réelle ; recalculée chaque seconde, le départ colle toujours à l'ISS
   { id: 'orbit', label: '🛤 Trajectoire (1 tour)', build(ctx) {
     const N = 180, pos = new Float32Array((N + 1) * 3), g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    const line = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xffe27a })); line.frustumCulled = false; ctx.scene.add(line);
-    let built = -1e12; const periodMs = ISS_PERIOD_MS;   // période du JSON (86400 / tours par jour)
+    const line = new THREE.Line(g, new THREE.LineBasicMaterial({ color: ctx.orbitColor || 0xffe27a })); line.frustumCulled = false; ctx.scene.add(line);
+    let built = -1e12; const periodMs = ctx.periodMs || ISS_PERIOD_MS, stateOf = ctx.stateOf || issState;   // période du JSON (86400 / tours par jour)
     return {
       objects: [line], labels: [],
       update(iss, camera, date) {
         const t = date.getTime();
         if (t - built > 1000) {
           built = t;
-          for (let k = 1; k <= N; k++) { const st = issState(new Date(t + periodMs * k / N)); if (st) pos.set([st.pos.x, st.pos.y, st.pos.z], 3 * k); }
+          for (let k = 1; k <= N; k++) { const st = stateOf(new Date(t + periodMs * k / N)); if (st) pos.set([st.pos.x, st.pos.y, st.pos.z], 3 * k); }
         }
         pos.set([iss.pos.x, iss.pos.y, iss.pos.z], 0); g.attributes.position.needsUpdate = true;
       },
