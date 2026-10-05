@@ -78,6 +78,7 @@ export type Engine = {
   setMetric: (on: boolean) => void
   setBigVehicles: (on: boolean) => void
   setFirstPerson: (on: boolean) => void
+  setViewInset: (right: number, bottom: number) => void
   _fp: () => { yaw: number; pitch: number; fov: number; posErr: number | null; dir: number[]; up: number[]; radial: number[] | null; flight: number[] | null } | null
   setStorySpeed: (speed: number) => void
   startRocket: (key: string, custom?: unknown) => Promise<unknown>
@@ -101,6 +102,7 @@ export type Engine = {
   _probe: (id: string) => { shown: boolean; dist: number; camDist: number; dot: boolean; model: boolean; path: boolean; local: boolean; pos: number[]; abs: number[]; r: number[] | null; label: string } | null
   _probeDistance: (probe: string, body: string) => number
   _vehicle: () => { vk: number; scale: number; camKm: number; lenKm: number } | null
+  _inset: () => { cr: number; offsetX: number; enabled: boolean }
   _story: () => { index: number; next: number; phase: string; finished: boolean; trig: number[]; T: number | null; playing: boolean | null; speed: number | null } | null
   _lod: () => { earth: number; bodies: Record<string, number>; ratio: number }
 }

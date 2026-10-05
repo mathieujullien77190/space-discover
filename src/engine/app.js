@@ -352,7 +352,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const publishStory = () => publish({ story: !story ? STORY_OFF : { active: true, id: story.def.id, title: story.def.title, index: story.index, total: story.def.steps.length, phase: story.phase, finished: story.finished, canNext: story.phase === 'showing', step: story.index >= 0 ? story.def.steps[story.index] : null } });
   const storyCamera = spec => {   // cadrage : composant suivi (pad, rocket, eap1, epc…) ; le zoom n'est jamais modifié par une histoire
     if (!spec || !launch) return;
-    if (spec.follow) { launch.follow = spec.follow; cam.userDir = false; }
+    if (spec.follow) { if (spec.follow !== launch.follow && cam.mode === 'launch') cam.blend = { from: cam.tgt.clone(), t: 0 }; launch.follow = spec.follow; cam.userDir = false; }
     if (spec.firstPerson !== undefined) setFirstPerson(!!spec.firstPerson);   // « ce que voyait Laïka » : la caméra est SUR le point en mouvement, on regarde autour
     if (cam.mode !== 'launch') setMode('launch');
   };
@@ -400,7 +400,10 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const onMove = e => canvas.classList.toggle('hand', near(issScreen, HIT, e.clientX, e.clientY) || !!bodyAt(e.clientX, e.clientY));
   canvas.addEventListener('pointermove', onMove); disposers.push(() => canvas.removeEventListener('pointermove', onMove));
 
-  const resize = () => { const vv = window.visualViewport, w = Math.round(vv ? vv.width : innerWidth), h = Math.round(vv ? vv.height : innerHeight); renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
+  let vw = 1, vh = 1;   // taille du canevas ; inset = place prise par un panneau (histoire) : la scène est centrée sur le reste de l'écran (glisse en douceur)
+  const inset = { r: 0, b: 0, cr: 0, cb: 0 };
+  const setViewInset = (r, b) => { inset.r = Math.max(0, r || 0); inset.b = Math.max(0, b || 0); };
+  const resize = () => { const vv = window.visualViewport, w = Math.round(vv ? vv.width : innerWidth), h = Math.round(vv ? vv.height : innerHeight); vw = w; vh = h; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
   const onOrient = () => setTimeout(resize, 200);
   addEventListener('resize', resize); addEventListener('orientationchange', onOrient); if (window.visualViewport) visualViewport.addEventListener('resize', resize);
   disposers.push(() => { removeEventListener('resize', resize); removeEventListener('orientationchange', onOrient); if (window.visualViewport) visualViewport.removeEventListener('resize', resize); });
@@ -452,13 +455,14 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     storyTick();
     const goalTgt = solarMode ? (babs[solarTarget] || (probeObjs[solarTarget] && probeObjs[solarTarget].st ? probeObjs[solarTarget].abs : null) || tmp.set(0, 0, 0)) : cam.mode === 'iss' && iss ? iss.pos : cam.mode === 'launch' && launch ? launch.focusPos : tmp.set(0, 0, 0);
     if (cam.mode === 'launch' && launch) {   // caméra auto : sur le côté de la trajectoire, de plus en plus loin ; le zoom manuel multiplie la distance
-      if (!cam.userDir) { const d = launch.camDir; cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; }
+      if (!cam.userDir) { let d = launch.camDir; if (story) { if (!cam.smDir) cam.smDir = d.clone(); cam.smDir.lerp(d, 1 - Math.exp(-dt * 2.5)).normalize(); d = cam.smDir; } else cam.smDir = null; cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; }   // en histoire : la direction de la caméra est lissée (mouvement fluide)
       const auto = (launch.follow === 'pad' ? 500 : launch.rocketLen * launch.vk * 1.6) / 1000 / R_KM; cam.launchK = Math.max(0.02 / (auto * R_KM), Math.min(cam.launchK, 41 / auto));   // caméra TOUT PRÈS de la fusée (1,6 fois sa longueur), à toute altitude ; vue « Pas de tir » : à 500 m ; la molette ajuste
       cam.goal.dist = auto * cam.launchK;
     }
     cam.tgt.copy(goalTgt);   // la cible est posée directement (plus de glissement entre les vues)
+    if (cam.blend) { cam.blend.t += dt / 1.8; const u = Math.min(1, cam.blend.t), e = u * u * (3 - 2 * u); cam.tgt.copy(cam.blend.from).lerp(goalTgt, e); if (u >= 1) cam.blend = null; }   // histoire : changement de cible (pas de tir → fusée) en glissant
     // zoom (molette) : amorti pour ne pas sauter, en altitude pour la Terre (sinon l'amortissement ne bouge plus près du sol)
-    const kz = 1 - Math.exp(-dt * 14), base = cam.mode === 'earth' ? 1 : 0;
+    const kz = 1 - Math.exp(-dt * (story ? 3 : 14)), base = cam.mode === 'earth' ? 1 : 0;
     const cur = Math.max(1e-7, cam.dist - base), want = Math.max(1e-7, cam.goal.dist - base);
     cam.dist = base + Math.exp(Math.log(cur) + (Math.log(want) - Math.log(cur)) * kz);
     if (Math.abs(Math.log(cam.dist - base) - Math.log(want)) < 1e-3) cam.dist = cam.goal.dist;
@@ -473,6 +477,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     pxScale = innerHeight / 2 / Math.tan(camera.fov * DEG / 2);   // pixels par unité de rayon vu à 1 unité de distance
     { const lv = lodLevel(pxScale / Math.max(1e-6, camera.position.length()), earthLevel, EARTH_LOD.T); if (lv !== earthLevel) { earthLevel = lv; earthGlobe.geometry = EARTH_LOD.seg[lv] ? sphereLod(EARTH_LOD.seg[lv]) : earthGeoHi; } }
     earthAxis.visible = ((cam.mode === 'earth' && cam.dist > 1.6) || solarMode) && camera.position.length() < 40;   // équateur et pôle nord de la Terre quand on la regarde d'assez loin
+    { const k = 1 - Math.exp(-dt * 6); inset.cr += (inset.r - inset.cr) * k; inset.cb += (inset.b - inset.cb) * k; if (Math.abs(inset.r - inset.cr) < 0.5) inset.cr = inset.r; if (Math.abs(inset.b - inset.cb) < 0.5) inset.cb = inset.b;
+      if (inset.cr > 0 || inset.cb > 0) camera.setViewOffset(vw, vh, inset.cr / 2, inset.cb / 2, vw, vh); else if (camera.view) camera.clearViewOffset(); }   // décale l'image : le centre de la scène est celui de la zone libre
     camera.near = Math.min(0.05, closest); camera.far = Math.max(1e7, 8 * (camera.position.length() + cam.dist)); camera.updateProjectionMatrix();   // plan lointain proportionnel à l'éloignement : pas de limite de zoom arrière
 
     // astres : chacun d'après son JSON (position, orientation, queue de comète, orbite, trace, point lointain, étiquette)
@@ -695,11 +701,12 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     selectView,
     goIss, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
     setStorySpeed: v => { if (launch && Number.isFinite(v) && v > 0) launch.speed = v; },   // vitesse du temps pendant une histoire (ne relance pas une étape en pause)
-    setBigVehicles, setFirstPerson,
+    setBigVehicles, setFirstPerson, setViewInset,
     _fp: () => cam.fp ? { yaw: cam.fp.yaw, pitch: cam.fp.pitch, fov: camera.fov, posErr: launch ? camera.position.distanceTo(launch.pos) * R_KM * 1000 : null, dir: new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray(), up: new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion).toArray(), radial: launch ? launch.radial.toArray() : null, flight: launch ? launch.dir.toArray() : null } : null,
 
     startRocket, stopRocket, launchMission, followMission, startStory, storyNext, quitStory,
     _vehicle: () => launch ? { vk: launch.vk, scale: launch.rocket.scale.x, camKm: camera.position.distanceTo(launch.center) * R_KM, lenKm: launch.rocketLen * launch.vk / 1000 } : null,
+    _inset: () => ({ cr: inset.cr, offsetX: camera.view && camera.view.enabled ? camera.view.offsetX : 0, enabled: !!(camera.view && camera.view.enabled) }),
     _story: () => story ? { index: story.index, next: story.next, phase: story.phase, finished: story.finished, trig: story.trig, T: launch ? launch.T : null, playing: launch ? launch.playing : null, speed: launch ? launch.speed : null } : null, setRocketSpeed, followComponent, toggleComponentInfo,
     dispose() {
       stopped = true; cancelAnimationFrame(raf); clearTimeout(solarTimer); disposers.forEach(d => d()); clearLabels(); overlay.dispose();

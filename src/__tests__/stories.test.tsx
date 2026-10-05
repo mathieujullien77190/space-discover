@@ -16,10 +16,10 @@ const step: StoryStep = {
 } as StoryStep
 
 describe('mode histoire (interface)', () => {
-  let engine: { startStory: ReturnType<typeof vi.fn>; setStorySpeed: ReturnType<typeof vi.fn>; setFirstPerson: ReturnType<typeof vi.fn>; storyNext: ReturnType<typeof vi.fn>; quitStory: ReturnType<typeof vi.fn> }
+  let engine: { startStory: ReturnType<typeof vi.fn>; setStorySpeed: ReturnType<typeof vi.fn>; setFirstPerson: ReturnType<typeof vi.fn>; setViewInset: ReturnType<typeof vi.fn>; storyNext: ReturnType<typeof vi.fn>; quitStory: ReturnType<typeof vi.fn> }
   beforeEach(() => {
     localStorage.clear()
-    engine = { startStory: vi.fn(() => Promise.resolve()), setStorySpeed: vi.fn(), setFirstPerson: vi.fn(), storyNext: vi.fn(), quitStory: vi.fn() }
+    engine = { startStory: vi.fn(() => Promise.resolve()), setStorySpeed: vi.fn(), setFirstPerson: vi.fn(), setViewInset: vi.fn(), storyNext: vi.fn(), quitStory: vi.fn() }
     useStore.setState({ ...initialEngineState, achievements: [], unlocked: null, engine: engine as unknown as Engine })
   })
   it('liste : la liste montre l’histoire de Laïka, un clic la lance', () => {
@@ -33,6 +33,13 @@ describe('mode histoire (interface)', () => {
     expect(screen.getByText('Le savais-tu ?')).toBeInTheDocument()
     fireEvent.click(screen.getByText(/Suivant/))
     expect(engine.storyNext).toHaveBeenCalled()
+  })
+  it('panneau : la scène est centrée sur le reste de l’écran (le panneau prend sa place)', () => {
+    useStore.setState({ story: { active: true, id: 'laika', title: 'Laïka', index: 0, total: 3, phase: 'showing', finished: false, canNext: true, step } })
+    const { unmount } = render(<StoryPlayer />)
+    expect(engine.setViewInset).toHaveBeenCalled()
+    unmount()
+    expect(engine.setViewInset).toHaveBeenLastCalledWith(0, 0)
   })
   it('curseur : change la vitesse du temps de l’histoire', () => {
     useStore.setState({ story: { active: true, id: 'laika', title: 'Laïka', index: 0, total: 3, phase: 'showing', finished: false, canNext: true, step } })

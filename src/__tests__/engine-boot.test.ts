@@ -407,6 +407,10 @@ describe('createEngine (rendu factice)', () => {
     expect(state.story.step?.at).toBe('before')
     expect(Math.abs(state.time.simMs - Date.UTC(1957, 10, 3, 2, 30, 42))).toBeLessThan(120000)   // saut dans le temps : 3 novembre 1957
     expect(engine._story()).toMatchObject({ playing: false, T: 0 })           // en pause, rien n'a bougé
+    engine.setViewInset(420, 0); frames(60)                                    // un panneau de 420 px à droite : la scène est décalée pour se centrer sur le reste de l’écran
+    expect(engine._inset()).toMatchObject({ enabled: true, cr: 420, offsetX: 210 })
+    engine.setViewInset(0, 0); frames(120)
+    expect(engine._inset().enabled).toBe(false)
     engine.setStorySpeed(50); frames(2)                                        // le curseur règle la vitesse sans relancer une étape en pause
     expect(engine._story()).toMatchObject({ playing: false, speed: 50, T: 0 })
     engine.setStorySpeed(12)
