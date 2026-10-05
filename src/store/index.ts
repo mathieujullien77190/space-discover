@@ -2,6 +2,7 @@
 // Le moteur n'importe jamais ce fichier : il reçoit `applyPatch` comme canal de publication, et l'interface le pilote par les commandes de `commands.ts`.
 import { create } from 'zustand'
 import { NUDGE_STEPS } from '@/constants'
+import { readCardCollapsed, writeCardCollapsed } from '@/helpers'
 import type { BodyCategory, Engine, EnginePatch, EngineState, PanelName } from '@/types'
 import { initialEngineState } from './initial'
 
@@ -9,6 +10,7 @@ export type UiState = {
   panel: PanelName | null
   bodyCategory: BodyCategory
   nudgeStep: number   // index dans NUDGE_STEPS
+  cardCollapsed: boolean   // fiche d'astre réduite en mini bouton-icône (mémorisé)
 }
 
 export type Store = EngineState &
@@ -19,6 +21,7 @@ export type Store = EngineState &
     togglePanel: (panel: PanelName) => void
     setBodyCategory: (category: BodyCategory) => void
     cycleNudgeStep: () => void
+    setCardCollapsed: (on: boolean) => void
   }
 
 const isPlainObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -39,9 +42,14 @@ export const useStore = create<Store>((set) => ({
   panel: null,
   bodyCategory: 'planets',
   nudgeStep: 1,
+  cardCollapsed: readCardCollapsed(),
   setEngine: (engine) => set({ engine }),
   applyPatch: (patch) => set((s) => mergePatch(s, patch)),
   togglePanel: (panel) => set((s) => ({ panel: s.panel === panel ? null : panel })),
   setBodyCategory: (bodyCategory) => set({ bodyCategory }),
+  setCardCollapsed: (cardCollapsed) => {
+    writeCardCollapsed(cardCollapsed)
+    set({ cardCollapsed })
+  },
   cycleNudgeStep: () => set((s) => ({ nudgeStep: (s.nudgeStep + 1) % NUDGE_STEPS.length })),
 }))

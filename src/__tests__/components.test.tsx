@@ -141,6 +141,22 @@ describe('ViewParams (juste au-dessus de la barre d’échelle)', () => {
 })
 
 describe('BodyCard (fiche de l’astre proche)', () => {
+  it('réductible en mini bouton-icône (mémorisé), un clic la rouvre', () => {
+    localStorage.removeItem('cardCollapsed')
+    useStore.setState({ ...initialEngineState, focus: { id: 'mars' }, cardCollapsed: false })
+    render(<BodyCard />)
+    expect(screen.getByRole('heading', { name: 'Mars' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Réduire la fiche' }))
+    expect(screen.queryByRole('heading', { name: 'Mars' })).toBeNull()   // plus de fiche : seulement l’icône
+    expect(localStorage.getItem('cardCollapsed')).toBe('1')
+    const mini = screen.getByRole('button', { name: 'Afficher la fiche : Mars' })
+    expect(mini.querySelector('img')?.getAttribute('src')).toBe('/objects/mars/card.png')   // l’icône est l’illustration de l’astre
+    act(() => useStore.setState({ focus: { id: 'jupiter' } }))
+    expect(screen.getByRole('button', { name: 'Afficher la fiche : Jupiter' })).toBeInTheDocument()   // l’icône suit l’astre choisi
+    fireEvent.click(screen.getByRole('button', { name: 'Afficher la fiche : Jupiter' }))
+    expect(screen.getByRole('heading', { name: 'Jupiter' })).toBeInTheDocument()
+    expect(localStorage.getItem('cardCollapsed')).toBe('0')
+  })
   it('boutons « Nord en haut » et « Orbite à plat » : appellent le moteur avec l’astre de la fiche ; pas pour l’ISS ni le Soleil (orbite)', () => {
     const engine = fakeEngine()
     useStore.setState({ ...initialEngineState, focus: { id: 'jupiter' }, view: { mode: 'solar', selected: 'jupiter', align: null }, engine })

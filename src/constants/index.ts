@@ -1,4 +1,5 @@
 // Constantes partagées de l'interface : clés de stockage, vitesses, chemins.
+export const STORAGE_KEYS = { cardCollapsed: 'cardCollapsed' } as const
 export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
 
 export const TIME_SPEEDS: ReadonlyArray<{ speed: number; label: string }> = [
