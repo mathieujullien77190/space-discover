@@ -9,8 +9,10 @@ const center = px(c, c);
 check(center[0] > 250 && center[1] > 250 && center[2] > 240 && center[3] > 250, 'cœur blanc opaque : ' + center);
 const corner = px(2, 2);
 check(corner[3] < 3, 'les coins sont transparents (alpha ' + corner[3] + ') : pas de carré visible');
-const r = c * 0.5, onSpike = px(c + r, c), offSpike = px(c + r * Math.cos(Math.PI / 12), c + r * Math.sin(Math.PI / 12));
-check(onSpike[3] > offSpike[3] + 5, 'une aigrette passe à 50 % du rayon : alpha ' + onSpike[3] + ' sur le rayon contre ' + offSpike[3] + ' entre deux rayons');
+const r = c * 0.5, onStreak = px(c + r, c), offStreak = px(c + r * Math.cos(Math.PI / 12), c + r * Math.sin(Math.PI / 12));
+check(onStreak[3] > offStreak[3] + 3, 'une traînée diffuse passe à 50 % du rayon : alpha ' + onStreak[3] + ' sur l’axe contre ' + offStreak[3] + ' entre deux traînées');
+let maxStep = 0, prev = px(c + r, c)[3], mono = true; for (let dy = 1; dy <= 24; dy++) { const a = px(c + r, c + dy)[3]; maxStep = Math.max(maxStep, Math.abs(a - prev)); if (a > prev + 1) mono = false; prev = a; }
+check(maxStep <= 8 && mono, 'profil en travers d’une traînée DOUX (aucun bord net) : saut maximal de ' + maxStep + ' d’alpha entre deux pixels, décroissant');
 const halo = px(c + c * 0.12, c + c * 0.12 * 0.5);
 check(halo[3] > 30, 'halo lumineux autour du cœur (alpha ' + halo[3] + ')');
 const bluish = px(c + c * 0.3, c + c * 0.05);

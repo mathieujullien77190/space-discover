@@ -18,14 +18,18 @@ export function paintGlare(g, size) {
   halo.addColorStop(0.16, 'rgba(180,196,255,0.32)'); halo.addColorStop(0.38, 'rgba(110,124,255,0.11)'); halo.addColorStop(1, 'rgba(60,70,200,0)');
   g.fillStyle = halo; g.fillRect(0, 0, size, size);
   g.globalCompositeOperation = 'lighter';
-  // aigrettes : 12 rayons effilés (les 4 principaux plus longs), du centre vers le bord, qui s'éteignent
-  for (let k = 0; k < 12; k++) {
-    const a = (k * Math.PI) / 6 + (k % 3 === 0 ? 0 : 0.0), len = c * (k % 3 === 0 ? 0.98 : k % 3 === 1 ? 0.62 : 0.78), w = k % 3 === 0 ? 3.2 : 1.8, dx = Math.cos(a), dy = Math.sin(a);
-    const lg = g.createLinearGradient(c, c, c + dx * len, c + dy * len);
-    lg.addColorStop(0, 'rgba(255,255,255,0.95)'); lg.addColorStop(0.25, 'rgba(255,250,240,0.45)'); lg.addColorStop(1, 'rgba(200,215,255,0)');
-    g.fillStyle = lg; g.beginPath();   // triangle très fin : large au centre (w), pointe au bout
-    g.moveTo(c - dy * w, c + dx * w); g.lineTo(c + dx * len, c + dy * len); g.lineTo(c + dy * w, c - dx * w); g.closePath(); g.fill();
+  // traînées DIFFUSES (pas de triangles nets) : chaque traînée est une ellipse très allongée remplie d'un dégradé radial (opaque au centre, transparente au bord), donc douce dans la longueur ET dans la largeur ;
+  // 6 ellipses tournées de 30° = 12 traînées de part et d'autre du centre, de longueurs différentes ; plus un voile large très faible
+  const streaks = [[0, 0.98, 0.12, 0.3], [30, 0.6, 0.11, 0.2], [60, 0.78, 0.11, 0.24], [90, 0.98, 0.12, 0.3], [120, 0.6, 0.11, 0.2], [150, 0.78, 0.11, 0.24]];
+  for (const [deg, len, wid, alpha] of streaks) {
+    g.save(); g.translate(c, c); g.rotate(deg * Math.PI / 180); g.scale(c * len, c * wid);
+    const sg = g.createRadialGradient(0, 0, 0, 0, 0, 1);
+    sg.addColorStop(0, 'rgba(255,255,255,' + alpha + ')'); sg.addColorStop(0.18, 'rgba(235,240,255,' + alpha * 0.55 + ')'); sg.addColorStop(0.55, 'rgba(170,190,255,' + alpha * 0.16 + ')'); sg.addColorStop(1, 'rgba(120,140,255,0)');
+    g.fillStyle = sg; g.beginPath(); g.arc(0, 0, 1, 0, Math.PI * 2); g.fill(); g.restore();
   }
+  const veil = g.createRadialGradient(c, c, 0, c, c, c * 0.8);
+  veil.addColorStop(0, 'rgba(255,250,240,0.22)'); veil.addColorStop(0.3, 'rgba(200,215,255,0.08)'); veil.addColorStop(1, 'rgba(120,140,255,0)');
+  g.fillStyle = veil; g.fillRect(0, 0, size, size);
   g.globalCompositeOperation = 'source-over';
 }
 
