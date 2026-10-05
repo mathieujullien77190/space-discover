@@ -96,9 +96,9 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
 
   // fond d'étoiles (rayon 3 000 000 unités : au-delà de Neptune, à 704 000)
   const sp = new Float32Array(3 * 3000), tmp = new THREE.Vector3();
-  for (let i = 0; i < 3000; i++) { tmp.set(Math.random() - .5, Math.random() - .5, Math.random() - .5).normalize().multiplyScalar(3e6); sp.set([tmp.x, tmp.y, tmp.z], 3 * i); }
+  for (let i = 0; i < 3000; i++) { tmp.set(Math.random() - .5, Math.random() - .5, Math.random() - .5).normalize(); sp.set([tmp.x, tmp.y, tmp.z], 3 * i); }
   const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3));
-  scene.add(new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: 1.3, sizeAttenuation: false, depthWrite: false })));
+  const stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: 1.3, sizeAttenuation: false, depthWrite: false })); stars.frustumCulled = false; scene.add(stars);   // sphère de rayon 1, replacée sur la caméra et grossie à chaque image : le fond est toujours « à l'infini », quel que soit le zoom arrière
   const amb = new THREE.AmbientLight(0xffffff, 0.55), sun = new THREE.DirectionalLight(0xffffff, 1.0);
   scene.add(amb, sun, sun.target);
 
@@ -311,7 +311,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     camera.up.set(0, 1, 0);
     camera.lookAt(cam.tgt); camera.updateMatrixWorld();
     const closest = Math.max(1e-7, Math.min(cam.dist, camera.position.length() - 1) * 0.05);
-    camera.near = Math.min(0.05, closest); camera.far = 1e7; camera.updateProjectionMatrix();
+    camera.near = Math.min(0.05, closest); camera.far = Math.max(1e7, 8 * (camera.position.length() + cam.dist)); camera.updateProjectionMatrix();   // plan lointain proportionnel à l'éloignement : pas de limite de zoom arrière
 
     // astres : chacun d'après son JSON (position, orientation, queue de comète, orbite, trace, point lointain, étiquette)
     solar.visible = true; solar.rotation.y = rotS;
@@ -469,6 +469,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     world.rotation.y = gm * frameF;
     if (shift) { world.position.copy(shift).negate(); camera.position.sub(shift); camera.updateMatrixWorld(); } else world.position.set(0, 0, 0);
     inertial.position.copy(world.position); solar.position.copy(world.position);
+    stars.position.copy(camera.position); stars.scale.setScalar(camera.far * 0.45);
     renderer.render(scene, camera);
     camera.position.copy(saved); camera.updateMatrixWorld();
     if (!ready) { ready = true; publish({ status: 'ready' }); }

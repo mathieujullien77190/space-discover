@@ -143,6 +143,13 @@ describe('createEngine (rendu factice)', () => {
     for (let i = 0; i < 4; i++) engine._frame(performance.now() + 2000 + i * 100)
     expect(label('Jupiter')).toBeDefined()
   })
+  it('zoom arrière sans limite pratique : plus loin que la distance de Neptune, toujours sans erreur', () => {
+    engine._frame(performance.now() + 300)
+    for (let i = 0; i < 90; i++) engine.nudge('d+', 15)   // ×1,35 par appel : bien au-delà de l’ancienne limite (3 × 10⁶ rayons terrestres)
+    for (let i = 0; i < 60; i++) engine._frame(performance.now() + 1000 + i * 100)
+    expect(state.status).toBe('ready')
+    expect(JSON.parse(state.viewJson).altKm).toBeGreaterThan(3e6 * 6378)
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)
