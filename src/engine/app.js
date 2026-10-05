@@ -4,7 +4,8 @@
 // Le rendu est injectable (createRenderer) pour tester sans WebGL.
 import * as THREE from 'three';
 import { BODY } from './bodies.js';
-import { ISS_FEATURES, ISS_EPOCH, ISS_FROM, ISS_MODEL, ISS_MODEL_CFG, ISS_W, issState } from './iss.js';
+import { ISS_FEATURES, ISS_EPOCH, ISS_FROM, ISS_MODEL, ISS_MODEL_CFG, ISS_W, issState, hubbleState } from './iss.js';
+import { HUBBLE_LENGTH_M, buildHubble } from './hubble-model.js';
 import { createClouds } from './clouds.js';
 import { createCapitals } from './capitals.js';
 import { OBSERVATORIES, OBS_VIEW_ALT_KM, OBS_VIEW_FOV, OBS_VIEW_PITCH, observatoryById, observatoryFrame } from './observatories.js';
@@ -160,6 +161,11 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
   const dot = new THREE.Points(dg, new THREE.PointsMaterial({ color: 0xffd54a, size: 10, sizeAttenuation: false })); dot.frustumCulled = false; world.add(dot);
   const issLabel = overlay.label('ISS', 'iss');
+  // HUBBLE : même mécanique que l'ISS (état SGP4 du TLE, modèle stylisé à la taille réelle, repère bleu clair, nom) ; la caméra le suit comme l'ISS (cam.mode 'iss' + focusSat)
+  const hubModel = buildHubble(); hubModel.visible = false; world.add(hubModel);
+  const hubDg = new THREE.BufferGeometry(); hubDg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
+  const hubDot = new THREE.Points(hubDg, new THREE.PointsMaterial({ color: 0x7fe3ff, size: 10, sizeAttenuation: false })); hubDot.frustumCulled = false; hubDot.visible = false; world.add(hubDot);
+  const hubLabel = overlay.label('Hubble', 'iss'); let hubScreen = null;
   const capitals = createCapitals(overlay, earth); let capitalsOn = false, lastOcc = [];
   let observatoriesOn = false;   // option Observatoires : les observatoires du monde, cliquables (clic = y aller, fiche + vue depuis)
   const obsSites = createCapitals(overlay, earth, { data: OBSERVATORIES.map(o => [o.short, o.lat, o.lon, o.id]), cls: 'obssite', prefix: '🔭 ', onClick: id => goObservatory(id) });   // option « Capitales »
@@ -167,7 +173,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const cam = { fov: 50, mode: 'earth', tgt: new THREE.Vector3(), lon: 0, lat: 50, dist: 3.4, fly: 0, tfly: 0, userDir: false, fp: null, fpUp: new THREE.Vector3(), upKind: 'north', goal: { lon: 0, lat: 50, dist: 3.4 } };   // départ : la Terre vue du nord (nord en haut), le méridien de Greenwich (0°) en face de la caméra
   const moonsShown = {};   // planète → distance de la caméra, pour les planètes dont les lunes sont affichées
   let poseStale = false;   // juste après un changement de vue la caméra garde l'ancienne position jusqu'à la prochaine image : on n'en déduit pas « trop loin de l'ISS »
-  let iss = null, frameF = 0, curGm = 0, curD = 0;
+  let iss = null, hub = null, focusSat = 'iss', frameF = 0, curGm = 0, curD = 0;
+  const fsat = () => (focusSat === 'hubble' ? hub : iss);   // le satellite regardé en vue « iss » (ISS ou Hubble)
 
   const syncView = m => publish({ view: { mode: m, selected: m === 'iss' ? null : m === 'solar' ? solarTarget : 'earth', align: cam.upKind } });   // en vue ISS (satellite) aucun astre n'est choisi
   const snapCam = () => { cam.lon = cam.goal.lon; cam.lat = cam.goal.lat; cam.dist = cam.goal.dist; cam.fly = cam.tfly = 0; };   // la caméra prend la pose voulue d'un coup
@@ -180,8 +187,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     }
     cam.mode = m; cam.fly = cam.tfly = 0; cam.userUp = null; cam.upKind = null; poseStale = true;   // changement de vue DIRECT : plus aucune transition
     syncView(m);
-    if (m === 'iss' && iss) applyLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist, true);
-    else if (m === 'earth') { if (iss) { cam.goal.lat = iss.lat * 0.7; cam.goal.lon = iss.lon; } cam.goal.dist = 3.4; snapCam(); }
+    if (m === 'iss' && fsat()) applyLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist, true);
+    else if (m === 'earth') { const fs = fsat(); if (fs) { cam.goal.lat = fs.lat * 0.7; cam.goal.lon = fs.lon; } cam.goal.dist = 3.4; snapCam(); }
   };
   const goEarth = () => { setMode('earth'); alignNorth('earth'); };   // la Terre aussi : nord en haut
   const selectView = id => { const b = BODY.get(id); if (b && b.menu.mode === 'earth') goEarth(); else goSolar(id); };   // menu et clics sur la scène : la Terre ramène à la vue Terre, les autres astres à leur vue
@@ -194,7 +201,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   syncView('earth');
 
   // repère local de l'ISS : f = sens du vol (à l'horizontale), u = zénith, s = côté ; yaw 0 = derrière elle, pitch = hauteur de la caméra au-dessus de l'horizontale
-  const frameIss = () => { const u = iss.up, f = iss.vel.clone().addScaledVector(u, -iss.vel.dot(u)).normalize(); return { f, u, s: new THREE.Vector3().crossVectors(u, f) }; };
+  const frameIss = () => { const sat = fsat(), u = sat.up, f = sat.vel.clone().addScaledVector(u, -sat.vel.dot(u)).normalize(); return { f, u, s: new THREE.Vector3().crossVectors(u, f) }; };
   const applyLocal = (yaw, pitch, distKm, now) => {   // place la caméra autour de l'ISS (yaw, pitch en °, distance en km) ; now = sans transition
     const F = frameIss(), y = yaw * DEG, p = Math.max(-89.5, Math.min(89.5, pitch)) * DEG;
     const d = F.f.clone().multiplyScalar(-Math.cos(y) * Math.cos(p)).addScaledVector(F.s, Math.sin(y) * Math.cos(p)).addScaledVector(F.u, Math.sin(p));
@@ -202,11 +209,12 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; cam.goal.dist = Math.max(ISS_MIN_DIST_KM, distKm) / R_KM;
     if (now) snapCam();
   };
-  const viewIss = () => { if (iss) { setMode('iss'); applyLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist, true); } };   // accès DIRECT à l'ISS, sans transition
-  const goIss = () => { viewIss(); for (const f of ISS_FEATURES) setFeature(f.id, true); };   // choisir l'ISS (menu ou clic) : vue directe + options allumées d'office (dimensions, hauteur, trajectoire)
+  const viewIss = () => { if (fsat()) { setMode('iss'); applyLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist, true); } };   // accès DIRECT à l'ISS, sans transition
+  const goIss = () => { focusSat = 'iss'; viewIss(); for (const f of ISS_FEATURES) setFeature(f.id, true); };   // choisir l'ISS (menu ou clic) : vue directe + options allumées d'office (dimensions, hauteur, trajectoire)
+  const goHubble = () => { focusSat = 'hubble'; viewIss(); };   // Hubble : vue d'accès comme l'ISS (sans cotes ni trajectoire : ce sont des options de l'ISS)
   const currentView = () => {
     const rd = x => Math.round(x * 10) / 10, altCam = (camera.position.length() - 1) * R_KM;
-    if (cam.mode === 'iss' && iss) { const F = frameIss(), d = camera.position.clone().sub(cam.tgt).normalize(); return { mode: 'iss', yaw: rd(Math.atan2(d.dot(F.s), -d.dot(F.f)) / DEG), pitch: rd(Math.asin(Math.max(-1, Math.min(1, d.dot(F.u)))) / DEG), distKm: Math.round(cam.dist * R_KM * 1e6) / 1e6, fov: camera.fov }; }
+    if (cam.mode === 'iss' && fsat()) { const F = frameIss(), d = camera.position.clone().sub(cam.tgt).normalize(); return { mode: 'iss', yaw: rd(Math.atan2(d.dot(F.s), -d.dot(F.f)) / DEG), pitch: rd(Math.asin(Math.max(-1, Math.min(1, d.dot(F.u)))) / DEG), distKm: Math.round(cam.dist * R_KM * 1e6) / 1e6, fov: camera.fov }; }
     if (cam.mode === 'solar') return { mode: 'solar', cible: solarTarget, lon: rd(cam.lon), lat: rd(cam.lat), distRayonsTerrestres: Math.round(cam.dist * 100) / 100, fov: camera.fov };   // Lune ou Soleil
     return { mode: 'earth', lon: rd(cam.lon), lat: rd(cam.lat), altKm: rd(altCam), fov: camera.fov };
   };
@@ -231,7 +239,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   // réglage fin de la vue : kind = 'y±' (cap), 'p±' (pitch), 'd±' (distance) ; stepDeg = pas
   const nudge = (kind, st) => {
     const f = Math.exp(st * 0.02), sgn = kind.endsWith('+') ? 1 : -1;
-    if (cam.mode === 'iss' && iss) {
+    if (cam.mode === 'iss' && fsat()) {
       const v = currentView(); let yaw = v.yaw, pitch = v.pitch, dist = cam.dist * R_KM;   // distance exacte (l'affichage est arrondi)
       if (kind[0] === 'y') yaw += sgn * st; else if (kind[0] === 'p') pitch += sgn * st; else dist *= sgn > 0 ? f : 1 / f;   // d+ = on s'éloigne
       applyLocal(((yaw + 540) % 360) - 180, pitch, dist, true);
@@ -291,15 +299,15 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     publish({ observatory: { id: obsId, view: obsView } });
   };
   const setIssView = on => {   // « vue depuis l'ISS » : la caméra est sur la station, on regarde autour en glissant ; couper = retour à la vue d'accès de l'ISS
-    if (on && iss) { setMode('iss'); cam.fp = { yaw: 0, pitch: -35, fov: 70 }; cam.fpUp.set(0, 0, 0); issView = true; }
-    else { const was = issView; issView = false; if (was) { cam.fp = null; if (iss) viewIss(); } }
+    if (on && fsat()) { setMode('iss'); cam.fp = { yaw: 0, pitch: -35, fov: 70 }; cam.fpUp.set(0, 0, 0); issView = true; }
+    else { const was = issView; issView = false; if (was) { cam.fp = null; if (fsat()) viewIss(); } }
     publish({ issView });
   };
   // ---------- clics sur la scène : l'ISS et les astres sont cliquables ----------
   let issScreen = null;   // position écran de l'ISS si visible ; celles des astres sont dans bodyObjs[id].screen
   const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches, HIT = touch ? 42 : 26, near = (p, r, x, y) => !!p && Math.hypot(x - p[0], y - p[1]) < r;
   const bodyAt = (x, y) => { for (const id in bodyObjs) { const o = bodyObjs[id]; if (o.screen && o.b.menu && (o.b.menu.view || o.b.menu.mode === 'earth') && near(o.screen, HIT + (o.b.hitExtraPx || 0), x, y)) return id; } return null; };
-  disposers.push(attachControls(canvas, cam, (x, y) => { if (near(issScreen, HIT, x, y)) goIss(); else { const id = bodyAt(x, y); if (id) selectView(id); } }));
+  disposers.push(attachControls(canvas, cam, (x, y) => { if (near(issScreen, HIT, x, y)) goIss(); else if (near(hubScreen, HIT, x, y)) goHubble(); else { const id = bodyAt(x, y); if (id) selectView(id); } }));
   const onMove = e => canvas.classList.toggle('hand', near(issScreen, HIT, e.clientX, e.clientY) || !!bodyAt(e.clientX, e.clientY));
   canvas.addEventListener('pointermove', onMove); disposers.push(() => canvas.removeEventListener('pointermove', onMove));
 
@@ -333,7 +341,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     adaptRatio(now - last, now);
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     const realNow = Date.now(); simMs += (realNow - lastReal) * simSpeed; lastReal = realNow; const date = new Date(simMs);   // horloge simulée : temps réel par défaut, accélérable
-    iss = issState(date);
+    iss = issState(date); hub = hubbleState(date);
     frameF = cam.mode === 'solar' ? 1 : 0;
     const Dd = astroD(date), gm = curGm = gmstOf(Dd), _d = curD = Dd, solarMode = cam.mode === 'solar', rotS = -gm * (1 - frameF);
     for (const id in bpos) { const g = BODY.geo(id, Dd); bpos[id].set(g[0] * KMU, g[1] * KMU, g[2] * KMU); babs[id].copy(bpos[id]).applyAxisAngle(Y_AXIS, rotS); }   // position géocentrique de chaque astre (inertielle, puis dans le repère tourné de `solar`)
@@ -344,7 +352,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       const p = camera.position, L = p.length(); cam.mode = 'earth'; cam.tgt.set(0, 0, 0); cam.dist = cam.goal.dist = L; cam.lat = cam.goal.lat = Math.asin(p.y / L) / DEG; cam.lon = cam.goal.lon = Math.atan2(-p.z, p.x) / DEG; cam.fly = cam.tfly = 0;
       syncView('earth');
     }
-    const goalTgt = solarMode ? (babs[solarTarget] || tmp.set(0, 0, 0)) : cam.mode === 'iss' && iss ? iss.pos : tmp.set(0, 0, 0);
+    const goalTgt = solarMode ? (babs[solarTarget] || tmp.set(0, 0, 0)) : cam.mode === 'iss' && fsat() ? fsat().pos : tmp.set(0, 0, 0);
     cam.tgt.copy(goalTgt);   // la cible est posée directement (plus de glissement entre les vues)
     // zoom (molette) : amorti pour ne pas sauter, en altitude pour la Terre (sinon l'amortissement ne bouge plus près du sol)
     const kz = 1 - Math.exp(-dt * 14), base = cam.mode === 'earth' ? 1 : 0;
@@ -357,7 +365,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     camera.position.copy(cam.tgt).addScaledVector(dirv, cam.dist);
     camera.up.copy(cam.userUp || Y_AXIS);   // « haut » de l'écran : l'axe du monde, ou celui demandé (nord de l'astre, normale de son orbite) ; la souris tourne autour de lui ; un changement de vue le remet à zéro
     if (cam.fp && cam.mode === 'earth' && obsView) placeFirstPerson(obsSrc);   // depuis l'observatoire
-    else if (cam.fp && cam.mode === 'iss' && iss && issView) { issSrc.pos = iss.pos; issSrc.dir.copy(iss.vel).normalize(); issSrc.radial.copy(iss.pos).normalize(); placeFirstPerson(issSrc); }
+    else if (cam.fp && cam.mode === 'iss' && fsat() && issView) { const fs = fsat(); issSrc.pos = fs.pos; issSrc.dir.copy(fs.vel).normalize(); issSrc.radial.copy(fs.pos).normalize(); placeFirstPerson(issSrc); }
     else { if (camera.fov !== cam.fov) camera.fov = cam.fov; camera.lookAt(cam.tgt); }
     camera.updateMatrixWorld();
     const closest = Math.max(1e-10, Math.min(cam.dist, camera.position.length() - 1) * 0.05);   // plan proche jusqu'à 6 mm (zoom de l'ISS à 1 m)
@@ -460,12 +468,25 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     }
     const issHidden = solarMode || (camera.position.length() - 1) * R_KM > 20000;   // l'ISS cachée cache aussi tout ce qui lui appartient : cotes, hauteur, trajectoire
     if (realistic) { dot.visible = false; issScreen = null; issLabel.style.display = 'none'; }   // vue réaliste : ni repère jaune ni nom « ISS »
-    if (issView && cam.fp) { issModel.visible = false; dot.visible = false; issScreen = null; issLabel.style.display = 'none'; }   // vue DEPUIS l'ISS : ni modèle, ni repère, ni le texte « ISS » (il buguait), ni la hauteur / les cotes   // vue depuis l'ISS : on est dedans (ni le modèle ni le repère jaune)
+    if (issView && cam.fp && focusSat === 'iss') { issModel.visible = false; dot.visible = false; issScreen = null; issLabel.style.display = 'none'; }   // vue DEPUIS l'ISS : ni modèle, ni repère, ni le texte « ISS » (il buguait), ni la hauteur / les cotes   // vue depuis l'ISS : on est dedans (ni le modèle ni le repère jaune)
     if (issHidden) { issScreen = null; issLabel.style.display = 'none'; dot.visible = false; issModel.visible = false; }   // dézoomé : l'ISS est cachée (point, nom et modèle)
+    // HUBBLE : modèle à la taille réelle quand il fait au moins 6 px, sinon repère bleu clair ; nom à tout zoom
+    hubScreen = null; hubLabel.style.display = 'none';
+    if (hub) {
+      const dKm = camera.position.distanceTo(hub.pos) * R_KM;
+      fw.copy(hub.vel).addScaledVector(hub.up, -hub.vel.dot(hub.up)).normalize(); zz.crossVectors(fw, hub.up);
+      hubModel.quaternion.setFromRotationMatrix(basis.makeBasis(fw, hub.up, zz)); hubModel.position.copy(hub.pos); hubModel.scale.setScalar(1e-3 / R_KM); hubModel.updateMatrix();
+      const px = (HUBBLE_LENGTH_M / 1000 / dKm) / (2 * Math.tan(camera.fov * DEG / 2)) * innerHeight;
+      hubModel.visible = px >= 6; hubDot.visible = !hubModel.visible;
+      hubDg.attributes.position.setXYZ(0, hub.pos.x, hub.pos.y, hub.pos.z); hubDg.attributes.position.needsUpdate = true;
+      const p = hub.pos.clone().project(camera);
+      if (!hiddenByEarth(hub.pos) && p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1) { hubScreen = [(p.x + 1) / 2 * innerWidth, (1 - p.y) / 2 * innerHeight]; hubLabel.style.display = 'block'; hubLabel.style.transform = `translate(${hubScreen[0] + 10}px,${hubScreen[1] - 8}px)`; }
+      if (realistic || issHidden || (issView && cam.fp && focusSat === 'hubble')) { hubScreen = null; hubLabel.style.display = 'none'; hubDot.visible = false; hubModel.visible = false; }   // vue réaliste, dézoomé ou vue DEPUIS Hubble : ni modèle, ni repère, ni nom
+    }
     // caractéristiques 3D : mise à jour puis étiquettes projetées à l'écran
     for (const f of ISS_FEATURES) {   // une caractéristique « onlyIss » (taille, hauteur) n'apparaît que sur la vue de l'ISS
       const inst = featInst[f.id]; if (!inst) continue;
-      const act = !!featOn[f.id] && !!iss && !issHidden && !realistic && !(issView && cam.fp) && (!f.onlyIss || cam.mode === 'iss');
+      const act = !!featOn[f.id] && !!iss && !issHidden && !realistic && !(issView && cam.fp) && (!f.onlyIss || (cam.mode === 'iss' && focusSat === 'iss'));
       inst.objects.forEach(o => { o.visible = act; }); inst.labels.forEach(l => { l.active = act; });
       if (act && iss) inst.update(iss, camera, date);
     }
@@ -503,23 +524,24 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     if (infoT <= 0) {   // texte d'information, temps, paramètres de la vue, fusée : 5 fois par seconde
       infoT = 0.2;
       const altCam = (camera.position.length() - 1) * R_KM, f = v => v >= 1000 ? Math.round(v).toLocaleString('fr-FR') : v.toFixed(v < 10 ? 1 : 0);
-      let t = `Caméra : ${fmtBig(altCam) || f(altCam) + ' km'} d'altitude` + (cam.mode === 'iss' ? ` · ${fmtBig(cam.dist * R_KM) || f(cam.dist * R_KM) + ' km'} de l'ISS` : '');
+      let t = `Caméra : ${fmtBig(altCam) || f(altCam) + ' km'} d'altitude` + (cam.mode === 'iss' ? ` · ${fmtBig(cam.dist * R_KM) || f(cam.dist * R_KM) + ' km'} ${focusSat === 'hubble' ? 'de Hubble' : 'de l\'ISS'}` : '');
       if (iss) t += `\nISS : ${f(iss.alt)} km · ${iss.speed.toFixed(2)} km/s (${Math.round(iss.speed * 3600).toLocaleString('fr-FR')} km/h) · ${Math.abs(iss.lat).toFixed(1)}°${iss.lat < 0 ? 'S' : 'N'} ${Math.abs(iss.lon).toFixed(1)}°${iss.lon < 0 ? 'O' : 'E'}`;
       else t += '\nISS : pas encore lancée à cette date (premier module : ' + new Date(ISS_FROM).getUTCFullYear() + ')';
       if (iss && iss.approx) t += '\n(hors de la période du TLE : position de l\'ISS indicative)';
       else if (staleDays > 60) t += '\n(TLE ancien : position de l\'ISS imprécise)';
+      if (hub) t += `\nHubble : ${f(hub.alt)} km · ${hub.speed.toFixed(2)} km/s · ${Math.abs(hub.lat).toFixed(1)}°${hub.lat < 0 ? 'S' : 'N'} ${Math.abs(hub.lon).toFixed(1)}°${hub.lon < 0 ? 'O' : 'E'}${hub.approx ? ' (position indicative : hors de la période du TLE)' : ''}`;
       if (hiState === 'loading') t += '\nChargement du modèle détaillé de l\'ISS…';
-      if (cam.mode === 'iss') t += "\nÉchelle réelle : l'ISS (109 m) n'est visible qu'à moins de ~17 km.";
+      if (cam.mode === 'iss') t += focusSat === 'hubble' ? "\nÉchelle réelle : Hubble (13 m) n'est visible qu'à moins de ~2 km." : "\nÉchelle réelle : l'ISS (109 m) n'est visible qu'à moins de ~17 km.";
       t += '\n' + BODY.list().filter(b => b.info).sort((a, b) => (a.menu ? a.menu.order : 99) - (b.menu ? b.menu.order : 99)).map(b => { const d = bpos[b.id].length() * R_KM; return `${b.name} à ${fmtBig(d) || Math.round(d).toLocaleString('fr-FR') + ' km'}`; }).join(' · ');   // distances des astres marqués "info" (Lune, Soleil)
       if (solarMode && BODY.get(solarTarget) && BODY.get(solarTarget).menu.view) t += '\n' + BODY.get(solarTarget).menu.view.text;
-      const fid = cam.mode === 'iss' ? 'iss' : cam.mode === 'earth' ? 'earth' : solarMode ? solarTarget : null, fb = fid && (BODY.get(fid) || FLIGHT_OBJECTS[fid]);   // astre regardé ; « proche » = à moins de 30 de ses rayons (ou card.nearUnits) : sa fiche s'affiche
+      const fid = cam.mode === 'iss' ? focusSat : cam.mode === 'earth' ? 'earth' : solarMode ? solarTarget : null, fb = fid && (BODY.get(fid) || FLIGHT_OBJECTS[fid]);   // astre regardé ; « proche » = à moins de 30 de ses rayons (ou card.nearUnits) : sa fiche s'affiche
       const near = !!fb && !!fb.card;   // la fiche de l'astre choisi s'affiche toujours, de près comme de loin (demande de l'utilisateur)
       let cardId = near ? fid : null;
       if (!cardId && cam.mode !== 'iss') { let best = Infinity; for (const k in moonsShown) if (moonsShown[k] < best && BODY.get(k) && BODY.get(k).card) { best = moonsShown[k]; cardId = k; } }   // lunes affichées : fiche de la planète la plus proche
       publish({ info: t, viewJson: JSON.stringify(currentView()), focus: { id: cardId }, time: { simMs, speed: simSpeed, visible: true } });
     }
     // origine flottante : près de l'ISS, on recentre le monde sur elle pour rendre sans perte de précision
-    const shift = obsView ? obsPos : iss && camera.position.distanceTo(iss.pos) * R_KM < 3000 ? iss.pos : null, saved = camera.position.clone();
+    const shift = obsView ? obsPos : fsat() && camera.position.distanceTo(fsat().pos) * R_KM < 3000 ? fsat().pos : null, saved = camera.position.clone();
     world.rotation.y = gm * frameF;
     if (shift) { world.position.copy(shift).negate(); camera.position.sub(shift); camera.updateMatrixWorld(); } else world.position.set(0, 0, 0);
     inertial.position.copy(world.position); solar.position.copy(world.position);
@@ -559,7 +581,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _localOrbit: id => { const o = bodyObjs[id]; if (!o || !o.localLine) return null; const at = o.localLine.geometry.attributes.position; return { visible: o.localLine.visible, coarse: o.orbitG.visible, n: at.count, mid: [at.getX(LOCAL_N), at.getY(LOCAL_N), at.getZ(LOCAL_N)], pos: o.localLine.position.toArray(), end: [at.getX(0), at.getY(0), at.getZ(0)] }; },
     _featuresVisible: () => Object.fromEntries(Object.entries(featInst).map(([id, inst]) => [id, inst.objects.some(o => o.visible)])),
     selectView,
-    goIss, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
+    goIss, goHubble, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
     setClouds: on => { cloudsOn = !!on; },
     _terrain: () => Object.assign({ shown: terrainShown }, terrain.stats()),
     setBorders: on => { bordersOn = !!on; },
@@ -576,7 +598,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _mapOptions: () => ({ borders: bordersOn && borders.visible, capitals: capitals.count(), observatories: obsSites.count(), constellations: constellations.lines.visible, constellationNames: constellations.count(), realistic, dayNight, ambient: amb.intensity, sunPoint: sunPoint.visible }),
     _clouds: () => Object.assign({ on: cloudsOn }, clouds.stats()),
     setIssView,
-    _fp: () => cam.fp ? { yaw: cam.fp.yaw, pitch: cam.fp.pitch, fov: camera.fov, posErr: iss && issView ? camera.position.distanceTo(iss.pos) * R_KM * 1000 : null, dir: new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray(), up: new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion).toArray(), radial: issView ? issSrc.radial.toArray() : null, flight: issView ? issSrc.dir.toArray() : null } : null,
+    _fp: () => cam.fp ? { yaw: cam.fp.yaw, pitch: cam.fp.pitch, fov: camera.fov, posErr: fsat() && issView ? camera.position.distanceTo(fsat().pos) * R_KM * 1000 : null, dir: new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray(), up: new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion).toArray(), radial: issView ? issSrc.radial.toArray() : null, flight: issView ? issSrc.dir.toArray() : null } : null,
 
     dispose() {
       stopped = true; cancelAnimationFrame(raf); clearTimeout(solarTimer); disposers.forEach(d => d()); overlay.dispose();

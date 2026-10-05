@@ -33,6 +33,7 @@ export type FeatureItem = { id: string; label: string }
 export type Engine = {
   selectView: (id: string) => void
   goIss: () => void
+  goHubble: () => void
   alignNorth: (id: string) => void
   alignOrbit: (id: string) => void
   resetUp: () => void

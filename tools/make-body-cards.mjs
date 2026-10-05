@@ -63,3 +63,15 @@ save('mars', disc(await loadImage(fs.readFileSync(path.join(root, 'public', 'obj
   rect(168, 150, 24, 60, '#e4e6ea'); g.fillStyle = '#caa24a'; g.fillRect(172, 142, 16, 8); g.fillRect(172, 210, 16, 8);
   save('iss', c);
 }
+
+{ // Hubble : tube argenté, ouverture sombre, couronne arrière, deux panneaux solaires bleus (dessin plat, vu de côté)
+  const c = createCanvas(S, S), g = c.getContext('2d'), line = '#1c2430';
+  const rect = (x, y, w, h, fill) => { g.fillStyle = fill; g.fillRect(x, y, w, h); g.lineWidth = 2; g.strokeStyle = line; g.strokeRect(x, y, w, h); };
+  for (const y of [18, 238]) { rect(108, y, 150, 104, '#2d5fa8'); for (let k = 1; k < 6; k++) { g.beginPath(); g.moveTo(108 + k * 25, y); g.lineTo(108 + k * 25, y + 104); g.strokeStyle = '#8fb6ea'; g.lineWidth = 1; g.stroke(); } rect(176, y < 100 ? y + 104 : y - 26, 14, 26, '#555a66'); }   // panneaux + mâts
+  rect(40, 142, 252, 76, '#d9dce2');          // tube principal
+  rect(292, 134, 44, 92, '#e8e9ec');          // pare-soleil
+  rect(332, 148, 8, 64, '#0b0c10');           // ouverture sombre
+  rect(14, 136, 40, 88, '#8a8f9a');           // couronne arrière (instruments)
+  g.strokeStyle = '#c8ccd4'; g.lineWidth = 3; g.beginPath(); g.moveTo(70, 142); g.lineTo(70, 110); g.moveTo(58, 110); g.lineTo(82, 110); g.stroke();   // antenne
+  save('hubble', c);
+}

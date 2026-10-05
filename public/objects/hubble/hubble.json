@@ -1,0 +1,69 @@
+{
+  "name": "Hubble",
+  "live": true,
+  "start": {
+    "orbit": {
+      "epoch": "2026-10-03T17:16:41.026Z",
+      "inclinationDeg": 28.4729,
+      "raanDeg": 58.1679,
+      "eccentricity": 0.000127,
+      "argPerigeeDeg": 285.6016,
+      "meanAnomalyDeg": 74.444,
+      "meanMotionRevDay": 15.31815463,
+      "ndotRevDay2": 0.00004347,
+      "bstar": 0.00013013
+    },
+    "at": "now"
+  },
+  "exists": {
+    "from": "1990-04-24T12:33:51Z",
+    "_note": "Lancement par la navette Discovery (STS-31) : date de mémoire, à vérifier."
+  },
+  "visual": {
+    "name": "Hubble",
+    "lengthM": 13.2,
+    "widthM": 12,
+    "radiusM": 2.1,
+    "color": "#c8ccd4"
+  },
+  "timeline": [
+    {
+      "t": 0,
+      "massKg": 11110,
+      "cdA": 0,
+      "label": "Hubble tourne sans moteur",
+      "key": "hubble"
+    }
+  ],
+  "card": {
+    "_note": "Fiche affichée en vue Hubble. Illustration fabriquée par tools/make-body-cards.mjs ; altitude, vitesse, période et inclinaison CALCULÉES d'après start.orbit (TLE CelesTrak, NORAD 20580, époque indiquée) ; les faits ci-dessous sont écrits DE MÉMOIRE (à vérifier).",
+    "kind": "Télescope spatial",
+    "image": "card.png",
+    "facts": [
+      {
+        "label": "Nom",
+        "value": "Télescope spatial Hubble (HST)"
+      },
+      {
+        "label": "Taille",
+        "value": "13,2 m de long, 4,2 m de diamètre"
+      },
+      {
+        "label": "Masse",
+        "value": "≈ 11 tonnes"
+      },
+      {
+        "label": "Miroir",
+        "value": "2,4 m de diamètre"
+      },
+      {
+        "label": "Lancement",
+        "value": "24 avril 1990 (navette Discovery)"
+      },
+      {
+        "label": "Agences",
+        "value": "NASA et ESA"
+      }
+    ]
+  }
+}

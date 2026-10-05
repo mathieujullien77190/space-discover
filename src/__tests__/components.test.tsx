@@ -13,7 +13,7 @@ import { useStore } from '@/store'
 import { initialEngineState } from '@/store/initial'
 import type { Engine } from '@/types'
 
-const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn(), setBorders: vi.fn(), setCapitals: vi.fn(), setObservatories: vi.fn(), setConstellations: vi.fn(), setDayNight: vi.fn(), goObservatory: vi.fn(), setObservatoryView: vi.fn(), setRealistic: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
+const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), goHubble: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn(), setBorders: vi.fn(), setCapitals: vi.fn(), setObservatories: vi.fn(), setConstellations: vi.fn(), setDayNight: vi.fn(), goObservatory: vi.fn(), setObservatoryView: vi.fn(), setRealistic: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
 
 describe('TopBar + SubMenu', () => {
   let engine: ReturnType<typeof fakeEngine>
@@ -23,7 +23,7 @@ describe('TopBar + SubMenu', () => {
   })
   it('barre du haut : Astres, Terre, ISS, Nuages ; ni Histoires, ni Fusées, ni Satellites, aucun sous-menu au départ', () => {
     render(<><TopBar /><SubMenu /></>)
-    for (const l of ['🌌 Astres', '🌍 Terre', '🛰 ISS', '☁ Nuages', '🌗 Jour / nuit', '🎬 Vue réaliste']) expect(screen.getByText(l)).toBeInTheDocument()
+    for (const l of ['🌌 Astres', '🌍 Terre', '🛰 ISS', '🔭 Hubble', '☁ Nuages', '🌗 Jour / nuit', '🎬 Vue réaliste']) expect(screen.getByText(l)).toBeInTheDocument()
     for (const l of [/Histoires/, /Fusées/, /Satellites/, /Engins/]) expect(screen.queryByText(l)).toBeNull()
     expect(screen.queryByText(/Lune/)).toBeNull()
   })

@@ -347,6 +347,24 @@ describe('createEngine (rendu factice)', () => {
     engine.goIss(); engine._frame(performance.now() + 1700)                          // le bouton « ISS » zoome sur la station
     expect(engine._fp()).toBeNull()
   })
+  it('Hubble : comme l’ISS (vue d’accès, fiche, vue depuis), altitude ≈ 500 km, inclinaison ≤ 28,5°', () => {
+    engine.resetTime(); engine._frame(performance.now() + 100)
+    engine.goHubble(); engine._frame(performance.now() + 200); engine._frame(performance.now() + 300)
+    expect(state.view.mode).toBe('iss')
+    expect(state.focus.id).toBe('hubble')                                      // sa fiche
+    const m = /Hubble : (\d[\d\s\u202f\u00a0]*) km · ([\d.]+) km\/s · ([\d.]+)°/.exec(state.info)
+    expect(m).not.toBeNull()
+    expect(Number(m![1].replace(/[^0-9]/g, ''))).toBeGreaterThan(450)         // ≈ 520–540 km
+    expect(Number(m![1].replace(/[^0-9]/g, ''))).toBeLessThan(620)
+    expect(Number(m![3])).toBeLessThanOrEqual(28.6)
+    expect(state.info).toMatch(/de Hubble/)
+    engine.setIssView(true)
+    for (let i = 0; i < 4; i++) engine._frame(performance.now() + 400 + i * 100)
+    expect(engine._fp()!.posErr!).toBeLessThan(1)                              // la caméra est SUR Hubble
+    engine.goIss(); engine._frame(performance.now() + 900); engine._frame(performance.now() + 1000)
+    expect(state.focus.id).toBe('iss')                                         // l’ISS reprend la main
+    engine.selectView('earth'); engine._frame(performance.now() + 1100)
+  })
   it('nuages : option prise en compte (rien n’est chargé tant qu’elle est éteinte)', () => {
     engine._frame(performance.now() + 100)
     expect(engine._clouds()).toMatchObject({ on: false, state: null, visible: false })
