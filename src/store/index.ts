@@ -12,6 +12,7 @@ export type UiState = {
   nudgeStep: number   // index dans NUDGE_STEPS
   cardCollapsed: boolean   // fiche d'astre réduite en mini bouton-icône (mémorisé)
   achievements: string[]   // hauts faits débloqués (mémorisés)
+  bigVehicles: boolean   // mode « engins géants » : fusées, satellites et ISS 1 000 fois plus gros
   unlocked: string | null   // haut fait qu'on vient de débloquer (écran de déblocage)
 }
 
@@ -26,6 +27,7 @@ export type Store = EngineState &
     setCardCollapsed: (on: boolean) => void
     unlockAchievement: (id: string) => void
     dismissUnlocked: () => void
+    toggleBigVehicles: () => void
   }
 
 const isPlainObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -49,6 +51,7 @@ export const useStore = create<Store>((set) => ({
   cardCollapsed: readCardCollapsed(),
   achievements: readAchievements(),
   unlocked: null,
+  bigVehicles: false,
   setEngine: (engine) => set({ engine }),
   applyPatch: (patch) => set((s) => mergePatch(s, patch)),
   togglePanel: (panel) => set((s) => ({ panel: s.panel === panel ? null : panel })),
@@ -64,5 +67,10 @@ export const useStore = create<Store>((set) => ({
       return { achievements, unlocked: id }
     }),
   dismissUnlocked: () => set({ unlocked: null }),
+  toggleBigVehicles: () =>
+    set((s) => {
+      s.engine?.setBigVehicles(!s.bigVehicles)
+      return { bigVehicles: !s.bigVehicles }
+    }),
   cycleNudgeStep: () => set((s) => ({ nudgeStep: (s.nudgeStep + 1) % NUDGE_STEPS.length })),
 }))

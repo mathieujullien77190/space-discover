@@ -29,7 +29,7 @@ export class Launch {
     const sim = this.sim = o.object ? flyObject(o.object, { date: o.date }) : o.plan ? flyPlan(o.plan) : simulateLaunch(targetKm, { lat: site.lat, payload: this.payloadUsed, az, rocket: spec, apoKm: o.apoKm });   // o.plan : plan de vol JSON (js/flight-plan.js), sans guidage
     this.story = o.story || null; this.direct = !!(spec.phys && spec.phys.direct);   // story : mission historique (js/story.js) ; direct : le dernier étage met la charge en orbite
     this.opt = o.opt || launchOptDefault();   // options d'affichage (partagées entre les lancements)
-    this.site = site; this.targetKm = targetKm; this.satScale = satScale || 1; this.T = 0; this.speed = 1; this.stepPause = true; this.stopT = null; this.effSpeed = 1; this.playing = true; this.userDir = false;
+    this.site = site; this.targetKm = targetKm; this.satScale = satScale || 1; this.vk = 1; this.T = 0; this.speed = 1; this.stepPause = true; this.stopT = null; this.effSpeed = 1; this.playing = true; this.userDir = false;
     this.s = ll(site.lon, site.lat); { const east = new THREE.Vector3(-Math.sin(site.lon * DEG), 0, -Math.cos(site.lon * DEG)), north = new THREE.Vector3(0, 1, 0).addScaledVector(this.s, -this.s.y).normalize(); this.e = east.multiplyScalar(Math.sin(az)).addScaledVector(north, Math.cos(az)).normalize(); } this.n = new THREE.Vector3().crossVectors(this.s, this.e);   // verticale, est, nord (plan : s, e)
     this.crossTau = 80; this.crossV = LCH.WE * LCH.RE * Math.cos(site.lat * DEG) * new THREE.Vector3(-Math.sin(site.lon * DEG), 0, -Math.cos(site.lon * DEG)).dot(this.n);   // vitesse transversale initiale du pas de tir (m/s), annulée en ~80 s
     if (o.object && objectStart(o.object, { date: o.date }).frame === 'inertial') this.crossV = 0;   // objet déjà en orbite : pas de pas de tir qui tourne avec la Terre, donc pas de décalage transversal
@@ -276,10 +276,10 @@ export class Launch {
     const T = this.T, st = this.st = this.stateAt(T), tmp = this.tmpv || (this.tmpv = new THREE.Vector3());
     if (st.ef) { this.pos.copy(st.ef); this.dir.copy(this.pos).normalize(); } else { this.toEF(st.x, st.y, T, this.pos); this.dirEF(st.x, st.y, st.F < 1 ? Math.atan2(st.vr, st.vt) : st.phi, T, this.dir); } this.blendPath(T, this.dir);   // nez le long de la trajectoire affichée (voir blendPath)
     this.altM = st.ef ? (this.pos.length() - 1) * LCH.RE : Math.hypot(st.x, st.y) - LCH.RE; this.radial = this.pos.clone().normalize();
-    this.center.copy(this.pos).addScaledVector(this.dir, this.rocketLen / 2 * MU_M);
+    this.center.copy(this.pos).addScaledVector(this.dir, this.rocketLen / 2 * MU_M * this.vk);
     { const a = this.hLine.geometry.attributes.position, u = this.radial || this.s; a.setXYZ(0, this.pos.x, this.pos.y, this.pos.z); a.setXYZ(1, u.x, u.y, u.z); a.needsUpdate = true; }   // trait vertical sous la fusée
     // orientation de la fusée : y local = poussée
-    this.rocket.position.copy(this.pos); this.rocket.quaternion.setFromUnitVectors(this.Y, this.dir);
+    this.rocket.scale.setScalar(MU_M * this.vk); this.rocket.position.copy(this.pos); this.rocket.quaternion.setFromUnitVectors(this.Y, this.dir);
     const E = this.ev, past = k => E[k] && T >= E[k].t;
     const coreGone = this.direct && past('sat');   // insertion directe : après la séparation, le bloc central est un débris à part
     this.mBoost.forEach(m => m.visible = !past('eap')); this.mFair.visible = !past('fairing'); this.mEpc.visible = !past('epcsep') && !coreGone;
@@ -303,7 +303,7 @@ export class Launch {
     if (this.smoke) this.updateSmoke(T);
     // satellite largué : s'éloigne doucement vers le haut
     // satellite : sous la coiffe (au sommet de l'étage supérieur) jusqu'au largage, puis il s'éloigne doucement vers le haut
-    const tSat = E.sat ? E.sat.t : 1e12, sat = this.satG, dm = MU_M;
+    const tSat = E.sat ? E.sat.t : 1e12, sat = this.satG, dm = MU_M * this.vk; sat.scale.setScalar(dm * (this.satScale || 1));
     sat.position.copy(this.pos).addScaledVector(this.dir, this.payloadY * dm); sat.quaternion.copy(this.rocket.quaternion);
     if (T >= tSat) sat.position.addScaledVector(this.radial, (0.3 * Math.min(T - tSat, 3000) + 6) * dm);
     sat.visible = past('fairing') && (!!this.sim.ok || T < tSat);   // caché sous la coiffe (ses panneaux dépasseraient de la fusée)
@@ -323,7 +323,7 @@ export class Launch {
       }
       const ix = Math.min(p.path.length - 1, Math.floor(tau)), A = p.path[ix], B = p.path[Math.min(p.path.length - 1, ix + 1)], f = tau - Math.floor(tau);
       this.toEF(A[0] + (B[0] - A[0]) * f, A[1] + (B[1] - A[1]) * f, T, tmpP, p.z0 + p.zd * (T - p.e.t));
-      tmpP.addScaledVector(p.latWorld, (p.r0 + 2.5 * Math.min(tau, 300)) * MU_M);   // les paires s'écartent
+      tmpP.addScaledVector(p.latWorld, (p.r0 + 2.5 * Math.min(tau, 300)) * MU_M * this.vk); p.g.scale.setScalar(MU_M * this.vk);   // les paires s'écartent
       if (p.tagKey) { const t = this.tagMap[p.tagKey]; t.on = true; t.mass = (p.model.dry || 0) + (p.model.prop || 0); t.pos.copy(tmpP); t.speed = Math.hypot(B[0] - A[0], B[1] - A[1]); t.alt = (tmpP.length() - 1) * R_KM * 1000; }   // vitesse (inertielle) = déplacement par seconde de la trajectoire calculée
       p.g.position.copy(tmpP);
       if (p.ret) {   // booster qui revient : nez dans le sens de la poussée quand les moteurs tournent, sinon moteurs vers l'avant (nez à l'opposé de la vitesse) ; flamme proportionnelle à la poussée
@@ -333,11 +333,11 @@ export class Launch {
         R_.flame.visible = th > 0.001; if (R_.flame.visible) { const k = Math.sqrt(th / 0.4); R_.flame.scale.set(R_.r * (0.5 + 0.7 * k), 6 + 40 * k * (0.9 + 0.2 * Math.random()), R_.r * (0.5 + 0.7 * k)); }
       } else { p.g.quaternion.setFromUnitVectors(this.Y, p.dir); if (p.tumble) p.g.rotateOnAxis(new THREE.Vector3(1, 0, 0), p.tumble * tau); }
       this.pieceExtras(p, tmpP, true);
-      const big = px(p.len, tmpP) >= 6; p.mesh.visible = big;
+      const big = px(p.len * this.vk, tmpP) >= 6; p.mesh.visible = big;
       p.dot.visible = !big; p.dot.geometry.attributes.position.setXYZ(0, tmpP.x, tmpP.y, tmpP.z); p.dot.geometry.attributes.position.needsUpdate = true;
     }
     { const r = this.tagMap.rocket; r.speed = this.st.v; r.mass = this.st.m; this.tagMap.sat.mass = this.satMassKg; this.tagMap.sat.speed = this.st.v; r.alt = this.altM; this.tagMap.sat.alt = this.altM; r.on = !coreGone; r.pos.copy(this.center); r.text = this.direct ? this.rocketSpec.name + '' : past('epcsep') ? this.rocketSpec.names.stage2 + (past('sat') || !this.ev.sat ? '' : ' + satellite') : this.rocketSpec.name + ''; const sa = this.tagMap.sat; sa.on = past('sat') && !!this.sim.ok; sa.pos.copy(this.satG.position); }
-    const big = px(this.rocketLen, this.pos) >= 6; this.rocket.visible = big && !coreGone;
+    const big = px(this.rocketLen * this.vk, this.pos) >= 6; this.rocket.visible = big && !coreGone;
     this.dotRocket.visible = !big && !coreGone; this.dotRocket.geometry.attributes.position.setXYZ(0, this.pos.x, this.pos.y, this.pos.z); this.dotRocket.geometry.attributes.position.needsUpdate = true;
     this.dotSat.visible = false;
     if (this.tagMap.pad) this.tagMap.pad.pos.copy(this.padPos);   // le pas de tir : point fixe au sol (30 m au-dessus : vue sur le pied de la fusée)

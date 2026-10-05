@@ -24,6 +24,7 @@ import { storyTriggers } from './story.js';
 import { probeDef, probeFrom, probeIds, probeMission } from './probes.js';
 import { buildProbeModel } from './probe-model.js';
 
+export const VEHICLE_SCALE_BIG = 1000;   // mode « engins géants » : fusées, satellites et ISS 1 000 fois plus gros que la réalité
 const VIEW_ISS = { yaw: -28.8, pitch: 24.9, dist: 0.393 };   // accès DIRECT à l'ISS, sans transition : vue réglée par l'utilisateur, un peu de derrière et au-dessus, à 393 m (yaw °, pitch °, distance km)
 const Z_AXIS = new THREE.Vector3(0, 0, 1), Y_AXIS = new THREE.Vector3(0, 1, 0), KMU = 1 / (R_KM * 1000), SITE_FALLBACK = LAUNCH_SITES[0];
 const defaultRenderer = canvas => new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true });
@@ -183,6 +184,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const issLabel = overlay.label('ISS', 'iss');
 
   const cam = { fov: 50, mode: 'earth', tgt: new THREE.Vector3(), lon: 0, lat: 50, dist: 3.4, fly: 0, tfly: 0, launchK: 1, userDir: false, upKind: 'north', goal: { lon: 0, lat: 50, dist: 3.4 } };   // départ : la Terre vue du nord (nord en haut), le méridien de Greenwich (0°) en face de la caméra
+  let VK = 1;   // échelle des engins (1 = réel ; VEHICLE_SCALE_BIG = mode « engins géants »)
   const moonsShown = {};   // planète → distance de la caméra, pour les planètes dont les lunes sont affichées
   let poseStale = false;   // juste après un changement de vue la caméra garde l'ancienne position jusqu'à la prochaine image : on n'en déduit pas « trop loin de l'ISS »
   let iss = null, frameF = 0, curGm = 0, curD = 0, launch = null, evLabels = [], tagEls = [], rocketRows = [];
@@ -197,7 +199,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     cam.mode = m; cam.fly = cam.tfly = 0; cam.userUp = null; cam.upKind = null; poseStale = true;   // changement de vue DIRECT : plus aucune transition
     syncView(m);
     if (m === 'launch') cam.userDir = false;   // caméra auto de la fusée (réglée dans la boucle)
-    if (m === 'iss' && iss) applyLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist, true);
+    if (m === 'iss' && iss) applyLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist * VK, true);
     else if (m === 'earth') { if (iss) { cam.goal.lat = iss.lat * 0.7; cam.goal.lon = iss.lon; } cam.goal.dist = 3.4; snapCam(); }
   };
   const goEarth = () => { setMode('earth'); alignNorth('earth'); };   // la Terre aussi : nord en haut
@@ -218,7 +220,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; cam.goal.dist = Math.max(0.1, distKm) / R_KM;
     if (now) snapCam();
   };
-  const viewIss = () => { if (iss) { setMode('iss'); applyLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist, true); } };   // accès DIRECT à l'ISS, sans transition
+  const viewIss = () => { if (iss) { setMode('iss'); applyLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist * VK, true); } };   // accès DIRECT à l'ISS, sans transition
   const goIss = () => { viewIss(); for (const f of ISS_FEATURES) setFeature(f.id, true); };   // choisir l'ISS (menu ou clic) : vue directe + options allumées d'office (dimensions, hauteur, trajectoire)
   const currentView = () => {
     const rd = x => Math.round(x * 10) / 10, altCam = (camera.position.length() - 1) * R_KM;
@@ -310,14 +312,14 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     optShared.markers = true; optShared.names = true;
     const date = new Date(simMs), s0 = objectStart(obj, { date }),   // le lancement part à la date SIMULÉE (Terre, Soleil et Lune à leur place de cette date)
           site = Object.assign({}, SITE_FALLBACK, { id: 'obj', name: obj.name, lat: s0.lat, lon: s0.lon });
-    launch = new Launch(site, 0, 0, 1, { opt: optShared, object: obj, models, date, az: (s0.azimuthDeg != null ? s0.azimuthDeg : 90) * Math.PI / 180 }); world.add(launch.group);
+    launch = new Launch(site, 0, 0, 1, { opt: optShared, object: obj, models, date, az: (s0.azimuthDeg != null ? s0.azimuthDeg : 90) * Math.PI / 180 }); launch.vk = VK; world.add(launch.group);
     startVisual(site);
   };
   const launchPlan = plan => {
     if (launch) { launch.dispose(); launch = null; }
     optShared.markers = true; optShared.names = true;
     const site = Object.assign({}, SITE_FALLBACK, { id: 'plan', name: plan.site.name, lat: plan.site.lat, lon: plan.site.lon });
-    launch = new Launch(site, plan.target.altitudeKm, plan.vehicle.payloadKg, 1, { opt: optShared, plan, rocketId: plan.rocket, az: (plan.site.azimuthDeg != null ? plan.site.azimuthDeg : 90) * Math.PI / 180 }); world.add(launch.group);
+    launch = new Launch(site, plan.target.altitudeKm, plan.vehicle.payloadKg, 1, { opt: optShared, plan, rocketId: plan.rocket, az: (plan.site.azimuthDeg != null ? plan.site.azimuthDeg : 90) * Math.PI / 180 }); launch.vk = VK; world.add(launch.group);
     startVisual(site);
   };
   const launchObject = obj => {   // charge d'abord les modèles 3D des pièces (s'il y en a), puis crée le vol
@@ -435,7 +437,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     const goalTgt = solarMode ? (babs[solarTarget] || (probeObjs[solarTarget] && probeObjs[solarTarget].st ? probeObjs[solarTarget].abs : null) || tmp.set(0, 0, 0)) : cam.mode === 'iss' && iss ? iss.pos : cam.mode === 'launch' && launch ? launch.focusPos : tmp.set(0, 0, 0);
     if (cam.mode === 'launch' && launch) {   // caméra auto : sur le côté de la trajectoire, de plus en plus loin ; le zoom manuel multiplie la distance
       if (!cam.userDir) { const d = launch.camDir; cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; }
-      const auto = (launch.follow === 'pad' ? 500 : launch.rocketLen * 1.6) / 1000 / R_KM; cam.launchK = Math.max(0.02 / (auto * R_KM), Math.min(cam.launchK, 41 / auto));   // caméra TOUT PRÈS de la fusée (1,6 fois sa longueur), à toute altitude ; vue « Pas de tir » : à 500 m ; la molette ajuste
+      const auto = (launch.follow === 'pad' ? 500 : launch.rocketLen * launch.vk * 1.6) / 1000 / R_KM; cam.launchK = Math.max(0.02 / (auto * R_KM), Math.min(cam.launchK, 41 / auto));   // caméra TOUT PRÈS de la fusée (1,6 fois sa longueur), à toute altitude ; vue « Pas de tir » : à 500 m ; la molette ajuste
       cam.goal.dist = auto * cam.launchK;
     }
     cam.tgt.copy(goalTgt);   // la cible est posée directement (plus de glissement entre les vues)
@@ -539,8 +541,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       fw.copy(iss.vel).addScaledVector(iss.up, -iss.vel.dot(iss.up)).normalize(); zz.crossVectors(fw, iss.up);
       issModel.quaternion.setFromRotationMatrix(basis.makeBasis(fw, iss.up, zz));
       issModel.position.copy(iss.pos);
-      issModel.scale.setScalar(1e-3 / R_KM); issModel.updateMatrix();   // ISS à sa taille réelle (109 m), à toutes les distances
-      const px = (ISS_W / 1000 / dKm) / (2 * Math.tan(camera.fov * DEG / 2)) * innerHeight;   // largeur apparente de la station (pixels)
+      issModel.scale.setScalar(VK * 1e-3 / R_KM); issModel.updateMatrix();   // ISS à sa taille réelle (109 m), à toutes les distances
+      const px = (ISS_W * VK / 1000 / dKm) / (2 * Math.tan(camera.fov * DEG / 2)) * innerHeight;   // largeur apparente de la station (pixels)
       issModel.visible = hiState === 'ready' && px >= 6;   // sinon : repère jaune (station < 6 px, ou modèle pas encore chargé)
       if (hiState === 'idle' && dKm < 2000) loadHi();
       dot.visible = !issModel.visible;   // le repère jaune disparaît dès qu'on voit le modèle
@@ -675,7 +677,10 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _featuresVisible: () => Object.fromEntries(Object.entries(featInst).map(([id, inst]) => [id, inst.objects.some(o => o.visible)])),
     selectView,
     goIss, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
+    setBigVehicles: on => { const k = on ? VEHICLE_SCALE_BIG : 1, r = k / VK; VK = k; cam.vk = k; if (launch) launch.vk = k; if (cam.mode === 'iss') cam.goal.dist = Math.min(41 * k, Math.max(0.1 * k / R_KM, cam.goal.dist * r)); },   // fusées, satellites et ISS ×1 000 (ou taille réelle)
+
     startRocket, stopRocket, launchMission, followMission, startStory, storyNext, quitStory,
+    _vehicle: () => launch ? { vk: launch.vk, scale: launch.rocket.scale.x, camKm: camera.position.distanceTo(launch.center) * R_KM, lenKm: launch.rocketLen * launch.vk / 1000 } : null,
     _story: () => story ? { index: story.index, next: story.next, phase: story.phase, finished: story.finished, trig: story.trig, T: launch ? launch.T : null, playing: launch ? launch.playing : null, speed: launch ? launch.speed : null } : null, setRocketSpeed, followComponent, toggleComponentInfo,
     dispose() {
       stopped = true; cancelAnimationFrame(raf); clearTimeout(solarTimer); disposers.forEach(d => d()); clearLabels(); overlay.dispose();

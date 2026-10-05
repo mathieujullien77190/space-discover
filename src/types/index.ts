@@ -75,6 +75,7 @@ export type Engine = {
   setDate: (ms: number) => void
   setFeature: (id: string, on: boolean) => void
   setMetric: (on: boolean) => void
+  setBigVehicles: (on: boolean) => void
   startRocket: (key: string, custom?: unknown) => Promise<unknown>
   stopRocket: () => void
   startStory: (id: string) => Promise<unknown>
@@ -95,6 +96,7 @@ export type Engine = {
   _view: () => { up: number[]; dir: number[]; custom: boolean; align: 'north' | 'orbit' | null }
   _probe: (id: string) => { shown: boolean; dist: number; camDist: number; dot: boolean; model: boolean; path: boolean; local: boolean; pos: number[]; abs: number[]; r: number[] | null; label: string } | null
   _probeDistance: (probe: string, body: string) => number
+  _vehicle: () => { vk: number; scale: number; camKm: number; lenKm: number } | null
   _story: () => { index: number; next: number; phase: string; finished: boolean; trig: number[]; T: number | null; playing: boolean | null; speed: number | null } | null
   _lod: () => { earth: number; bodies: Record<string, number>; ratio: number }
 }

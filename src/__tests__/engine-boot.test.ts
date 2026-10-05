@@ -425,6 +425,22 @@ describe('createEngine (rendu factice)', () => {
     expect(state.story.active).toBe(false)
     expect(state.rocket.running).toBe(false)
   }, 180000)
+  it('mode engins géants : la fusée est 1 000 fois plus grosse et la caméra recule d’autant', async () => {
+    engine._frame(performance.now() + 300)
+    await engine.startRocket('obj:ariane5')
+    for (let i = 0; i < 40; i++) engine._frame(performance.now() + 300 + i * 100)
+    const a = engine._vehicle()!
+    engine.setBigVehicles(true)
+    for (let i = 0; i < 120; i++) engine._frame(performance.now() + 5000 + i * 100)
+    const b = engine._vehicle()!
+    expect(b.vk).toBe(1000)
+    expect(b.scale / a.scale).toBeCloseTo(1000, 3)
+    expect(b.camKm / a.camKm).toBeGreaterThan(300)
+    expect(b.camKm / b.lenKm).toBeLessThan(3)                                  // même cadrage : la fusée reste entière à l'écran
+    engine.setBigVehicles(false)
+    expect(engine._vehicle()!.vk).toBe(1)
+    engine.stopRocket()
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)

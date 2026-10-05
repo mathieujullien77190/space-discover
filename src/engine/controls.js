@@ -10,7 +10,7 @@ export function attachControls(canvas, cam, onClick) {
     if (cam.mode === 'launch') { cam.zoomFit = false; cam.launchK = Math.max(1e-7, Math.min(1e7, cam.launchK * f)); }   // zoom manuel sur la caméra auto de la fusée
     else if (cam.mode === 'earth') cam.goal.dist = 1 + Math.min(EARTH_MAX_DIST, Math.max(2 / R_KM, (cam.goal.dist - 1) * f));   // on zoome sur l'altitude (min 2 km)
     else if (cam.mode === 'solar') cam.goal.dist = Math.min(EARTH_MAX_DIST, Math.max(cam.minDist || 1.5, cam.goal.dist * f));   // vue Soleil / Lune : de 1,5 rayon terrestre à 3·10⁵ (≈ 13 UA)
-    else cam.goal.dist = Math.min(41, Math.max(0.1 / R_KM, cam.goal.dist * f));                                    // autour de l'ISS (min 100 m)
+    else cam.goal.dist = Math.min(41 * (cam.vk || 1), Math.max(0.1 * (cam.vk || 1) / R_KM, cam.goal.dist * f));                                    // autour de l'ISS (min 100 m)
     
   };
   const rotate = (dx, dy) => {

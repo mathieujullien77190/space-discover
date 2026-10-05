@@ -10,7 +10,7 @@ import { useStore } from '@/store'
 import { initialEngineState } from '@/store/initial'
 import type { Engine } from '@/types'
 
-const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), startRocket: vi.fn(() => Promise.resolve()), stopRocket: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setRocketSpeed: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
+const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), startRocket: vi.fn(() => Promise.resolve()), stopRocket: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setRocketSpeed: vi.fn(), setBigVehicles: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
 
 describe('TopBar + SubMenu', () => {
   let engine: ReturnType<typeof fakeEngine>
@@ -24,6 +24,14 @@ describe('TopBar + SubMenu', () => {
     expect(screen.queryByText('🛰 Satellites')).toBeNull()
     expect(screen.queryByText('🚀 Fusées')).toBeNull()
     expect(screen.queryByText(/Lune/)).toBeNull()
+  })
+  it('bouton « Engins ×1000 » : active puis désactive le mode engins géants', () => {
+    useStore.setState({ bigVehicles: false })
+    render(<TopBar />)
+    fireEvent.click(screen.getByText('🔭 Engins ×1000'))
+    expect(engine.setBigVehicles).toHaveBeenLastCalledWith(true)
+    fireEvent.click(screen.getByText('🔭 Engins ×1000'))
+    expect(engine.setBigVehicles).toHaveBeenLastCalledWith(false)
   })
   it('Astres : la Lune n’est pas une planète : elle apparaît sous la Terre, pas sous Mars', () => {
     render(<><TopBar /><SubMenu /></>)

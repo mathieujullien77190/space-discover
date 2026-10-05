@@ -37,3 +37,4 @@ export const BODY_CATEGORIES: ReadonlyArray<{ id: 'planets' | 'comets' | 'stars'
 export const NUDGE_STEPS: ReadonlyArray<number> = [0.5, 1, 5, 15]   // pas de réglage fin de la vue (°)
 export const NUDGE_FIRST_DELAY_MS = 350   // délai avant la répétition en maintenant le bouton
 export const NUDGE_REPEAT_MS = 70
+export const BIG_VEHICLES_LABEL = '🔭 Engins ×1000'   // mode « engins géants » (fusées, satellites, ISS)
