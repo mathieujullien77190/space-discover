@@ -188,7 +188,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     const rd = x => Math.round(x * 10) / 10, altCam = (camera.position.length() - 1) * R_KM;
     if (cam.mode === 'iss' && iss) { const F = frameIss(), d = camera.position.clone().sub(cam.tgt).normalize(); return { mode: 'iss', yaw: rd(Math.atan2(d.dot(F.s), -d.dot(F.f)) / DEG), pitch: rd(Math.asin(Math.max(-1, Math.min(1, d.dot(F.u)))) / DEG), distKm: Math.round(cam.dist * R_KM * 1000) / 1000, fov: camera.fov }; }
     if (cam.mode === 'solar') return { mode: 'solar', cible: solarTarget, lon: rd(cam.lon), lat: rd(cam.lat), distRayonsTerrestres: Math.round(cam.dist * 100) / 100, fov: camera.fov };   // Lune ou Soleil
-    if (cam.eg) return { mode: 'ground', lon: rd(Math.atan2(-cam.eg.t.z, cam.eg.t.x) / DEG), lat: rd(Math.asin(cam.eg.t.y) / DEG), yaw: rd(cam.eg.yaw), pitch: rd(cam.eg.pitch), distKm: rd(cam.eg.dist * R_KM), fov: camera.fov };
+    if (cam.eg) return { mode: 'ground', lon: rd(Math.atan2(-cam.eg.t.z, cam.eg.t.x) / DEG), lat: rd(Math.asin(cam.eg.t.y) / DEG), altKm: rd(cam.eg.h * R_KM), yaw: rd(cam.eg.yaw), tilt: rd(cam.eg.tilt), fov: camera.fov };
     return { mode: 'earth', lon: rd(cam.lon), lat: rd(cam.lat), altKm: rd(altCam), fov: camera.fov };
   };
   // « NORD EN HAUT » et « ORBITE À PLAT » (boutons de la fiche d'un astre) : la caméra garde son côté mais se met en place avec un « haut » d'écran choisi.
@@ -264,6 +264,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   disposers.push(attachControls(canvas, cam, (x, y) => { if (near(issScreen, HIT, x, y)) goIss(); else { const id = bodyAt(x, y); if (id) selectView(id); else if (cam.mode === 'earth') groundClick(x, y); } }));
   // VUE AU SOL : un clic sur la boule pose la caméra SUR ce point du sol (cible) ; on peut alors l'INCLINER (glisser en hauteur : de la verticale à l'horizon), la tourner (cap, glisser de côté), zoomer (molette) ;
   // un autre clic sur le sol déplace la cible en douceur ; Échap ou le bouton Terre revient à la vue Terre.
+  const EG_H_MIN = 5 / R_KM, EG_H_MAX = 40, EG_TILT_MAX = 85;   // altitude de la caméra : de 5 km à 40 rayons terrestres ; inclinaison de 0 à 85°
   const egRay = new THREE.Raycaster(), egUp = new THREE.Vector3(), egEast = new THREE.Vector3(), egNorth = new THREE.Vector3(), egHead = new THREE.Vector3(), egOff = new THREE.Vector3(), egF = new THREE.Vector3(), egR = new THREE.Vector3(), egU = new THREE.Vector3(), egM = new THREE.Matrix4();
   const groundClick = (x, y) => {
     const r = canvas.getBoundingClientRect(), rw = r.width || innerWidth, rh = r.height || innerHeight; egRay.setFromCamera(new THREE.Vector2(((x - (r.left || 0)) / rw) * 2 - 1, -((y - (r.top || 0)) / rh) * 2 + 1), camera);
@@ -271,22 +272,24 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     if (disc < 0) return;   // le clic est à côté de la Terre (dans le ciel)
     const t = -b - Math.sqrt(disc); if (t <= 0) return;
     const P = o.clone().addScaledVector(d, t).normalize();
-    if (!cam.eg) { const dist = Math.max(2 / R_KM, camera.position.distanceTo(P) * 0.6); cam.eg = { t: P.clone(), goal: P.clone(), yaw: 0, pitch: 90, dist }; }   // 1er clic : on se pose sur le point, vue de dessus d'abord (comme la boule), un peu plus près
-    else cam.eg.goal.copy(P);
+    if (!cam.eg) cam.eg = { t: P.clone(), goal: P.clone(), center: P.clone(), yaw: 0, tilt: 0, h: Math.max(EG_H_MIN, camera.position.length() - 1) };   // 1er clic : la caméra se place à la verticale du point, à la même altitude, en regardant droit vers le bas (comme la boule)
+    else cam.eg.goal.copy(P);   // clics suivants : la caméra glisse à la verticale du nouveau point, altitude et inclinaison conservées
     publish({ view: { mode: 'earth', selected: 'earth', align: 'ground' } });
   };
-  const placeGround = dt => {   // caméra sur le sol : position et orientation d'après la cible, le cap (yaw), l'inclinaison (pitch : 90 = verticale, ~5 = presque l'horizon) et la distance
+  const placeGround = dt => {   // VUE AU SOL : la caméra est SUR l'axe centre de la Terre → extérieur, à la verticale du point n, à l'altitude h ; elle MONTE / DESCEND le long de cet axe ; son regard fait un ANGLE (tilt : 0 = droit vers le bas, ~85° = presque l'horizon) avec cet axe, dans la direction du cap (yaw)
     const g = cam.eg; g.t.lerp(g.goal, 1 - Math.exp(-dt * 7)).normalize();
-    g.pitch = Math.max(4, Math.min(90, g.pitch)); g.dist = Math.max(g.dist, 3 / R_KM / Math.sin(g.pitch * DEG), 2 / R_KM); g.dist = Math.min(g.dist, 40);
+    g.tilt = Math.max(0, Math.min(EG_TILT_MAX, g.tilt)); g.h = Math.max(EG_H_MIN, Math.min(EG_H_MAX, g.h));
     egUp.copy(g.t); egEast.crossVectors(Y_AXIS, egUp); if (egEast.lengthSq() < 1e-8) egEast.set(0, 0, -1); egEast.normalize(); egNorth.crossVectors(egUp, egEast).normalize();
-    const yaw = g.yaw * DEG, th = g.pitch * DEG;
-    egHead.copy(egNorth).multiplyScalar(Math.cos(yaw)).addScaledVector(egEast, Math.sin(yaw));   // direction du regard à l'horizontale (cap depuis le nord, dans le sens des aiguilles d'une montre)
-    egOff.copy(egHead).multiplyScalar(-Math.cos(th)).addScaledVector(egUp, Math.sin(th)).multiplyScalar(g.dist);   // la caméra est derrière la cible, en hauteur
-    camera.position.copy(g.t).add(egOff);
-    egF.copy(egOff).negate().normalize();   // vers la cible
-    const s = Math.max(0, Math.min(1, (g.pitch - 78) / 12)), hint = egU.copy(egUp).multiplyScalar(1 - s).addScaledVector(egHead, s).normalize();   // près de la verticale, le « haut » de l'écran devient le cap
+    const yaw = g.yaw * DEG, al = g.tilt * DEG;
+    egHead.copy(egNorth).multiplyScalar(Math.cos(yaw)).addScaledVector(egEast, Math.sin(yaw));   // direction horizontale du regard (cap depuis le nord, dans le sens des aiguilles d'une montre)
+    camera.position.copy(egUp).multiplyScalar(1 + g.h);   // sur l'axe, à l'altitude h
+    egF.copy(egUp).multiplyScalar(-Math.cos(al)).addScaledVector(egHead, Math.sin(al)).normalize();   // regard : incliné de tilt par rapport à l'axe (vers le bas)
+    const s = Math.max(0, Math.min(1, (g.tilt - 10) / 12)), hint = egU.copy(egHead).multiplyScalar(1 - s).addScaledVector(egUp, s).normalize();   // près de la verticale, le « haut » de l'écran est le cap ; incliné, c'est la verticale du lieu
     egR.crossVectors(egF, hint).normalize(); egU.crossVectors(egR, egF).normalize();
     camera.quaternion.setFromRotationMatrix(egM.makeBasis(egR, egU, egF.clone().negate())); camera.fov = cam.fov;
+    // point regardé au sol (pour charger cartes et relief là où l'on regarde) : à h · tan(tilt) devant, sans dépasser l'horizon
+    const dmax = Math.acos(1 / (1 + g.h)) * 0.9, d = Math.min(dmax, g.h * Math.tan(al));
+    g.center.copy(egUp).multiplyScalar(Math.cos(d)).addScaledVector(egHead, Math.sin(d)).normalize();
     const L = camera.position.length(); cam.dist = cam.goal.dist = L; cam.lat = cam.goal.lat = Math.asin(camera.position.y / L) / DEG; cam.lon = cam.goal.lon = Math.atan2(-camera.position.z, camera.position.x) / DEG;   // la pose « boule » suit : revenir à la Terre ne saute pas
   };
   const onMove = e => canvas.classList.toggle('hand', near(issScreen, HIT, e.clientX, e.clientY) || !!bodyAt(e.clientX, e.clientY));
@@ -438,12 +441,12 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       }
     }
     const issHidden = solarMode || (camera.position.length() - 1) * R_KM > 20000;   // l'ISS cachée cache aussi tout ce qui lui appartient : cotes, hauteur, trajectoire
-    if (issView && cam.fp) { issModel.visible = false; dot.visible = false; }   // vue depuis l'ISS : on est dedans (ni le modèle ni le repère jaune)
+    if (issView && cam.fp) { issModel.visible = false; dot.visible = false; issScreen = null; issLabel.style.display = 'none'; }   // vue DEPUIS l'ISS : ni modèle, ni repère, ni le texte « ISS » (il buguait), ni la hauteur / les cotes   // vue depuis l'ISS : on est dedans (ni le modèle ni le repère jaune)
     if (issHidden) { issScreen = null; issLabel.style.display = 'none'; dot.visible = false; issModel.visible = false; }   // dézoomé : l'ISS est cachée (point, nom et modèle)
     // caractéristiques 3D : mise à jour puis étiquettes projetées à l'écran
     for (const f of ISS_FEATURES) {   // une caractéristique « onlyIss » (taille, hauteur) n'apparaît que sur la vue de l'ISS
       const inst = featInst[f.id]; if (!inst) continue;
-      const act = !!featOn[f.id] && !!iss && !issHidden && (!f.onlyIss || cam.mode === 'iss');
+      const act = !!featOn[f.id] && !!iss && !issHidden && !(issView && cam.fp) && (!f.onlyIss || cam.mode === 'iss');
       inst.objects.forEach(o => { o.visible = act; }); inst.labels.forEach(l => { l.active = act; });
       if (act && iss) inst.update(iss, camera, date);
     }
@@ -461,7 +464,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       const camAlt = (camera.position.length() - 1) * R_KM;
       clouds.update({ on: cloudsOn, camAlt, http: isHttp() });
       { const wasShown = terrainShown, L = camera.position.length(); let cl = Math.asin(camera.position.y / L) / DEG, co = Math.atan2(-camera.position.z, camera.position.x) / DEG;
-        if (cam.eg) { cl = Math.asin(cam.eg.t.y) / DEG; co = Math.atan2(-cam.eg.t.z, cam.eg.t.x) / DEG; }   // vue au sol : le relief se charge autour du point VISÉ
+        if (cam.eg) { cl = Math.asin(cam.eg.center.y) / DEG; co = Math.atan2(-cam.eg.center.z, cam.eg.center.x) / DEG; }   // vue au sol : le relief se charge autour du point VISÉ
         terrainShown = terrain.update({ on: true, camAlt, cl, co, fov: camera.fov, aspect: camera.aspect, http: isHttp() });
         if (terrainShown !== wasShown) publish({ terrainDetail: terrainShown }); }   // l'interface affiche les crédits seulement quand le relief est visible
       for (let k = 1; k < earth.children.length; k++) if (earth.children[k].isLineSegments) earth.children[k].visible = camAlt < 20000 && !terrainShown;   // dézoomé : plus de trait de côte ; sur le relief satellite il flotterait au-dessus
@@ -530,9 +533,9 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _terrain: () => Object.assign({ shown: terrainShown }, terrain.stats()),
     _clouds: () => Object.assign({ on: cloudsOn }, clouds.stats()),
     setIssView,
-    _eg: () => cam.eg ? { lon: Math.atan2(-cam.eg.t.z, cam.eg.t.x) / DEG, lat: Math.asin(cam.eg.t.y) / DEG, yaw: cam.eg.yaw, pitch: cam.eg.pitch, distKm: cam.eg.dist * R_KM, camAltKm: (camera.position.length() - 1) * R_KM, tilt: camera.position.clone().sub(cam.eg.t).normalize().dot(cam.eg.t) } : null,
+    _eg: () => cam.eg ? { lon: Math.atan2(-cam.eg.t.z, cam.eg.t.x) / DEG, lat: Math.asin(cam.eg.t.y) / DEG, yaw: cam.eg.yaw, tilt: cam.eg.tilt, altKm: cam.eg.h * R_KM, camAltKm: (camera.position.length() - 1) * R_KM, nadirDot: camera.position.clone().normalize().dot(cam.eg.t), viewDot: new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).dot(cam.eg.t) } : null,
     _click: (x, y) => groundClick(x, y),
-    _egSet: (pitch, yaw) => { if (cam.eg) { cam.eg.pitch = pitch; cam.eg.yaw = yaw; } },
+    _egSet: (tilt, yaw) => { if (cam.eg) { cam.eg.tilt = tilt; cam.eg.yaw = yaw; } },
     _fp: () => cam.fp ? { yaw: cam.fp.yaw, pitch: cam.fp.pitch, fov: camera.fov, posErr: iss && issView ? camera.position.distanceTo(iss.pos) * R_KM * 1000 : null, dir: new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray(), up: new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion).toArray(), radial: issView ? issSrc.radial.toArray() : null, flight: issView ? issSrc.dir.toArray() : null } : null,
 
     dispose() {

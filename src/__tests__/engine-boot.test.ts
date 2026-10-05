@@ -342,6 +342,7 @@ describe('createEngine (rendu factice)', () => {
     const dot = (a: number[], b: number[]) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
     expect(fp.posErr!).toBeLessThan(1)
     expect(dot(fp.up, fp.radial!)).toBeGreaterThan(0.5)
+    expect(engine._eg()).toBeNull()
     engine.selectView('moon'); engine._frame(performance.now() + 1500)
     expect(engine._fp()).toBeNull()
     engine.goIss(); engine._frame(performance.now() + 1700)                          // le bouton « ISS » zoome sur la station
@@ -355,23 +356,23 @@ describe('createEngine (rendu factice)', () => {
     engine.setClouds(false); engine._frame(performance.now() + 300)
     expect(engine._clouds().visible).toBe(false)
   })
-  it('vue au sol : un clic sur la boule pose la caméra sur le point, on peut l’incliner, Terre la remet', () => {
+  it('vue au sol : un clic sur la boule pose la caméra sur l’axe centre de la Terre → extérieur ; elle monte / descend le long de cet axe et son regard fait un angle avec lui', () => {
     engine.selectView('earth'); engine._frame(performance.now() + 100)
     expect(engine._eg()).toBeNull()
     engine._click(innerWidth / 2, innerHeight / 2); engine._frame(performance.now() + 200)
     const a = engine._eg()!
     expect(a).not.toBeNull()
-    expect(Math.abs(a.lat)).toBeLessThan(90)
-    expect(a.pitch).toBe(90)
-    expect(a.tilt).toBeGreaterThan(0.99)                                       // vue de dessus : la caméra est à la verticale du point
-    engine._egSet(30, 40)
+    expect(a.tilt).toBe(0)
+    expect(a.nadirDot).toBeGreaterThan(0.9999)                                 // la caméra est sur l’axe qui passe par le point
+    expect(a.viewDot).toBeLessThan(-0.9999)                                    // et regarde droit vers le bas
+    engine._egSet(60, 40)
     for (let i = 0; i < 4; i++) engine._frame(performance.now() + 300 + i * 100)
     const b = engine._eg()!
-    expect(b.tilt).toBeCloseTo(Math.sin(30 * Math.PI / 180), 1)                // inclinée : la direction caméra → cible fait 30° avec l’horizon
-    expect(b.camAltKm).toBeLessThan(a.camAltKm + 1)
-    expect(b.camAltKm).toBeGreaterThan(0)
-    engine._egSet(1, 0); engine._frame(performance.now() + 800)
-    expect(engine._eg()!.pitch).toBeGreaterThanOrEqual(4)                      // jamais sous le sol : inclinaison limitée
+    expect(b.nadirDot).toBeGreaterThan(0.9999)                                 // toujours sur le même axe : l’inclinaison ne déplace pas la caméra
+    expect(b.viewDot).toBeCloseTo(-Math.cos(60 * Math.PI / 180), 3)            // le regard fait 60° avec l’axe
+    expect(Math.abs(b.camAltKm - a.camAltKm)).toBeLessThan(1)                  // altitude inchangée
+    engine._egSet(95, 0); engine._frame(performance.now() + 800)
+    expect(engine._eg()!.tilt).toBeLessThanOrEqual(85)                         // jamais au-delà de l’horizon
     engine.selectView('earth'); engine._frame(performance.now() + 900)
     expect(engine._eg()).toBeNull()                                            // le bouton Terre coupe la vue au sol
   })

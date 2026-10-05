@@ -7,25 +7,20 @@ export function attachControls(canvas, cam, onClick) {
   const ptrs = new Map(), mid = new Set(); let pinch = 0, moved = 0; const offs = [], on = (t, ev, fn, o) => { t.addEventListener(ev, fn, o); offs.push(() => t.removeEventListener(ev, fn, o)); };
   const tanH = () => Math.tan(cam.fov * DEG / 2);
   const zoom = f => {   // f > 1 = on s'éloigne
-    if (cam.eg) { cam.eg.dist = Math.max(2 / R_KM, Math.min(40, cam.eg.dist * f)); return; }   // vue au sol : on se rapproche / s'éloigne de la cible
+    if (cam.eg) { cam.eg.h = Math.max(5 / R_KM, Math.min(40, cam.eg.h * f)); return; }   // vue au sol : la molette fait MONTER (f > 1) ou DESCENDRE la caméra le long de l'axe centre de la Terre → extérieur
     if (cam.fp) { cam.fp.fov = Math.max(20, Math.min(100, (cam.fp.fov || 60) * (f > 1 ? 1.08 : 1 / 1.08))); return; }   // première personne : la molette règle l'ouverture du champ
     if (cam.mode === 'earth') cam.goal.dist = 1 + Math.min(EARTH_MAX_DIST, Math.max(2 / R_KM, (cam.goal.dist - 1) * f));   // on zoome sur l'altitude (min 2 km)
     else if (cam.mode === 'solar') cam.goal.dist = Math.min(EARTH_MAX_DIST, Math.max(cam.minDist || 1.5, cam.goal.dist * f));   // vue Soleil / Lune : de 1,5 rayon terrestre à 3·10⁵ (≈ 13 UA)
     else cam.goal.dist = Math.min(41, Math.max(0.1 / R_KM, cam.goal.dist * f));                                    // autour de l'ISS (min 100 m)
     
   };
-  // MONTER / DESCENDRE (appui sur la molette + glisser vers le haut / le bas) : en vue au sol la caméra prend ou perd de la HAUTEUR en gardant sa distance horizontale à la cible (la visée se redresse en montant) ; ailleurs : l'altitude change comme au zoom
+  // MONTER / DESCENDRE (appui sur la molette + glisser vers le haut / le bas) : la caméra monte ou descend (vue au sol : le long de l'axe centre de la Terre → extérieur) ; comme la molette
   const lift = dy => {
     const f = Math.exp(-dy * 0.008);   // glisser vers le haut (dy < 0) = monter
-    if (cam.eg) {
-      const g = cam.eg, th = g.pitch * DEG, h = g.dist * Math.sin(th), dh = g.dist * Math.cos(th), h2 = Math.max(3 / R_KM, h * f);
-      g.pitch = Math.max(4, Math.min(90, Math.atan2(h2, dh) / DEG)); g.dist = Math.max(2 / R_KM, Math.min(40, Math.hypot(h2, dh)));
-      return;
-    }
-    zoom(f);
+    zoom(f);   // vue au sol comprise : la caméra monte / descend le long de l'axe
   };
   const rotate = (dx, dy) => {
-    if (cam.eg) { cam.eg.yaw -= dx * 0.3; cam.eg.pitch = Math.max(4, Math.min(90, cam.eg.pitch - dy * 0.3)); return; }   // vue au sol : glisser de côté = cap, en hauteur = inclinaison (le décor suit le doigt)
+    if (cam.eg) { cam.eg.yaw -= dx * 0.3; cam.eg.tilt = Math.max(0, Math.min(85, cam.eg.tilt + dy * 0.3)); return; }   // vue au sol : glisser de côté = cap, en hauteur = inclinaison du regard par rapport à l'axe (le décor suit le doigt)
     if (cam.fp) { cam.fp.yaw -= dx * 0.3; cam.fp.pitch = Math.max(-89, Math.min(89, cam.fp.pitch + dy * 0.3)); return; }   // vue à la première personne : on tourne la tête (le décor suit le doigt)
     const alt = Math.max(1e-5, cam.mode === 'earth' ? cam.dist - 1 : 0);
     const k = cam.mode === 'earth' ? Math.min(alt, 3) * 2 * tanH() / canvas.clientHeight / DEG : 0.3;   // le sol suit le doigt à tout zoom
