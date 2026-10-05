@@ -21,3 +21,4 @@ export const nudge = (kind: string): void => {
 }
 export const alignNorth = (id: string): void => engine()?.alignNorth(id)
 export const alignOrbit = (id: string): void => engine()?.alignOrbit(id)
+export const resetUp = (): void => engine()?.resetUp()

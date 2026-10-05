@@ -1,6 +1,6 @@
 // Types partagés : état publié par le moteur 3D (voir src/engine/app.js) et formes de données de l'interface.
 export type ViewMode = 'earth' | 'iss' | 'solar' | 'launch'
-export type ViewState = { mode: ViewMode; selected: string | null }   // selected : id de l'astre choisi (null en vue ISS)
+export type ViewState = { mode: ViewMode; selected: string | null; align: 'north' | 'orbit' | null }   // selected : id de l'astre choisi (null en vue ISS) ; align : « haut » de l'écran = pôle nord de l'astre, normale de son orbite, ou celui du monde (null)
 export type EngineStatus = 'loading' | 'ready' | 'error'
 
 export type TimeState = { simMs: number; speed: number; visible: boolean }
@@ -52,6 +52,7 @@ export type Engine = {
   goIss: () => void
   alignNorth: (id: string) => void
   alignOrbit: (id: string) => void
+  resetUp: () => void
   nudge: (kind: string, stepDeg: number) => void
   setSimSpeed: (speed: number) => void
   resetTime: () => void
@@ -69,7 +70,7 @@ export type Engine = {
   _localOrbit: (id: string) => { visible: boolean; coarse: boolean; n: number; mid: number[]; pos: number[]; end: number[] } | null
   _dotVisible: () => Record<string, boolean>
   _axisVisible: () => Record<string, boolean>
-  _view: () => { up: number[]; dir: number[]; custom: boolean }
+  _view: () => { up: number[]; dir: number[]; custom: boolean; align: 'north' | 'orbit' | null }
   _lod: () => { earth: number; bodies: Record<string, number>; ratio: number }
 }
 

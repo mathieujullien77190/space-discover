@@ -3,7 +3,7 @@ import type { EngineState } from '@/types'
 export const initialEngineState: EngineState = {
   status: 'loading',
   error: null,
-  view: { mode: 'earth', selected: 'earth' },
+  view: { mode: 'earth', selected: 'earth', align: 'north' },
   info: '',
   viewJson: '',
   time: { simMs: 0, speed: 1, visible: true },

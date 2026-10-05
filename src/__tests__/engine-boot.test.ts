@@ -36,11 +36,11 @@ describe('createEngine (rendu factice)', () => {
   it('change de vue : Lune, ISS puis Terre', () => {
     engine._frame(performance.now() + 300)
     engine.selectView('moon')
-    expect(state.view).toEqual({ mode: 'solar', selected: 'moon' })
+    expect(state.view).toMatchObject({ mode: 'solar', selected: 'moon' })
     engine.goIss()
-    expect(state.view).toEqual({ mode: 'iss', selected: null })
+    expect(state.view).toMatchObject({ mode: 'iss', selected: null })
     engine.selectView('earth')
-    expect(state.view).toEqual({ mode: 'earth', selected: 'earth' })
+    expect(state.view).toMatchObject({ mode: 'earth', selected: 'earth' })
   })
   it('vue éloignée : la Terre est affichée en priorité, la Lune collée à elle est masquée', async () => {
     engine.selectView('sun')
@@ -70,7 +70,7 @@ describe('createEngine (rendu factice)', () => {
     ;(canvas as unknown as { setPointerCapture: () => void }).setPointerCapture = () => {}
     const fire = (type: string) => { const e = new MouseEvent(type, { clientX: x, clientY: y, bubbles: true }); Object.assign(e, { pointerId: 1 }); canvas.dispatchEvent(e) }
     fire('pointerdown'); fire('pointerup')
-    expect(state.view).toEqual({ mode: 'earth', selected: 'earth' })
+    expect(state.view).toMatchObject({ mode: 'earth', selected: 'earth' })
   })
   it('vue Terre dézoomée : un clic sur le nom de la Terre revient près de la Terre (même comportement que Mars)', async () => {
     await new Promise((r) => setTimeout(r, 450))
@@ -99,7 +99,7 @@ describe('createEngine (rendu factice)', () => {
     engine._frame(performance.now() + 300)
     expect(state.features).toEqual({})
     engine.goIss()
-    expect(state.view).toEqual({ mode: 'iss', selected: null })
+    expect(state.view).toMatchObject({ mode: 'iss', selected: null })
     expect(state.features).toEqual({ size: true, orbit: true })
     for (let i = 0; i < 4; i++) engine._frame(performance.now() + 1000 + i * 100)
     expect(state.focus.id).toBe('iss')
@@ -247,7 +247,7 @@ describe('createEngine (rendu factice)', () => {
     expect(dot(v.dir, v.up)).toBeCloseTo(0.3 / Math.sqrt(1.09), 3)
     // « Orbite à plat » : le « haut » est la normale de l'orbite d'Io autour de Jupiter, la caméra 12° au-dessus du plan
     engine.selectView('io'); frames(3)
-    expect(engine._view().custom).toBe(false)   // changer de vue remet le « haut » du monde
+    expect(engine._view().align).toBe('north')   // choisir un astre : « Nord en haut » d'office (celui de Jupiter pour une lune en rotation synchrone)
     engine.alignOrbit('io'); frames(3)
     const w = engine._view()
     expect(w.custom).toBe(true)
@@ -281,7 +281,10 @@ describe('createEngine (rendu factice)', () => {
     expect(v.custom).toBe(true)
     expect(dot(v.dir, v.up)).not.toBeCloseTo(dot(h.dir, h.up), 2)       // la hauteur change
     engine.selectView('saturn'); frames(3)
-    expect(engine._view().custom).toBe(false)                          // un changement de vue remet le « haut » du monde
+    expect(engine._view().align).toBe('north')                         // un changement de vue : nouvel astre, « Nord en haut » d'office (celui de Saturne)
+    engine.resetUp(); frames(2)
+    expect(engine._view().custom).toBe(false)                          // bouton « Nord en haut » désactivé : « haut » du monde
+    expect(engine._view().align).toBeNull()
   })
   it('le point lointain (carré) disparaît quand le modèle 3D est visible (Halley, Tchouri, planètes) et revient de loin', async () => {
     await new Promise((r) => setTimeout(r, 450))
@@ -295,6 +298,25 @@ describe('createEngine (rendu factice)', () => {
     const far = engine._dotVisible()
     expect(far.halley).toBe(true)   // de loin le maillage est invisible : le point reste le repère
     expect(far.mars).toBe(true)
+  })
+  it('vue de départ : la Terre vue du nord, nord en haut, Greenwich en face ; choisir un astre active « Nord en haut »', async () => {
+    await new Promise((r) => setTimeout(r, 450))
+    let t = 1000
+    const frames = (n: number) => { for (let i = 0; i < n; i++) engine._frame(performance.now() + (t += 100)) }
+    frames(4)
+    const v = engine._view()
+    expect(state.view.align).toBe('north')
+    expect(v.dir[0]).toBeGreaterThan(0.6)                     // 50° N, 0° E : x = cos(50°) = 0,64 (vers Greenwich), y = sin(50°) = 0,77 (au nord)
+    expect(v.dir[1]).toBeCloseTo(Math.sin(50 * Math.PI / 180), 2)
+    expect(Math.abs(v.dir[2])).toBeLessThan(0.02)             // sur le méridien 0°
+    expect(v.up[1]).toBeGreaterThan(0.99)                     // nord en haut
+    for (const id of ['mars', 'jupiter', 'io', 'neptune', 'moon']) { engine.selectView(id); frames(2); expect(state.view.align, id).toBe('north'); expect(engine._view().custom, id).toBe(true) }
+    engine.selectView('sun'); frames(2)
+    expect(state.view.align).toBeNull()                        // le Soleil n'a pas de pôle connu : pas d'alignement
+    engine.selectView('earth'); frames(2)
+    expect(state.view.align).toBe('north')
+    engine.alignOrbit('earth'); frames(2)
+    expect(state.view.align).toBe('orbit')
   })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)

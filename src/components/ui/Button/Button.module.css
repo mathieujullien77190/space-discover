@@ -10,6 +10,6 @@
   white-space: nowrap;
   touch-action: manipulation;
 }
-.button:hover:not(:disabled) { background: rgba(40, 60, 100, 0.85); }
+@media (hover: hover) { .button:hover:not(:disabled) { background: rgba(40, 60, 100, 0.85); } }   /* pas de survol « collant » sur écran tactile : le dernier bouton touché restait en surbrillance */
 .button:disabled { opacity: 0.5; cursor: default; }
 .on { border-color: #ffd54a; color: #ffd54a; }

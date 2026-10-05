@@ -9,7 +9,7 @@ import { useStore } from '@/store'
 import { initialEngineState } from '@/store/initial'
 import type { Engine } from '@/types'
 
-const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), startRocket: vi.fn(() => Promise.resolve()), stopRocket: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setRocketSpeed: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
+const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), startRocket: vi.fn(() => Promise.resolve()), stopRocket: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setRocketSpeed: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
 
 describe('TopBar + SubMenu', () => {
   let engine: ReturnType<typeof fakeEngine>
@@ -30,9 +30,9 @@ describe('TopBar + SubMenu', () => {
     expect(screen.getByText(/Terre/)).toBeInTheDocument()
     expect(screen.getByText(/Mars/)).toBeInTheDocument()
     expect(screen.getByText(/Lune/)).toBeInTheDocument()
-    act(() => useStore.setState({ view: { mode: 'solar', selected: 'mars' } }))
+    act(() => useStore.setState({ view: { mode: 'solar', selected: 'mars', align: null } }))
     expect(screen.queryByText(/Lune/)).toBeNull()
-    act(() => useStore.setState({ view: { mode: 'solar', selected: 'moon' } }))
+    act(() => useStore.setState({ view: { mode: 'solar', selected: 'moon', align: null } }))
     expect(screen.getByText(/Lune/)).toBeInTheDocument()
   })
   it('Astres : toutes les planètes, et les lunes de la planète choisie sous elle', () => {
@@ -40,7 +40,7 @@ describe('TopBar + SubMenu', () => {
     fireEvent.click(screen.getByText('🌌 Astres'))
     for (const n of ['Mercure', 'Vénus', 'Terre', 'Mars', 'Jupiter', 'Saturne', 'Uranus', 'Neptune', 'Pluton']) expect(screen.getByText(new RegExp(n + "$"))).toBeInTheDocument()
     const moons = (planet: string, names: string[], absent: string[]) => {
-      act(() => useStore.setState({ view: { mode: 'solar', selected: planet } }))
+      act(() => useStore.setState({ view: { mode: 'solar', selected: planet, align: null } }))
       for (const n of names) expect(screen.getByText(new RegExp(n + "$"))).toBeInTheDocument()
       for (const n of absent) expect(screen.queryByText(new RegExp(n + "$"))).toBeNull()
     }
@@ -52,7 +52,7 @@ describe('TopBar + SubMenu', () => {
     moons('pluto', ['Charon'], ['Triton'])
     moons('mercury', [], ['Phobos', 'Io', 'Lune'])
     moons('earth', ['Lune'], ['Phobos'])
-    act(() => useStore.setState({ view: { mode: 'solar', selected: 'io' } }))   // une lune choisie : sa fratrie reste affichée
+    act(() => useStore.setState({ view: { mode: 'solar', selected: 'io', align: null } }))   // une lune choisie : sa fratrie reste affichée
     expect(screen.getByText(/Callisto/)).toBeInTheDocument()
   })
   it('Astres : Planètes et Comètes sont des menus ; le Soleil (un seul astre) est directement un bouton', () => {
@@ -143,12 +143,22 @@ describe('ViewParams (juste au-dessus de la barre d’échelle)', () => {
 describe('BodyCard (fiche de l’astre proche)', () => {
   it('boutons « Nord en haut » et « Orbite à plat » : appellent le moteur avec l’astre de la fiche ; pas pour l’ISS ni le Soleil (orbite)', () => {
     const engine = fakeEngine()
-    useStore.setState({ ...initialEngineState, focus: { id: 'jupiter' }, engine })
+    useStore.setState({ ...initialEngineState, focus: { id: 'jupiter' }, view: { mode: 'solar', selected: 'jupiter', align: null }, engine })
     const { unmount } = render(<BodyCard />)
     fireEvent.click(screen.getByText('🧭 Nord en haut'))
     expect(engine.alignNorth).toHaveBeenCalledWith('jupiter')
     fireEvent.click(screen.getByText('↔ Orbite à plat'))
     expect(engine.alignOrbit).toHaveBeenCalledWith('jupiter')
+    // boutons à bascule : activés, un nouveau clic revient en arrière (Nord en haut → verticale du monde ; Orbite à plat → Nord en haut)
+    act(() => useStore.setState({ view: { mode: 'solar', selected: 'jupiter', align: 'north' } }))
+    expect(screen.getByText('🧭 Nord en haut').className).toMatch(/_on_/)
+    expect(screen.getByText('↔ Orbite à plat').className).not.toMatch(/_on_/)
+    fireEvent.click(screen.getByText('🧭 Nord en haut'))
+    expect(engine.resetUp).toHaveBeenCalled()
+    act(() => useStore.setState({ view: { mode: 'solar', selected: 'jupiter', align: 'orbit' } }))
+    expect(screen.getByText('↔ Orbite à plat').className).toMatch(/_on_/)
+    fireEvent.click(screen.getByText('↔ Orbite à plat'))
+    expect(engine.alignNorth).toHaveBeenCalledTimes(2)
     unmount()
     act(() => useStore.setState({ focus: { id: 'iss' } }))
     render(<BodyCard />)
