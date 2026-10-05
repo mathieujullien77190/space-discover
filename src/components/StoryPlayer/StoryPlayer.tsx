@@ -1,14 +1,16 @@
 import { useEffect, useRef } from 'react'
+import StorySpeed from '@/components/StorySpeed'
 import { BASE_PATH } from '@/constants'
 import { storyOf } from '@/engine/catalog'
 import { useStore } from '@/store'
-import { quitStory, storyNext } from '@/store/commands'
+import { quitStory, setStorySpeed, storyNext } from '@/store/commands'
 import styles from './StoryPlayer.module.css'
 
 // Lecteur d'histoire : une étape = un grand texte, une image éventuelle, un gros bouton « Suivant ». La simulation est en pause pendant l'étape.
 // À la dernière étape, « Terminer » débloque le haut fait.
 export const StoryPlayer = () => {
   const story = useStore((s) => s.story)
+  const speed = useStore((s) => s.rocket.speed)
   const unlockAchievement = useStore((s) => s.unlockAchievement)
   const done = useRef(false)
   const step = story.step
@@ -31,6 +33,7 @@ export const StoryPlayer = () => {
     return (
       <div className={styles.running} role="status">
         <span>🚀 Suivons la fusée…</span>
+        <StorySpeed speed={speed} onChange={setStorySpeed} />
         <button type="button" className={styles.close} aria-label="Quitter l’histoire" title="Quitter l’histoire" onClick={quitStory}>
           ✕
         </button>
@@ -61,6 +64,7 @@ export const StoryPlayer = () => {
       )}
       <p className={styles.text}>{step.text}</p>
       {step.source && <p className={styles.source}>Source : {step.source}</p>}
+      <StorySpeed speed={speed} onChange={setStorySpeed} />
       <div className={styles.actions}>
         <button type="button" className={styles.next} disabled={!story.canNext} onClick={storyNext}>
           {last ? 'Terminer ✓' : 'Suivant ▶'}

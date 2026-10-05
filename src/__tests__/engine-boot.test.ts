@@ -407,6 +407,9 @@ describe('createEngine (rendu factice)', () => {
     expect(state.story.step?.at).toBe('before')
     expect(Math.abs(state.time.simMs - Date.UTC(1957, 10, 3, 2, 30, 42))).toBeLessThan(120000)   // saut dans le temps : 3 novembre 1957
     expect(engine._story()).toMatchObject({ playing: false, T: 0 })           // en pause, rien n'a bougé
+    engine.setStorySpeed(50); frames(2)                                        // le curseur règle la vitesse sans relancer une étape en pause
+    expect(engine._story()).toMatchObject({ playing: false, speed: 50, T: 0 })
+    engine.setStorySpeed(12)
     // on clique « Suivant » à chaque étape : la simulation est en pause sur chaque texte, et chaque étape tombe juste après son événement
     const seen: string[] = [state.story.step!.id]
     for (let guard = 0; guard < 40 && !state.story.finished; guard++) {

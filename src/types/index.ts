@@ -76,6 +76,7 @@ export type Engine = {
   setFeature: (id: string, on: boolean) => void
   setMetric: (on: boolean) => void
   setBigVehicles: (on: boolean) => void
+  setStorySpeed: (speed: number) => void
   startRocket: (key: string, custom?: unknown) => Promise<unknown>
   stopRocket: () => void
   startStory: (id: string) => Promise<unknown>

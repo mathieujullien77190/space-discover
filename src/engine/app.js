@@ -677,6 +677,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _featuresVisible: () => Object.fromEntries(Object.entries(featInst).map(([id, inst]) => [id, inst.objects.some(o => o.visible)])),
     selectView,
     goIss, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
+    setStorySpeed: v => { if (launch && Number.isFinite(v) && v > 0) launch.speed = v; },   // vitesse du temps pendant une histoire (ne relance pas une étape en pause)
     setBigVehicles: on => { const k = on ? VEHICLE_SCALE_BIG : 1, r = k / VK; VK = k; cam.vk = k; if (launch) launch.vk = k; if (cam.mode === 'iss') cam.goal.dist = Math.min(41 * k, Math.max(0.1 * k / R_KM, cam.goal.dist * r)); },   // fusées, satellites et ISS ×1 000 (ou taille réelle)
 
     startRocket, stopRocket, launchMission, followMission, startStory, storyNext, quitStory,
