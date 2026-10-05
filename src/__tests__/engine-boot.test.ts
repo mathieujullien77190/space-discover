@@ -161,6 +161,21 @@ describe('createEngine (rendu factice)', () => {
     expect(label('Lune')?.style.display).toBe('none')
     expect(engine._orbitsVisible().mars).toBe(true)
   })
+  it('lunes affichées : le nom de la planète est caché et sa fiche est affichée en haut', async () => {
+    await new Promise((r) => setTimeout(r, 450))
+    engine.selectView('jupiter')
+    for (let i = 0; i < 4; i++) engine._frame(performance.now() + 1000 + i * 100)
+    ;(canvas as unknown as { setPointerCapture: () => void }).setPointerCapture = () => {}
+    for (let i = 0; i < 14; i++) canvas.dispatchEvent(new WheelEvent('wheel', { deltaY: 200, cancelable: true }))   // recul de la caméra : 62 → ≈ 2 500 unités (Jupiter : 11 rayons)
+    for (let i = 0; i < 40; i++) engine._frame(performance.now() + 2000 + i * 100)
+    const label = (text: string) => [...overlay.querySelectorAll<HTMLElement>('.eng-l3d')].find((x) => x.textContent === text)
+    expect(label('Callisto')?.style.display).toBe('block')
+    expect(label('Jupiter')?.style.display).toBe('none')
+    expect(state.focus.id).toBe('jupiter')
+    engine.selectView('sun')   // loin de Jupiter : ses lunes disparaissent, son nom revient
+    for (let i = 0; i < 6; i++) engine._frame(performance.now() + 9000 + i * 100)
+    expect(label('Callisto')?.style.display).toBe('none')
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)
