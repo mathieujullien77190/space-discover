@@ -486,6 +486,14 @@ describe('createEngine (rendu factice)', () => {
     engine.selectView('moon'); engine._frame(performance.now() + 1500)
     expect(engine._fp()).toBeNull()
   })
+  it('nuages : option prise en compte (rien n’est chargé tant qu’elle est éteinte)', () => {
+    engine._frame(performance.now() + 100)
+    expect(engine._clouds()).toMatchObject({ on: false, state: null, visible: false })
+    engine.setClouds(true); engine._frame(performance.now() + 200)
+    expect(engine._clouds().on).toBe(true)
+    engine.setClouds(false); engine._frame(performance.now() + 300)
+    expect(engine._clouds().visible).toBe(false)
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)

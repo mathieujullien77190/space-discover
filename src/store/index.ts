@@ -14,6 +14,7 @@ export type UiState = {
   cardCollapsed: boolean   // fiche d'astre réduite en mini bouton-icône (mémorisé)
   achievements: string[]   // hauts faits débloqués (mémorisés)
   slowMotion: boolean   // histoire : ralenti aux étapes (publié par le moteur)
+  clouds: boolean   // couverture nuageuse affichée
   mapStyle: MapStyle   // fond de carte de la Terre
   issView: boolean   // vue depuis l'ISS (publié par le moteur)
   firstPerson: boolean   // vue à la première personne (publié par le moteur)
@@ -34,6 +35,7 @@ export type Store = EngineState &
     dismissUnlocked: () => void
     toggleBigVehicles: () => void
     toggleMapStyle: () => void
+    toggleClouds: () => void
   }
 
 const isPlainObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -61,6 +63,7 @@ export const useStore = create<Store>((set) => ({
   firstPerson: false,
   issView: false,
   mapStyle: 'drawn',
+  clouds: false,
   slowMotion: true,
   setEngine: (engine) => set({ engine }),
   applyPatch: (patch) => set((s) => mergePatch(s, patch)),
@@ -77,6 +80,11 @@ export const useStore = create<Store>((set) => ({
       return { achievements, unlocked: id }
     }),
   dismissUnlocked: () => set({ unlocked: null }),
+  toggleClouds: () =>
+    set((s) => {
+      s.engine?.setClouds(!s.clouds)
+      return { clouds: !s.clouds }
+    }),
   toggleMapStyle: () =>
     set((s) => {
       const mapStyle = nextMapStyle(s.mapStyle)

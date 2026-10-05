@@ -11,7 +11,7 @@ import { useStore } from '@/store'
 import { initialEngineState } from '@/store/initial'
 import type { Engine } from '@/types'
 
-const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), startRocket: vi.fn(() => Promise.resolve()), stopRocket: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setRocketSpeed: vi.fn(), setBigVehicles: vi.fn(), setMapStyle: vi.fn(), setIssView: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
+const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), startRocket: vi.fn(() => Promise.resolve()), stopRocket: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setRocketSpeed: vi.fn(), setBigVehicles: vi.fn(), setMapStyle: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
 
 describe('TopBar + SubMenu', () => {
   let engine: ReturnType<typeof fakeEngine>
@@ -39,6 +39,13 @@ describe('TopBar + SubMenu', () => {
     render(<TopBar />)
     fireEvent.click(screen.getByText('🛰 Vue depuis l’ISS'))
     expect(engine.setIssView).toHaveBeenCalledWith(true)
+  })
+  it('bouton « Nuages » : active la couverture nuageuse avec son crédit', () => {
+    useStore.setState({ clouds: false, mapStyle: 'drawn' })
+    render(<><TopBar /><MapCredit /></>)
+    fireEvent.click(screen.getByText('☁ Nuages'))
+    expect(engine.setClouds).toHaveBeenLastCalledWith(true)
+    expect(screen.getByText(/matteason/)).toBeInTheDocument()
   })
   it('bouton fond de carte : dessiné → plan → relief → dessiné, avec crédit pour les fonds en ligne', () => {
     useStore.setState({ mapStyle: 'drawn' })

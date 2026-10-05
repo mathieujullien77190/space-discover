@@ -43,3 +43,4 @@ export const BIG_VEHICLES_LABEL = '🔭 Engins ×1000'   // mode « engins géan
 export const MAP_STYLE_ORDER: MapStyle[] = ['drawn', 'street', 'clean', 'terrain']   // ordre du bouton « fond de carte »
 export const MAP_LABELS: Record<MapStyle, string> = { drawn: '🗺 Carte dessinée', street: '🗺 Plan', clean: '🗺 Sans noms', terrain: '⛰ Relief' }   // libellé = fond actuel
 export const ISS_VIEW_LABELS = { on: '🛰 Vue depuis l’ISS', off: '↩ Quitter la vue ISS' } as const   // bouton de la barre du haut
+export const CLOUDS_LABEL = '☁ Nuages'   // couverture nuageuse quasi temps réel

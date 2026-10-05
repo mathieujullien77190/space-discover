@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { BODY } from './bodies.js';
 import { ISS_FEATURES, ISS_EPOCH, ISS_FROM, ISS_MODEL, ISS_W, issState } from './iss.js';
+import { createClouds } from './clouds.js';
 import { createMapLayer } from './map-layer.js';
 import { DEG, PHOTO_PATCHES, R_KM, buildEarth, earthGeometry, ll, loadPatch, unloadPatch } from './earth.js';
 import { loadGlb } from './gltf-mini.js';
@@ -53,7 +54,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const world = new THREE.Group(); scene.add(world);
   const inertial = new THREE.Group(); scene.add(inertial);
   const earth = buildEarth(renderer); world.add(earth);
-  const mapLayer = createMapLayer(earth, renderer); let mapStyle = 'drawn', mapShown = false;   // fond de carte « plan » (type Google Maps) : tuiles Web Mercator, option
+  const mapLayer = createMapLayer(earth, renderer); let mapStyle = 'drawn', mapShown = false;
+  const clouds = createClouds(earth, renderer); let cloudsOn = false;   // couverture nuageuse quasi temps réel (option)   // fond de carte « plan » (type Google Maps) : tuiles Web Mercator, option
   // NIVEAUX DE DÉTAIL selon la taille à l'écran (en pixels de rayon) : la Terre (1 048 576 triangles !) et les ~35 sphères d'astres (9 000 triangles chacune) n'étaient pas allégées quand elles ne font que quelques pixels.
   // Les géométries sont partagées (un cache par nombre de segments) ; une hystérésis (±15 %) évite de changer de niveau à chaque image.
   const LOCAL_N = 256, lodCache = {}, sphereLod = nx => lodCache[nx] || (lodCache[nx] = earthGeometry(nx, nx / 2));
@@ -648,6 +650,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     {
       const camE = launch && launch.inertial ? camera.position.clone().applyAxisAngle(Y_AXIS, -LCH.WE * launch.T) : camera.position, camAlt = (camE.length() - 1) * R_KM, cl = Math.asin(camE.y / camE.length()) / DEG, co = Math.atan2(-camE.z, camE.x) / DEG;
       let inside = false;
+      clouds.update({ on: cloudsOn, camAlt, http: isHttp() });
       mapShown = mapLayer.update({ on: mapStyle !== 'drawn', style: mapStyle, camAlt, cl, co, fov: camera.fov, aspect: camera.aspect, http: isHttp() });   // le plan remplace la carte dessinée sous 900 km quand ses tuiles sont arrivées
       for (const p of PHOTO_PATCHES) {
         const [w, e, s, n] = p.bounds;
@@ -732,6 +735,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     setStorySpeed: v => { if (launch && Number.isFinite(v) && v > 0) launch.speed = v; },   // vitesse du temps pendant une histoire (ne relance pas une étape en pause)
     setMapStyle: style => { mapStyle = style === 'street' || style === 'clean' || style === 'terrain' ? style : 'drawn'; },   // 'drawn' (Natural Earth), 'street' (plan type Google Maps) ou 'terrain' (relief, forêts, montagnes)
     _map: () => Object.assign({ style: mapStyle, shown: mapShown }, mapLayer.stats()),
+    setClouds: on => { cloudsOn = !!on; },
+    _clouds: () => Object.assign({ on: cloudsOn }, clouds.stats()),
     setBigVehicles, setFirstPerson, setIssView, setViewInset, setStorySlowMotion,
     _fp: () => cam.fp ? { yaw: cam.fp.yaw, pitch: cam.fp.pitch, fov: camera.fov, posErr: launch ? camera.position.distanceTo(launch.pos) * R_KM * 1000 : iss && issView ? camera.position.distanceTo(iss.pos) * R_KM * 1000 : null, dir: new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray(), up: new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion).toArray(), radial: launch ? launch.radial.toArray() : issView ? issSrc.radial.toArray() : null, flight: launch ? launch.dir.toArray() : null } : null,
 
@@ -742,7 +747,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     dispose() {
       stopped = true; cancelAnimationFrame(raf); clearTimeout(solarTimer); disposers.forEach(d => d()); clearLabels(); overlay.dispose();
       if (launch) launch.dispose();
-      mapLayer.dispose();
+      mapLayer.dispose(); clouds.dispose();
       if (renderer.dispose) renderer.dispose();
     },
   };
