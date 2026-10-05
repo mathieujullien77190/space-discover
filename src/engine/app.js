@@ -147,7 +147,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
   const dot = new THREE.Points(dg, new THREE.PointsMaterial({ color: 0xffd54a, size: 10, sizeAttenuation: false })); dot.frustumCulled = false; world.add(dot);
   const issLabel = overlay.label('ISS', 'iss');
-  const capitals = createCapitals(overlay, earth); let capitalsOn = false;   // option « Capitales »
+  const capitals = createCapitals(overlay, earth); let capitalsOn = false, lastOcc = [];   // option « Capitales »
 
   const cam = { fov: 50, mode: 'earth', tgt: new THREE.Vector3(), lon: 0, lat: 50, dist: 3.4, fly: 0, tfly: 0, userDir: false, fp: null, fpUp: new THREE.Vector3(), upKind: 'north', goal: { lon: 0, lat: 50, dist: 3.4 } };   // départ : la Terre vue du nord (nord en haut), le méridien de Greenwich (0°) en face de la caméra
   const moonsShown = {};   // planète → distance de la caméra, pour les planètes dont les lunes sont affichées
@@ -341,7 +341,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       for (const k in moonsShown) delete moonsShown[k];
       for (const id in bodyObjs) { const b = bodyObjs[id].b; if (b.showWithinUnits && b.around && camera.position.distanceTo(babs[b.around]) <= b.showWithinUnits) moonsShown[b.around] = camera.position.distanceTo(babs[b.around]); }
       // OCCULTATION (demande de l'utilisateur) : un astre qui passe derrière un autre astre n'est pas affiché (maillage, point, nom, orbite) ; géométrique : plus loin qu'un occulteur ET entièrement dans son DISQUE réel ; seul un occulteur dont le disque fait au moins 1,5 px compte (un astre réduit à un point n'en cache pas un autre : à ces échelles tout se confond)
-      const pxAng = 2 * Math.tan(camera.fov * DEG / 2) / innerHeight, occ = [], camA = camera.position.toArray();
+      const pxAng = 2 * Math.tan(camera.fov * DEG / 2) / innerHeight, occ = [], camA = camera.position.toArray(); lastOcc = occ;   // occulteurs de l'image (aussi pour les capitales)
       for (const j in bodyObjs) { const rj = BODY.radiusUnits(j); const oj = bodyObjs[j], seen = !!oj && (oj.b.sceneOrigin || (oj.dot && oj.dot.visible) || (oj.mesh && oj.mesh.visible));   // l'occulteur doit être AFFICHÉ (image précédente) : une lune masquée loin de sa planète n'occulte rien
         if (rj > 0 && seen && rj / Math.max(1e-9, camera.position.distanceTo(babs[j])) > 1.5 * pxAng) occ.push({ id: j, p: babs[j].toArray(), r: rj }); }
       const maskedNear = id => { const pr = bodyObjs[id].b.displayPriority || 0, s = scr[id]; if (!s) return false; for (const j in bodyObjs) { if (j !== bodyObjs[id].b.around || (bodyObjs[j].b.displayPriority || 0) <= pr || !scr[j] || !dotShown(j)) continue; if (Math.hypot(s[0] - scr[j][0], s[1] - scr[j][1]) < 18) return true; } return false; };   // ancienne règle d'encombrement : une lune collée à son corps central (moins de 18 px) est masquée
@@ -443,7 +443,6 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
         terrainShown = terrain.update({ on: true, camAlt, cl, co, fov: camera.fov, aspect: camera.aspect, http: isHttp() });
         if (terrainShown !== wasShown) publish({ terrainDetail: terrainShown }); }   // l'interface affiche les crédits seulement quand le relief est visible
       borders.visible = bordersOn && camAlt < 20000; borders.scale.setScalar(terrainShown ? 1.0016 : 1);   // sur le relief satellite, les limites flottent au-dessus des montagnes (1,0014 au plus)
-      capitals.update({ on: capitalsOn, camera, width: innerWidth, height: innerHeight });
       for (let k = 1; k < earth.children.length; k++) if (earth.children[k].isLineSegments) earth.children[k].visible = camAlt < 20000 && !terrainShown;   // dézoomé : plus de trait de côte ; sur le relief satellite il flotterait au-dessus
     }
     // échelle : longueur « ronde » (1, 2, 5 × 10^n) qui fait 70 à 170 px au point regardé
@@ -482,6 +481,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     if (shift) { world.position.copy(shift).negate(); camera.position.sub(shift); camera.updateMatrixWorld(); } else world.position.set(0, 0, 0);
     inertial.position.copy(world.position); solar.position.copy(world.position);
     stars.position.copy(camera.position); stars.scale.setScalar(camera.far * 0.45); stars.rotation.y = solar.rotation.y;   // les étoiles suivent le repère « solaire » : fixes en vue inertielle, elles tournent avec le temps sidéral quand la Terre est fixe
+    capitals.update({ on: capitalsOn, camera, width: innerWidth, height: innerHeight, hidden: p => occludedBy(camera.position.toArray(), [p.x, p.y, p.z], lastOcc.filter(o => o.id !== 'earth'), 0, 0) !== null });   // juste avant le rendu : pose de la Terre et de la caméra à jour (rotation du temps sidéral comprise) ; cachée par la Lune / une planète = pas de nom
     renderer.render(scene, camera);
     camera.position.copy(saved); camera.updateMatrixWorld();
     if (!ready) { ready = true; publish({ status: 'ready' }); }

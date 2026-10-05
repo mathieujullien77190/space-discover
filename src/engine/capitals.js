@@ -1,9 +1,11 @@
 // Option « Capitales » : le nom des capitales du monde (200, Natural Earth, domaine public) posé sur la Terre, en étiquettes HTML (overlay du moteur).
-// À chaque image : on ne garde que les capitales du côté visible de la Terre et à l'écran, par ordre de population, sans chevauchement (au plus MAX_LABELS) ; rien quand la Terre est trop petite à l'écran.
+// À chaque image : on ne garde que les capitales VUES EN DIRECT : du côté visible de la Terre ET assez au-dessus de l'horizon (MIN_ELEVATION : près du limbe elles seraient cachées par la courbure et le relief), non cachées
+// par un autre astre (Lune…), à l'écran, par ordre de population, sans chevauchement (au plus MAX_LABELS) ; rien quand la Terre est trop petite à l'écran.
 import * as THREE from 'three';
 import { CAPITALS } from './data/capitals.js';
 import { ll } from './earth.js';
 
+export const MIN_ELEVATION = 0.12;    // sinus minimal de la hauteur de la caméra au-dessus de l'horizon de la capitale (≈ 7°) : en dessous elle n'est pas vue « en direct »
 export const MAX_LABELS = 90;           // étiquettes affichées au plus
 export const MIN_EARTH_PX = 70;         // rayon apparent minimal de la Terre (pixels) pour afficher les noms
 export const LABEL_H = 18, CHAR_W = 7;  // encombrement d'une étiquette : hauteur et largeur par caractère (pixels)
@@ -17,8 +19,8 @@ export function createCapitals(overlay, earth) {
   const hideAll = () => { if (items) for (const it of items) it.el.style.display = 'none'; shown = 0; };
   const p = new THREE.Vector3(), c = new THREE.Vector3(), nw = new THREE.Vector3(), v = new THREE.Vector3();
   return {
-    // on : option allumée ; camera : caméra du moteur ; width / height : taille de l'écran (pixels) ; renvoie le nombre de noms affichés
-    update({ on, camera, width, height }) {
+    // on : option allumée ; camera : caméra du moteur ; width / height : taille de l'écran (pixels) ; hidden(p) : vrai si le point monde p est caché par un autre astre ; renvoie le nombre de noms affichés
+    update({ on, camera, width, height, hidden }) {
       if (!on) { if (shown) hideAll(); return 0; }
       if (!items) build();
       earth.updateWorldMatrix(true, false);
@@ -30,7 +32,8 @@ export function createCapitals(overlay, earth) {
         let ok = n < MAX_LABELS;
         if (ok) {
           p.copy(it.n).applyMatrix4(earth.matrixWorld); nw.copy(p).sub(c).normalize(); v.copy(camera.position).sub(p);
-          ok = nw.dot(v) > 0;   // du côté visible de la Terre
+          ok = nw.dot(v) > MIN_ELEVATION * v.length();   // du côté visible de la Terre ET assez haut sur l'horizon
+          if (ok && hidden && hidden(p)) ok = false;   // derrière la Lune, une planète…
           if (ok) {
             p.project(camera);
             const x = (p.x + 1) / 2 * width, y = (1 - p.y) / 2 * height;
