@@ -445,7 +445,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     if (!dayNight) sun.position.copy(cam.mode === 'solar' ? camera.position.clone().sub(cam.tgt).normalize() : camera.position.clone().normalize()).add(tmp.set(0.4, 0.5, 0.2)).multiplyScalar(10);
     if (!dayNight) amb.intensity = 0.55;
     atmMat.uniforms.uSun.value.copy(babs[STAR]).normalize(); atmMat.uniforms.uUseSun.value = dayNight ? 1 : 0;
-    atmMat.uniforms.uOrange.value = obsView ? 1 : 0;   // le rougeoiement du coucher / lever n'existe que depuis un observatoire
+    atmMat.uniforms.uOrange.value = obsView ? 1 : 0;
+    { const E = obsFrame && obsFrame.east, sd = obsView && E ? tmpObs.copy(babs[STAR]).sub(obsPos).normalize() : null, ed = sd ? sd.x * E[0] + sd.y * E[1] + sd.z * E[2] : 0; atmMat.uniforms.uRise.value = Math.max(0, Math.min(1, (ed + 0.05) / 0.1)); }   // le Soleil à l'EST de l'observateur = le matin : le ciel du lever est ROSE (au lieu du rouge-orangé du coucher)   // le rougeoiement du coucher / lever n'existe que depuis un observatoire
 
     // ISS
     issScreen = null; issLabel.style.display = 'none';
@@ -548,8 +549,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     stars.position.copy(camera.position); stars.scale.setScalar(camera.far * 0.45); stars.rotation.y = solar.rotation.y;   // les étoiles suivent le repère « solaire » : fixes en vue inertielle, elles tournent avec le temps sidéral quand la Terre est fixe
     sunPoint.position.copy(babs[STAR]); if (shift) sunPoint.position.sub(shift);   // le Soleil suit le décalage d'origine flottante
     const sunRed = obsView ? Math.max(0, Math.min(1, 1 - tmpObs.copy(babs[STAR]).sub(obsPos).normalize().dot(obsSrc.radial) / 0.25)) : 0;   // le Soleil rougit près de l'horizon (vue depuis un observatoire) : blanc au-delà de ≈ 14° de hauteur, rouge-orangé à l'horizon
-    sunGlare.update({ camera, sunPos: sunPoint.position, height: innerHeight, tint: sunRed });
-    { const sm = bodyObjs[STAR] && bodyObjs[STAR].mesh; if (sm && sm.material.color) sm.material.color.setRGB(1, 1 - 0.4 * sunRed, 1 - 0.7 * sunRed); }   // son disque aussi   // l'éclat est testé en PROFONDEUR : la Terre (et le relief) le cache, il est donc DERRIÈRE la Terre au lieu de s'affaiblir avant
+    sunGlare.update({ camera, sunPos: sunPoint.position, height: innerHeight, tint: sunRed, rise: atmMat.uniforms.uRise.value });
+    { const sm = bodyObjs[STAR] && bodyObjs[STAR].mesh; if (sm && sm.material.color) sm.material.color.setRGB(1, 1 - (0.4 - 0.05 * atmMat.uniforms.uRise.value) * sunRed, 1 - (0.7 - 0.45 * atmMat.uniforms.uRise.value) * sunRed); }   // son disque aussi   // l'éclat est testé en PROFONDEUR : la Terre (et le relief) le cache, il est donc DERRIÈRE la Terre au lieu de s'affaiblir avant
     constellations.update({ on: constellationsOn && !realistic, camera, width: innerWidth, height: innerHeight, earthCenter: new THREE.Vector3().setFromMatrixPosition(earth.matrixWorld) });
     obsSites.update({ on: observatoriesOn && !realistic && !obsView, camera, width: innerWidth, height: innerHeight, hidden: p => occludedBy(camera.position.toArray(), [p.x, p.y, p.z], lastOcc.filter(o => o.id !== 'earth'), 0, 0) !== null });
     capitals.update({ on: capitalsOn && !realistic, camera, width: innerWidth, height: innerHeight, hidden: p => occludedBy(camera.position.toArray(), [p.x, p.y, p.z], lastOcc.filter(o => o.id !== 'earth'), 0, 0) !== null });   // juste avant le rendu : pose de la Terre et de la caméra à jour (rotation du temps sidéral comprise) ; cachée par la Lune / une planète = pas de nom
