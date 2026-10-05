@@ -60,7 +60,7 @@ export function buildLaikaModule(h, r) {
   g.add(deck);
   const dog = buildDog(), k = r * 0.5;
   dog.scale.setScalar(k);
-  dog.position.set(-0.35 * k, h * 0.08, 0);
+  dog.position.set(-0.28 * k, h * 0.08, 0);   // centrée sur l'axe de la fusée (le centre du chien est à x ≈ 0,28)
   g.add(dog);
   const top = new THREE.Mesh(new THREE.SphereGeometry(r * 0.22, 16, 12), mat(C.metal, { metalness: 0.6 }));   // sphère d'instruments au sommet
   top.position.y = hull + r * 0.12;

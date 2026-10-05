@@ -6,7 +6,7 @@ import Button from '@/components/ui/Button'
 import { BASE_PATH } from '@/constants'
 import { storyOf } from '@/engine/catalog'
 import { useStore } from '@/store'
-import { quitStory, setFirstPerson, setStorySlowMotion, setStorySpeed, setViewInset, storyNext } from '@/store/commands'
+import { quitStory, setFirstPerson, setStorySlowMotion, setStorySpeed, setViewInset, storyNext, storyPrev } from '@/store/commands'
 import { FP_OFF_LABEL, FP_ON_LABEL, MOBILE_QUERY, RUNNING_TITLE } from './constants'
 import styles from './StoryPlayer.module.css'
 
@@ -99,6 +99,11 @@ export const StoryPlayer = () => {
         <StorySpeed speed={speed} effective={effective} slowMotion={slowMotion} onSlowMotion={setStorySlowMotion} onChange={setStorySpeed} />
         <div className={styles.actions}>
           {fpButton}
+          {showing && (
+            <button type="button" className={styles.prev} disabled={!story.canPrev} onClick={storyPrev} aria-label="Étape précédente">
+              ◀ Précédent
+            </button>
+          )}
           {showing ? (
             <button type="button" className={styles.next} disabled={!story.canNext} onClick={storyNext}>
               {last ? 'Terminer ✓' : 'Suivant ▶'}

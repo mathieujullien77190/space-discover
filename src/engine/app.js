@@ -350,8 +350,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   let storySlow = true;   // ralenti aux étapes (boosters qui se détachent…) pendant une histoire ; désactivable
   const setStorySlowMotion = on => { storySlow = !!on; if (launch && story) launch.stepPause = storySlow; publish({ slowMotion: storySlow }); };
   let story = null;   // { def, trig (instants de vol de chaque étape), index (étape affichée, −1 au départ), next (prochaine à afficher), phase: 'showing' (en pause) | 'running', finished }
-  const STORY_OFF = { active: false, id: null, title: '', index: -1, total: 0, phase: 'running', finished: false, canNext: false, step: null };
-  const publishStory = () => publish({ story: !story ? STORY_OFF : { active: true, id: story.def.id, title: story.def.title, index: story.index, total: story.def.steps.length, phase: story.phase, finished: story.finished, canNext: story.phase === 'showing', step: story.index >= 0 ? story.def.steps[story.index] : null } });
+  const STORY_OFF = { active: false, id: null, title: '', index: -1, total: 0, phase: 'running', finished: false, canNext: false, canPrev: false, step: null };
+  const publishStory = () => publish({ story: !story ? STORY_OFF : { active: true, id: story.def.id, title: story.def.title, index: story.index, total: story.def.steps.length, phase: story.phase, finished: story.finished, canNext: story.phase === 'showing', canPrev: story.phase === 'showing' && story.index > 0, step: story.index >= 0 ? story.def.steps[story.index] : null } });
   const storyCamera = spec => {   // cadrage : composant suivi (pad, rocket, eap1, epc…) ; le zoom n'est jamais modifié par une histoire
     if (!spec || !launch) return;
     if (spec.follow) { if (spec.follow !== launch.follow && cam.mode === 'launch') cam.blend = { from: cam.tgt.clone(), t: 0 }; launch.follow = spec.follow; cam.userDir = false; }
@@ -366,6 +366,10 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     if (!story || story.phase !== 'showing' || story.finished) return;
     if (story.next >= story.def.steps.length) { story.finished = true; publishStory(); return; }   // dernière étape : l'histoire est finie
     if (story.trig[story.next] <= launch.T + 1e-9) storyShow(story.next); else { story.phase = 'running'; launch.playing = true; publishStory(); }
+  };
+  const storyPrev = () => {   // revenir à l'étape précédente : le vol est rejoué depuis l'instant de cette étape (tout se calcule en fonction du temps de vol)
+    if (!story || story.phase !== 'showing' || story.finished || story.index <= 0 || !launch) return;
+    const i = story.index - 1; launch.T = Math.max(0, story.trig[i]); launch.playing = false; storyShow(i);
   };
   const quitStory = () => { if (!story) return; const wasBig = story.autoBig; story = null; stopRocket(); if (wasBig) { setBigVehicles(false); publish({ bigVehicles: false }); } resetTime(); publishStory(); };
   const startStory = id => {
@@ -632,7 +636,15 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       const camE = launch && launch.inertial ? camera.position.clone().applyAxisAngle(Y_AXIS, -LCH.WE * launch.T) : camera.position, camAlt = (camE.length() - 1) * R_KM, cl = Math.asin(camE.y / camE.length()) / DEG, co = Math.atan2(-camE.z, camE.x) / DEG;
       let inside = false;
       for (const p of PHOTO_PATCHES) {
-        const [w, e, s, n] = p.bounds, dKm = camE.distanceTo(ll((w + e) / 2, (s + n) / 2)) * R_KM;
+        const [w, e, s, n] = p.bounds;
+        if (p.kind === 'tile') {   // tuile de carte : selon la distance (en degrés) du point sous la caméra au rectangle de la tuile, et l'altitude
+          const ang = (a, b) => Math.abs(((a - b + 540) % 360) - 180), dlon = co >= w && co <= e ? 0 : Math.min(ang(co, w), ang(co, e)) * Math.max(0.2, Math.cos(cl * DEG)), dd = Math.hypot(dlon, Math.max(0, s - cl, cl - n)), near = camAlt < p.loadKm && dd < 25 && isHttp();   // dd = distance en degrés (longitude corrigée de la latitude)
+          if (near) loadPatch(p, renderer, earth);
+          if (p.mesh && (camAlt > 2500 || dd > 60)) unloadPatch(p, earth);
+          if (p.mesh) p.mesh.visible = camAlt < p.hideKm && dd < 22;
+          continue;
+        }
+        const dKm = camE.distanceTo(ll((w + e) / 2, (s + n) / 2)) * R_KM;
         if (dKm < (p.loadKm || 1500) && isHttp()) loadPatch(p, renderer, earth);
         if (p.mesh && dKm > 4000) unloadPatch(p, earth);
         if (p.mesh) { p.mesh.visible = dKm < p.hideKm; if (p.mesh.visible && camAlt < 60 && co > w && co < e && cl > s && cl < n) inside = true; }
@@ -706,7 +718,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     setBigVehicles, setFirstPerson, setViewInset, setStorySlowMotion,
     _fp: () => cam.fp ? { yaw: cam.fp.yaw, pitch: cam.fp.pitch, fov: camera.fov, posErr: launch ? camera.position.distanceTo(launch.pos) * R_KM * 1000 : null, dir: new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray(), up: new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion).toArray(), radial: launch ? launch.radial.toArray() : null, flight: launch ? launch.dir.toArray() : null } : null,
 
-    startRocket, stopRocket, launchMission, followMission, startStory, storyNext, quitStory,
+    startRocket, stopRocket, launchMission, followMission, startStory, storyNext, storyPrev, quitStory,
     _vehicle: () => launch ? { vk: launch.vk, scale: launch.rocket.scale.x, camKm: camera.position.distanceTo(launch.center) * R_KM, lenKm: launch.rocketLen * launch.vk / 1000 } : null,
     _inset: () => ({ cr: inset.cr, offsetX: camera.view && camera.view.enabled ? camera.view.offsetX : 0, enabled: !!(camera.view && camera.view.enabled) }),
     _story: () => story ? { index: story.index, next: story.next, phase: story.phase, finished: story.finished, trig: story.trig, T: launch ? launch.T : null, playing: launch ? launch.playing : null, speed: launch ? launch.speed : null } : null, setRocketSpeed, followComponent, toggleComponentInfo,

@@ -15,6 +15,8 @@
 .foot { flex: none; display: flex; flex-direction: column; gap: 10px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.15); }
 .actions { display: flex; gap: 10px; justify-content: space-between; align-items: center; flex-wrap: wrap; }
 .next { min-height: 52px; min-width: 150px; padding: 10px 22px; font-size: 22px; font-weight: 700; color: #1a1300; background: #ffd54a; border: none; border-radius: 14px; cursor: pointer; touch-action: manipulation; }
+.prev { min-height: 52px; padding: 10px 14px; font-size: 16px; color: #e8eef7; background: rgba(40, 60, 100, 0.85); border: 2px solid rgba(255, 255, 255, 0.35); border-radius: 14px; cursor: pointer; touch-action: manipulation; }
+.prev:disabled { opacity: 0.35; cursor: default; }
 .next:disabled { opacity: 0.5; cursor: default; }
 .wait { font-size: 16px; color: #cfe0ff; }
 @media (max-width: 700px) {

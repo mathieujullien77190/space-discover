@@ -107,7 +107,10 @@ export function buildEarth(renderer) {
 // Rustine = morceau de sphère limité à `bounds` [lonO, lonE, latS, latN] (°), coordonnées de texture = l'image (équirectangulaire), bords fondus. Chargée à la demande (fetch http : en file:// WebGL refuse l'image).
 // Posée à PATCH_R, un souffle au-dessus de la sphère : le maillage de la Terre est toujours en dessous (ses sommets sont sur la sphère, ses facettes à l'intérieur) ; masquée au-delà de 700 km (la marge ne dépasse plus la précision de profondeur).
 export const PATCH_R = 1 + 2e-6;
+// fond de carte dessiné PRÉCIS : 32 tuiles de 45° × 45° (Natural Earth I haute résolution, domaine public, 2048² px ≈ 2,4 km/pixel : tools/make-earth-tiles.mjs), chargées sous 1 600 km d'altitude quand le point sous la caméra est proche, affichées sous 900 km
+export const EARTH_TILES = Array.from({ length: 32 }, (_, i) => { const c = i % 8, r = Math.floor(i / 8); return { id: `tile-${c}-${r}`, url: `data/earth/t-${c}-${r}.jpg`, bounds: [-180 + 45 * c, -135 + 45 * c, 45 - 45 * r, 90 - 45 * r], kind: 'tile', fade: 0, seg: 224, order: -1, hideKm: 900, loadKm: 1600, credit: 'Natural Earth I, relief ombré, domaine public (naturalearthdata.com)' }; });
 export const PHOTO_PATCHES = [
+  ...EARTH_TILES,
   { id: 'kourou', url: 'data/photo-kourou.jpg', bounds: [-53.0, -52.55, 5.05, 5.45], hideKm: 700, loadKm: 1500, order: 0,
     credit: 'Sentinel-2 cloudless 2016, EOxCloudless https://cloudless.eox.at par EOX IT Services GmbH (contient des données Copernicus Sentinel 2016 modifiées), CC BY 4.0 ; image 4096 × 3641 (~12 m/pixel)' },
   // haute résolution : le pas de tir d'Ariane 5 (ELA-3) et ses environs, 2,75 × 2,75 km ; posée par-dessus la précédente (même rayon, transparence, ordre de rendu : aucun scintillement de profondeur)
@@ -144,13 +147,13 @@ export function loadPatch(p, renderer, parent) {
   img.onload = () => {
     try {
       const w = img.naturalWidth, h = img.naturalHeight, c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d');
-      g.drawImage(img, 0, 0, w, h); g.globalCompositeOperation = 'destination-out';   // bords fondus (5 %) : pas de rectangle net
-      const f = Math.round(Math.min(w, h) * 0.05);
-      for (const [x0, y0, x1, y1, rx, ry, rw, rh] of [[0, 0, f, 0, 0, 0, f, h], [w, 0, w - f, 0, w - f, 0, f, h], [0, 0, 0, f, 0, 0, w, f], [0, h, 0, h - f, 0, h - f, w, f]]) {
+      g.drawImage(img, 0, 0, w, h); g.globalCompositeOperation = 'destination-out';   // bords fondus (5 %) : pas de rectangle net ; les tuiles de carte (fade 0) se touchent sans fondu
+      const f = p.fade === 0 ? 0 : Math.round(Math.min(w, h) * 0.05);
+      if (f > 0) for (const [x0, y0, x1, y1, rx, ry, rw, rh] of [[0, 0, f, 0, 0, 0, f, h], [w, 0, w - f, 0, w - f, 0, f, h], [0, 0, 0, f, 0, 0, w, f], [0, h, 0, h - f, 0, h - f, w, f]]) {
         const gr = g.createLinearGradient(x0, y0, x1, y1); gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(rx, ry, rw, rh);
       }
       const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-      p.mesh = new THREE.Mesh(patchGeometry(p.bounds, 96, 96), new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false }));
+      p.mesh = new THREE.Mesh(patchGeometry(p.bounds, p.seg || 96, p.seg || 96), new THREE.MeshLambertMaterial(p.kind === 'tile' ? { map: tex } : { map: tex, transparent: true, depthWrite: false }));
       p.mesh.renderOrder = p.order || 0; p.mesh.visible = false; parent.add(p.mesh); p.state = 'ready';
     } catch (e) { p.state = 'error'; console.warn('Photo aérienne indisponible :', e.message); }
   };

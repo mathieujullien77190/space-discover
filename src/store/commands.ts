@@ -31,6 +31,7 @@ export const startStory = (id: string): void => {
   void engine()?.startStory(id)
 }
 export const storyNext = (): void => engine()?.storyNext()
+export const storyPrev = (): void => engine()?.storyPrev()
 export const quitStory = (): void => engine()?.quitStory()
 export const setStorySpeed = (speed: number): void => engine()?.setStorySpeed(speed)
 export const setFirstPerson = (on: boolean): void => engine()?.setFirstPerson(on)

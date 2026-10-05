@@ -16,10 +16,10 @@ const step: StoryStep = {
 } as StoryStep
 
 describe('mode histoire (interface)', () => {
-  let engine: { startStory: ReturnType<typeof vi.fn>; setStorySpeed: ReturnType<typeof vi.fn>; setFirstPerson: ReturnType<typeof vi.fn>; setViewInset: ReturnType<typeof vi.fn>; setStorySlowMotion: ReturnType<typeof vi.fn>; storyNext: ReturnType<typeof vi.fn>; quitStory: ReturnType<typeof vi.fn> }
+  let engine: { startStory: ReturnType<typeof vi.fn>; setStorySpeed: ReturnType<typeof vi.fn>; setFirstPerson: ReturnType<typeof vi.fn>; setViewInset: ReturnType<typeof vi.fn>; storyPrev: ReturnType<typeof vi.fn>; setStorySlowMotion: ReturnType<typeof vi.fn>; storyNext: ReturnType<typeof vi.fn>; quitStory: ReturnType<typeof vi.fn> }
   beforeEach(() => {
     localStorage.clear()
-    engine = { startStory: vi.fn(() => Promise.resolve()), setStorySpeed: vi.fn(), setFirstPerson: vi.fn(), setViewInset: vi.fn(), setStorySlowMotion: vi.fn(), storyNext: vi.fn(), quitStory: vi.fn() }
+    engine = { startStory: vi.fn(() => Promise.resolve()), setStorySpeed: vi.fn(), setFirstPerson: vi.fn(), setViewInset: vi.fn(), storyPrev: vi.fn(), setStorySlowMotion: vi.fn(), storyNext: vi.fn(), quitStory: vi.fn() }
     useStore.setState({ ...initialEngineState, achievements: [], unlocked: null, engine: engine as unknown as Engine })
   })
   it('liste : la liste montre l’histoire de Laïka, un clic la lance', () => {
@@ -28,34 +28,40 @@ describe('mode histoire (interface)', () => {
     expect(engine.startStory).toHaveBeenCalledWith('laika')
   })
   it('lecteur : texte et « Suivant »', () => {
-    useStore.setState({ story: { active: true, id: 'laika', title: 'Laïka', index: 0, total: 3, phase: 'showing', finished: false, canNext: true, step } })
+    useStore.setState({ story: { active: true, id: 'laika', title: 'Laïka', index: 0, total: 3, phase: 'showing', finished: false, canNext: true, canPrev: true, step } })
     render(<StoryPlayer />)
     expect(screen.getByText('Le savais-tu ?')).toBeInTheDocument()
     fireEvent.click(screen.getByText(/Suivant/))
     expect(engine.storyNext).toHaveBeenCalled()
   })
   it('ralenti : le curseur dit la vitesse réelle et le ralenti se désactive', () => {
-    useStore.setState({ slowMotion: true, rocket: { ...initialEngineState.rocket, speed: 12, telemetry: { eff: 0.3, alt: 0, v: 0 } }, story: { active: true, id: 'laika', title: 'Laïka', index: 0, total: 3, phase: 'showing', finished: false, canNext: true, step } })
+    useStore.setState({ slowMotion: true, rocket: { ...initialEngineState.rocket, speed: 12, telemetry: { eff: 0.3, alt: 0, v: 0 } }, story: { active: true, id: 'laika', title: 'Laïka', index: 0, total: 3, phase: 'showing', finished: false, canNext: true, canPrev: true, step } })
     render(<StoryPlayer />)
     expect(screen.getByText(/Ralenti à cette étape/)).toHaveTextContent(/×0,3/)
     fireEvent.click(screen.getByLabelText(/Ralenti aux étapes/))
     expect(engine.setStorySlowMotion).toHaveBeenCalledWith(false)
   })
+  it('Précédent : revient à l’étape précédente', () => {
+    useStore.setState({ story: { active: true, id: 'laika', title: 'Laïka', index: 2, total: 3, phase: 'showing', finished: false, canNext: true, canPrev: true, step } })
+    render(<StoryPlayer />)
+    fireEvent.click(screen.getByLabelText('Étape précédente'))
+    expect(engine.storyPrev).toHaveBeenCalled()
+  })
   it('panneau : la scène est centrée sur le reste de l’écran (le panneau prend sa place)', () => {
-    useStore.setState({ story: { active: true, id: 'laika', title: 'Laïka', index: 0, total: 3, phase: 'showing', finished: false, canNext: true, step } })
+    useStore.setState({ story: { active: true, id: 'laika', title: 'Laïka', index: 0, total: 3, phase: 'showing', finished: false, canNext: true, canPrev: true, step } })
     const { unmount } = render(<StoryPlayer />)
     expect(engine.setViewInset).toHaveBeenCalled()
     unmount()
     expect(engine.setViewInset).toHaveBeenLastCalledWith(0, 0)
   })
   it('curseur : change la vitesse du temps de l’histoire', () => {
-    useStore.setState({ story: { active: true, id: 'laika', title: 'Laïka', index: 0, total: 3, phase: 'showing', finished: false, canNext: true, step } })
+    useStore.setState({ story: { active: true, id: 'laika', title: 'Laïka', index: 0, total: 3, phase: 'showing', finished: false, canNext: true, canPrev: true, step } })
     render(<StoryPlayer />)
     fireEvent.change(screen.getByLabelText('Vitesse du temps'), { target: { value: '100' } })
     expect(engine.setStorySpeed).toHaveBeenLastCalledWith(200)
   })
   it('bouton « Vue de Laïka » : active la vue à la première personne', () => {
-    useStore.setState({ firstPerson: false, story: { active: true, id: 'laika', title: 'Laïka', index: 0, total: 3, phase: 'showing', finished: false, canNext: true, step } })
+    useStore.setState({ firstPerson: false, story: { active: true, id: 'laika', title: 'Laïka', index: 0, total: 3, phase: 'showing', finished: false, canNext: true, canPrev: true, step } })
     render(<StoryPlayer />)
     fireEvent.click(screen.getByText('👁 Vue de Laïka'))
     expect(engine.setFirstPerson).toHaveBeenCalledWith(true)
@@ -68,7 +74,7 @@ describe('mode histoire (interface)', () => {
     expect(screen.getByText(/cabine de Laïka/)).toBeInTheDocument()
   })
   it('fin d’histoire : le haut fait est débloqué, mémorisé et affiché', () => {
-    useStore.setState({ story: { active: true, id: 'laika', title: 'Laïka', index: 2, total: 3, phase: 'showing', finished: true, canNext: true, step } })
+    useStore.setState({ story: { active: true, id: 'laika', title: 'Laïka', index: 2, total: 3, phase: 'showing', finished: true, canNext: true, canPrev: true, step } })
     render(<><StoryPlayer /><AchievementScreen /></>)
     act(() => {})
     expect(useStore.getState().achievements).toContain('laika-1957')

@@ -33,7 +33,7 @@ export type StoryStep = {
   image?: { src: string; alt: string; credit: string; license: string }
   source?: string
 }
-export type StoryState = { active: boolean; id: string | null; title: string; index: number; total: number; phase: 'showing' | 'running'; finished: boolean; canNext: boolean; step: StoryStep | null }
+export type StoryState = { active: boolean; id: string | null; title: string; index: number; total: number; phase: 'showing' | 'running'; finished: boolean; canNext: boolean; canPrev: boolean; step: StoryStep | null }
 export type StoryInfo = { id: string; title: string; year: number; icon: string; achievement: { id: string; title: string; text: string; icon: string } | null }
 
 export type EngineState = {
@@ -86,6 +86,7 @@ export type Engine = {
   stopRocket: () => void
   startStory: (id: string) => Promise<unknown>
   storyNext: () => void
+  storyPrev: () => void
   quitStory: () => void
   launchMission: (id: string) => Promise<unknown>
   followMission: () => void

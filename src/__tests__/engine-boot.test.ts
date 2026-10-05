@@ -426,6 +426,16 @@ describe('createEngine (rendu factice)', () => {
       expect(s.T).toBeGreaterThanOrEqual(s.trig[state.story.index] - 1e-6)
       expect(s.T).toBeLessThan(Math.max(s.trig[state.story.index], 0) + 60)
       seen.push(state.story.step!.id)
+      if (state.story.step!.id === 'boosters') {   // retour en arrière : l’étape précédente revient, le vol est rejoué depuis son instant, puis on reprend
+        const t1 = engine._story()!.T!
+        engine.storyPrev(); frames(1)
+        expect(state.story.step!.id).toBe('decollage')
+        expect(engine._story()!.T!).toBeLessThan(t1)
+        expect(state.story.canPrev).toBe(true)
+        engine.storyNext(); frames(1)
+        for (let i = 0; i < 6000 && state.story.phase === 'running'; i++) frames(1)
+        expect(state.story.step!.id).toBe('boosters')
+      }
       if (state.story.step!.id === 'tour') {   // « ce que voyait Laïka » : caméra SUR le satellite, on regarde dans le sens du vol, un peu vers le bas, la tête vers le haut
         const fp = engine._fp()!
         const dot = (a: number[], b: number[]) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
