@@ -31,7 +31,8 @@ import { KM_AL, KM_UA, fmtBig } from './format.js';
 import { createOverlay } from './overlay.js';
 import { parseObj } from './obj-mini.js';
 const CONTOUR_MAX_ALT_KM = 1200;   // trait de côte (contours pays / mer) et limites de pays : seulement sous 1 200 km (en vue Terre dézoomée la carte dessinée suffit)
-const OBS_STAR_DIM = 0.5;   // vue depuis un observatoire : toutes les étoiles DEUX FOIS moins lumineuses (demande)
+const OBS_STAR_DIM = 0.5;
+const TWINKLE_AMP = 0.12;   // scintillement LENT des étoiles en vue observatoire (± 12 % de luminosité)   // vue depuis un observatoire : toutes les étoiles DEUX FOIS moins lumineuses (demande)
 const STAR_DARK_SIN = 0.12;   // sin de la hauteur du Soleil sous l'horizon (≈ −7°) où toutes les étoiles sont là (opacité 0 quand le Soleil est à moitié caché) : même seuil que le ciel qui devient transparent
 
 export const ISS_MIN_DIST_KM = 0.001;   // zoom minimal autour de l'ISS : 1 m (c'était 100 m, puis 10 cm)
@@ -346,6 +347,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   // la Terre cache-t-elle le point P vu de la caméra ?
   // option « Infos étoiles » : un clic sur une étoile VISIBLE (pas masquée par la Terre, pas éteinte par le jour) la sélectionne : sa fiche (nom, constellation, descriptif) s'affiche (composant StarInfo) et un anneau jaune la repère
   const aimDir = new THREE.Vector3(), aimHit = new THREE.Vector3();
+  let twkT = -1, twkAmp = -1;
   const precQ = new THREE.Quaternion(), meteors = createMeteors(scene), planes = createPlanes(scene); let meteorDark = false;   // étoiles filantes et avions : seulement de nuit, en vue depuis un observatoire
   let starInfoOn = false, starSel = -1; const starRing = overlay.label('', 'starring'); starRing.style.display = 'none';
   const starBins = STARS.map(s => starBin(s[2])), sv = new THREE.Vector3(), byBin = [];
@@ -592,6 +594,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     obsSites.update({ on: observatoriesOn && !realistic && !obsView, camera, width: innerWidth, height: innerHeight, hidden: p => occludedBy(camera.position.toArray(), [p.x, p.y, p.z], lastOcc.filter(o => o.id !== 'earth'), 0, 0) !== null });
     capitals.update({ on: capitalsOn && !realistic, camera, width: innerWidth, height: innerHeight, hidden: p => occludedBy(camera.position.toArray(), [p.x, p.y, p.z], lastOcc.filter(o => o.id !== 'earth'), 0, 0) !== null });   // juste avant le rendu : pose de la Terre et de la caméra à jour (rotation du temps sidéral comprise) ; cachée par la Lune / une planète = pas de nom
     // ciel de l'observatoire : bleu le jour, noir étoilé la nuit (selon la hauteur du Soleil au-dessus de l'horizon de l'observatoire)
+    { const amp = obsView ? TWINKLE_AMP * Math.max(0, 1 - obsDay) : 0, tq = Math.round(performance.now() / 100); if (tq !== twkT || amp !== twkAmp) { twkT = tq; twkAmp = amp; stars.userData.twinkle(performance.now() / 1000, amp); } }   // 10 mises à jour par seconde suffisent (mouvement lent)
     if (obsView) { const se = tmpObs.copy(babs[STAR]).sub(obsPos).normalize().dot(obsSrc.radial), t = Math.max(0, Math.min(1, (se + 0.12) / 0.22)); obsDay = t * t * (3 - 2 * t); const ds = Math.max(0, Math.min(1, -se / STAR_DARK_SIN)), ts = 1 - ds * ds * (3 - 2 * ds); stars.userData.setDay(ts, OBS_STAR_DIM); meteorDark = ts < 0.5; skyOn = true; }   // les étoiles s'éteignent peu à peu au lever du jour (les plus faibles d'abord)   // le ciel n'est PAS une couleur de fond : c'est l'atmosphère (bleu le jour, orange au crépuscule, transparent la nuit) ; le jour les étoiles disparaissent
     else if (skyOn) { stars.userData.setDay(0); obsDay = 0; skyOn = false; meteorDark = false; }
     planes.update({ dt, enabled: obsView && meteorDark && !!obsFrame, camera, R: camera.far * 0.45, up: obsFrame && obsFrame.up, east: obsFrame && obsFrame.east, north: obsFrame && obsFrame.north });   // avions de nuit (feu rouge + flash blanc)

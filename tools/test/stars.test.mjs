@@ -1,7 +1,7 @@
 // Vrai ciel étoilé : catalogue (≈ 5 000 étoiles), repère, couleurs, classes d'éclat.
 import * as THREE from 'three';
 import { STARS } from '../../src/engine/data/stars.js';
-import { STAR_BINS, STAR_FADE_LIMITS, bvColor, starOpacity, starBin, starVector } from '../../src/engine/stars.js';
+import { TWINKLE_MAX_RAD_S, TWINKLE_MIN_RAD_S, twinkleFactor, STAR_BINS, STAR_FADE_LIMITS, bvColor, starOpacity, starBin, starVector } from '../../src/engine/stars.js';
 
 const fails = [], check = (c, m) => { console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if (!c) fails.push(m); };
 check(STARS.length > 4500 && STARS.length < 6000, 'catalogue : ' + STARS.length + ' étoiles de magnitude ≤ 6');
@@ -20,4 +20,9 @@ check(STAR_BINS.every((_, b) => starOpacity(b, 0) === 1) && STAR_BINS.every((_, 
 check(starOpacity(5, 0.3) === 0 && starOpacity(0, 0.3) > 0.6, 'au lever du jour (day = 0,3) : les plus faibles ont disparu, les plus brillantes restent (' + starOpacity(0, 0.3).toFixed(2) + ')');
 check(STAR_FADE_LIMITS.every((l, i) => i === 0 || l < STAR_FADE_LIMITS[i - 1]), 'les classes plus faibles disparaissent plus tôt');
 check([0, 0.1, 0.2, 0.3].map(d => starOpacity(3, d)).every((o, i, a) => i === 0 || o < a[i - 1]), 'extinction progressive (strictement décroissante)');
+const fs = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => twinkleFactor(i * 0.1, 1.3, 1, 0.12)), mn = Math.min(...fs), mx = Math.max(...fs);
+check(twinkleFactor(3.3, 1, 1, 0) === 1, 'sans amplitude : étoile fixe');
+check(mn >= 0.88 - 1e-9 && mx <= 1.12 + 1e-9, 'scintillement mesuré : de ' + mn.toFixed(3) + ' à ' + mx.toFixed(3) + ' (± 12 % au plus)');
+check(TWINKLE_MAX_RAD_S <= 1.6 && TWINKLE_MIN_RAD_S >= 0.4 && 2 * Math.PI / TWINKLE_MAX_RAD_S > 3.5, 'LENT : période de ' + (2 * Math.PI / TWINKLE_MAX_RAD_S).toFixed(1) + ' à ' + (2 * Math.PI / TWINKLE_MIN_RAD_S).toFixed(1) + ' s (au lieu de 0,8 à 2,5 s avant)');
+check(twinkleFactor(2, 0.5, 1, 0.12) === twinkleFactor(2, 0.5, 1, 0.12), 'fonction pure (reproductible)');
 if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }
