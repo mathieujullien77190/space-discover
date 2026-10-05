@@ -405,9 +405,11 @@ describe('createEngine (rendu factice)', () => {
     engine.setClouds(false); engine._frame(performance.now() + 300)
     expect(engine._clouds().visible).toBe(false)
   })
-  it('options de carte : limites de pays et capitales éteintes par défaut, affichées à la demande', () => {
+  it('options de carte : limites de pays, capitales et observatoires cochées par défaut ; constellations à la demande', () => {
     engine.selectView('earth'); engine._frame(performance.now() + 100)
-    expect(engine._mapOptions()).toMatchObject({ borders: false, capitals: 0, constellations: false, dayNight: true, sunPoint: true })   // jour / nuit : coché par défaut
+    expect(engine._mapOptions()).toMatchObject({ borders: true, constellations: false, dayNight: true, sunPoint: true })   // cochées par défaut
+    expect(engine._mapOptions().capitals).toBeGreaterThan(0)
+    expect(engine._mapOptions().observatories).toBeGreaterThan(0)   // jour / nuit : coché par défaut
     expect(engine._mapOptions().ambient).toBeLessThan(0.1)
     engine.setDayNight(false); engine._frame(performance.now() + 150)
     expect(engine._mapOptions()).toMatchObject({ dayNight: false, sunPoint: false })

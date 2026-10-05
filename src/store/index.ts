@@ -63,9 +63,9 @@ export const useStore = create<Store>((set) => ({
   cardCollapsed: readCardCollapsed(),
   issView: false,
   clouds: false,
-  borders: false,
-  capitals: false,
-  observatories: false,
+  borders: true,   // les trois options du bloc « Terre et observatoires » sont cochées par défaut
+  capitals: true,
+  observatories: true,
   starInfo: false,
   constellations: false,
   dayNight: true,

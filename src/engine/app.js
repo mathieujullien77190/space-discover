@@ -13,6 +13,7 @@ import { createConstellations } from './constellations.js';
 import { createStars, starBin, starVector } from './stars.js';
 import { STARS } from './data/stars.js';
 import { pickNearest } from './star-info.js';
+import { precessionQuaternion } from './precession.js';
 import { createSunGlare } from './sun-glare.js';
 import { occludedBy } from './occlusion.js';
 import { createTerrainLayer } from './terrain-layer.js';
@@ -51,7 +52,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const earth = buildEarth(renderer); world.add(earth);
 
   const terrain = createTerrainLayer(earth, renderer); terrain.setLook(0, TERRAIN_DAY_GAIN); let terrainShown = false;   // Terre en RELIEF avec imagerie satellite sous 800 km d'altitude (automatique, hors ligne : la carte dessinée reste)
-  const borders = buildBorders(); earth.add(borders); let bordersOn = false;   // option « Limites de pays »
+  const borders = buildBorders(); earth.add(borders); let bordersOn = true;   // option « Limites de pays » (cochée par défaut)
   const atmMat = earth.getObjectByName('atmosphere').material;   // halo de l'atmosphère : tient compte du Soleil (bleu le jour, orange au crépuscule, transparent la nuit)
   const clouds = createClouds(earth, renderer); let cloudsOn = false;   // couverture nuageuse quasi temps réel (option)
   // NIVEAUX DE DÉTAIL selon la taille à l'écran (en pixels de rayon) : la Terre (1 048 576 triangles !) et les ~35 sphères d'astres (9 000 triangles chacune) n'étaient pas allégées quand elles ne font que quelques pixels.
@@ -178,8 +179,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const hubDg = new THREE.BufferGeometry(); hubDg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
   const hubDot = new THREE.Points(hubDg, new THREE.PointsMaterial({ color: 0x7fe3ff, size: 10, sizeAttenuation: false })); hubDot.frustumCulled = false; hubDot.visible = false; world.add(hubDot);
   const hubLabel = overlay.label('Hubble', 'iss'); let hubScreen = null;
-  const capitals = createCapitals(overlay, earth); let capitalsOn = false, lastOcc = [];
-  let observatoriesOn = false;   // option Observatoires : les observatoires du monde, cliquables (clic = y aller, fiche + vue depuis)
+  const capitals = createCapitals(overlay, earth); let capitalsOn = true, lastOcc = [];   // cochée par défaut
+  let observatoriesOn = true;   // cochée par défaut   // option Observatoires : les observatoires du monde, cliquables (clic = y aller, fiche + vue depuis)
   const obsSites = createCapitals(overlay, earth, { data: OBSERVATORIES.map(o => [o.short, o.lat, o.lon, o.id]), cls: 'obssite', prefix: '🔭 ', onClick: id => goObservatory(id) });   // option « Capitales »
 
   const cam = { fov: 50, mode: 'earth', tgt: new THREE.Vector3(), lon: 0, lat: 50, dist: 3.4, fly: 0, tfly: 0, userDir: false, fp: null, fpUp: new THREE.Vector3(), upKind: 'north', goal: { lon: 0, lat: 50, dist: 3.4 } };   // départ : la Terre vue du nord (nord en haut), le méridien de Greenwich (0°) en face de la caméra
@@ -343,6 +344,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
 
   // la Terre cache-t-elle le point P vu de la caméra ?
   // option « Infos étoiles » : un clic sur une étoile VISIBLE (pas masquée par la Terre, pas éteinte par le jour) la sélectionne : sa fiche (nom, constellation, descriptif) s'affiche (composant StarInfo) et un anneau jaune la repère
+  const precQ = new THREE.Quaternion();
   let starInfoOn = false, starSel = -1; const starRing = overlay.label('', 'starring'); starRing.style.display = 'none';
   const starBins = STARS.map(s => starBin(s[2])), sv = new THREE.Vector3(), byBin = [];
   let hiddenByEarth;
@@ -573,7 +575,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     world.rotation.y = gm * frameF;
     if (shift) { world.position.copy(shift).negate(); camera.position.sub(shift); camera.updateMatrixWorld(); } else world.position.set(0, 0, 0);
     inertial.position.copy(world.position); solar.position.copy(world.position);
-    stars.position.copy(camera.position); stars.scale.setScalar(camera.far * 0.45); stars.rotation.y = solar.rotation.y;   // les étoiles suivent le repère « solaire » : fixes en vue inertielle, elles tournent avec le temps sidéral quand la Terre est fixe
+    stars.position.copy(camera.position); stars.scale.setScalar(camera.far * 0.45); stars.quaternion.setFromAxisAngle(Y_AXIS, solar.rotation.y).multiply(precessionQuaternion(Dd / 36525, precQ));   // temps sidéral, après la PRÉCESSION du catalogue (J2000 → date : ≈ 0,36° en 2026)   // les étoiles suivent le repère « solaire » : fixes en vue inertielle, elles tournent avec le temps sidéral quand la Terre est fixe
     sunPoint.position.copy(babs[STAR]); if (shift) sunPoint.position.sub(shift);   // le Soleil suit le décalage d'origine flottante
     const sunRed = obsView ? Math.max(0, Math.min(1, 1 - tmpObs.copy(babs[STAR]).sub(obsPos).normalize().dot(obsSrc.radial) / 0.25)) : 0;   // le Soleil rougit près de l'horizon (vue depuis un observatoire) : blanc au-delà de ≈ 14° de hauteur, rouge-orangé à l'horizon
     sunGlare.update({ camera, sunPos: sunPoint.position, height: innerHeight, tint: sunRed, rise: atmMat.uniforms.uRise.value });

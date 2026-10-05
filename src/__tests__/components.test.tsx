@@ -54,7 +54,7 @@ describe('TopBar + SubMenu', () => {
   it('option GLOBALE « Jour / nuit » : dans la barre du haut, cochée par défaut, présente dans toutes les vues', () => {
     useStore.setState({ ...initialEngineState, dayNight: true, view: { ...initialEngineState.view, mode: 'solar', selected: 'mars' } })
     render(<><TopBar /><MapOptions /></>)
-    expect(screen.queryByText('🗺 Options de carte')).toBeNull()                                          // devant Mars : pas d'options de carte...
+    expect(screen.queryByText('🌍 Terre et observatoires')).toBeNull()                                          // devant Mars : pas d'options de carte...
     fireEvent.click(screen.getByText('🌗 Jour / nuit'))                                                    // ... mais jour / nuit reste disponible
     expect(engine.setDayNight).toHaveBeenLastCalledWith(false)
     expect(useStore.getState().dayNight).toBe(false)
@@ -96,15 +96,20 @@ describe('TopBar + SubMenu', () => {
     expect(engine.setClouds).toHaveBeenLastCalledWith(true)
     expect(screen.getByText(/matteason/)).toBeInTheDocument()
   })
-  it('bloc « Options de carte » : limites de pays, capitales et constellations, éteintes par défaut', () => {
-    useStore.setState({ ...initialEngineState, borders: false, capitals: false, constellations: false, dayNight: true })
+  it('bloc « Terre et observatoires » : cases cochées par défaut dans le magasin, et basculables', () => {
+    const d = useStore.getInitialState()
+    expect(d.borders && d.capitals && d.observatories).toBe(true)              // cochées au démarrage
+    expect(d.constellations || d.starInfo).toBe(false)                         // les autres restent éteintes
+  })
+  it('bloc « Terre et observatoires » : limites de pays, capitales, observatoires, constellations', () => {
+    useStore.setState({ ...initialEngineState, borders: false, capitals: false, observatories: false, constellations: false, dayNight: true })
     render(<MapOptions />)
     const borders = screen.getByLabelText('Limites de pays') as HTMLInputElement
     expect(screen.getByLabelText('Observatoires')).toBeInTheDocument()
     fireEvent.click(screen.getByLabelText('Observatoires'))
     expect(engine.setObservatories).toHaveBeenCalledWith(true)
     const capitals = screen.getByLabelText('Capitales') as HTMLInputElement
-    expect(screen.getByText('🗺 Options de carte')).toBeInTheDocument()
+    expect(screen.getByText('🌍 Terre et observatoires')).toBeInTheDocument()
     expect(borders.checked).toBe(false)
     expect(capitals.checked).toBe(false)
     fireEvent.click(borders)
@@ -120,16 +125,16 @@ describe('TopBar + SubMenu', () => {
   it('options de carte liées à la planète regardée : Terre et ISS oui, Mars, Lune ou Soleil non', () => {
     useStore.setState({ ...initialEngineState })
     const { rerender } = render(<MapOptions />)
-    expect(screen.getByText('🗺 Options de carte')).toBeInTheDocument()                                  // vue Terre
+    expect(screen.getByText('🌍 Terre et observatoires')).toBeInTheDocument()                                  // vue Terre
     act(() => useStore.setState({ view: { ...initialEngineState.view, mode: 'iss', selected: null } }))
     rerender(<MapOptions />)
-    expect(screen.getByText('🗺 Options de carte')).toBeInTheDocument()                                  // vue ISS : la planète est la Terre
+    expect(screen.getByText('🌍 Terre et observatoires')).toBeInTheDocument()                                  // vue ISS : la planète est la Terre
     act(() => useStore.setState({ view: { ...initialEngineState.view, mode: 'solar', selected: 'mars' } }))
     rerender(<MapOptions />)
-    expect(screen.queryByText('🗺 Options de carte')).toBeNull()                                         // Mars : pas d'options de carte
+    expect(screen.queryByText('🌍 Terre et observatoires')).toBeNull()                                         // Mars : pas d'options de carte
     act(() => useStore.setState({ view: { ...initialEngineState.view, mode: 'solar', selected: 'earth' } }))
     rerender(<MapOptions />)
-    expect(screen.getByText('🗺 Options de carte')).toBeInTheDocument()                                  // la Terre vue de loin
+    expect(screen.getByText('🌍 Terre et observatoires')).toBeInTheDocument()                                  // la Terre vue de loin
   })
   it('crédit du relief satellite : affiché seulement quand le relief est visible', () => {
     useStore.setState({ clouds: false, terrainDetail: false })
