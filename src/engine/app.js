@@ -19,9 +19,11 @@ import { assetUrl, setBaseUrl } from './config.js';
 import { KM_AL, KM_UA, fmtAlt, fmtBig, fmtMass } from './format.js';
 import { createOverlay } from './overlay.js';
 import { parseObj } from './obj-mini.js';
+import { probeDef, probeFrom, probeIds, probeMission } from './probes.js';
+import { buildProbeModel } from './probe-model.js';
 
 const VIEW_ISS = { yaw: -28.8, pitch: 24.9, dist: 0.393 };   // accès DIRECT à l'ISS, sans transition : vue réglée par l'utilisateur, un peu de derrière et au-dessus, à 393 m (yaw °, pitch °, distance km)
-const Y_AXIS = new THREE.Vector3(0, 1, 0), KMU = 1 / (R_KM * 1000), SITE_FALLBACK = LAUNCH_SITES[0];
+const Z_AXIS = new THREE.Vector3(0, 0, 1), Y_AXIS = new THREE.Vector3(0, 1, 0), KMU = 1 / (R_KM * 1000), SITE_FALLBACK = LAUNCH_SITES[0];
 const defaultRenderer = canvas => new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true });
 const getJson = url => fetch(assetUrl(url) + '?t=' + Date.now(), { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
 const isHttp = () => typeof location !== 'undefined' && /^https?:/.test(location.protocol);
@@ -95,6 +97,30 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     g.visible = false; return g;
   };
   { const m = axisMarker(); earthAxis.add(...m.children); earth.add(earthAxis); }
+  // SONDES REJOUÉES (Voyager, Pioneer, New Horizons : objets JSON « probe », trajectoire calculée par mission.js d'après les positions des planètes aux dates des rendez-vous).
+  // Par sonde : modèle 3D à l'échelle réelle (visible de près), point lointain, nom, TRAJECTOIRE ENTIÈRE (passé en clair, futur pâle), et TRACE LOCALE recalculée en double précision autour d'elle quand on s'approche.
+  const probeObjs = {}, PROBE_N = 200;
+  const buildProbes = () => {
+    for (const pid of probeIds()) {
+      const def = probeDef(pid), mission = probeMission(pid), color = def.appearance.color, times = [], t0 = mission.t0, tL = mission.tLastFlyby;
+      for (let D = t0 + 1; D < tL; D += 2) times.push(D);
+      times.push(tL); for (let D = tL + 20; D <= tL + 365.25 * 80; D += 20) times.push(D);
+      const pos = new Float32Array(times.length * 3); times.forEach((D, i) => { const r = mission.state(D).r; pos[3 * i] = r[0] * KMU; pos[3 * i + 1] = r[1] * KMU; pos[3 * i + 2] = r[2] * KMU; });
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      const pathG = new THREE.Group(), dim = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: new THREE.Color(color), transparent: true, opacity: 0.35 })), bright = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: new THREE.Color(color), transparent: true, opacity: 0.95 }));
+      dim.frustumCulled = bright.frustumCulled = false; pathG.add(dim, bright); pathG.visible = false; solar.add(pathG);
+      const local = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: new THREE.Color(color), transparent: true, opacity: 0.9 })); local.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array((2 * PROBE_N + 1) * 3), 3)); local.frustumCulled = false; local.visible = false; solar.add(local);
+      const model = buildProbeModel(def.appearance.dishM, color); model.scale.setScalar(KMU); model.visible = false; solar.add(model);
+      const dot = dotOf(new THREE.Color(color)); dot.visible = false;
+      probeObjs[pid] = { id: pid, def, mission, times, bright, pathG, local, model, dot, label: overlay.label(def.name), pos: new THREE.Vector3(), abs: new THREE.Vector3(), screen: null, st: null };
+    }
+  };
+  // trace locale d'une sonde : ±T autour de l'instant (déplacement relatif à la sonde, double précision), posée sur elle : elle passe pile par la sonde
+  const updateLocalProbe = (o, Dd, dist) => {
+    const st = o.st, spd = Math.hypot(st.v[0], st.v[1], st.v[2]) * 86400 * KMU, T = Math.min(400, Math.max(1e-4, Math.max(2e-4, 6 * dist) / Math.max(spd, 1e-12))), at = o.local.geometry.attributes.position;
+    for (let k = -PROBE_N; k <= PROBE_N; k++) { const s = k === 0 ? st : o.mission.state(Math.max(o.mission.t0 + 1, Dd + T * k / PROBE_N)); at.setXYZ(k + PROBE_N, (s.r[0] - st.r[0]) * KMU, (s.r[1] - st.r[1]) * KMU, (s.r[2] - st.r[2]) * KMU); }
+    at.needsUpdate = true; o.local.position.copy(o.pos);
+  };
   const buildSolar = () => {
     const D0 = astroD(new Date());
     for (const b of BODY.list()) {
@@ -125,6 +151,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       }
       if (tr && tr.pastDays) { o.loop = new THREE.Group(); solar.add(o.loop); o.past = mkTrail(121, 1); o.fut = mkTrail(61, 0.45); o.loop.add(o.past, o.fut); }   // trace : le passé (un tour complet, s'estompe vers le début) et l'avenir (pâle)
     }
+    buildProbes();
     solarBuilt = true;
   };
   const solarTimer = setTimeout(buildSolar, 400);
@@ -174,7 +201,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const goEarth = () => { setMode('earth'); alignNorth('earth'); };   // la Terre aussi : nord en haut
   const selectView = id => { const b = BODY.get(id); if (b && b.menu.mode === 'earth') goEarth(); else goSolar(id); };   // menu et clics sur la scène : la Terre ramène à la vue Terre, les autres astres à leur vue
   const goSolar = target => {   // vues Soleil / Lune : repère inertiel, cible = astre ; distance de la vue : son JSON
-    solarTarget = target; setMode('solar'); cam.goal.dist = BODY.get(target).menu.view.distanceUnits; cam.minDist = Math.max(1e-4, 1.3 * BODY.radiusUnits(target));   // zoom minimal : 1,3 rayon de l'astre regardé (une petite lune se regarde de près)
+    solarTarget = target; setMode('solar'); const pdef = probeDef(target); cam.goal.dist = pdef ? pdef.menu.view.distanceUnits : BODY.get(target).menu.view.distanceUnits; cam.minDist = pdef ? 1e-7 : Math.max(1e-4, 1.3 * BODY.radiusUnits(target));   // zoom minimal : 1,3 rayon de l'astre regardé (une petite lune se regarde de près)
     const d = ECLIPTIC_POLE.clone().add(tmp.set(0.35, 0, 0.1)).normalize(); cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; snapCam();
     alignNorth(target);   // choisir un astre : sa vue est « nord en haut » d'office (bouton « Nord en haut » de sa fiche activé)
   };
@@ -311,7 +338,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   // ---------- clics sur la scène : l'ISS et les astres sont cliquables ----------
   let issScreen = null;   // position écran de l'ISS si visible ; celles des astres sont dans bodyObjs[id].screen
   const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches, HIT = touch ? 42 : 26, near = (p, r, x, y) => !!p && Math.hypot(x - p[0], y - p[1]) < r;
-  const bodyAt = (x, y) => { for (const id in bodyObjs) { const o = bodyObjs[id]; if (o.screen && o.b.menu && (o.b.menu.view || o.b.menu.mode === 'earth') && near(o.screen, HIT + (o.b.hitExtraPx || 0), x, y)) return id; } return null; };
+  const probeAt = (x, y) => { for (const id in probeObjs) { const o = probeObjs[id]; if (o.screen && near(o.screen, HIT, x, y)) return id; } return null; };
+  const bodyAt = (x, y) => { for (const id in bodyObjs) { const o = bodyObjs[id]; if (o.screen && o.b.menu && (o.b.menu.view || o.b.menu.mode === 'earth') && near(o.screen, HIT + (o.b.hitExtraPx || 0), x, y)) return id; } return probeAt(x, y); };
   disposers.push(attachControls(canvas, cam, (x, y) => { if (near(issScreen, HIT, x, y)) goIss(); else { const id = bodyAt(x, y); if (id) selectView(id); } }));
   const onMove = e => canvas.classList.toggle('hand', near(issScreen, HIT, e.clientX, e.clientY) || !!bodyAt(e.clientX, e.clientY));
   canvas.addEventListener('pointermove', onMove); disposers.push(() => canvas.removeEventListener('pointermove', onMove));
@@ -358,7 +386,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       syncView('earth');
     }
     if (launch) launch.update(dt, camera);
-    const goalTgt = solarMode ? (babs[solarTarget] || tmp.set(0, 0, 0)) : cam.mode === 'iss' && iss ? iss.pos : cam.mode === 'launch' && launch ? launch.focusPos : tmp.set(0, 0, 0);
+    const goalTgt = solarMode ? (babs[solarTarget] || (probeObjs[solarTarget] && probeObjs[solarTarget].st ? probeObjs[solarTarget].abs : null) || tmp.set(0, 0, 0)) : cam.mode === 'iss' && iss ? iss.pos : cam.mode === 'launch' && launch ? launch.focusPos : tmp.set(0, 0, 0);
     if (cam.mode === 'launch' && launch) {   // caméra auto : sur le côté de la trajectoire, de plus en plus loin ; le zoom manuel multiplie la distance
       if (!cam.userDir) { const d = launch.camDir; cam.goal.lat = Math.asin(d.y) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; }
       const auto = (launch.follow === 'pad' ? 500 : launch.rocketLen * 1.6) / 1000 / R_KM; cam.launchK = Math.max(0.02 / (auto * R_KM), Math.min(cam.launchK, 41 / auto));   // caméra TOUT PRÈS de la fusée (1,6 fois sa longueur), à toute altitude ; vue « Pas de tir » : à 500 m ; la molette ajuste
@@ -440,6 +468,21 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
           const on = b.sceneOrigin ? ((solarMode || cam.mode === 'earth') && camera.position.length() > 300) || (metric && cam.mode === 'earth' && cam.dist > 6) : camera.position.distanceTo(ab) > (lb.minDistanceRadii != null ? lb.minDistanceRadii * ru : lb.minDistanceUnits || 0);
           o.screen = proj(o.label, ab, on && !hid && !moonsShown[id]);   // la Terre se comporte comme Mars : cliquable quand son nom est affiché (caméra à plus de 300 rayons d'elle), dans toutes les vues d'astre et en vue Terre dézoomée 
         }
+      }
+      // sondes rejouées : position CALCULÉE à la date simulée ; absentes avant leur lancement (+ 1 jour : avant, c'est le lanceur qui est simulé)
+      for (const pid in probeObjs) {
+        const o = probeObjs[pid], shown = date.getTime() >= probeFrom(pid);
+        if (!shown) { o.dot.visible = o.model.visible = o.pathG.visible = o.local.visible = false; o.label.style.display = 'none'; o.screen = null; o.st = null; continue; }
+        const st = o.st = o.mission.state(Dd), r = st.r;
+        o.pos.copy(bpos[STAR]).add(tmp.set(r[0] * KMU, r[1] * KMU, r[2] * KMU)); o.abs.copy(o.pos).applyAxisAngle(Y_AXIS, rotS);
+        const dist = camera.position.distanceTo(o.abs), px = pxScale * (o.def.appearance.dishM * KMU / 2) / Math.max(1e-12, dist);   // rayon de l'antenne à l'écran (pixels)
+        o.model.visible = px > 0.8; if (o.model.visible) { o.model.position.copy(o.pos); o.model.quaternion.setFromUnitVectors(Z_AXIS, tmp.copy(o.pos).negate().normalize()); }   // l'antenne regarde la Terre
+        o.dot.visible = px < 6; o.dot.position.copy(o.pos);
+        o.screen = proj(o.label, o.abs, dist > 3e-4);
+        const orbitOn = solarMode || cam.mode === 'earth' || camera.position.length() > 300, nearP = dist < 60;
+        o.pathG.visible = orbitOn && !nearP; o.pathG.position.copy(bpos[STAR]);
+        if (o.pathG.visible) { let lo = 0, hi = o.times.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (o.times[m] <= Dd) lo = m; else hi = m - 1; } o.bright.geometry.setDrawRange(0, lo + 1); }   // passé : trait clair jusqu'à la position actuelle
+        o.local.visible = orbitOn && nearP; if (o.local.visible) updateLocalProbe(o, Dd, dist);
       }
     } else { for (const id in bodyObjs) { const o = bodyObjs[id]; if (o.label) o.label.style.display = 'none'; o.screen = null; } }
     // lumière : toujours « jour » (la Terre et la Lune sont éclairées de face)
@@ -549,6 +592,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       if (cam.mode === 'iss') t += "\nÉchelle réelle : l'ISS (109 m) n'est visible qu'à moins de ~17 km.";
       t += '\n' + BODY.list().filter(b => b.info).sort((a, b) => (a.menu ? a.menu.order : 99) - (b.menu ? b.menu.order : 99)).map(b => { const d = bpos[b.id].length() * R_KM; return `${b.name} à ${fmtBig(d) || Math.round(d).toLocaleString('fr-FR') + ' km'}`; }).join(' · ');   // distances des astres marqués "info" (Lune, Soleil)
       if (solarMode && BODY.get(solarTarget) && BODY.get(solarTarget).menu.view) t += '\n' + BODY.get(solarTarget).menu.view.text;
+      if (solarMode && probeObjs[solarTarget] && probeObjs[solarTarget].st) { const st = probeObjs[solarTarget].st, rAU = Math.hypot(st.r[0], st.r[1], st.r[2]) / 149597870700, vv = Math.hypot(st.v[0], st.v[1], st.v[2]) / 1000; t += '\n' + probeObjs[solarTarget].def.name + ' : ' + rAU.toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' UA du Soleil · ' + vv.toFixed(1).replace('.', ',') + ' km/s · signal radio : ' + (rAU * 8.317).toLocaleString('fr-FR', { maximumFractionDigits: 0 }) + ' min de trajet jusqu\'à la Terre'; }
       const fid = cam.mode === 'iss' ? 'iss' : cam.mode === 'earth' ? 'earth' : solarMode ? solarTarget : null, fb = fid && (BODY.get(fid) || FLIGHT_OBJECTS[fid]);   // astre regardé ; « proche » = à moins de 30 de ses rayons (ou card.nearUnits) : sa fiche s'affiche
       const near = !!fb && !!fb.card;   // la fiche de l'astre choisi s'affiche toujours, de près comme de loin (demande de l'utilisateur)
       let cardId = near ? fid : null;
@@ -575,6 +619,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   return {
     // pour les tests et l'interface : exécute une image sans requestAnimationFrame
     alignNorth, alignOrbit, resetUp,
+    _probeDistance: (pid, bid) => { const o = probeObjs[pid]; return o && o.st ? Math.hypot(o.pos.x - bpos[bid].x, o.pos.y - bpos[bid].y, o.pos.z - bpos[bid].z) * 6378.137 : Infinity; },   // km
+    _probe: id => { const o = probeObjs[id]; return o ? { shown: !!o.st, dot: o.dot.visible, model: o.model.visible, path: o.pathG.visible, local: o.local.visible, pos: o.pos.toArray(), abs: o.abs.toArray(), r: o.st ? o.st.r : null, label: o.label.style.display } : null; },
     _dotVisible: () => Object.fromEntries(Object.entries(bodyObjs).filter(([, o]) => o.dot).map(([id, o]) => [id, o.dot.visible])),
     _axisVisible: () => Object.assign({ earth: earthAxis.visible }, Object.fromEntries(Object.entries(bodyObjs).filter(([, o]) => o.axisG).map(([id, o]) => [id, o.axisG.visible]))),
     _view: () => ({ up: camera.up.toArray(), dir: camera.position.clone().sub(cam.tgt).normalize().toArray(), custom: !!cam.userUp, align: cam.upKind }),

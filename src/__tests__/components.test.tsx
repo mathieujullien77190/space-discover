@@ -76,6 +76,20 @@ describe('TopBar + SubMenu', () => {
     fireEvent.click(screen.getByText(/Lune/))
     expect(engine.selectView).toHaveBeenCalledWith('moon')
   })
+  it('Satellites : l’ISS et les sondes ; un objet pas encore lancé à la date choisie est grisé', () => {
+    render(<><TopBar /><SubMenu /></>)
+    fireEvent.click(screen.getByText('🛰 Satellites'))
+    for (const n of ['ISS', 'Voyager 1', 'Voyager 2', 'Pioneer 10', 'Pioneer 11', 'New Horizons']) expect(screen.getByText('🛰 ' + n)).toBeInTheDocument()
+    expect(screen.getByText('🛰 New Horizons')).toBeEnabled()   // date de départ : maintenant
+    act(() => useStore.setState({ time: { simMs: Date.UTC(1975, 0, 1), speed: 1, visible: true } }))
+    expect(screen.getByText('🛰 ISS')).toBeDisabled()           // pas d'ISS en 1975
+    expect(screen.getByText('🛰 Voyager 2')).toBeDisabled()     // Voyager 2 : 1977
+    expect(screen.getByText('🛰 Pioneer 10')).toBeEnabled()     // Pioneer 10 : 1972
+    fireEvent.click(screen.getByText('🛰 Pioneer 10'))
+    expect(engine.selectView).toHaveBeenCalledWith('pioneer10')
+    act(() => useStore.setState({ time: { simMs: Date.UTC(1999, 0, 1), speed: 1, visible: true } }))
+    expect(screen.getByText('🛰 ISS')).toBeEnabled()            // ISS : novembre 1998
+  })
   it('Satellites : seulement le bouton de l’ISS (plus de boutons Dimensions ni Trajectoire)', () => {
     render(<><TopBar /><SubMenu /></>)
     fireEvent.click(screen.getByText('🛰 Satellites'))

@@ -2,13 +2,15 @@
 import { BODY } from './bodies.js';
 import { FLIGHT_OBJECTS } from './data/objects.js';
 import { FLIGHT_PLANS } from './data/plans.js';
-import { ISS_FEATURES } from './iss.js';
+import { ISS_FEATURES, ISS_FROM } from './iss.js';
+import { probeDef, probeFrom, probeIds, probeMission } from './probes.js';
 
 const flyable = k => !!FLIGHT_OBJECTS[k] && FLIGHT_OBJECTS[k].kind !== 'body' && FLIGHT_OBJECTS[k].kind !== 'probe' && !FLIGHT_OBJECTS[k].live;
 
 export const viewMenu = () => BODY.menu().map(b => ({ id: b.id, type: b.bodyType, around: b.around || null, label: (b.menu.icon ? b.menu.icon + ' ' : '') + b.name }));   // le menu des planètes = les astres décrits en JSON (menu.order)
 export const issFeatures = () => ISS_FEATURES.map(f => ({ id: f.id, label: f.label }));
-export const satellites = () => Object.keys(FLIGHT_OBJECTS).filter(k => FLIGHT_OBJECTS[k].live).map(k => ({ key: k, name: FLIGHT_OBJECTS[k].name }));
+// satellites et sondes : `from` = date (ms) à partir de laquelle ils existent (l'ISS : 1998 ; une sonde : son lancement + 1 jour) ; `kind` : 'iss' (vue ISS) ou 'probe' (vue d'une sonde rejouée)
+export const satellites = () => Object.keys(FLIGHT_OBJECTS).filter(k => FLIGHT_OBJECTS[k].live).map(k => ({ key: k, name: FLIGHT_OBJECTS[k].name, kind: 'iss', from: ISS_FROM })).concat(probeIds().map(k => ({ key: k, name: FLIGHT_OBJECTS[k].name, kind: 'probe', from: probeFrom(k) })));
 // fusées lançables : objets JSON génériques (clé « obj:<nom> ») puis plans de vol (clé = nom du plan)
 export const rocketList = () => Object.keys(FLIGHT_OBJECTS).filter(flyable).map(k => ({ key: 'obj:' + k, label: '🧪 ' + FLIGHT_OBJECTS[k].name })).concat(Object.keys(FLIGHT_PLANS).map(k => ({ key: k, label: FLIGHT_PLANS[k].name })));
 
@@ -26,10 +28,17 @@ const satelliteCard = (id, o) => {
   for (const f of o.card.facts || []) facts.push({ label: f.label, value: f.value });
   return { id, name: (o.visual && o.visual.name) || o.name, kind: o.card.kind || 'Satellite', canNorth: false, canOrbit: false, image: 'objects/' + id + '/' + (o.card.image || 'card.png'), facts };
 };
+// fiche d'une sonde rejouée : énergie de départ, rendez-vous et vitesse calculés par la mission (mission.js) + faits du JSON
+const probeCard = (id, o) => {
+  const m = probeMission(id), def = probeDef(id), facts = [{ label: 'Énergie au départ (C3)', value: fr(m.departure.c3, 0) + ' km²/s²' }, { label: 'Rendez-vous', value: def.mission.waypoints.map(w => (BODY.get(w.body) || { name: w.body }).name).join(', ') }];
+  for (const f of o.card.facts || []) facts.push({ label: f.label, value: f.value });
+  return { id, name: o.name, kind: o.card.kind || 'Sonde spatiale', canNorth: false, canOrbit: false, image: 'objects/' + id + '/' + (o.card.image || 'card.png'), facts };
+};
 // fiche d'un astre : { id, name, kind, image (chemin relatif à la racine du site), facts [{ label, value }] } ; null si l'astre n'a pas de section « card » dans son JSON
 export const bodyCard = id => {
-  const o = FLIGHT_OBJECTS[id], b = BODY.get(id) || (o && o.live ? o : null); if (!b || !b.card) return null;
+  const o = FLIGHT_OBJECTS[id], b = BODY.get(id) || (o && (o.live || o.kind === 'probe') ? o : null); if (!b || !b.card) return null;
   if (b.live) return satelliteCard(id, b);
+  if (b.kind === 'probe') return probeCard(id, b);
   const facts = [{ label: 'Diamètre', value: fr(2 * b.radiusKm, b.radiusKm < 100 ? 1 : 0) + ' km' }];
   if (b.massKg) { const mu = b.muM3S2 || G * b.massKg, g = mu / Math.pow(b.radiusKm * 1000, 2); facts.push({ label: 'Masse', value: sci(b.massKg) + ' kg' }, { label: 'Gravité en surface', value: fr(g, g < 0.01 ? 4 : 2) + ' m/s²' }); }
   const spin = b.rotationRadS ? 2 * Math.PI / b.rotationRadS / 86400 : b.rotation ? 360 / b.rotation.rateDegPerDay : 0;

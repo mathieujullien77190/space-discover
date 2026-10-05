@@ -334,6 +334,43 @@ describe('createEngine (rendu factice)', () => {
     engine.goIss()
     expect(state.view.mode).toBe('iss')
   })
+  it('sondes rejouées : position calculée à la date, vue de la sonde, absentes avant leur lancement', async () => {
+    await new Promise((r) => setTimeout(r, 450))
+    let t = 1000
+    const frames = (n: number) => { for (let i = 0; i < n; i++) engine._frame(performance.now() + (t += 100)) }
+    frames(4)
+    // aujourd'hui : Voyager 1 est à ≈ 168 UA du Soleil (1 UA = 23 455 rayons terrestres)
+    const sunDist = (id: string) => { const q = engine._probe(id)!; return Math.hypot(...(q.r as number[])) / 149597870700 }
+    expect(sunDist('voyager1')).toBeGreaterThan(150)
+    expect(sunDist('voyager1')).toBeLessThan(185)
+    expect(sunDist('newhorizons')).toBeGreaterThan(55)
+    expect(sunDist('newhorizons')).toBeLessThan(70)
+    engine.selectView('voyager2'); frames(4)
+    expect(state.view).toMatchObject({ mode: 'solar', selected: 'voyager2' })
+    expect(state.focus.id).toBe('voyager2')
+    expect(state.info).toMatch(/Voyager 2 : [0-9]+,[0-9] UA du Soleil · [0-9]+,[0-9] km[/]s/)
+    const q = engine._probe('voyager2')!
+    expect(q.shown).toBe(true)
+    expect(q.model).toBe(true)      // vue de la sonde (127 m) : son modèle 3D à l'échelle réelle (antenne de 3,7 m ≈ 24 px)
+    expect(q.dot).toBe(false)
+    expect(q.local).toBe(true)      // trace locale en double précision, passant par la sonde
+    engine.selectView('sun'); frames(4)
+    const far = engine._probe('voyager2')!
+    expect(far.dot).toBe(true)      // de loin : un point (le modèle ferait un millionième de pixel)
+    expect(far.model).toBe(false)
+    expect(far.path).toBe(true)     // et sa trajectoire entière
+    engine.selectView('voyager2'); frames(4)
+    // saut de date : en 1975 Voyager n'est pas encore parti, Pioneer 10 est en route
+    engine.setDate(Date.UTC(1975, 0, 1)); frames(3)
+    expect(engine._probe('voyager1')!.shown).toBe(false)
+    expect(engine._probe('voyager1')!.label).toBe('none')
+    expect(engine._probe('pioneer10')!.shown).toBe(true)
+    // 1979-07-09 : Voyager 2 passe près de Jupiter
+    engine.setDate(Date.UTC(1979, 6, 9, 22, 29)); frames(3)
+    const near = engine._probe('voyager2')!, jupiter = engine._probeDistance('voyager2', 'jupiter')
+    expect(jupiter).toBeLessThan(1e6 * 1.2)   // moins de 1,2 million de km de Jupiter (périgée ≈ 0,69 million)
+    expect(near.shown).toBe(true)
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)

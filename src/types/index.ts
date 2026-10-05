@@ -43,7 +43,7 @@ export type BodyFact = { label: string; value: string }
 export type BodyCardData = { id: string; name: string; kind: string; canNorth: boolean; canOrbit: boolean; image: string; facts: BodyFact[] }   // canNorth / canOrbit : boutons « Nord en haut » / « Orbite à plat » de la fiche
 export type MenuItem = { id: string; label: string; type: string; around: string | null }   // type : bodyType du JSON (planet, moon, comet, star…) ; around : corps central (une lune dépend de sa planète)
 export type FeatureItem = { id: string; label: string }
-export type SatelliteItem = { key: string; name: string }
+export type SatelliteItem = { key: string; name: string; kind: 'iss' | 'probe'; from: number }   // from : date (ms) à partir de laquelle l'objet existe
 export type RocketOption = { key: string; label: string }
 
 // Commandes du moteur (voir createEngine dans src/engine/app.js).
@@ -72,6 +72,8 @@ export type Engine = {
   _dotVisible: () => Record<string, boolean>
   _axisVisible: () => Record<string, boolean>
   _view: () => { up: number[]; dir: number[]; custom: boolean; align: 'north' | 'orbit' | null }
+  _probe: (id: string) => { shown: boolean; dot: boolean; model: boolean; path: boolean; local: boolean; pos: number[]; abs: number[]; r: number[] | null; label: string } | null
+  _probeDistance: (probe: string, body: string) => number
   _lod: () => { earth: number; bodies: Record<string, number>; ratio: number }
 }
 
