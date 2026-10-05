@@ -437,6 +437,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     if (!dayNight) sun.position.copy(cam.mode === 'solar' ? camera.position.clone().sub(cam.tgt).normalize() : camera.position.clone().normalize()).add(tmp.set(0.4, 0.5, 0.2)).multiplyScalar(10);
     if (!dayNight) amb.intensity = 0.55;
     atmMat.uniforms.uSun.value.copy(babs[STAR]).normalize(); atmMat.uniforms.uUseSun.value = dayNight ? 1 : 0;
+    atmMat.uniforms.uOrange.value = obsView ? 1 : 0;   // le rougeoiement du coucher / lever n'existe que depuis un observatoire
 
     // ISS
     issScreen = null; issLabel.style.display = 'none';
@@ -565,7 +566,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     setCapitals: on => { capitalsOn = !!on; },
     setObservatories: on => { observatoriesOn = !!on; },
     goObservatory, setObservatoryView,
-    _obs: () => ({ id: obsId, view: obsView, label: obsLabel.style.display, dot: obsDot.visible, camAltKm: (camera.position.length() - 1) * R_KM, posErr: obsView ? camera.position.distanceTo(obsPos) * R_KM * 1000 : null, day: obsDay, stars: stars.children.some(c => c.userData.bin !== undefined && c.visible && c.material.opacity > 0.5), starOpacity: stars.children.filter(c => c.userData.bin !== undefined).map(c => c.material.opacity), atmSun: atmMat.uniforms.uUseSun.value }),
+    _obs: () => ({ id: obsId, view: obsView, label: obsLabel.style.display, dot: obsDot.visible, camAltKm: (camera.position.length() - 1) * R_KM, posErr: obsView ? camera.position.distanceTo(obsPos) * R_KM * 1000 : null, day: obsDay, stars: stars.children.some(c => c.userData.bin !== undefined && c.visible && c.material.opacity > 0.5), starOpacity: stars.children.filter(c => c.userData.bin !== undefined).map(c => c.material.opacity), atmSun: atmMat.uniforms.uUseSun.value, orange: atmMat.uniforms.uOrange.value }),
     setRealistic: on => { realistic = !!on; },
     setConstellations: on => { constellationsOn = !!on; },
     setDayNight: on => { dayNight = !!on; terrain.setLook(dayNight ? 0 : TERRAIN_GLOW, dayNight ? TERRAIN_DAY_GAIN : 1); },

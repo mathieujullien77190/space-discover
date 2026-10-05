@@ -456,6 +456,7 @@ describe('createEngine (rendu factice)', () => {
     expect(day.camAltKm).toBeGreaterThan(2.9)                                 // 2 877 m + 120 m d’œil
     expect(day.camAltKm).toBeLessThan(3.1)
     expect(day.day).toBeGreaterThan(0.9)                                      // midi : plein jour (le ciel bleu est celui de l’atmosphère)
+    expect(day.orange).toBe(1)                                                // couleurs du coucher : seulement depuis l’observatoire
     expect(day.atmSun).toBe(1)                                                // l’atmosphère tient compte du Soleil
     expect(day.stars).toBe(false)                                             // et pas d’étoiles
     expect(day.starOpacity.every((o) => o < 0.1)).toBe(true)
@@ -464,6 +465,7 @@ describe('createEngine (rendu factice)', () => {
     expect(night.stars).toBe(true)                                            // minuit : ciel étoilé
     expect(night.day).toBeLessThan(0.05)                                      // nuit : l’atmosphère est transparente
     engine.selectView('earth'); engine._frame(performance.now() + 1500)
+    expect(engine._obs().orange).toBe(0)                                      // hors observatoire : pas d’orange
     expect(state.observatory).toEqual({ id: null, view: false })              // le bouton Terre quitte l’observatoire
     expect(engine._obs().stars).toBe(true)
     engine.resetTime()
