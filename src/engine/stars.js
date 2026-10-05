@@ -31,7 +31,7 @@ export const STAR_BINS = [
 export const starBin = mag => STAR_BINS.findIndex(b => mag < b.max);
 
 // SCINTILLEMENT LENT (vue depuis un observatoire seulement) : la luminosité de chaque étoile oscille doucement (une période de 4 à 15 s environ : 0,4 à 1,6 rad/s, phase et fréquence propres à chaque étoile) de ± amp ; fonction pure de l'instant
-export const TWINKLE_MIN_RAD_S = 0.4, TWINKLE_MAX_RAD_S = 1.6;
+export const TWINKLE_MIN_RAD_S = 0.2, TWINKLE_MAX_RAD_S = 0.6;
 export const TWINKLE_SHARE = 0.2;   // seule UNE étoile sur CINQ scintille (les autres restent fixes)
 export const twinkles = k => (((k * 2246822519 + 3266489917) >>> 0) % 1000) / 1000 < TWINKLE_SHARE;   // choix déterministe de l'étoile d'indice k dans sa classe d'éclat
 export const twinkleFactor = (timeS, phase, freq, amp) => 1 + amp * Math.sin(timeS * freq + phase) * (0.6 + 0.4 * Math.sin(timeS * freq * 0.37 + phase * 1.7));

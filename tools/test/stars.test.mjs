@@ -23,7 +23,7 @@ check([0, 0.1, 0.2, 0.3].map(d => starOpacity(3, d)).every((o, i, a) => i === 0 
 const fs = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => twinkleFactor(i * 0.1, 1.3, 1, 0.12)), mn = Math.min(...fs), mx = Math.max(...fs);
 check(twinkleFactor(3.3, 1, 1, 0) === 1, 'sans amplitude : étoile fixe');
 check(mn >= 0.88 - 1e-9 && mx <= 1.12 + 1e-9, 'scintillement mesuré : de ' + mn.toFixed(3) + ' à ' + mx.toFixed(3) + ' (± 12 % au plus)');
-check(TWINKLE_MAX_RAD_S <= 1.6 && TWINKLE_MIN_RAD_S >= 0.4 && 2 * Math.PI / TWINKLE_MAX_RAD_S > 3.5, 'LENT : période de ' + (2 * Math.PI / TWINKLE_MAX_RAD_S).toFixed(1) + ' à ' + (2 * Math.PI / TWINKLE_MIN_RAD_S).toFixed(1) + ' s (au lieu de 0,8 à 2,5 s avant)');
+check(TWINKLE_MAX_RAD_S <= 0.6 && TWINKLE_MIN_RAD_S >= 0.2 && 2 * Math.PI / TWINKLE_MAX_RAD_S > 10, 'TRÈS LENT : période de ' + (2 * Math.PI / TWINKLE_MAX_RAD_S).toFixed(1) + ' à ' + (2 * Math.PI / TWINKLE_MIN_RAD_S).toFixed(1) + ' s (4 à 15 s avant)');
 check(twinkleFactor(2, 0.5, 1, 0.12) === twinkleFactor(2, 0.5, 1, 0.12), 'fonction pure (reproductible)');
 let nsel = 0; for (let k = 0; k < 5000; k++) if (twinkles(k)) nsel++;
 check(Math.abs(nsel / 5000 - TWINKLE_SHARE) < 0.03 && Math.abs(TWINKLE_SHARE - 0.2) < 1e-9, 'une étoile sur cinq scintille : ' + (100 * nsel / 5000).toFixed(1) + ' % (' + nsel + ' sur 5000)');
