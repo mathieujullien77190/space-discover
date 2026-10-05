@@ -9,6 +9,6 @@ export function paintGlare(g: CanvasRenderingContext2D, size: number): void
 export function glarePixels(dist: number): number
 export function createSunGlare(scene: Scene): {
   sprite: Sprite
-  update(a: { camera: Camera & { fov: number; far: number }; sunPos: Vector3; width?: number; height: number }): number
+  update(a: { camera: Camera & { fov: number; far: number }; sunPos: Vector3; width?: number; height: number; tint?: number }): number
   dispose(): void
 }
