@@ -416,8 +416,8 @@ describe('createEngine (rendu factice)', () => {
     await new Promise((r) => setTimeout(r, 500))
     const T = performance.now() + 250000
     engine.resetTime(); engine.setSimSpeed(1); engine._frame(T + 100)
-    expect(engine._concorde().active).toBe(false)                              // aujourd’hui (2026) : le Concorde n’existe plus
-    expect((state as EngineState & { concorde?: boolean }).concorde).toBeFalsy()                                         // pas de bouton « Concorde » quand il ne vole pas
+    expect(engine._concorde().active).toBe(true)                               // aujourd’hui (2026) : hors de l’exploitation réelle le Concorde vole TOUJOURS
+    expect((state as EngineState & { concorde?: boolean }).concorde).toBe(true)                                          // le bouton « Concorde » est donc là
     engine.flyConcorde('AF002'); for (let i = 0; i < 3; i++) engine._frame(T + 200 + i * 100)
     expect(state.view.mode).toBe('iss')                                        // la caméra est sur l’avion
     expect(state.focus.id).toBe('concorde')                                    // sa fiche

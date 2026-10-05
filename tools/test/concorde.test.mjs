@@ -21,7 +21,7 @@ const arr2 = t2 + AIRBORNE_S * 1000 + af002.taxiInS * 1000, arr1 = t1 + AIRBORNE
 check(Math.abs(localOf(arr2, newYorkOffsetH(arr2)) - (8 * 60 + 25)) < 10, 'AF002 : arrivée à New York vers 8 h 25 heure locale (' + (localOf(arr2, newYorkOffsetH(arr2)) / 60).toFixed(2) + ' h)');
 check(Math.abs(localOf(arr1, parisOffsetH(arr1)) - (17 * 60 + 45)) < 10, 'AF001 : arrivée à Paris vers 17 h 45 heure locale (' + (localOf(arr1, parisOffsetH(arr1)) / 60).toFixed(2) + ' h)');
 // existence
-check(flightAt(Date.UTC(1975, 5, 2, 9)) === null && flightAt(Date.UTC(2004, 5, 2, 9)) === null && flightAt(t2 + 1000) !== null, 'le Concorde n’existe qu’entre 1976 et le 24 octobre 2003');
+{ const p = flightAt(Date.UTC(2026, 9, 6, 9)), q = flightAt(Date.UTC(2026, 9, 6, 9) + 5 * 3600e3); check(!!p && !!q && p.t >= 0 && p.t <= AIRBORNE_S && flightAt(Date.UTC(1975, 5, 2, 9)) !== null && flightAt(t2 + 1000) !== null && new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(h => flightAt(Date.UTC(2026, 9, 6, h)).flight.id)).size === 2, 'hors de l’exploitation réelle (2026 compris) le Concorde vole TOUJOURS, AF002 et AF001 en alternance'); check(concordeAt(Date.UTC(2026, 9, 6, 9)).alt >= 0.01, 'état valide en 2026'); }
 check(flightAt(t2 + 3600e3).flight.id === 'AF002' && flightAt(t1 + 3600e3).flight.id === 'AF001', 'le vol en cours est reconnu (AF002 / AF001)');
 check(flightAt(Date.UTC(2003, 5, 2, 3, 0)) === null, 'la nuit (03 h UTC) : aucun vol en cours');
 const nx = nextTakeoff(Date.UTC(2003, 5, 2, 3, 0)); check(nx && nx.flight.id === 'AF002' && Math.abs(nx.takeoff - t2) < 1000, 'prochain décollage à 03 h UTC : AF002 à ' + hhmm(nx.takeoff) + ' UTC');

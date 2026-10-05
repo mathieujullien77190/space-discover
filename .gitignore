@@ -13,3 +13,4 @@ data/photo-kourou-hi.jpg
 **/node_modules/
 *.tmp.jpg
 tools/.cache/
+model_file.binz

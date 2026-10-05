@@ -35,8 +35,10 @@ export function takeoffMs(flight, y, m, d) {
 }
 // le vol en cours à la date `ms` (ou null) : { flight, takeoff (ms), t (s depuis le décollage) }
 // (deux vols peuvent être en l'air en même temps : AF001 décolle quelques minutes avant que AF002 se pose ; `prefer` = identifiant du vol à suivre dans ce cas)
+// HORS de l'exploitation réelle (avant 1976, après octobre 2003, donc aujourd'hui) le Concorde vole en permanence : vols enchaînés sans pause, AF002 puis AF001 en alternance (un vol dure AIRBORNE_S, calés sur l'époque Unix)
+const perpetualFlight = ms => { const k = Math.floor(ms / (AIRBORNE_S * 1000)), t0 = k * AIRBORNE_S * 1000; return { flight: FLIGHTS[((k % 2) + 2) % 2], takeoff: t0, t: (ms - t0) / 1000 }; };
 export function flightAt(ms, prefer = null) {
-  if (ms < CONCORDE_FROM || ms > CONCORDE_UNTIL + 86400e3) return null;
+  if (ms < CONCORDE_FROM || ms > CONCORDE_UNTIL + 86400e3) return perpetualFlight(ms);   // hors de la période d'exploitation réelle (1976–2003) : le Concorde vole TOUJOURS
   const day = new Date(ms), found = [];
   for (let dd = -1; dd <= 1; dd++) for (const f of FLIGHTS) {
     const base = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate() + dd)), t0 = takeoffMs(f, base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate()), t = (ms - t0) / 1000;
