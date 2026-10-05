@@ -1,6 +1,7 @@
 // Couche « relief + imagerie satellite » de la Terre : autour du point regardé, des tuiles Web Mercator sont posées sur la sphère ; chacune est DÉFORMÉE avec les altitudes réelles (Terrarium) et habillée de l'image satellite (Esri World Imagery).
 // Visible sous TERRAIN_MAX_ALT_KM ; au-dessus (ou hors ligne) la carte dessinée de la Terre reste. Réseau nécessaire (http seulement). Mêmes principes que les photos aériennes de earth.js (rayon proche de 1, au-dessus du maillage de la Terre).
 import * as THREE from 'three';
+import { wrapLighting } from './wrap-light.js';
 import { ll } from './earth.js';
 import { DEM_URL, IMAGERY_URL, SEA_LEVEL_OFFSET, TERRAIN_EXAGGERATION, TERRAIN_GLOW, TERRAIN_HYSTERESIS, TERRAIN_MAX_ALT_KM, mercY, terrainTiles, terrainFallbacks, terrainLevels, tileBounds, tileSegments, tileHeights, tileUrl, vertexRadius } from './terrain-tiles.js';
 
@@ -43,7 +44,7 @@ export function createTerrainLayer(parent, renderer, opts) {
       if (tl.dem) { const w = t.dem.naturalWidth || 256, h = t.dem.naturalHeight || 256, c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.drawImage(t.dem, 0, 0, w, h); heights = tileHeights(g.getImageData(0, 0, w, h).data, w, h, seg, seg, b); }
       else heights = new Float32Array((seg + 1) * (seg + 1));   // tuiles lointaines : image seulement, niveau de la mer (le relief n'y serait pas visible)
       const tex = new THREE.Texture(t.img); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); tex.needsUpdate = true;
-      t.mesh = new THREE.Mesh(terrainTileGeometry(b, seg, seg, heights, exag), new THREE.MeshLambertMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, color: new THREE.Color().setScalar(gain), emissiveIntensity: glow }));
+      t.mesh = new THREE.Mesh(terrainTileGeometry(b, seg, seg, heights, exag), wrapLighting(new THREE.MeshLambertMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, color: new THREE.Color().setScalar(gain), emissiveIntensity: glow })));
       t.mesh.renderOrder = -2 - (tl.k || 0); group.add(t.mesh); t.state = 'ready'; t.img = t.dem = null;
     } catch (e) { t.state = 'error'; }
   };

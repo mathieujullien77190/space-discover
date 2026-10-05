@@ -2,6 +2,7 @@
 // image équirectangulaire en niveaux de gris (blanc = nuage) utilisée comme canal de transparence d'une fine sphère blanche posée juste au-dessus de la Terre (≈ 10 km).
 // SERVICE EN LIGNE tiers : il faut citer le crédit (CLOUDS_CREDIT) et respecter ses règles d'usage ; sans réseau (ou hors http) la couche reste vide.
 import * as THREE from 'three';
+import { wrapLighting } from './wrap-light.js';
 import { earthGeometry } from './earth.js';
 
 export const CLOUDS_URL = { low: 'https://clouds.matteason.co.uk/images/2048x1024/clouds.jpg', high: 'https://clouds.matteason.co.uk/images/4096x2048/clouds.jpg' };
@@ -16,7 +17,7 @@ export const cloudsOpacity = altKm => Math.max(0, Math.min(1, (altKm - CLOUDS_FA
 
 export function createClouds(parent, renderer, now = () => Date.now()) {
   const geo = earthGeometry(256, 128);
-  const mat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false });
+  const mat = wrapLighting(new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
   const mesh = new THREE.Mesh(geo, mat); mesh.scale.setScalar(CLOUDS_R); mesh.renderOrder = 3; mesh.visible = false; parent.add(mesh);
   let state = null, level = null, stamp = 0, tex = null;   // state : null | 'loading' | 'ready' | 'error'
   const fetchMap = (lvl) => {

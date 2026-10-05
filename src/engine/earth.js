@@ -1,6 +1,7 @@
 import { buildAtmosphere } from './atmosphere.js';
 import { assetUrl } from './config.js';
 import * as THREE from 'three';
+import { wrapLighting } from './wrap-light.js';
 import { EARTH_BORDERS } from './data/earth-borders.js';
 import { FLIGHT_OBJECTS } from './data/objects.js';
 import { SURF_EARTH } from './data/surface-earth.js';
@@ -89,7 +90,7 @@ export function buildEarth(renderer) {
   const maxTex = renderer.capabilities.maxTextureSize, TW = Math.min(8192, maxTex), TH = TW / 2;
   const tex = new THREE.CanvasTexture(paintEarthTexture(TW, TH));
   tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy());
-  const globe = new THREE.Mesh(earthGeometry(1024, 512), new THREE.MeshLambertMaterial({ map: tex }));
+  const globe = new THREE.Mesh(earthGeometry(1024, 512), wrapLighting(new THREE.MeshLambertMaterial({ map: tex })));
   group.add(globe);
   // fond de carte DESSINÉ (Natural Earth I, domaine public : relief ombré, eau, glaciers) : remplace la peinture procédurale dès qu'il est chargé (http seulement) ; la peinture sert de repli
   if (typeof Image !== 'undefined' && typeof document !== 'undefined') {
