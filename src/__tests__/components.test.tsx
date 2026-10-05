@@ -15,7 +15,7 @@ import { useStore } from '@/store'
 import { initialEngineState } from '@/store/initial'
 import type { Engine } from '@/types'
 
-const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), goHubble: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn(), setBorders: vi.fn(), setCapitals: vi.fn(), setObservatories: vi.fn(), setStarInfo: vi.fn(), clearStar: vi.fn(), setConstellations: vi.fn(), setDayNight: vi.fn(), goObservatory: vi.fn(), setObservatoryView: vi.fn(), setRealistic: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
+const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), goHubble: vi.fn(), goConcorde: vi.fn(), flyConcorde: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn(), setBorders: vi.fn(), setCapitals: vi.fn(), setObservatories: vi.fn(), setStarInfo: vi.fn(), clearStar: vi.fn(), setConstellations: vi.fn(), setDayNight: vi.fn(), goObservatory: vi.fn(), setObservatoryView: vi.fn(), setRealistic: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
 
 describe('TopBar + SubMenu', () => {
   let engine: ReturnType<typeof fakeEngine>
@@ -25,7 +25,7 @@ describe('TopBar + SubMenu', () => {
   })
   it('barre du haut : Astres, Terre, ISS, Nuages ; ni Histoires, ni Fusées, ni Satellites, aucun sous-menu au départ', () => {
     render(<><TopBar /><SubMenu /></>)
-    for (const l of ['🌌 Astres', '🌍 Terre', '🛰 ISS', '🔭 Hubble', '🎬 Vue réaliste']) expect(screen.getByText(l)).toBeInTheDocument()
+    for (const l of ['🌌 Astres', '🌍 Terre', '🛰 ISS', '🔭 Hubble', '✈ Concorde', '🎬 Vue réaliste']) expect(screen.getByText(l)).toBeInTheDocument()
     for (const l of [/Histoires/, /Fusées/, /Satellites/, /Engins/]) expect(screen.queryByText(l)).toBeNull()
     expect(screen.queryByText(/Lune/)).toBeNull()
   })
@@ -44,6 +44,25 @@ describe('TopBar + SubMenu', () => {
     useStore.setState({ issView: true })
     render(<IssBadge />)
     expect(screen.getByText(/Vue depuis l’ISS/)).toBeInTheDocument()
+  })
+  it('menu « Concorde » : un bouton par vol, saute au vol choisi', () => {
+    useStore.setState({ ...initialEngineState, panel: null })
+    render(<><TopBar /><SubMenu /></>)
+    fireEvent.click(screen.getByText('✈ Concorde'))
+    expect(screen.getByText('🛫 AF002 · Paris → New York')).toBeInTheDocument()
+    expect(screen.getByText('🛫 AF001 · New York → Paris')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('🛫 AF001 · New York → Paris'))
+    expect(engine.flyConcorde).toHaveBeenCalledWith('AF001')
+    fireEvent.click(screen.getByText('🔎 Voir le Concorde'))
+    expect(engine.goConcorde).toHaveBeenCalled()
+  })
+  it('fiche du Concorde : faits et bouton « Vue depuis le Concorde »', () => {
+    useStore.setState({ ...initialEngineState, focus: { id: 'concorde' }, issView: false, cardCollapsed: false })
+    render(<BodyCard />)
+    expect(screen.getByText('Concorde (Air France)')).toBeInTheDocument()
+    expect(screen.getByText('61,66 m')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('👁 Vue depuis le Concorde'))
+    expect(engine.setIssView).toHaveBeenCalledWith(true)
   })
   it('plus de bandeau en vue depuis un observatoire', () => {
     useStore.setState({ ...initialEngineState, issView: false, observatory: { id: 'pic-du-midi', view: true } })

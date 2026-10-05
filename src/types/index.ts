@@ -36,6 +36,8 @@ export type Engine = {
   goIss: () => void
   goHubble: () => void
   goMoonSite: (id: string) => void
+  goConcorde: () => void
+  flyConcorde: (flightId: string) => void
   alignNorth: (id: string) => void
   alignOrbit: (id: string) => void
   resetUp: () => void
@@ -53,6 +55,8 @@ export type Engine = {
   setStarInfo: (on: boolean) => void
   clearStar: () => void
   _hubbleFeatures: () => Record<string, boolean>
+  _concordeFeatures: () => Record<string, boolean>
+  _concorde: () => { active: boolean; flight: string | null; alt: number; mach: number; speedKmh: number; t: number; model: boolean; dot: boolean }
   _moonSite: () => { id: string | null; view: boolean; group: boolean; eyeErrM: number | null; near: number; labels: number; realistic: boolean }
   _airliner: () => { active: boolean; count: number; t: number; elevation: number; model: boolean; lights: boolean; strobe: boolean; glow: boolean; strobeGlow: boolean; night: boolean; px: number }
   _airlinerSkip: (sec: number) => void
@@ -96,5 +100,5 @@ export type CreateEngineOptions = {
   createRenderer?: (canvas: HTMLCanvasElement) => unknown
 }
 
-export type PanelName = 'planets'
+export type PanelName = 'planets' | 'concorde'
 export type BodyCategory = 'planets' | 'comets' | 'stars'

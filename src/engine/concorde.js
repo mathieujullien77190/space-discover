@@ -34,14 +34,15 @@ export function takeoffMs(flight, y, m, d) {
   return utc + flight.taxiOutS * 1000;
 }
 // le vol en cours à la date `ms` (ou null) : { flight, takeoff (ms), t (s depuis le décollage) }
-export function flightAt(ms) {
+// (deux vols peuvent être en l'air en même temps : AF001 décolle quelques minutes avant que AF002 se pose ; `prefer` = identifiant du vol à suivre dans ce cas)
+export function flightAt(ms, prefer = null) {
   if (ms < CONCORDE_FROM || ms > CONCORDE_UNTIL + 86400e3) return null;
-  const day = new Date(ms);
+  const day = new Date(ms), found = [];
   for (let dd = -1; dd <= 1; dd++) for (const f of FLIGHTS) {
     const base = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate() + dd)), t0 = takeoffMs(f, base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate()), t = (ms - t0) / 1000;
-    if (t >= 0 && t <= AIRBORNE_S && t0 <= CONCORDE_UNTIL) return { flight: f, takeoff: t0, t };
+    if (t >= 0 && t <= AIRBORNE_S && t0 <= CONCORDE_UNTIL) found.push({ flight: f, takeoff: t0, t });
   }
-  return null;
+  return found.find(x => x.flight.id === prefer) || found[0] || null;
 }
 // prochain décollage à partir de `ms` : { flight, takeoff }
 export function nextTakeoff(ms) {
@@ -79,6 +80,6 @@ export function concordeState(flight, t) {
   return { pos: dir.clone().multiplyScalar(r), up: dir.clone(), vel, alt: alt / 1000, speed: groundSpeedAt(t) / 1000, mach: machAt(t), lon, lat, approx: false, t, flight };
 }
 // état à la date `ms` (ou null s'il n'y a pas de vol)
-export function concordeAt(ms) { const f = flightAt(ms); return f ? Object.assign(concordeState(f.flight, f.t), { takeoff: f.takeoff }) : null; }
+export function concordeAt(ms, prefer = null) { const f = flightAt(ms, prefer); return f ? Object.assign(concordeState(f.flight, f.t), { takeoff: f.takeoff }) : null; }
 // points de la route restante (pour tracer la trajectoire) : n états de t à AIRBORNE_S
 export const routePoints = (flight, t, n = 120) => Array.from({ length: n + 1 }, (_, k) => concordeState(flight, t + (D - t) * k / n).pos);

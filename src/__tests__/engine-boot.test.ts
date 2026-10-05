@@ -429,6 +429,32 @@ describe('createEngine (rendu factice)', () => {
     expect(engine._moonSite()).toMatchObject({ id: null, view: false, group: false })   // changer de vue quitte le site
     expect(state.observatory).toEqual({ id: null, view: false })
   })
+  it('Concorde : vol AF002 à la date saute, comme l’ISS (vue d’accès, cotes, hauteur, trajectoire), vue depuis, fin du vol', async () => {
+    await new Promise((r) => setTimeout(r, 500))
+    const T = performance.now() + 250000
+    engine.resetTime(); engine.setSimSpeed(1); engine._frame(T + 100)
+    expect(engine._concorde().active).toBe(false)                              // aujourd’hui (2026) : le Concorde n’existe plus
+    engine.flyConcorde('AF002'); for (let i = 0; i < 3; i++) engine._frame(T + 200 + i * 100)
+    expect(state.view.mode).toBe('iss')                                        // la caméra est sur l’avion
+    expect(state.focus.id).toBe('concorde')                                    // sa fiche
+    const c = engine._concorde()
+    expect(c).toMatchObject({ active: true, flight: 'AF002' })
+    expect(c.t).toBeGreaterThan(100)                                           // quelques minutes après le décollage
+    expect(c.alt).toBeGreaterThan(1)                                           // en montée
+    expect(state.info).toMatch(/Concorde AF002 : Mach [0-9,]+ · [0-9,.]+ km/)
+    expect(engine._concordeFeatures()).toEqual({ size: true, orbit: true })    // cotes + hauteur et trajectoire restante
+    expect(engine._featuresVisible().size).toBe(false)                         // celles de l’ISS ne s’affichent pas
+    expect(state.time.speed).toBe(60)                                          // 1 min par seconde
+    engine.setIssView(true); for (let i = 0; i < 4; i++) engine._frame(T + 600 + i * 100)
+    expect(engine._fp()!.posErr!).toBeLessThan(1)                              // la caméra est SUR le Concorde
+    engine.setIssView(false)
+    engine.setDate(Date.UTC(2003, 5, 2, 20, 0, 0)); engine._frame(T + 1100); engine._frame(T + 1200)   // le soir : plus de vol
+    expect(engine._concorde().active).toBe(false)
+    expect(state.view.mode).toBe('earth')                                      // retour à la vue Terre (le vol est fini)
+    engine.flyConcorde('AF001'); engine._frame(T + 1300)
+    expect(engine._concorde()).toMatchObject({ active: true, flight: 'AF001' })   // retour New York → Paris
+    engine.resetTime(); engine.selectView('earth'); engine._frame(T + 1400)
+  })
   it('infos étoiles : option, clic sur une étoile visible = sa fiche + anneau, fermeture', async () => {
     const T = performance.now() + 100000                                       // horloge des images toujours croissante : un dt négatif (temps plus petit que celui d'un test précédent) déplaçait la caméra
     await new Promise((r) => setTimeout(r, 500))                               // astres construits (400 ms) : la vue ne change plus en cours de test

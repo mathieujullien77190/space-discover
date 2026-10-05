@@ -35,9 +35,9 @@ export const BodyCard = () => {
         <div className={styles.kind}>{card.kind}</div>
         <BodyFacts facts={card.facts} />
         {card.id === 'earth' && <EarthOptions />}
-        {(card.canNorth || card.canOrbit || card.id === 'iss' || card.id === 'hubble') && (
+        {(card.canNorth || card.canOrbit || card.id === 'iss' || card.id === 'hubble' || card.id === 'concorde') && (
           <div className={styles.actions}>
-            {(card.id === 'iss' || card.id === 'hubble') && <Button label={issView ? (card.id === 'hubble' ? '↩ Quitter la vue Hubble' : ISS_VIEW_LABELS.off) : card.id === 'hubble' ? '👁 Vue depuis Hubble' : ISS_VIEW_LABELS.on} active={issView} title={card.id === 'hubble' ? 'Voir la Terre et le ciel depuis Hubble : glisser pour regarder autour, molette pour le champ' : 'Voir la Terre depuis la station spatiale : glisser pour regarder autour, molette pour le champ'} onClick={() => setIssView(!issView)} />}
+            {(card.id === 'iss' || card.id === 'hubble' || card.id === 'concorde') && <Button label={issView ? (card.id === 'hubble' ? '↩ Quitter la vue Hubble' : card.id === 'concorde' ? '↩ Quitter la vue Concorde' : ISS_VIEW_LABELS.off) : card.id === 'hubble' ? '👁 Vue depuis Hubble' : card.id === 'concorde' ? '👁 Vue depuis le Concorde' : ISS_VIEW_LABELS.on} active={issView} title={card.id === 'concorde' ? 'Voir la courbure de la Terre depuis le Concorde à 18 000 m : glisser pour regarder autour, molette pour le champ' : card.id === 'hubble' ? 'Voir la Terre et le ciel depuis Hubble : glisser pour regarder autour, molette pour le champ' : 'Voir la Terre depuis la station spatiale : glisser pour regarder autour, molette pour le champ'} onClick={() => setIssView(!issView)} />}
             {card.canNorth && <Button label="🧭 Nord en haut" active={align === 'north'} title="Met le pôle nord en haut de l’écran (activé : revient à la verticale du monde)" onClick={() => (align === 'north' ? resetUp() : alignNorth(card.id))} />}
             {card.canOrbit && <Button label="↔ Orbite à plat" active={align === 'orbit'} title="Montre sa trajectoire autour de son corps central à l’horizontale (activé : revient à « Nord en haut »)" onClick={() => (align === 'orbit' ? alignNorth(card.id) : alignOrbit(card.id))} />}
           </div>

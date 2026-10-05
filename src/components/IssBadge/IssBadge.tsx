@@ -9,7 +9,7 @@ export const IssBadge = () => {
   if (!issView) return null
   return (
     <p className={styles.badge} role="status">
-      {(focus === 'hubble' ? '🔭 Vue depuis Hubble' : '🛰 Vue depuis l’ISS') + ' · glisse pour regarder autour'}
+      {(focus === 'hubble' ? '🔭 Vue depuis Hubble' : focus === 'concorde' ? '✈ Vue depuis le Concorde' : '🛰 Vue depuis l’ISS') + ' · glisse pour regarder autour'}
     </p>
   )
 }

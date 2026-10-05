@@ -75,3 +75,14 @@ save('mars', disc(await loadImage(fs.readFileSync(path.join(root, 'public', 'obj
   g.strokeStyle = '#c8ccd4'; g.lineWidth = 3; g.beginPath(); g.moveTo(70, 142); g.lineTo(70, 110); g.moveTo(58, 110); g.lineTo(82, 110); g.stroke();   // antenne
   save('hubble', c);
 }
+
+{ // Concorde : silhouette blanche vue de dessus (aile delta, fuselage effilé, quatre réacteurs) sur un ciel bleu sombre
+  const c = createCanvas(S, S), g = c.getContext('2d');
+  const sky = g.createLinearGradient(0, 0, 0, S); sky.addColorStop(0, '#0b1a3e'); sky.addColorStop(1, '#3b6db5'); g.fillStyle = sky; g.fillRect(0, 0, S, S);
+  g.fillStyle = '#f5f6f9'; g.strokeStyle = '#1c2430'; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(40, 180); g.lineTo(150, 158); g.quadraticCurveTo(250, 40, 330, 18); g.lineTo(336, 36); g.lineTo(270, 160); g.lineTo(340, 164); g.lineTo(340, 196); g.lineTo(270, 200); g.lineTo(336, 324); g.lineTo(330, 342); g.quadraticCurveTo(250, 320, 150, 202); g.closePath(); g.fill(); g.stroke();   // aile delta ogivale
+  g.beginPath(); g.moveTo(18, 180); g.quadraticCurveTo(24, 168, 60, 166); g.lineTo(330, 166); g.quadraticCurveTo(346, 180, 330, 194); g.lineTo(60, 194); g.quadraticCurveTo(24, 192, 18, 180); g.closePath(); g.fill(); g.stroke();   // fuselage
+  g.fillStyle = '#8e939c'; for (const y of [138, 156, 204, 222]) { g.fillRect(250, y, 62, 12); g.strokeRect(250, y, 62, 12); }   // réacteurs
+  g.fillStyle = '#1b3f9a'; g.fillRect(60, 174, 24, 12); g.fillStyle = '#c8202f'; g.fillRect(84, 174, 10, 12);   // dérive tricolore vue de dessus
+  fs.mkdirSync(path.join(root, 'public', 'data', 'concorde'), { recursive: true }); fs.writeFileSync(path.join(root, 'public', 'data', 'concorde', 'card.png'), c.toBuffer('image/png')); console.log('concorde → public/data/concorde/card.png');
+}

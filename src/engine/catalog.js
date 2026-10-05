@@ -22,7 +22,13 @@ const satelliteCard = (id, o) => {
   return { id, name: (o.visual && o.visual.name) || o.name, kind: o.card.kind || 'Satellite', canNorth: false, canOrbit: false, image: 'objects/' + id + '/' + (o.card.image || 'card.png'), facts };
 };
 // fiche d'un astre : { id, name, kind, image (chemin relatif à la racine du site), facts [{ label, value }] } ; null si l'astre n'a pas de section « card » dans son JSON
+// fiche du Concorde (objet « live » sans JSON d'astre) : faits écrits DE MÉMOIRE (à vérifier)
+const concordeCard = () => ({ id: 'concorde', name: 'Concorde (Air France)', kind: 'Avion de ligne supersonique', canNorth: false, canOrbit: false, image: 'data/concorde/card.png', facts: [
+  { label: 'Longueur', value: '61,66 m' }, { label: 'Envergure', value: '25,6 m' }, { label: 'Hauteur', value: '12,2 m' }, { label: 'Croisière', value: 'Mach 2,02 (≈ 2 150 km/h) à 18 000 m' },
+  { label: 'Paris → New York', value: '≈ 3 h 30 (AF002 : départ 10 h 30, arrivée 8 h 25 heure locale)' }, { label: 'New York → Paris', value: '≈ 3 h 30 (AF001 : départ 8 h 00, arrivée 17 h 45 heure locale)' },
+  { label: 'Réacteurs', value: '4 Olympus 593 (Rolls-Royce / Snecma)' }, { label: 'Passagers', value: '≈ 100' }, { label: 'Service Air France', value: '21 janvier 1976 – 24 octobre 2003' } ] });
 export const bodyCard = id => {
+  if (id === 'concorde') return concordeCard();
   const o = FLIGHT_OBJECTS[id], b = BODY.get(id) || (o && o.live ? o : null); if (!b || !b.card) return null;
   if (b.live) return satelliteCard(id, b);
   const facts = [{ label: 'Diamètre', value: fr(2 * b.radiusKm, b.radiusKm < 100 ? 1 : 0) + ' km' }];

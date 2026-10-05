@@ -71,14 +71,14 @@ export const ISS_FEATURES = [
   { id: 'orbit', label: '🛤 Trajectoire (1 tour)', build(ctx) {
     const N = 180, pos = new Float32Array((N + 1) * 3), g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     const line = new THREE.Line(g, new THREE.LineBasicMaterial({ color: ctx.orbitColor || 0xffe27a })); line.frustumCulled = false; ctx.scene.add(line);
-    let built = -1e12; const periodMs = ctx.periodMs || ISS_PERIOD_MS, stateOf = ctx.stateOf || issState;   // période du JSON (86400 / tours par jour)
+    let built = -1e12; const periodOf = () => (typeof ctx.periodMs === 'function' ? ctx.periodMs() : (ctx.periodMs || ISS_PERIOD_MS)), stateOf = ctx.stateOf || issState;   // durée tracée : une période d'orbite, ou la route restante du Concorde   // période du JSON (86400 / tours par jour)
     return {
       objects: [line], labels: [],
       update(iss, camera, date) {
         const t = date.getTime();
         if (t - built > 1000) {
           built = t;
-          for (let k = 1; k <= N; k++) { const st = stateOf(new Date(t + periodMs * k / N)); if (st) pos.set([st.pos.x, st.pos.y, st.pos.z], 3 * k); }
+          for (let k = 1; k <= N; k++) { const st = stateOf(new Date(t + periodOf() * k / N)); if (st) pos.set([st.pos.x, st.pos.y, st.pos.z], 3 * k); }
         }
         pos.set([iss.pos.x, iss.pos.y, iss.pos.z], 0); g.attributes.position.needsUpdate = true;
       },
