@@ -34,7 +34,7 @@ export const starBin = mag => STAR_BINS.findIndex(b => mag < b.max);
 export const TWINKLE_MIN_RAD_S = 0.2, TWINKLE_MAX_RAD_S = 0.6;
 export const TWINKLE_SHARE = 0.2;   // seule UNE étoile sur CINQ scintille (les autres restent fixes)
 export const twinkles = k => (((k * 2246822519 + 3266489917) >>> 0) % 1000) / 1000 < TWINKLE_SHARE;   // choix déterministe de l'étoile d'indice k dans sa classe d'éclat
-export const twinkleFactor = (timeS, phase, freq, amp) => 1 + amp * Math.sin(timeS * freq + phase) * (0.6 + 0.4 * Math.sin(timeS * freq * 0.37 + phase * 1.7));
+export const twinkleFactor = (timeS, phase, freq, amp) => 1 + amp * Math.sin(timeS * freq + phase) * (0.85 + 0.15 * Math.sin(timeS * freq * 0.37 + phase * 1.7));
 
 // DISPARITION AU LEVER / COUCHER : à mesure que le jour se lève (day de 0 à 1) les étoiles s'éteignent PEU À PEU, les plus faibles d'abord (les plus brillantes, comme Sirius ou Vénus, restent visibles jusqu'au jour franc)
 export const STAR_FADE_LIMITS = [0.9, 0.8, 0.65, 0.5, 0.38, 0.28];   // par classe d'éclat : valeur de `day` à laquelle la classe a complètement disparu
