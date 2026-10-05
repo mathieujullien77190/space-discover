@@ -382,7 +382,7 @@ describe('createEngine (rendu factice)', () => {
   it('avion A320 : apparaît à l’entrée de la vue observatoire, continue de voler hors de la vue, disparaît d’un coup quand l’observatoire ne le voit plus', async () => {
     await new Promise((r) => setTimeout(r, 500))
     const T = performance.now() + 150000
-    engine.resetTime(); engine.setSimSpeed(1); engine._frame(T + 100)
+    engine.resetTime(); engine.setSimSpeed(1); engine.setDate(Date.UTC(2026, 9, 5, 12, 0, 0)); engine._frame(T + 100)   // midi UTC : plein jour au Pic du Midi
     expect(engine._airliner().active).toBe(false)                              // rien avant la vue observatoire
     engine.goObservatory('pic-du-midi'); engine.setObservatoryView(true)
     for (let i = 0; i < 3; i++) engine._frame(T + 200 + i * 100)
@@ -390,13 +390,18 @@ describe('createEngine (rendu factice)', () => {
     expect(a.active).toBe(true)                                                // un avion est apparu
     expect(a.elevation).toBeGreaterThan(20)                                    // déjà haut dans le ciel de l’observatoire
     expect(a.model || a.dot || a.lights).toBe(true)                            // et affiché
+    expect(a.lights).toBe(false)                                               // de jour : pas de feux (un point blanc)
     engine.selectView('earth'); engine._frame(T + 700); engine._frame(T + 800)
     expect(engine._airliner().active).toBe(true)                               // on a quitté la vue : l’avion vole toujours
     engine._airlinerSkip(2000); engine._frame(T + 900)
     expect(engine._airliner()).toMatchObject({ active: false, model: false, dot: false, lights: false })   // disparu d’un coup
-    engine.goObservatory('pic-du-midi'); engine.setObservatoryView(true); engine._frame(T + 1000)
+    engine.setDate(Date.UTC(2026, 9, 5, 0, 0, 0))                              // minuit UTC : nuit
+    engine.goObservatory('pic-du-midi'); engine.setObservatoryView(true); engine._frame(T + 1000); engine._frame(T + 1100)
     expect(engine._airliner().active).toBe(true)                               // une nouvelle entrée en vue : un nouvel avion
-    engine.selectView('earth'); engine._frame(T + 1100)
+    expect(engine._airliner().lights).toBe(true)                               // de nuit : feux de navigation fixes + strobes blancs clignotants aux bouts d’ailes
+    expect(Object.keys(engine._airlinerStrobe()).sort()).toEqual(['flash', 'visible'])
+    engine.selectView('earth'); engine._frame(T + 1200)
+    engine.resetTime()
   })
   it('infos étoiles : option, clic sur une étoile visible = sa fiche + anneau, fermeture', async () => {
     const T = performance.now() + 100000                                       // horloge des images toujours croissante : un dt négatif (temps plus petit que celui d'un test précédent) déplaçait la caméra

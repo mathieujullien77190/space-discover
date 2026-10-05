@@ -1,6 +1,6 @@
 // Avions de nuit : simulation physique (altitude de croisière ≈ 10 000 m, ≈ 900 km/h, ligne droite), deux feux (rouge à gauche, vert à droite), visibles à plus de 8° d'élévation, rares, rien de jour.
 import * as THREE from 'three';
-import { PLANE_ALTITUDE_M, PLANE_CLOSEST_M, PLANE_FIRST_S, PLANE_MIN_ELEVATION_DEG, PLANE_SLOTS, PLANE_SPEED_MS, PLANE_WINGSPAN_M, createPlanes, distanceM, elevationDeg, makeTrack, planeAt } from '../../src/engine/planes.js';
+import { PLANE_STROBE_PERIOD_S, strobeFlash, PLANE_ALTITUDE_M, PLANE_CLOSEST_M, PLANE_FIRST_S, PLANE_MIN_ELEVATION_DEG, PLANE_SLOTS, PLANE_SPEED_MS, PLANE_WINGSPAN_M, createPlanes, distanceM, elevationDeg, makeTrack, planeAt } from '../../src/engine/planes.js';
 
 const fails = [], check = (c, m) => { console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if (!c) fails.push(m); };
 let seed = 2468; const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
@@ -42,9 +42,17 @@ for (let i = 0; i < 6000 && p.count() > 0; i++) {
   const col = pts.geometry.attributes.color; if (!(col.getX(0) > col.getY(0) && col.getY(1) > col.getX(1))) redLeft = false; void r;
 }
 check(visibleSteps > 50 && minE > 11, 'visible ' + (visibleSteps / 10).toFixed(0) + ' s, jamais plus bas que ' + minE.toFixed(1) + '° d’élévation');
-check(redLeft && pts.geometry.attributes.color.count === 2, 'premier point rouge, second vert (deux points, pas de flash)');
+check(redLeft && pts.geometry.attributes.color.count === 3, 'premier point rouge (gauche), second vert (droite), troisième blanc (arrière)');
 let maxCount = 0, total = 0; p = mk(); for (let i = 0; i < 36000; i++) { step(p, 0.1); maxCount = Math.max(maxCount, p.count()); total = p.total(); }
 check(maxCount <= PLANE_SLOTS && total >= 60 && total <= 400, 'en 1 h : ' + total + ' avions, jamais plus de ' + PLANE_SLOTS + ' à la fois (' + maxCount + ')');
 for (let i = 0; i < 20; i++) step(p, 0.1, false);
 check(p.count() === 0, 'désactivé : tout s’éteint');
+// feux : navigation FIXE (3 points : rouge, vert, blanc arrière) ; STROBES blancs clignotants (double éclat) aux bouts d'ailes
+check(strobeFlash(0.01) === 1 && strobeFlash(0.12) === 0 && strobeFlash(0.2) === 1 && strobeFlash(0.6) === 0 && strobeFlash(PLANE_STROBE_PERIOD_S + 0.01) === 1, 'strobe : double éclat bref puis noir, période ' + PLANE_STROBE_PERIOD_S + ' s');
+{ p = mk(); p.spawn(); const nav = p.group.children[0], strobe = p.group.children[1]; const navOps = new Set(), strobeOps = new Set(); let strobeVisibleSteps = 0, steps = 0, maxJump = 0, prevOp = null;
+  for (let i = 0; i < 400; i++) { step(p, 0.02); if (!nav.visible) continue; steps++; if (prevOp !== null) maxJump = Math.max(maxJump, Math.abs(nav.material.opacity - prevOp)); prevOp = nav.material.opacity; navOps.add(Math.round(nav.material.opacity * 100) / 100); strobeOps.add(strobe.material.opacity); if (strobe.visible) strobeVisibleSteps++; }
+  check(nav.geometry.attributes.position.count === 3 && nav.geometry.attributes.color.count === 3, 'navigation : trois points (rouge, vert, blanc arrière)');
+  check(maxJump < 0.01, 'les feux de navigation sont FIXES : aucun clignotement (variation maximale d’une image à l’autre ' + maxJump.toFixed(4) + ', seulement le fondu lent avec la distance)');
+  check(strobeOps.has(0) && [...strobeOps].some(o => o > 0.3) && strobeVisibleSteps > 5 && strobeVisibleSteps < steps * 0.6, 'les strobes clignotent : allumés ' + strobeVisibleSteps + ' images sur ' + steps + ' (flashs brefs)');
+  const a = nav.geometry.attributes.position, b = strobe.geometry.attributes.position; check(Math.abs(a.getX(0) - b.getX(0)) < 1e-9 && Math.abs(a.getX(1) - b.getX(1)) < 1e-9, 'les strobes sont aux bouts d’ailes (mêmes positions que les feux rouge et vert)'); }
 if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }

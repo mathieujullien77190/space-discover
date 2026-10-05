@@ -11,7 +11,11 @@ export const PLANE_ALTITUDE_M = [9000, 11500];                   // altitude de 
 export const PLANE_SPEED_MS = [220, 260];                        // vitesse sol (≈ 800 à 940 km/h)
 export const PLANE_CLOSEST_M = [0, 45000];                       // distance horizontale minimale de passage
 export const PLANE_MIN_ELEVATION_DEG = 12;                       // au-dessous : invisible (horizon, brume)
-export const PLANE_WINGSPAN_M = 60;
+export const PLANE_WINGSPAN_M = 60, PLANE_LENGTH_M = 38;
+// Feux d'un avion : les feux de NAVIGATION sont FIXES (rouge au bout de l'aile gauche, vert au bout de l'aile droite, blanc à l'arrière) ; ce qui CLIGNOTE, ce sont les STROBES : flashs blancs très puissants aux bouts d'ailes (double éclat toutes les 1,2 s).
+// (Les feux anticollision rouges du fuselage ne sont pas représentés.)
+export const PLANE_STROBE_PERIOD_S = 1.2;
+export const strobeFlash = (t, phase = 0) => { const u = (t + phase) % PLANE_STROBE_PERIOD_S; return u < 0.07 || (u > 0.17 && u < 0.24) ? 1 : 0; };   // double éclat : 0,07 s, pause 0,1 s, 0,07 s, puis noir
 export const PLANE_SLOTS = 8;
 const DEG = Math.PI / 180;
 const range = (r, [a, b]) => a + (b - a) * r;
@@ -29,7 +33,7 @@ export function makeTrack(rand = Math.random) {
 // position (m, repère local x = est, y = nord, z = haut) du centre de l'avion et de ses deux bouts d'aile après t secondes
 export function planeAt(tr, t) {
   const s = tr.s0 + tr.speed * t, px = tr.c * tr.nx + s * tr.hx, py = tr.c * tr.ny + s * tr.hy, w = PLANE_WINGSPAN_M / 2;
-  return { s, done: s > tr.S, center: [px, py, tr.H], left: [px - tr.hy * w, py + tr.hx * w, tr.H], right: [px + tr.hy * w, py - tr.hx * w, tr.H] };   // gauche du cap = (−hy, hx)
+  return { s, done: s > tr.S, center: [px, py, tr.H], left: [px - tr.hy * w, py + tr.hx * w, tr.H], right: [px + tr.hy * w, py - tr.hx * w, tr.H], tail: [px - tr.hx * PLANE_LENGTH_M / 2, py - tr.hy * PLANE_LENGTH_M / 2, tr.H] };   // gauche du cap = (−hy, hx)
 }
 export const elevationDeg = p => Math.atan2(p[2], Math.hypot(p[0], p[1])) / DEG;
 export const distanceM = p => Math.hypot(p[0], p[1], p[2]);
@@ -38,9 +42,11 @@ export function createPlanes(scene, rand = Math.random) {
   const group = new THREE.Group(); group.frustumCulled = false; scene.add(group);
   const slots = [];
   for (let i = 0; i < PLANE_SLOTS; i++) {
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3)); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array([1, 0.12, 0.1, 0.15, 1, 0.25]), 3));   // rouge puis vert
-    const pts = new THREE.Points(g, roundPointsMaterial({ size: 3.4, sizeAttenuation: false, vertexColors: true, blending: THREE.AdditiveBlending, transparent: true, opacity: 0, depthWrite: false })); pts.frustumCulled = false; pts.visible = false;
-    group.add(pts); slots.push({ pts, active: false, t: 0, tr: null });
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(9), 3)); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array([1, 0.12, 0.1, 0.15, 1, 0.25, 0.8, 0.8, 0.8]), 3));   // navigation : rouge (gauche), vert (droite), blanc (arrière) : FIXES
+    const pts = new THREE.Points(g, roundPointsMaterial({ size: 3, sizeAttenuation: false, vertexColors: true, blending: THREE.AdditiveBlending, transparent: true, opacity: 0, depthWrite: false })); pts.frustumCulled = false; pts.visible = false;
+    const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));   // strobes : deux flashs blancs aux bouts d'ailes
+    const strobe = new THREE.Points(sg, roundPointsMaterial({ color: 0xffffff, size: 4.5, sizeAttenuation: false, blending: THREE.AdditiveBlending, transparent: true, opacity: 0, depthWrite: false })); strobe.frustumCulled = false; strobe.visible = false;
+    group.add(pts, strobe); slots.push({ pts, strobe, active: false, t: 0, tr: null });
   }
   let wait = range(rand(), PLANE_FIRST_S), total = 0;
   const E = new THREE.Vector3(), N = new THREE.Vector3(), U = new THREE.Vector3(), v = new THREE.Vector3();
@@ -48,7 +54,7 @@ export function createPlanes(scene, rand = Math.random) {
 
   const spawn = () => {
     const s = slots.find(x => !x.active); if (!s) return false;
-    s.tr = makeTrack(rand); s.t = 0; s.active = true; total++;
+    s.tr = makeTrack(rand); s.t = 0; s.phase = rand() * PLANE_STROBE_PERIOD_S; s.active = true; total++;
     return true;
   };
 
@@ -63,16 +69,17 @@ export function createPlanes(scene, rand = Math.random) {
         if (!s.active) continue;
         s.t += dt;
         const st = planeAt(s.tr, s.t);
-        if (st.done || !enabled || !up) { s.active = false; s.pts.visible = false; continue; }
-        const el = elevationDeg(st.center), pos = s.pts.geometry.attributes.position;
-        const l = toScene(st.left); pos.setXYZ(0, l.x, l.y, l.z); const r = toScene(st.right); pos.setXYZ(1, r.x, r.y, r.z); pos.needsUpdate = true;
+        if (st.done || !enabled || !up) { s.active = false; s.pts.visible = false; s.strobe.visible = false; continue; }
+        const el = elevationDeg(st.center), pos = s.pts.geometry.attributes.position, sp = s.strobe.geometry.attributes.position;
+        const l = toScene(st.left); pos.setXYZ(0, l.x, l.y, l.z); sp.setXYZ(0, l.x, l.y, l.z); const r = toScene(st.right); pos.setXYZ(1, r.x, r.y, r.z); sp.setXYZ(1, r.x, r.y, r.z); const tl = toScene(st.tail); pos.setXYZ(2, tl.x, tl.y, tl.z); pos.needsUpdate = true; sp.needsUpdate = true;
         const horizon = Math.max(0, Math.min(1, (el - PLANE_MIN_ELEVATION_DEG) / 8)), near = Math.max(0.35, Math.min(1, 40000 / distanceM(st.center)));   // fondu près de l'horizon ; plus pâles de loin
-        s.pts.material.opacity = 0.95 * horizon * near; s.pts.visible = horizon > 0;
+        s.pts.material.opacity = 0.8 * horizon * near; s.pts.visible = horizon > 0;   // feux de navigation FIXES
+        s.strobe.material.opacity = strobeFlash(s.t, s.phase) * horizon; s.strobe.visible = horizon > 0 && s.strobe.material.opacity > 0;   // strobes : flashs blancs puissants (même de loin)
       }
     },
     spawn,
     count: () => slots.filter(s => s.active).length,
     total: () => total,
-    dispose() { scene.remove(group); for (const s of slots) { s.pts.geometry.dispose(); s.pts.material.dispose(); } },
+    dispose() { scene.remove(group); for (const s of slots) { s.pts.geometry.dispose(); s.pts.material.dispose(); s.strobe.geometry.dispose(); s.strobe.material.dispose(); } },
   };
 }

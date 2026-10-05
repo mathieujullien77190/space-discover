@@ -16,7 +16,7 @@ import { STARS } from './data/stars.js';
 import { pickNearest } from './star-info.js';
 import { precessionQuaternion } from './precession.js';
 import { createMeteors } from './meteors.js';
-import { createPlanes } from './planes.js';
+import { createPlanes, strobeFlash } from './planes.js';
 import { A320, AIRLINER_MIN_ELEVATION_DEG, airlinerAt, airlinerWorld, buildA320, elevationFrom, makeAirlinerTrack } from './airliner.js';
 import { createSunGlare } from './sun-glare.js';
 import { occludedBy } from './occlusion.js';
@@ -186,8 +186,10 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const airModel = buildA320(); airModel.visible = false; world.add(airModel);
   const airDotG = new THREE.BufferGeometry(); airDotG.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
   const airDot = new THREE.Points(airDotG, roundPointsMaterial({ color: 0xffffff, size: 5, sizeAttenuation: false })); airDot.frustumCulled = false; airDot.visible = false; world.add(airDot);   // de jour : un point blanc
-  const airLG = new THREE.BufferGeometry(); airLG.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3)); airLG.setAttribute('color', new THREE.BufferAttribute(new Float32Array([1, 0.12, 0.1, 0.15, 1, 0.25]), 3));
-  const airLights = new THREE.Points(airLG, roundPointsMaterial({ size: 4.5, sizeAttenuation: false, vertexColors: true })); airLights.frustumCulled = false; airLights.visible = false; world.add(airLights);   // de nuit : deux points, rouge (aile gauche) et vert (aile droite)
+  const airLG = new THREE.BufferGeometry(); airLG.setAttribute('position', new THREE.BufferAttribute(new Float32Array(9), 3)); airLG.setAttribute('color', new THREE.BufferAttribute(new Float32Array([1, 0.12, 0.1, 0.15, 1, 0.25, 0.8, 0.8, 0.8]), 3));
+  const airLights = new THREE.Points(airLG, roundPointsMaterial({ size: 3.6, sizeAttenuation: false, vertexColors: true })); airLights.frustumCulled = false; airLights.visible = false; world.add(airLights);
+  const airSG = new THREE.BufferGeometry(); airSG.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+  const airStrobe = new THREE.Points(airSG, roundPointsMaterial({ color: 0xffffff, size: 5.5, sizeAttenuation: false, transparent: true })); airStrobe.frustumCulled = false; airStrobe.visible = false; world.add(airStrobe);   // strobes blancs aux bouts d'ailes (flashs)   // de nuit : deux points, rouge (aile gauche) et vert (aile droite)
   const tmpAirE = new THREE.Vector3(), tmpAirN = new THREE.Vector3();
   let airliner = null; const airPos = new THREE.Vector3(), airFw = new THREE.Vector3(), airRt = new THREE.Vector3(), airUp = new THREE.Vector3(), airBasis = new THREE.Matrix4();
   const capitals = createCapitals(overlay, earth); let capitalsOn = false, lastOcc = [];   // éteinte par défaut
@@ -529,7 +531,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       if (realistic || issHidden || (issView && cam.fp && focusSat === 'hubble')) { hubScreen = null; hubLabel.style.display = 'none'; hubDot.visible = false; hubModel.visible = false; }   // vue réaliste, dézoomé ou vue DEPUIS Hubble : ni modèle, ni repère, ni nom
     }
     // AVION SCÉNARIO : vol à altitude constante ; DISPARAÎT D'UN COUP dès qu'il passe sous 12° d'élévation vu de l'observatoire (ou à la fin du trajet) ; modèle 3D à la taille réelle quand il fait ≥ 6 px, sinon point (blanc de jour, rouge + vert de nuit)
-    airModel.visible = airDot.visible = airLights.visible = false;
+    airModel.visible = airDot.visible = airLights.visible = airStrobe.visible = false;
     if (airliner) {
       airliner.t += dt; const st = airlinerAt(airliner.tr, airliner.t); airlinerWorld(st.local, airliner.frame, airliner.groundR, airPos);
       const el = elevationFrom(airPos, airliner.eye, airliner.frame.up);
@@ -538,12 +540,17 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
         airUp.copy(airPos).normalize(); airFw.set(0, 0, 0).addScaledVector(tmpAirE.fromArray(airliner.frame.east), st.heading[0]).addScaledVector(tmpAirN.fromArray(airliner.frame.north), st.heading[1]);
         airFw.addScaledVector(airUp, -airFw.dot(airUp)).normalize(); airRt.crossVectors(airFw, airUp);
         const dKm = camera.position.distanceTo(airPos) * R_KM, px = (A320.lengthM / 1000 / Math.max(1e-9, dKm)) / (2 * Math.tan(camera.fov * DEG / 2)) * innerHeight;
-        const hideAir = solarMode || (camera.position.length() - 1) * R_KM > 2000 || hiddenByEarth(airPos), night = airPos.clone().normalize().dot(babs[STAR].clone().normalize()) < 0.05 && tmpAirE.fromArray(airliner.frame.up).dot(babs[STAR].clone().normalize()) < -0.03;
+        const hideAir = solarMode || (camera.position.length() - 1) * R_KM > 2000 || hiddenByEarth(airPos), night = tmpAirE.fromArray(airliner.frame.up).dot(tmpAirN.copy(babs[STAR]).normalize()) < -0.03;   // nuit = Soleil sous l'horizon de l'observatoire
+        const flash = strobeFlash(airliner.t), lamps = airModel.userData.lights;   // strobes : double éclat blanc toutes les 1,2 s ; navigation fixe
+        lamps.left.visible = lamps.right.visible = lamps.tail.visible = night; for (const sl of lamps.strobes) sl.visible = night && flash > 0;
         airModel.quaternion.setFromRotationMatrix(airBasis.makeBasis(airFw, airUp, airRt)); airModel.position.copy(airPos); airModel.scale.setScalar(1e-3 / R_KM);
         const half = A320.spanM / 2 / (R_KM * 1000), lp = airLG.attributes.position;
-        lp.setXYZ(0, airPos.x - airRt.x * half, airPos.y - airRt.y * half, airPos.z - airRt.z * half); lp.setXYZ(1, airPos.x + airRt.x * half, airPos.y + airRt.y * half, airPos.z + airRt.z * half); lp.needsUpdate = true;
+        const tailK = A320.lengthM / 2 / (R_KM * 1000), sp = airSG.attributes.position;
+        lp.setXYZ(0, airPos.x - airRt.x * half, airPos.y - airRt.y * half, airPos.z - airRt.z * half); lp.setXYZ(1, airPos.x + airRt.x * half, airPos.y + airRt.y * half, airPos.z + airRt.z * half); lp.setXYZ(2, airPos.x - airFw.x * tailK, airPos.y - airFw.y * tailK, airPos.z - airFw.z * tailK); lp.needsUpdate = true;
+        sp.setXYZ(0, lp.getX(0), lp.getY(0), lp.getZ(0)); sp.setXYZ(1, lp.getX(1), lp.getY(1), lp.getZ(1)); sp.needsUpdate = true;
         airDotG.attributes.position.setXYZ(0, airPos.x, airPos.y, airPos.z); airDotG.attributes.position.needsUpdate = true;
-        airModel.visible = !hideAir && px >= 6; airDot.visible = !hideAir && px < 6 && !night; airLights.visible = !hideAir && px < 6 && night;
+        airModel.visible = !hideAir && px >= 6; airDot.visible = !hideAir && px < 6 && !night; airLights.visible = !hideAir && px < 6 && night; airLights.material.opacity = 0.9;   // de nuit : navigation FIXE (rouge, vert, blanc) ; de jour, aucun feu
+        airStrobe.visible = airLights.visible && flash > 0;   // + strobes blancs clignotants aux bouts d'ailes
       }
     }
     // caractéristiques 3D : mise à jour puis étiquettes projetées à l'écran
@@ -663,6 +670,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _moonBright: () => (bodyObjs.moon && bodyObjs.moon.mesh && bodyObjs.moon.mesh.material.color ? bodyObjs.moon.mesh.material.color.r : 1),
     _moonBoost: () => (bodyObjs.moon && bodyObjs.moon.mesh ? bodyObjs.moon.mesh.scale.x / (bodyObjs.moon.baseScale || 1) : 1),
     _airliner: () => airliner ? { active: true, t: airliner.t, elevation: elevationFrom(airPos, airliner.eye, airliner.frame.up), model: airModel.visible, dot: airDot.visible, lights: airLights.visible } : { active: false, t: 0, elevation: 0, model: airModel.visible, dot: airDot.visible, lights: airLights.visible },
+    _airlinerStrobe: () => ({ visible: airStrobe.visible, flash: airliner ? strobeFlash(airliner.t) : 0 }),
     _airlinerSkip: sec => { if (airliner) airliner.t += sec; },
     _planes: () => ({ active: planes.count(), total: planes.total() }),
     _spawnPlane: () => (obsFrame ? planes.spawn() : false),

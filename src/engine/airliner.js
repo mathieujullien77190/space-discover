@@ -65,10 +65,12 @@ export function buildA320() {
   g.add(new THREE.Mesh(slab([[4.6, r * 0.6], [1.2, A320.heightM - r + 0.4], [0.0, A320.heightM - r + 0.4], [0.2, r * 0.6]], -0.18, 0.18, 'xy'), blue));   // dérive
   // réacteurs sous les ailes
   for (const sgn of [1, -1]) { const e = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 0.85, 3.4, 16), grey); e.rotation.z = Math.PI / 2; e.position.set(18.5, -1.55, sgn * 5.8); g.add(e); }
-  // feux de bout d'aile : rouge à gauche, vert à droite
-  const lamp = (color, z) => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 6), new THREE.MeshBasicMaterial({ color })); m.position.set(tipLe - 0.4, -0.4, z); return m; };
-  const redL = lamp(0xff2a1a, -A320.spanM / 2 + 0.1), greenL = lamp(0x28ff55, A320.spanM / 2 - 0.1); g.add(redL, greenL);
+  // feux : navigation FIXES (rouge à gauche, vert à droite, blanc à l'arrière) et STROBES blancs clignotants aux bouts d'ailes ; allumés SEULEMENT LA NUIT (pilotés par le moteur)
+  const lamp = (color, z) => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 6), new THREE.MeshBasicMaterial({ color, transparent: true })); m.position.set(tipLe - 0.4, -0.4, z); m.visible = false; return m; };   // allumés seulement la nuit (visible = false par défaut)
+  const redL = lamp(0xff2a1a, -A320.spanM / 2 + 0.1), greenL = lamp(0x28ff55, A320.spanM / 2 - 0.1), whiteL = lamp(0xfff2e0, 0); whiteL.position.set(0.4, 1.2, 0);   // navigation : rouge (gauche), vert (droite), blanc à l'arrière
+  const strobeL = lamp(0xffffff, -A320.spanM / 2 + 0.1), strobeR = lamp(0xffffff, A320.spanM / 2 - 0.1); strobeL.scale.setScalar(1.8); strobeR.scale.setScalar(1.8);   // strobes : flashs blancs aux bouts d'ailes
+  g.add(redL, greenL, whiteL, strobeL, strobeR);
   g.children.forEach(c => { c.position.x -= cx; });   // recentre : origine au milieu du fuselage
-  g.userData.lights = { left: redL, right: greenL };
+  g.userData.lights = { left: redL, right: greenL, tail: whiteL, strobes: [strobeL, strobeR] };
   return g;
 }

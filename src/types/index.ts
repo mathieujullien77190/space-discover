@@ -54,6 +54,7 @@ export type Engine = {
   _hubbleFeatures: () => Record<string, boolean>
   _airliner: () => { active: boolean; t: number; elevation: number; model: boolean; dot: boolean; lights: boolean }
   _airlinerSkip: (sec: number) => void
+  _airlinerStrobe: () => { visible: boolean; flash: number }
   _planes: () => { active: number; total: number }
   _spawnPlane: () => boolean
   _meteors: () => { active: number; total: number }
