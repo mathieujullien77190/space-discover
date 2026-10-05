@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { buildLaikaModule } from './laika-model.js';
 import { DEG, PATCH_R, R_KM, ll } from './earth.js';
 import { flyObject, objectPeriodS, objectStart, objectToSpec } from './flight-object.js';
 import { flyPlan, flyReturn, planToSpec } from './flight-plan.js';
@@ -118,7 +119,7 @@ export class Launch {
     const R = this.rocketSpec, mo = R.model, core = mo.core, bo = mo.boosters, up = mo.upper, fa = mo.fairing, NZ = mo.noz, MD = this.models || {};
     const M = (c, o) => new THREE.MeshStandardMaterial(Object.assign({ color: c, roughness: 0.6, metalness: 0.1 }, o || {}));
     const cyl = (r, h, c, y, o) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 20), M(c, o)); m.position.y = y + h / 2; return m; };
-    const cone = (r0, r1, h, c, y) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, h, 20), M(c)); m.position.y = y + h / 2; return m; };
+    const cone = (r0, r1, h, c, y, o) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, h, 20), M(c, o)); m.position.y = y + h / 2; return m; };
     const NOZC = 0x3a3a3e, upBase = core.h, fairBase = mo.fairingBaseM != null ? mo.fairingBaseM : core.h + up.h;   // base de la coiffe : au-dessus de l'étage supérieur, ou à la hauteur donnée par le JSON si elle l'enveloppe (Centaur sous sa coiffe)
     // étage principal : cylindre + jupe + tuyère (l'origine du modèle est la base du lanceur : au décollage elle touche le sol)
     this.mEpc = new THREE.Group(); if (MD.core) this.mEpc.add(MD.core.clone()); else this.mEpc.add(cyl(core.r, core.h, core.color, 0), cyl(core.r + 0.05, 0.6, 0x555555, 0), cone(core.r * 0.48, core.r * 0.19, NZ.epc, NOZC, -NZ.epc));
@@ -132,12 +133,12 @@ export class Launch {
       g.position.set(bo.R * Math.cos(a), 0, bo.R * Math.sin(a)); this.mBoost.push(g); this.boostPos.push([Math.cos(a), Math.sin(a)]);
     }
     // étage supérieur (+ satellite, caché sous la coiffe tant qu'elle est là)
-    this.mEsc = new THREE.Group(); if (MD.upper) this.mEsc.add(MD.upper.clone()); else this.mEsc.add(cyl(up.r, up.h, up.color, upBase), cone(up.r * 0.36, up.r * 0.16, NZ.esc, NOZC, upBase - NZ.esc));
+    this.mEsc = new THREE.Group(); if (up.kind === 'laika') { const lm = buildLaikaModule(up.h, up.r); lm.position.y = upBase; this.mEsc.add(lm); } else if (MD.upper) this.mEsc.add(MD.upper.clone()); else this.mEsc.add(cyl(up.r, up.h, up.color, upBase), cone(up.r * 0.36, up.r * 0.16, NZ.esc, NOZC, upBase - NZ.esc));
     this.payloadY = fairBase + 1.3;
     this.satG = new THREE.Group(); const body = new THREE.Mesh(new THREE.BoxGeometry(2.4, 3, 2.4), M(0xd6b34a, { metalness: 0.5 }));
     const pan = new THREE.Mesh(new THREE.BoxGeometry(9, 0.1, 2.6), M(0x1d3b9b, { emissive: 0x0b1a4a })); this.satG.add(body, pan); this.satPan = pan; this.satG.scale.setScalar(MU_M * (this.satScale || 1)); this.group.add(this.satG);
     // coiffe
-    this.mFair = new THREE.Group(); this.mFair.add(cyl(fa.r, fa.cyl, fa.color, fairBase), cone(fa.r, fa.r * 0.11, fa.cone, fa.color, fairBase + fa.cyl));
+    this.mFair = new THREE.Group(); { const fo = fa.opacity != null ? { transparent: true, opacity: fa.opacity, depthWrite: false } : undefined; this.mFair.add(cyl(fa.r, fa.cyl, fa.color, fairBase, fo), cone(fa.r, fa.r * 0.11, fa.cone, fa.color, fairBase + fa.cyl, fo)); }   // coiffe éventuellement translucide (vue en coupe : on voit le module dessous)
     this.parts = [this.mEpc, ...this.mBoost, this.mEsc, this.mFair];
     // flammes : cône dont la BASE est à l'origine (la pointe vers −y) pour que l'étirement de la vacillation parte de la tuyère ; rentrée de 0,3 m dans la tuyère (aucun jour visible)
     const fl = (r, h, x, z, y0) => { const geo = new THREE.ConeGeometry(r, h, 14, 1, true); geo.rotateX(Math.PI); geo.translate(0, -h / 2, 0); const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false })); m.position.set(x, y0, z); const g = new THREE.Group(); g.add(m); g.userData.cone = m; return g; };

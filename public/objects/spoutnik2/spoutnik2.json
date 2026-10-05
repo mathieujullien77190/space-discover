@@ -20,11 +20,12 @@
       },
       "heightM": 30.5,
       "upper": {
-        "name": "Spoutnik 2 (capsule de Laïka)",
+        "name": "Module de Laïka (Spoutnik 2)",
         "radiusM": 1,
         "lengthM": 4,
         "color": "#c8ccd2",
-        "nozzleM": 0
+        "nozzleM": 0,
+        "kind": "laika"
       },
       "fairing": "fairing",
       "fairingBaseM": 26.5

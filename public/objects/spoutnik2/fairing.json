@@ -7,7 +7,8 @@
     "radiusM": 1.1,
     "cylM": 2.2,
     "coneM": 1.8,
-    "color": "#e6e6e6"
+    "color": "#e6e6e6",
+    "opacity": 0.22
   },
   "dragCoefficient": 1,
   "separationSpeedMs": 0.5,

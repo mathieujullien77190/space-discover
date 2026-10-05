@@ -192,6 +192,6 @@ export function stackToSpec(obj) {
     names: { booster: bo ? bo.name : '', stage1: core.name, stage2: up.name || 'Étage supérieur', payload: st.payloadName },
     model: { core: { r: cv.radiusM, h: cv.lengthM, color: col(cv.color) },
       boosters: bo ? { n: st.boosters.count, r: bv.radiusM, h: bv.lengthM, nose: bv.noseM || 0, R: st.boosters.radialM, color: col(bv.color), band: col(bv.bandColor != null ? bv.bandColor : bv.color) } : null,
-      upper: { r: up.radiusM, h: up.stackHeightM != null ? up.stackHeightM : up.lengthM, color: col(up.color) }, fairing: { r: fv.radiusM, cyl: fv.cylM, cone: fv.coneM, color: col(fv.color) },
+      upper: { r: up.radiusM, h: up.stackHeightM != null ? up.stackHeightM : up.lengthM, color: col(up.color), kind: up.kind }, fairing: { r: fv.radiusM, cyl: fv.cylM, cone: fv.coneM, color: col(fv.color), opacity: fv.opacity },
       noz: { epc: cv.nozzleM || 0, eap: bv ? bv.nozzleM || 0 : 0, esc: up.nozzleM || 0 }, heightM: st.heightM, fairingBaseM: st.fairingBaseM, flames: st.flames }, tower: false, sepDv: {} };
 }
