@@ -12,7 +12,7 @@ describe('halo bleu de l’atmosphère', () => {
     expect(mat.fragmentShader).toContain('logdepthbuf_fragment')
     expect(mat.vertexShader).toContain('logdepthbuf_vertex')
     expect(mat.uniforms.uRatm.value).toBe(ATM_R)
-    expect(ATM_R).toBeGreaterThan(1.02)
+    expect(ATM_R).toBeGreaterThan(1.005)
     expect(ATM_R).toBeLessThan(1.15)
     expect(mat.uniforms.uColor.value.z).toBeGreaterThan(mat.uniforms.uColor.value.x)   // bleu
   })

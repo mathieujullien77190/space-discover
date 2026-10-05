@@ -4,9 +4,9 @@
 // Marche aussi quand la caméra est dans la coque (à 200 km d'altitude on voit le halo à l'horizon). Aucune dépendance au Soleil : halo régulier tout autour.
 import * as THREE from 'three';
 
-export const ATM_R = 1.055;              // haut de la coque, en rayons terrestres (≈ 350 km : l'épaisseur visible du halo)
+export const ATM_R = 1.02;               // haut de la coque, en rayons terrestres (≈ 130 km : halo fin ; c'était 1,055 ≈ 350 km, jugé trop épais)
 export const ATM_COLOR = [0.32, 0.6, 1.0];
-export const ATM_POWER = 2.6;            // plus c'est grand, plus le halo est serré contre le sol
+export const ATM_POWER = 2.2;            // plus c'est grand, plus le halo est serré contre le sol
 
 const VERT = `
 varying vec3 vWorld;
