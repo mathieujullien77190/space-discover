@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { FLIGHT_OBJECTS } from './data/objects.js';
 import { SURF_MOON } from './data/surface-moon.js';
-import { R_KM, earthGeometry, texRing } from './earth.js';
+import { DEG, R_KM, earthGeometry, texRing } from './earth.js';
 import { EPH } from './ephemeris.js';
 
 // La Lune en 3D : sphère texturée avec la carte géologique unifiée de l'USGS (même style que le projet « système solaire » archivé : mers sombres, hautes terres claires, cratères),
@@ -47,4 +47,13 @@ export const ECLIPTIC_POLE = eqScene(0, -Math.sin(EPS), Math.cos(EPS));   // axe
 export function moonNow(d) {
   const D = astroD(d), mi = moonInertial(D), g = gmstOf(D), Y = new THREE.Vector3(0, 1, 0);
   return { pos: mi.pos.applyAxisAngle(Y, -g), km: mi.km, pole: ECLIPTIC_POLE.clone().applyAxisAngle(Y, -g) };
+}
+
+// Orientation d'un astre qui tourne sur lui-même, d'après son JSON : rotation { poleRaDeg, poleDecDeg, w0Deg, rateDegPerDay } (éléments IAU : pôle nord en ascension droite / déclinaison J2000, angle du méridien origine W = w0 + rate · D).
+// Repère local du maillage `earthGeometry` : y = pôle nord, x = méridien 0 (longitude 0, latitude 0), z = vers 90° O (l'est tourne dans le sens direct autour de y). D = jours depuis J2000. Précession du pôle négligée.
+export function rotationQuat(rot, D, out) {
+  const a = rot.poleRaDeg * DEG, d = rot.poleDecDeg * DEG, W = ((rot.w0Deg + rot.rateDegPerDay * D) % 360) * DEG;
+  const p = eqScene(Math.cos(d) * Math.cos(a), Math.cos(d) * Math.sin(a), Math.sin(d)), node = eqScene(-Math.sin(a), Math.cos(a), 0);   // pôle ; nœud ascendant de l'équateur de l'astre sur l'équateur terrestre
+  const X = node.clone().multiplyScalar(Math.cos(W)).addScaledVector(new THREE.Vector3().crossVectors(p, node), Math.sin(W)), E = new THREE.Vector3().crossVectors(p, X);   // X : longitude 0 ; E : est
+  return out.setFromRotationMatrix(new THREE.Matrix4().makeBasis(X, p, E.negate()));
 }

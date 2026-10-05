@@ -19,8 +19,16 @@
     "periodDays": 686.98
   },
   "appearance": {
-    "kind": "sphere",
+    "kind": "textured",
+    "texture": "mars.jpg",
     "color": "#c1440e"
+  },
+  "rotation": {
+    "_note": "Éléments IAU, DE MÉMOIRE (à vérifier) : pôle nord α0 = 317,68°, δ0 = 52,89° (J2000) ; méridien origine W = 176,630° + 350,89198° par jour (J2000). Carte : Viking MDIM 2.1, NASA / JPL / USGS (domaine public), 4096 × 2048 réduite de la mosaïque couleur 1 km.",
+    "poleRaDeg": 317.68,
+    "poleDecDeg": 52.89,
+    "w0Deg": 176.63,
+    "rateDegPerDay": 350.89198
   },
   "trace": {
     "fullOrbit": true,

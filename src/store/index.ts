@@ -1,11 +1,12 @@
 // Store Zustand : miroir de l'état publié par le moteur 3D + état propre à l'interface (panneau ouvert, réglages).
 // Le moteur n'importe jamais ce fichier : il reçoit `applyPatch` comme canal de publication, et l'interface le pilote par les commandes de `commands.ts`.
 import { create } from 'zustand'
-import type { Engine, EnginePatch, EngineState, PanelName } from '@/types'
+import type { BodyCategory, Engine, EnginePatch, EngineState, PanelName } from '@/types'
 import { initialEngineState } from './initial'
 
 export type UiState = {
   panel: PanelName | null
+  bodyCategory: BodyCategory
   metric: boolean
   features: Record<string, boolean>
 }
@@ -16,6 +17,7 @@ export type Store = EngineState &
     setEngine: (engine: Engine | null) => void
     applyPatch: (patch: EnginePatch) => void
     togglePanel: (panel: PanelName) => void
+    setBodyCategory: (category: BodyCategory) => void
     setMetricFlag: (on: boolean) => void
     setFeatureFlag: (id: string, on: boolean) => void
   }
@@ -36,11 +38,13 @@ export const useStore = create<Store>((set) => ({
   ...initialEngineState,
   engine: null,
   panel: null,
+  bodyCategory: 'planets',
   metric: false,
   features: {},
   setEngine: (engine) => set({ engine }),
   applyPatch: (patch) => set((s) => mergePatch(s, patch)),
   togglePanel: (panel) => set((s) => ({ panel: s.panel === panel ? null : panel })),
+  setBodyCategory: (bodyCategory) => set({ bodyCategory }),
   setMetricFlag: (metric) => set({ metric }),
   setFeatureFlag: (id, on) => set((s) => ({ features: { ...s.features, [id]: on } })),
 }))

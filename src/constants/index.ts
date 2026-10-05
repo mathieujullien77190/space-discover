@@ -18,7 +18,14 @@ export const ROCKET_SPEEDS: ReadonlyArray<{ speed: number; label: string }> = [
   { speed: 200, label: '×200' },
 ]
 export const PANEL_BUTTONS: ReadonlyArray<{ panel: 'planets' | 'satellites' | 'rockets'; label: string }> = [
-  { panel: 'planets', label: '🪐 Planètes' },
+  { panel: 'planets', label: '🌌 Astres' },
   { panel: 'satellites', label: '🛰 Satellites' },
   { panel: 'rockets', label: '🚀 Fusées' },
+]
+
+// catégories d'astres du sous-menu « Astres » : types (bodyType du JSON) regroupés par bouton
+export const BODY_CATEGORIES: ReadonlyArray<{ id: 'planets' | 'comets' | 'stars'; label: string; types: ReadonlyArray<string> }> = [
+  { id: 'planets', label: '🪐 Planètes', types: ['planet', 'moon', 'dwarf'] },
+  { id: 'comets', label: '☄ Comètes / météorites', types: ['comet', 'asteroid'] },
+  { id: 'stars', label: '☀ Étoiles', types: ['star'] },
 ]

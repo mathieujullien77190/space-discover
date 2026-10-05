@@ -1,7 +1,7 @@
 // ASTRES décrits en JSON (objects/{earth,moon,sun,mars,halley}/*.json, js/bodies.js) : cohérence des constantes avec le moteur, positions de la Lune et du Soleil inchangées, éléments orbitaux de Mars et de Halley validés contre des faits connus.
 // node tools/test/bodies.test.js
-import vm from 'node:vm'; 
-import { loadEngine } from './engine-loader.mjs';
+import fs from 'node:fs'; import path from 'node:path'; import vm from 'node:vm'; 
+import { loadEngine, root } from './engine-loader.mjs';
 
 const ctx = await loadEngine();
 const fails = [], check = (c, m) => { console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if (!c) fails.push(m); };
@@ -45,4 +45,14 @@ check(!!err && /modèle de mouvement inconnu/.test(err.message), 'modèle de mou
     for (const iso of ['2026-10-05', '2027-06-01', '2030-01-01', '2040-07-01']) { const D = dayOf(iso), m = G('BODY.geo("' + id + '", ' + D + ')'), sn = G('BODY.geo("sun", ' + D + ')'), r = m.map((v, i) => v - sn[i]), pts = G('BODY.orbitPoints("' + id + '", ' + D + ', 2048)');
       let best = 1e99; for (let i = 0; i < pts.length - 1; i++) best = Math.min(best, segD(r, pts[i], pts[i + 1])); worst = Math.max(worst, best); rel = Math.max(rel, best / Math.hypot(...r)); }
     check(tol ? worst < tol : rel < 0.01, id + ' : la trace de l’orbite passe à ' + (worst / 1000).toFixed(0) + ' km de l’astre (' + (rel * 100).toFixed(4) + ' % de sa distance au Soleil)'); } }
+// 9. Mars texturé et orienté : sa carte existe, le pôle nord du maillage pointe vers (α0, δ0), le méridien origine tourne de 350,89° par jour (sens direct autour du pôle), la carte a bien la taille annoncée
+{ const mars = G('BODY.get("mars")'), q = d => G('(() => { const q = new THREE.Quaternion(); rotationQuat(BODY.get("mars").rotation, ' + d + ', q); return q; })()'), V = (x, y, z) => G('new THREE.Vector3(' + x + ',' + y + ',' + z + ')');
+  const a = mars.rotation.poleRaDeg * Math.PI / 180, dd = mars.rotation.poleDecDeg * Math.PI / 180, poleEq = [Math.cos(dd) * Math.cos(a), Math.cos(dd) * Math.sin(a), Math.sin(dd)], poleScene = [poleEq[0], poleEq[2], -poleEq[1]];
+  const q0 = q(0), y0 = V(0, 1, 0).applyQuaternion(q0), x0 = V(1, 0, 0).applyQuaternion(q0), x1 = V(1, 0, 0).applyQuaternion(q(0.1)), pole = V(...poleScene);
+  check(y0.distanceTo(pole) < 1e-9, 'Mars : le pôle nord du maillage pointe vers α = ' + mars.rotation.poleRaDeg + '°, δ = ' + mars.rotation.poleDecDeg + '°');
+  const ang = Math.acos(Math.max(-1, Math.min(1, x0.dot(x1)))) * 180 / Math.PI, sens = V(0, 0, 0).crossVectors(x0, x1).dot(pole);
+  check(Math.abs(ang - 35.089) < 0.01 && sens > 0, 'Mars : méridien origine à ' + ang.toFixed(3) + '° de plus 0,1 jour plus tard (35,089° attendus), dans le sens direct autour du pôle');
+  check(Math.abs(x0.dot(pole)) < 1e-9, 'Mars : le méridien origine est sur l’équateur de la planète');
+  const mapPath = path.join(root, 'public', 'objects', 'mars', mars.appearance.texture), size = fs.existsSync(mapPath) ? fs.statSync(mapPath).size : 0;
+  check(mars.appearance.kind === 'textured' && size > 200000 && size < 3e6, 'Mars : carte ' + mars.appearance.texture + ' présente (' + (size / 1e6).toFixed(2) + ' Mo, domaine public NASA / USGS)'); }
 if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }

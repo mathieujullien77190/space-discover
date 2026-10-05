@@ -6,7 +6,7 @@ import { ISS_FEATURES } from './iss.js';
 
 const flyable = k => !!FLIGHT_OBJECTS[k] && FLIGHT_OBJECTS[k].kind !== 'body' && !FLIGHT_OBJECTS[k].live;
 
-export const viewMenu = () => BODY.menu().map(b => ({ id: b.id, label: (b.menu.icon ? b.menu.icon + ' ' : '') + b.name }));   // le menu des planètes = les astres décrits en JSON (menu.order)
+export const viewMenu = () => BODY.menu().map(b => ({ id: b.id, type: b.bodyType, label: (b.menu.icon ? b.menu.icon + ' ' : '') + b.name }));   // le menu des planètes = les astres décrits en JSON (menu.order)
 export const issFeatures = () => ISS_FEATURES.map(f => ({ id: f.id, label: f.label }));
 export const satellites = () => Object.keys(FLIGHT_OBJECTS).filter(k => FLIGHT_OBJECTS[k].live).map(k => ({ key: k, name: FLIGHT_OBJECTS[k].name }));
 // fusées lançables : objets JSON génériques (clé « obj:<nom> ») puis plans de vol (clé = nom du plan)
