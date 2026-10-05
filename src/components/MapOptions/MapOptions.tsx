@@ -8,14 +8,16 @@ export const MapOptions = () => {
   const view = useStore((s) => s.view)
   const borders = useStore((s) => s.borders)
   const capitals = useStore((s) => s.capitals)
+  const observatories = useStore((s) => s.observatories)
+  const toggleObservatories = useStore((s) => s.toggleObservatories)
   const constellations = useStore((s) => s.constellations)
   const toggleBorders = useStore((s) => s.toggleBorders)
   const toggleCapitals = useStore((s) => s.toggleCapitals)
   const toggleConstellations = useStore((s) => s.toggleConstellations)
   const onEarth = view.mode === 'earth' || view.mode === 'iss' || view.selected === 'earth'
   if (!onEarth) return null
-  const state = { borders, capitals, constellations }
-  const toggle = { borders: toggleBorders, capitals: toggleCapitals, constellations: toggleConstellations }
+  const state = { borders, capitals, observatories, constellations }
+  const toggle = { borders: toggleBorders, capitals: toggleCapitals, observatories: toggleObservatories, constellations: toggleConstellations }
   return (
     <fieldset className={styles.box}>
       <legend className={styles.title}>{MAP_OPTIONS_TITLE}</legend>

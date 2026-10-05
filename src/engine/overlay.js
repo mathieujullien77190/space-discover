@@ -6,6 +6,7 @@ const CSS = `.eng-l3d{position:fixed;left:0;top:0;padding:1px 6px;font:600 12px 
 .eng-l3d.iss{color:#ffd54a;background:rgba(0,0,0,.45)}
 .eng-l3d.const{color:#9fc4ff;background:none;font-weight:400;font-style:italic;text-shadow:0 0 4px #000,0 1px 3px #000;text-align:center}
 .eng-l3d.obs{color:#ffb38a;background:rgba(40,16,0,.6);font-weight:600}
+.eng-l3d.obssite{color:#ffb38a;background:rgba(40,16,0,.65);font-weight:600;padding:0 5px;line-height:18px;pointer-events:auto;cursor:pointer}.eng-l3d.obssite:hover{background:rgba(110,50,10,.85)}
 .eng-l3d.cap{color:#fff;background:rgba(0,0,0,.35);font-weight:500;padding:0 4px;line-height:18px}`;
 
 export const createOverlay = (container) => {

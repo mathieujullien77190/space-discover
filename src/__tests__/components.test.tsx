@@ -13,7 +13,7 @@ import { useStore } from '@/store'
 import { initialEngineState } from '@/store/initial'
 import type { Engine } from '@/types'
 
-const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn(), setBorders: vi.fn(), setCapitals: vi.fn(), setConstellations: vi.fn(), setDayNight: vi.fn(), goObservatory: vi.fn(), setObservatoryView: vi.fn(), setRealistic: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
+const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn(), setBorders: vi.fn(), setCapitals: vi.fn(), setObservatories: vi.fn(), setConstellations: vi.fn(), setDayNight: vi.fn(), goObservatory: vi.fn(), setObservatoryView: vi.fn(), setRealistic: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
 
 describe('TopBar + SubMenu', () => {
   let engine: ReturnType<typeof fakeEngine>
@@ -23,7 +23,7 @@ describe('TopBar + SubMenu', () => {
   })
   it('barre du haut : Astres, Terre, ISS, Nuages ; ni Histoires, ni Fusées, ni Satellites, aucun sous-menu au départ', () => {
     render(<><TopBar /><SubMenu /></>)
-    for (const l of ['🌌 Astres', '🔭 Observatoires', '🌍 Terre', '🛰 ISS', '☁ Nuages', '🌗 Jour / nuit', '🎬 Vue réaliste']) expect(screen.getByText(l)).toBeInTheDocument()
+    for (const l of ['🌌 Astres', '🌍 Terre', '🛰 ISS', '☁ Nuages', '🌗 Jour / nuit', '🎬 Vue réaliste']) expect(screen.getByText(l)).toBeInTheDocument()
     for (const l of [/Histoires/, /Fusées/, /Satellites/, /Engins/]) expect(screen.queryByText(l)).toBeNull()
     expect(screen.queryByText(/Lune/)).toBeNull()
   })
@@ -58,14 +58,10 @@ describe('TopBar + SubMenu', () => {
     expect(engine.setDayNight).toHaveBeenLastCalledWith(false)
     expect(useStore.getState().dayNight).toBe(false)
   })
-  it('observatoire : bouton de la barre du haut, fiche avec « Vue depuis l’observatoire »', () => {
+  it('observatoire : fiche avec « Vue depuis l’observatoire »', () => {
     useStore.setState({ ...initialEngineState, observatory: { id: null, view: false }, cardCollapsed: false })
-    render(<><TopBar /><SubMenu /><ObservatoryCard /></>)
+    render(<><TopBar /><ObservatoryCard /></>)
     expect(screen.queryByText('Observatoire du Pic du Midi')).toBeNull()                       // pas de fiche tant qu’on n’y est pas
-    fireEvent.click(screen.getByText('🔭 Observatoires'))
-    expect(screen.getByText('Mauna Kea')).toBeInTheDocument()                                  // observatoires du monde
-    fireEvent.click(screen.getByText('Pic du Midi'))
-    expect(engine.goObservatory).toHaveBeenCalledWith('pic-du-midi')
     act(() => useStore.setState({ observatory: { id: 'pic-du-midi', view: false } }))
     expect(screen.getByText('Observatoire du Pic du Midi')).toBeInTheDocument()
     expect(screen.getByText('2 877 m')).toBeInTheDocument()
@@ -91,6 +87,9 @@ describe('TopBar + SubMenu', () => {
     useStore.setState({ ...initialEngineState, borders: false, capitals: false, constellations: false, dayNight: true })
     render(<MapOptions />)
     const borders = screen.getByLabelText('Limites de pays') as HTMLInputElement
+    expect(screen.getByLabelText('Observatoires')).toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText('Observatoires'))
+    expect(engine.setObservatories).toHaveBeenCalledWith(true)
     const capitals = screen.getByLabelText('Capitales') as HTMLInputElement
     expect(screen.getByText('🗺 Options de carte')).toBeInTheDocument()
     expect(borders.checked).toBe(false)

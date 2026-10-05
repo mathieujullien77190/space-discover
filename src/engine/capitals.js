@@ -13,9 +13,11 @@ export const LABEL_H = 18, CHAR_W = 7;  // encombrement d'une étiquette : haute
 // vrai si deux rectangles [x, y, w, h] se chevauchent
 export const overlaps = (a, b) => a[0] < b[0] + b[2] && b[0] < a[0] + a[2] && a[1] < b[1] + b[3] && b[1] < a[1] + a[3];
 
-export function createCapitals(overlay, earth) {
+// opts : { data: [[nom, lat, lon, id?]…] (défaut : les capitales), cls: classe CSS, prefix: texte devant le nom, onClick(id) : étiquettes cliquables (observatoires) }
+export function createCapitals(overlay, earth, opts = {}) {
+  const data = opts.data || CAPITALS, cls = opts.cls || 'cap', prefix = opts.prefix === undefined ? '• ' : opts.prefix;
   let items = null, shown = 0;
-  const build = () => { items = CAPITALS.map(([name, lat, lon]) => { const el = overlay.label('• ' + name, 'cap'); el.style.display = 'none'; return { name, n: ll(lon, lat, new THREE.Vector3()), el, w: (name.length + 2) * CHAR_W + 8 }; }); };
+  const build = () => { items = data.map(([name, lat, lon, id]) => { const el = overlay.label(prefix + name, cls); el.style.display = 'none'; if (opts.onClick) el.addEventListener('click', () => opts.onClick(id)); return { name, n: ll(lon, lat, new THREE.Vector3()), el, w: (name.length + prefix.length) * CHAR_W + 8 }; }); };
   const hideAll = () => { if (items) for (const it of items) it.el.style.display = 'none'; shown = 0; };
   const p = new THREE.Vector3(), c = new THREE.Vector3(), nw = new THREE.Vector3(), v = new THREE.Vector3();
   return {

@@ -46,6 +46,7 @@ export type Engine = {
   setClouds: (on: boolean) => void
   setBorders: (on: boolean) => void
   setCapitals: (on: boolean) => void
+  setObservatories: (on: boolean) => void
   goObservatory: (id: string) => void
   setObservatoryView: (on: boolean) => void
   _obs: () => { id: string | null; view: boolean; label: string; dot: boolean; camAltKm: number; posErr: number | null; day: number; stars: boolean; starOpacity: number[]; atmSun: number }
@@ -54,7 +55,7 @@ export type Engine = {
   setDayNight: (on: boolean) => void
   _glare: () => { visible: boolean; opacity: number; scale: number }
   _sun: () => { lon: number; lat: number }
-  _mapOptions: () => { borders: boolean; capitals: number; constellations: boolean; constellationNames: number; realistic: boolean; dayNight: boolean; ambient: number; sunPoint: boolean }
+  _mapOptions: () => { borders: boolean; capitals: number; observatories: number; constellations: boolean; constellationNames: number; realistic: boolean; dayNight: boolean; ambient: number; sunPoint: boolean }
   _terrain: () => { gain: number; glow: number; levels: number; shown: boolean; tiles: number; ready: number; loading: number; seaOffset: number }
   _clouds: () => { on: boolean; state: string | null; level: string | null; visible: boolean; opacity: number }
   _fp: () => { yaw: number; pitch: number; fov: number; posErr: number | null; dir: number[]; up: number[]; radial: number[] | null; flight: number[] | null } | null
@@ -77,5 +78,5 @@ export type CreateEngineOptions = {
   createRenderer?: (canvas: HTMLCanvasElement) => unknown
 }
 
-export type PanelName = 'planets' | 'observatories'
+export type PanelName = 'planets'
 export type BodyCategory = 'planets' | 'comets' | 'stars'

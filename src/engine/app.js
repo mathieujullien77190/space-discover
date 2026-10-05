@@ -7,7 +7,7 @@ import { BODY } from './bodies.js';
 import { ISS_FEATURES, ISS_EPOCH, ISS_FROM, ISS_MODEL, ISS_MODEL_CFG, ISS_W, issState } from './iss.js';
 import { createClouds } from './clouds.js';
 import { createCapitals } from './capitals.js';
-import { OBS_VIEW_ALT_KM, OBS_VIEW_FOV, OBS_VIEW_PITCH, observatoryById, observatoryFrame } from './observatories.js';
+import { OBSERVATORIES, OBS_VIEW_ALT_KM, OBS_VIEW_FOV, OBS_VIEW_PITCH, observatoryById, observatoryFrame } from './observatories.js';
 import { createConstellations } from './constellations.js';
 import { createStars } from './stars.js';
 import { createSunGlare } from './sun-glare.js';
@@ -160,7 +160,9 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
   const dot = new THREE.Points(dg, new THREE.PointsMaterial({ color: 0xffd54a, size: 10, sizeAttenuation: false })); dot.frustumCulled = false; world.add(dot);
   const issLabel = overlay.label('ISS', 'iss');
-  const capitals = createCapitals(overlay, earth); let capitalsOn = false, lastOcc = [];   // option « Capitales »
+  const capitals = createCapitals(overlay, earth); let capitalsOn = false, lastOcc = [];
+  let observatoriesOn = false;   // option Observatoires : les observatoires du monde, cliquables (clic = y aller, fiche + vue depuis)
+  const obsSites = createCapitals(overlay, earth, { data: OBSERVATORIES.map(o => [o.short, o.lat, o.lon, o.id]), cls: 'obssite', prefix: '🔭 ', onClick: id => goObservatory(id) });   // option « Capitales »
 
   const cam = { fov: 50, mode: 'earth', tgt: new THREE.Vector3(), lon: 0, lat: 50, dist: 3.4, fly: 0, tfly: 0, userDir: false, fp: null, fpUp: new THREE.Vector3(), upKind: 'north', goal: { lon: 0, lat: 50, dist: 3.4 } };   // départ : la Terre vue du nord (nord en haut), le méridien de Greenwich (0°) en face de la caméra
   const moonsShown = {};   // planète → distance de la caméra, pour les planètes dont les lunes sont affichées
@@ -409,7 +411,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
         if (o.orbitG) { o.orbitG.position.copy(parent || bpos[BODY.origin()]); const orbitOn = (solarMode || cam.mode === 'earth' || camera.position.length() > 300) && !hid && !realistic, dCam = camera.position.distanceTo(ab), nearL = orbitOn && !!o.localLine && dCam < 3000 * ru; o.orbitG.visible = orbitOn && !nearL; if (o.localLine) { o.localLine.visible = nearL; if (nearL) updateLocalOrbit(o, id, b, Dd, dCam, ru, v); } }   // l'orbite de la Terre reste affichée en vue Terre (de près comme de loin), comme celle de Mars en vue Mars ; masquée seulement en vue ISS / fusée
 
         // le point lointain (carré de 7 px) disparaît dès que le maillage de l'astre est visible (> 5 px) : il clignotait sur le noyau (position 32 bits imprécise) et faisait doublon
-        if (o.dot) { const d = b.dot, shown = (!d.onlyInSolarView || solarMode) && cam.dist > (d.minDistanceUnits || 0) && !(solarMode && solarTarget === id && cam.dist < (d.hideBelowUnits || 0)); o.dot.visible = shown && !hid && !(o.px > 5); const at = o.dot.geometry.attributes.position; at.setXYZ(0, v.x, v.y, v.z); at.needsUpdate = true; }
+        if (o.dot) { const d = b.dot, shown = (!d.onlyInSolarView || solarMode) && cam.dist > (d.minDistanceUnits || 0) && !(solarMode && solarTarget === id && cam.dist < (d.hideBelowUnits || 0)); o.dot.visible = shown && !hid && !(o.px > 5) && !realistic; const at = o.dot.geometry.attributes.position; at.setXYZ(0, v.x, v.y, v.z); at.needsUpdate = true; }
         if (o.loop) {   // trace de la trajectoire autour du corps central : passé et avenir, recalculée tous les 0,05 jour, collée à l'astre à chaque image
           const N = 120, NF = 60;
           if (Math.abs(Dd - o.loopD) > 0.05) {
@@ -524,6 +526,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     sunPoint.position.copy(babs[STAR]); if (shift) sunPoint.position.sub(shift);   // le Soleil suit le décalage d'origine flottante
     sunGlare.update({ camera, sunPos: sunPoint.position, earthCenter: new THREE.Vector3().setFromMatrixPosition(earth.matrixWorld), height: innerHeight });
     constellations.update({ on: constellationsOn && !realistic, camera, width: innerWidth, height: innerHeight, earthCenter: new THREE.Vector3().setFromMatrixPosition(earth.matrixWorld) });
+    obsSites.update({ on: observatoriesOn && !realistic && !obsView, camera, width: innerWidth, height: innerHeight, hidden: p => occludedBy(camera.position.toArray(), [p.x, p.y, p.z], lastOcc.filter(o => o.id !== 'earth'), 0, 0) !== null });
     capitals.update({ on: capitalsOn && !realistic, camera, width: innerWidth, height: innerHeight, hidden: p => occludedBy(camera.position.toArray(), [p.x, p.y, p.z], lastOcc.filter(o => o.id !== 'earth'), 0, 0) !== null });   // juste avant le rendu : pose de la Terre et de la caméra à jour (rotation du temps sidéral comprise) ; cachée par la Lune / une planète = pas de nom
     // ciel de l'observatoire : bleu le jour, noir étoilé la nuit (selon la hauteur du Soleil au-dessus de l'horizon de l'observatoire)
     if (obsView) { const se = tmpObs.copy(babs[STAR]).sub(obsPos).normalize().dot(obsSrc.radial), t = Math.max(0, Math.min(1, (se + 0.12) / 0.22)); obsDay = t * t * (3 - 2 * t); const ds = Math.max(0, Math.min(1, -se / STAR_DARK_SIN)), ts = 1 - ds * ds * (3 - 2 * ds); stars.userData.setDay(ts); skyOn = true; }   // les étoiles s'éteignent peu à peu au lever du jour (les plus faibles d'abord)   // le ciel n'est PAS une couleur de fond : c'est l'atmosphère (bleu le jour, orange au crépuscule, transparent la nuit) ; le jour les étoiles disparaissent
@@ -558,6 +561,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _terrain: () => Object.assign({ shown: terrainShown }, terrain.stats()),
     setBorders: on => { bordersOn = !!on; },
     setCapitals: on => { capitalsOn = !!on; },
+    setObservatories: on => { observatoriesOn = !!on; },
     goObservatory, setObservatoryView,
     _obs: () => ({ id: obsId, view: obsView, label: obsLabel.style.display, dot: obsDot.visible, camAltKm: (camera.position.length() - 1) * R_KM, posErr: obsView ? camera.position.distanceTo(obsPos) * R_KM * 1000 : null, day: obsDay, stars: stars.children.some(c => c.userData.bin !== undefined && c.visible && c.material.opacity > 0.5), starOpacity: stars.children.filter(c => c.userData.bin !== undefined).map(c => c.material.opacity), atmSun: atmMat.uniforms.uUseSun.value }),
     setRealistic: on => { realistic = !!on; },
@@ -565,14 +569,14 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     setDayNight: on => { dayNight = !!on; terrain.setLook(dayNight ? 0 : TERRAIN_GLOW, dayNight ? TERRAIN_DAY_GAIN : 1); },
     _glare: () => ({ visible: sunGlare.sprite.visible, opacity: sunGlare.sprite.material.opacity, scale: sunGlare.sprite.scale.x }),
     _sun: () => { const v = babs[STAR].clone().normalize(); return { lon: Math.atan2(-v.z, v.x) / DEG, lat: Math.asin(v.y) / DEG }; },   // point subsolaire dans le repère de la scène (vue Terre fixe)
-    _mapOptions: () => ({ borders: bordersOn && borders.visible, capitals: capitals.count(), constellations: constellations.lines.visible, constellationNames: constellations.count(), realistic, dayNight, ambient: amb.intensity, sunPoint: sunPoint.visible }),
+    _mapOptions: () => ({ borders: bordersOn && borders.visible, capitals: capitals.count(), observatories: obsSites.count(), constellations: constellations.lines.visible, constellationNames: constellations.count(), realistic, dayNight, ambient: amb.intensity, sunPoint: sunPoint.visible }),
     _clouds: () => Object.assign({ on: cloudsOn }, clouds.stats()),
     setIssView,
     _fp: () => cam.fp ? { yaw: cam.fp.yaw, pitch: cam.fp.pitch, fov: camera.fov, posErr: iss && issView ? camera.position.distanceTo(iss.pos) * R_KM * 1000 : null, dir: new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray(), up: new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion).toArray(), radial: issView ? issSrc.radial.toArray() : null, flight: issView ? issSrc.dir.toArray() : null } : null,
 
     dispose() {
       stopped = true; cancelAnimationFrame(raf); clearTimeout(solarTimer); disposers.forEach(d => d()); overlay.dispose();
-      terrain.dispose(); clouds.dispose(); capitals.dispose(); constellations.dispose(); sunGlare.dispose();
+      terrain.dispose(); clouds.dispose(); capitals.dispose(); obsSites.dispose(); constellations.dispose(); sunGlare.dispose();
       if (renderer.dispose) renderer.dispose();
     },
   };

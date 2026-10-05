@@ -369,6 +369,14 @@ describe('createEngine (rendu factice)', () => {
     expect(on.capitals).toBeGreaterThan(5)                                     // vue de départ : l’Europe en face, plusieurs capitales visibles
     const names = [...overlay.querySelectorAll<HTMLElement>('.eng-l3d.cap')].filter((e) => e.style.display === 'block').map((e) => e.textContent)
     expect(names.some((t) => /Paris/.test(t ?? ''))).toBe(true)
+    engine.setObservatories(true); engine._frame(performance.now() + 250)
+    const sites = [...overlay.querySelectorAll<HTMLElement>('.eng-l3d.obssite')].filter((e) => e.style.display === 'block')
+    expect(engine._mapOptions().observatories).toBeGreaterThan(0)              // vue de départ : des observatoires d’Europe (Greenwich, Haute-Provence, Pic du Midi…)
+    expect(sites.some((e) => /Greenwich|Haute-Provence|Pic du Midi/.test(e.textContent ?? ''))).toBe(true)
+    sites.find((e) => /Greenwich/.test(e.textContent ?? ''))?.click()           // un clic sur le nom : on y va (fiche + vue depuis)
+    engine._frame(performance.now() + 300)
+    expect(state.observatory.id).toBe('greenwich')
+    engine.selectView('earth'); engine.setObservatories(false); engine._frame(performance.now() + 350)
     expect(on.constellations).toBe(true)
     expect(on.constellationNames).toBeGreaterThan(0)                           // au moins un nom de constellation à l’écran autour de la Terre
     expect(on.dayNight && on.sunPoint).toBe(true)                              // jour / nuit : le vrai Soleil éclaire, l’ambiance est sombre
@@ -413,6 +421,7 @@ describe('createEngine (rendu factice)', () => {
     for (let i = 0; i < 5; i++) engine._frame(performance.now() + 5000 + 100 * i)
     expect(Object.values(engine._orbitsVisible()).some(Boolean)).toBe(false)     // plus aucune orbite
     expect(names()).toHaveLength(0)                                             // plus aucun nom
+    expect(Object.values(engine._dotVisible()).some(Boolean)).toBe(false)         // plus aucun point lointain (carré)
     expect(engine._mapOptions()).toMatchObject({ borders: false, capitals: 0, constellations: false, realistic: true })
     engine.setRealistic(false); engine.setBorders(false); engine.setCapitals(false); engine.setConstellations(false)
     for (let i = 0; i < 5; i++) engine._frame(performance.now() + 9000 + 100 * i)

@@ -14,6 +14,7 @@ export type UiState = {
   terrainDetail: boolean   // le relief satellite (sous 800 km) est affiché : crédits à montrer (publié par le moteur)
   borders: boolean   // option de carte : limites de pays
   capitals: boolean   // option de carte : noms des capitales
+  observatories: boolean   // option de carte : observatoires du monde (cliquables)
   constellations: boolean   // option de carte : constellations (traits entre les étoiles et noms)
   realistic: boolean   // vue réaliste : sans trajectoires, noms, repères ni rien de ce qui n'existe pas
   dayNight: boolean   // option de carte : jour / nuit (éclairage par le vrai Soleil)
@@ -33,6 +34,7 @@ export type Store = EngineState &
     toggleClouds: () => void
     toggleBorders: () => void
     toggleCapitals: () => void
+    toggleObservatories: () => void
     toggleConstellations: () => void
     toggleDayNight: () => void
     toggleRealistic: () => void
@@ -61,6 +63,7 @@ export const useStore = create<Store>((set) => ({
   clouds: false,
   borders: false,
   capitals: false,
+  observatories: false,
   constellations: false,
   dayNight: true,
   realistic: false,
@@ -97,6 +100,11 @@ export const useStore = create<Store>((set) => ({
     set((s) => {
       s.engine?.setCapitals(!s.capitals)
       return { capitals: !s.capitals }
+    }),
+  toggleObservatories: () =>
+    set((s) => {
+      s.engine?.setObservatories(!s.observatories)
+      return { observatories: !s.observatories }
     }),
   toggleClouds: () =>
     set((s) => {

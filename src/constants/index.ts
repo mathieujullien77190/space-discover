@@ -14,10 +14,7 @@ export const TIME_SPEEDS: ReadonlyArray<{ speed: number; label: string }> = [
   { speed: 31557600, label: '1 an/s' },
   { speed: 315576000, label: '10 ans/s' },
 ]
-export const PANEL_BUTTONS: ReadonlyArray<{ panel: 'planets' | 'observatories'; label: string }> = [
-  { panel: 'planets', label: '🌌 Astres' },
-  { panel: 'observatories', label: '🔭 Observatoires' },
-]
+export const PANEL_BUTTONS: ReadonlyArray<{ panel: 'planets'; label: string }> = [{ panel: 'planets', label: '🌌 Astres' }]
 
 // catégories d'astres du sous-menu « Astres » : types (bodyType du JSON) regroupés par bouton
 export const BODY_CATEGORIES: ReadonlyArray<{ id: 'planets' | 'comets' | 'stars'; label: string; types: ReadonlyArray<string> }> = [
@@ -36,6 +33,7 @@ export const MAP_OPTIONS_TITLE = '🗺 Options de carte'   // bloc d'options de 
 export const MAP_OPTIONS = [
   { key: 'borders', label: 'Limites de pays' },
   { key: 'capitals', label: 'Capitales' },
+  { key: 'observatories', label: 'Observatoires' },
   { key: 'constellations', label: 'Constellations' },
 ] as const   // chaque option est une case à cocher, éteinte par défaut
 export const REALISTIC_LABEL = '🎬 Vue réaliste'   // retire trajectoires, noms, repères et tout ce qui n'existe pas dans la réalité
