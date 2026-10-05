@@ -406,6 +406,7 @@ describe('createEngine (rendu factice)', () => {
     expect(m).toMatchObject({ id: 'apollo-11', view: true, group: true })      // sol, drapeau, module lunaire, rover
     expect(m.eyeErrM!).toBeLessThan(1)                                         // la caméra est sur le site (1,8 m au-dessus du sol)
     expect(m.near).toBeLessThan(1e-6)                                          // plan proche de quelques millimètres
+    for (let i = 0; i < 6; i++) { engine._frame(T + 1000 + i * 33); expect(engine._moonSite().eyeErrM!).toBeLessThan(1); expect(engine._moonSite().eyeDist).toBeGreaterThan(40) }   // image après image : l'œil reste SUR le site (avant : il alternait entre le site et l'origine, ciel qui clignote)
     expect(state.observatory.view).toBe(true)
     engine.selectView('earth'); engine._frame(T + 1200); engine._frame(T + 1300)
     expect(engine._moonSite()).toMatchObject({ id: null, view: false, group: false })   // changer de vue quitte le site

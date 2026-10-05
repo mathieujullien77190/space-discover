@@ -531,7 +531,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
 
     // OBSERVATEUR LUNAIRE : le site suit la Lune (orbite, rotation synchrone) ; caméra debout sur le sol à 1,8 m, plan proche de 1 mm
     if (moonView && obsMoon && bodyObjs.moon && bodyObjs.moon.mesh && moonGroup) {
-      const mm = bodyObjs.moon.mesh; mm.updateWorldMatrix(true, false);
+      const mm = bodyObjs.moon.mesh; world.position.set(0, 0, 0); inertial.position.set(0, 0, 0); solar.position.set(0, 0, 0); mm.updateWorldMatrix(true, false);   // repère SANS décalage d'origine flottante (celui de l'image précédente donnait un site alterné 0 / 57 rayons : le ciel clignotait)
       const fr = moonSiteFrame(obsMoon, mm.matrixWorld); moonObsPos.copy(fr.eye); moonSrc.dir.copy(fr.south); moonSrc.radial.copy(fr.up);
       moonGroup.visible = true; moonGroup.position.copy(fr.ground); moonGroup.quaternion.setFromRotationMatrix(basis.makeBasis(fr.east, fr.up, fr.south)); moonGroup.scale.setScalar(1e-3 / R_KM); moonGroup.updateMatrixWorld();
       placeFirstPerson(moonSrc); camera.near = 1e-9; camera.updateProjectionMatrix(); camera.updateMatrixWorld();
@@ -719,7 +719,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     setStarInfo: on => { starInfoOn = !!on; if (!starInfoOn) clearStar(); }, clearStar,
     _moonBright: () => (bodyObjs.moon && bodyObjs.moon.mesh && bodyObjs.moon.mesh.material.color ? bodyObjs.moon.mesh.material.color.r : 1),
     _moonBoost: () => (bodyObjs.moon && bodyObjs.moon.mesh ? bodyObjs.moon.mesh.scale.x / (bodyObjs.moon.baseScale || 1) : 1),
-    _moonSite: () => ({ id: obsMoon ? obsMoon.id : null, view: moonView, group: !!moonGroup && moonGroup.visible, eyeErrM: moonView ? camera.position.distanceTo(moonObsPos) * R_KM * 1000 : null, near: camera.near, labels: moonLabels ? moonLabels.count() : 0, realistic }),
+    _moonSite: () => ({ eyeDist: moonObsPos.length(), id: obsMoon ? obsMoon.id : null, view: moonView, group: !!moonGroup && moonGroup.visible, eyeErrM: moonView ? camera.position.distanceTo(moonObsPos) * R_KM * 1000 : null, near: camera.near, labels: moonLabels ? moonLabels.count() : 0, realistic }),
     _airliner: () => { const p = airliners.list()[0]; return p ? { active: true, count: airliners.count(), t: p.t, elevation: elevationFrom(p.pos, p.eye, p.frame.up), model: p.model.visible, lights: p.model.userData.lights.left.visible, strobe: p.model.userData.lights.strobes.some(l => l.visible), glow: p.glow.visible, strobeGlow: p.strobeGlow.visible, night: p.night, px: p.px } : { active: false, count: 0, t: 0, elevation: 0, model: false, lights: false, strobe: false, glow: false, strobeGlow: false, night: false, px: 0 }; },
     _airlinerSkip: sec => airliners.skip(sec),
     _airlinerSpawnMore: () => (obsFrame ? airliners.spawn({ frame: obsFrame, groundR: Math.hypot(...obsFrame.ground), eye: new THREE.Vector3().fromArray(obsFrame.eye) }) : false),
