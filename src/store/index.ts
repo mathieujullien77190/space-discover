@@ -3,8 +3,7 @@
 import { create } from 'zustand'
 import { NUDGE_STEPS } from '@/constants'
 import { readAchievements, readCardCollapsed, writeAchievements, writeCardCollapsed } from '@/helpers'
-import { nextMapStyle } from '@/helpers'
-import type { BodyCategory, Engine, EnginePatch, EngineState, MapStyle, PanelName } from '@/types'
+import type { BodyCategory, Engine, EnginePatch, EngineState, PanelName } from '@/types'
 import { initialEngineState } from './initial'
 
 export type UiState = {
@@ -15,8 +14,6 @@ export type UiState = {
   achievements: string[]   // hauts faits débloqués (mémorisés)
   slowMotion: boolean   // histoire : ralenti aux étapes (publié par le moteur)
   clouds: boolean   // couverture nuageuse affichée
-  mapDetail: boolean   // la carte détaillée (sous 400 km) est affichée : crédits à montrer (publié par le moteur)
-  mapStyle: MapStyle   // fond de carte de la Terre
   issShown: boolean   // l'ISS est affichée dans la scène
   issView: boolean   // vue depuis l'ISS (publié par le moteur)
   firstPerson: boolean   // vue à la première personne (publié par le moteur)
@@ -36,7 +33,6 @@ export type Store = EngineState &
     unlockAchievement: (id: string) => void
     dismissUnlocked: () => void
     toggleBigVehicles: () => void
-    toggleMapStyle: () => void
     toggleClouds: () => void
     toggleIssShown: () => void
   }
@@ -66,8 +62,6 @@ export const useStore = create<Store>((set) => ({
   firstPerson: false,
   issView: false,
   issShown: true,
-  mapStyle: 'clean',
-  mapDetail: false,
   clouds: false,
   slowMotion: true,
   setEngine: (engine) => set({ engine }),
@@ -94,12 +88,6 @@ export const useStore = create<Store>((set) => ({
     set((s) => {
       s.engine?.setClouds(!s.clouds)
       return { clouds: !s.clouds }
-    }),
-  toggleMapStyle: () =>
-    set((s) => {
-      const mapStyle = nextMapStyle(s.mapStyle)
-      s.engine?.setMapStyle(mapStyle)
-      return { mapStyle }
     }),
   toggleBigVehicles: () =>
     set((s) => {

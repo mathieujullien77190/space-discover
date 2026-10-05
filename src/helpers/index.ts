@@ -1,6 +1,5 @@
 // Helpers partagés (mise en forme, stockage).
-import { MAP_STYLE_ORDER, STORAGE_KEYS } from '@/constants'
-import type { MapStyle } from '@/types'
+import { STORAGE_KEYS } from '@/constants'
 
 export const formatUtcDate = (ms: number, accelerated: boolean): string =>
   new Date(ms).toLocaleString('fr-FR', { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) +
@@ -49,5 +48,3 @@ export const writeAchievements = (ids: string[]): void => {
   }
 }
 
-// Fond de carte suivant : dessiné → plan → relief → dessiné…
-export const nextMapStyle = (style: MapStyle): MapStyle => MAP_STYLE_ORDER[(MAP_STYLE_ORDER.indexOf(style) + 1) % MAP_STYLE_ORDER.length]

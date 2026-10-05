@@ -6,7 +6,6 @@ import * as THREE from 'three';
 import { BODY } from './bodies.js';
 import { ISS_FEATURES, ISS_EPOCH, ISS_FROM, ISS_MODEL, ISS_W, issState } from './iss.js';
 import { createClouds } from './clouds.js';
-import { createMapLayer } from './map-layer.js';
 import { DEG, PHOTO_PATCHES, R_KM, buildEarth, earthGeometry, ll, loadPatch, unloadPatch } from './earth.js';
 import { loadGlb } from './gltf-mini.js';
 import { loadStackModels } from './stack-models.js';
@@ -54,7 +53,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const world = new THREE.Group(); scene.add(world);
   const inertial = new THREE.Group(); scene.add(inertial);
   const earth = buildEarth(renderer); world.add(earth);
-  const mapLayer = createMapLayer(earth, renderer); let mapStyle = 'clean', mapShown = false;   // par défaut : carte dessinée de loin, carte détaillée SANS noms sous 400 km
+
   const clouds = createClouds(earth, renderer); let cloudsOn = false;   // couverture nuageuse quasi temps réel (option)   // fond de carte « plan » (type Google Maps) : tuiles Web Mercator, option
   // NIVEAUX DE DÉTAIL selon la taille à l'écran (en pixels de rayon) : la Terre (1 048 576 triangles !) et les ~35 sphères d'astres (9 000 triangles chacune) n'étaient pas allégées quand elles ne font que quelques pixels.
   // Les géométries sont partagées (un cache par nombre de segments) ; une hystérésis (±15 %) évite de changer de niveau à chaque image.
@@ -188,7 +187,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const dot = new THREE.Points(dg, new THREE.PointsMaterial({ color: 0xffd54a, size: 10, sizeAttenuation: false })); dot.frustumCulled = false; world.add(dot);
   const issLabel = overlay.label('ISS', 'iss');
 
-  const cam = { fov: 50, mode: 'earth', tgt: new THREE.Vector3(), lon: 0, lat: 50, dist: 3.4, fly: 0, tfly: 0, launchK: 1, userDir: false, fp: null, fpUp: new THREE.Vector3(), upKind: 'north', goal: { lon: 0, lat: 50, dist: 3.4 } };   // départ : la Terre vue du nord (nord en haut), le méridien de Greenwich (0°) en face de la caméra
+  const cam = { fov: 50, mode: 'earth', tgt: new THREE.Vector3(), lon: 0, lat: 50, dist: 3.4, fly: 0, tfly: 0, launchK: 1, userDir: false, fp: null, eg: null, fpUp: new THREE.Vector3(), upKind: 'north', goal: { lon: 0, lat: 50, dist: 3.4 } };   // départ : la Terre vue du nord (nord en haut), le méridien de Greenwich (0°) en face de la caméra
   let VK = 1;   // échelle des engins (1 = réel ; VEHICLE_SCALE_BIG = mode « engins géants »)
   const moonsShown = {};   // planète → distance de la caméra, pour les planètes dont les lunes sont affichées
   let poseStale = false;   // juste après un changement de vue la caméra garde l'ancienne position jusqu'à la prochaine image : on n'en déduit pas « trop loin de l'ISS »
@@ -197,7 +196,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
 
   const syncView = m => publish({ view: { mode: m, selected: m === 'iss' ? null : m === 'solar' ? solarTarget : 'earth', align: cam.upKind } });   // en vue ISS (satellite) aucun astre n'est choisi
   const snapCam = () => { cam.lon = cam.goal.lon; cam.lat = cam.goal.lat; cam.dist = cam.goal.dist; cam.fly = cam.tfly = 0; };   // la caméra prend la pose voulue d'un coup
-  const setMode = m => { if (issView && m !== 'iss') { issView = false; cam.fp = null; publish({ issView: false, firstPerson: false }); }   // changer de vue coupe la vue depuis l'ISS
+  const setMode = m => { cam.eg = null;   // changer de vue (ou revenir à la Terre) coupe la vue « au sol » inclinable
+    if (issView && m !== 'iss') { issView = false; cam.fp = null; publish({ issView: false, firstPerson: false }); }   // changer de vue coupe la vue depuis l'ISS
   
     if ((m === 'solar') !== (cam.mode === 'solar')) {   // changement de repère (Terre fixe ↔ inertiel) : on tourne la pose de la caméra de l'angle sidéral pour que l'image ne saute pas
       const ang = m === 'solar' ? curGm : -curGm; cam.tgt.applyAxisAngle(Y_AXIS, ang); camera.position.applyAxisAngle(Y_AXIS, ang); cam.lon += ang / DEG; cam.goal.lon += ang / DEG; frameF = m === 'solar' ? 1 : 0;
@@ -233,6 +233,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     if (cam.mode === 'iss' && iss) { const F = frameIss(), d = camera.position.clone().sub(cam.tgt).normalize(); return { mode: 'iss', yaw: rd(Math.atan2(d.dot(F.s), -d.dot(F.f)) / DEG), pitch: rd(Math.asin(Math.max(-1, Math.min(1, d.dot(F.u)))) / DEG), distKm: Math.round(cam.dist * R_KM * 1000) / 1000, fov: camera.fov }; }
     if (cam.mode === 'launch') return { mode: 'launch', distKm: Math.round(cam.dist * R_KM * 1000) / 1000, zoom: Math.round(cam.launchK * 1000) / 1000, auto: !cam.userDir, fov: camera.fov };
     if (cam.mode === 'solar') return { mode: 'solar', cible: solarTarget, lon: rd(cam.lon), lat: rd(cam.lat), distRayonsTerrestres: Math.round(cam.dist * 100) / 100, fov: camera.fov };   // Lune ou Soleil
+    if (cam.eg) return { mode: 'ground', lon: rd(Math.atan2(-cam.eg.t.z, cam.eg.t.x) / DEG), lat: rd(Math.asin(cam.eg.t.y) / DEG), yaw: rd(cam.eg.yaw), pitch: rd(cam.eg.pitch), distKm: rd(cam.eg.dist * R_KM), fov: camera.fov };
     return { mode: 'earth', lon: rd(cam.lon), lat: rd(cam.lat), altKm: rd(altCam), fov: camera.fov };
   };
   // « NORD EN HAUT » et « ORBITE À PLAT » (boutons de la fiche d'un astre) : la caméra garde son côté mais se met en place avec un « haut » d'écran choisi.
@@ -414,7 +415,34 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches, HIT = touch ? 42 : 26, near = (p, r, x, y) => !!p && Math.hypot(x - p[0], y - p[1]) < r;
   const probeAt = (x, y) => { for (const id in probeObjs) { const o = probeObjs[id]; if (o.screen && near(o.screen, HIT, x, y)) return id; } return null; };
   const bodyAt = (x, y) => { for (const id in bodyObjs) { const o = bodyObjs[id]; if (o.screen && o.b.menu && (o.b.menu.view || o.b.menu.mode === 'earth') && near(o.screen, HIT + (o.b.hitExtraPx || 0), x, y)) return id; } return probeAt(x, y); };
-  disposers.push(attachControls(canvas, cam, (x, y) => { if (near(issScreen, HIT, x, y)) goIss(); else { const id = bodyAt(x, y); if (id) selectView(id); } }));
+  disposers.push(attachControls(canvas, cam, (x, y) => { if (near(issScreen, HIT, x, y)) goIss(); else { const id = bodyAt(x, y); if (id) selectView(id); else if (cam.mode === 'earth') groundClick(x, y); } }));
+  // VUE AU SOL : un clic sur la boule pose la caméra SUR ce point du sol (cible) ; on peut alors l'INCLINER (glisser en hauteur : de la verticale à l'horizon), la tourner (cap, glisser de côté), zoomer (molette) ;
+  // un autre clic sur le sol déplace la cible en douceur ; Échap ou le bouton Terre revient à la vue Terre.
+  const egRay = new THREE.Raycaster(), egUp = new THREE.Vector3(), egEast = new THREE.Vector3(), egNorth = new THREE.Vector3(), egHead = new THREE.Vector3(), egOff = new THREE.Vector3(), egF = new THREE.Vector3(), egR = new THREE.Vector3(), egU = new THREE.Vector3(), egM = new THREE.Matrix4();
+  const groundClick = (x, y) => {
+    const r = canvas.getBoundingClientRect(), rw = r.width || innerWidth, rh = r.height || innerHeight; egRay.setFromCamera(new THREE.Vector2(((x - (r.left || 0)) / rw) * 2 - 1, -((y - (r.top || 0)) / rh) * 2 + 1), camera);
+    const o = egRay.ray.origin, d = egRay.ray.direction, b = o.dot(d), c = o.lengthSq() - 1, disc = b * b - c;
+    if (disc < 0) return;   // le clic est à côté de la Terre (dans le ciel)
+    const t = -b - Math.sqrt(disc); if (t <= 0) return;
+    const P = o.clone().addScaledVector(d, t).normalize();
+    if (!cam.eg) { const dist = Math.max(2 / R_KM, camera.position.distanceTo(P) * 0.6); cam.eg = { t: P.clone(), goal: P.clone(), yaw: 0, pitch: 90, dist }; }   // 1er clic : on se pose sur le point, vue de dessus d'abord (comme la boule), un peu plus près
+    else cam.eg.goal.copy(P);
+    publish({ view: { mode: 'earth', selected: 'earth', align: 'ground' } });
+  };
+  const placeGround = dt => {   // caméra sur le sol : position et orientation d'après la cible, le cap (yaw), l'inclinaison (pitch : 90 = verticale, ~5 = presque l'horizon) et la distance
+    const g = cam.eg; g.t.lerp(g.goal, 1 - Math.exp(-dt * 7)).normalize();
+    g.pitch = Math.max(4, Math.min(90, g.pitch)); g.dist = Math.max(g.dist, 3 / R_KM / Math.sin(g.pitch * DEG), 2 / R_KM); g.dist = Math.min(g.dist, 40);
+    egUp.copy(g.t); egEast.crossVectors(Y_AXIS, egUp); if (egEast.lengthSq() < 1e-8) egEast.set(0, 0, -1); egEast.normalize(); egNorth.crossVectors(egUp, egEast).normalize();
+    const yaw = g.yaw * DEG, th = g.pitch * DEG;
+    egHead.copy(egNorth).multiplyScalar(Math.cos(yaw)).addScaledVector(egEast, Math.sin(yaw));   // direction du regard à l'horizontale (cap depuis le nord, dans le sens des aiguilles d'une montre)
+    egOff.copy(egHead).multiplyScalar(-Math.cos(th)).addScaledVector(egUp, Math.sin(th)).multiplyScalar(g.dist);   // la caméra est derrière la cible, en hauteur
+    camera.position.copy(g.t).add(egOff);
+    egF.copy(egOff).negate().normalize();   // vers la cible
+    const s = Math.max(0, Math.min(1, (g.pitch - 78) / 12)), hint = egU.copy(egUp).multiplyScalar(1 - s).addScaledVector(egHead, s).normalize();   // près de la verticale, le « haut » de l'écran devient le cap
+    egR.crossVectors(egF, hint).normalize(); egU.crossVectors(egR, egF).normalize();
+    camera.quaternion.setFromRotationMatrix(egM.makeBasis(egR, egU, egF.clone().negate())); camera.fov = cam.fov;
+    const L = camera.position.length(); cam.dist = cam.goal.dist = L; cam.lat = cam.goal.lat = Math.asin(camera.position.y / L) / DEG; cam.lon = cam.goal.lon = Math.atan2(-camera.position.z, camera.position.x) / DEG;   // la pose « boule » suit : revenir à la Terre ne saute pas
+  };
   const onMove = e => canvas.classList.toggle('hand', near(issScreen, HIT, e.clientX, e.clientY) || !!bodyAt(e.clientX, e.clientY));
   canvas.addEventListener('pointermove', onMove); disposers.push(() => canvas.removeEventListener('pointermove', onMove));
 
@@ -490,6 +518,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     camera.position.copy(cam.tgt).addScaledVector(dirv, cam.dist);
     camera.up.copy(cam.userUp || Y_AXIS);   // « haut » de l'écran : l'axe du monde, ou celui demandé (nord de l'astre, normale de son orbite) ; la souris tourne autour de lui ; un changement de vue le remet à zéro
     if (cam.fp && cam.mode === 'launch' && launch) { placeFirstPerson(launch); launch.rocket.visible = false; launch.dotRocket.visible = false; launch.satG.visible = false; }   // on est dedans : ni la fusée ni le satellite ne cachent la vue
+    else if (cam.eg && cam.mode === 'earth') placeGround(dt);
     else if (cam.fp && cam.mode === 'iss' && iss && issView) { issSrc.pos = iss.pos; issSrc.dir.copy(iss.vel).normalize(); issSrc.radial.copy(iss.pos).normalize(); placeFirstPerson(issSrc); }
     else { if (camera.fov !== cam.fov) camera.fov = cam.fov; camera.lookAt(cam.tgt); }
     camera.updateMatrixWorld();
@@ -648,28 +677,18 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     }
     // photos aériennes : chargées quand la caméra est à moins de 1 500 km, affichées sous 700 km ; traits de côte et frontières masqués dessus
     {
-      const camE = launch && launch.inertial ? camera.position.clone().applyAxisAngle(Y_AXIS, -LCH.WE * launch.T) : camera.position, camAlt = (camE.length() - 1) * R_KM, cl = Math.asin(camE.y / camE.length()) / DEG, co = Math.atan2(-camE.z, camE.x) / DEG;
+      const camE = launch && launch.inertial ? camera.position.clone().applyAxisAngle(Y_AXIS, -LCH.WE * launch.T) : camera.position, camAlt = (camE.length() - 1) * R_KM; let cl = Math.asin(camE.y / camE.length()) / DEG, co = Math.atan2(-camE.z, camE.x) / DEG;
+      if (cam.eg) { cl = Math.asin(cam.eg.t.y) / DEG; co = Math.atan2(-cam.eg.t.z, cam.eg.t.x) / DEG; }   // vue au sol : cartes et tuiles centrées sur le point visé
       let inside = false;
       clouds.update({ on: cloudsOn, camAlt, http: isHttp() });
-      const wasShown = mapShown;
-      mapShown = mapLayer.update({ on: mapStyle !== 'drawn', camAlt, cl, co, fov: camera.fov, aspect: camera.aspect, http: isHttp() });   // le plan remplace la carte dessinée sous 900 km quand ses tuiles sont arrivées
-      if (mapShown !== wasShown) publish({ mapDetail: mapShown });   // l'interface affiche les crédits de la carte détaillée seulement quand elle est visible
       for (const p of PHOTO_PATCHES) {
         const [w, e, s, n] = p.bounds;
-        if (p.kind === 'tile' && mapShown) { if (p.mesh) p.mesh.visible = false; continue; }   // le plan est affiché : les tuiles dessinées se taisent
-        if (p.kind === 'tile') {   // tuile de carte : selon la distance (en degrés) du point sous la caméra au rectangle de la tuile, et l'altitude
-          const ang = (a, b) => Math.abs(((a - b + 540) % 360) - 180), dlon = co >= w && co <= e ? 0 : Math.min(ang(co, w), ang(co, e)) * Math.max(0.2, Math.cos(cl * DEG)), dd = Math.hypot(dlon, Math.max(0, s - cl, cl - n)), near = camAlt < p.loadKm && dd < 25 && isHttp();   // dd = distance en degrés (longitude corrigée de la latitude)
-          if (near) loadPatch(p, renderer, earth);
-          if (p.mesh && (camAlt > 2500 || dd > 60)) unloadPatch(p, earth);
-          if (p.mesh) p.mesh.visible = camAlt < p.hideKm && dd < 22;
-          continue;
-        }
         const dKm = camE.distanceTo(ll((w + e) / 2, (s + n) / 2)) * R_KM;
         if (dKm < (p.loadKm || 1500) && isHttp()) loadPatch(p, renderer, earth);
         if (p.mesh && dKm > 4000) unloadPatch(p, earth);
         if (p.mesh) { p.mesh.visible = dKm < p.hideKm; if (p.mesh.visible && camAlt < 60 && co > w && co < e && cl > s && cl < n) inside = true; }
       }
-      for (let k = 1; k < earth.children.length; k++) if (earth.children[k].isLineSegments) earth.children[k].visible = !inside && !mapShown && camAlt < 20000;   // dézoomé : plus de frontières ni de trait de côte
+      for (let k = 1; k < earth.children.length; k++) if (earth.children[k].isLineSegments) earth.children[k].visible = !inside && camAlt < 20000;   // dézoomé : plus de frontières ni de trait de côte
     }
     // échelle : longueur « ronde » (1, 2, 5 × 10^n) qui fait 70 à 170 px au point regardé
     {
@@ -735,11 +754,12 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     selectView,
     goIss, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
     setStorySpeed: v => { if (launch && Number.isFinite(v) && v > 0) launch.speed = v; },   // vitesse du temps pendant une histoire (ne relance pas une étape en pause)
-    setMapStyle: style => { mapStyle = style === 'drawn' ? 'drawn' : 'clean'; },   // 'clean' (défaut) = automatique : carte dessinée de loin, carte détaillée sans noms sous 400 km (+ courbes de niveau sur la France) ; 'drawn' = carte dessinée partout
-    _map: () => Object.assign({ style: mapStyle, shown: mapShown }, mapLayer.stats()),
     setClouds: on => { cloudsOn = !!on; },
     _clouds: () => Object.assign({ on: cloudsOn }, clouds.stats()),
     setBigVehicles, setFirstPerson, setIssView, setIssShown: on => { issShown = !!on; }, setViewInset, setStorySlowMotion,
+    _eg: () => cam.eg ? { lon: Math.atan2(-cam.eg.t.z, cam.eg.t.x) / DEG, lat: Math.asin(cam.eg.t.y) / DEG, yaw: cam.eg.yaw, pitch: cam.eg.pitch, distKm: cam.eg.dist * R_KM, camAltKm: (camera.position.length() - 1) * R_KM, tilt: camera.position.clone().sub(cam.eg.t).normalize().dot(cam.eg.t) } : null,
+    _click: (x, y) => groundClick(x, y),
+    _egSet: (pitch, yaw) => { if (cam.eg) { cam.eg.pitch = pitch; cam.eg.yaw = yaw; } },
     _fp: () => cam.fp ? { yaw: cam.fp.yaw, pitch: cam.fp.pitch, fov: camera.fov, posErr: launch ? camera.position.distanceTo(launch.pos) * R_KM * 1000 : iss && issView ? camera.position.distanceTo(iss.pos) * R_KM * 1000 : null, dir: new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).toArray(), up: new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion).toArray(), radial: launch ? launch.radial.toArray() : issView ? issSrc.radial.toArray() : null, flight: launch ? launch.dir.toArray() : null } : null,
 
     startRocket, stopRocket, launchMission, followMission, startStory, storyNext, storyPrev, quitStory,
@@ -749,7 +769,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     dispose() {
       stopped = true; cancelAnimationFrame(raf); clearTimeout(solarTimer); disposers.forEach(d => d()); clearLabels(); overlay.dispose();
       if (launch) launch.dispose();
-      mapLayer.dispose(); clouds.dispose();
+      clouds.dispose();
       if (renderer.dispose) renderer.dispose();
     },
   };

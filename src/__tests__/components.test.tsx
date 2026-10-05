@@ -53,20 +53,19 @@ describe('TopBar + SubMenu', () => {
     expect(engine.setIssView).toHaveBeenCalledWith(true)
   })
   it('bouton « Nuages » : active la couverture nuageuse avec son crédit', () => {
-    useStore.setState({ clouds: false, mapStyle: 'drawn' })
+    useStore.setState({ clouds: false })
     render(<><TopBar /><MapCredit /></>)
     fireEvent.click(screen.getByText('☁ Nuages'))
     expect(engine.setClouds).toHaveBeenLastCalledWith(true)
     expect(screen.getByText(/matteason/)).toBeInTheDocument()
   })
-  it('crédits de la carte détaillée : affichés seulement quand elle est visible', () => {
-    useStore.setState({ mapDetail: false, clouds: false })
+  it('crédit des nuages : affiché seulement quand la couche est active', () => {
+    useStore.setState({ clouds: false })
     const { rerender } = render(<MapCredit />)
-    expect(screen.queryByText(/Esri/)).toBeNull()
-    act(() => useStore.setState({ mapDetail: true }))
+    expect(screen.queryByText(/matteason/)).toBeNull()
+    act(() => useStore.setState({ clouds: true }))
     rerender(<MapCredit />)
-    expect(screen.getByText(/Esri/)).toBeInTheDocument()
-    expect(screen.getByText(/AWS Terrain/)).toBeInTheDocument()
+    expect(screen.getByText(/matteason/)).toBeInTheDocument()
   })
   it('Astres : la Lune n’est pas une planète : elle apparaît sous la Terre, pas sous Mars', () => {
     render(<><TopBar /><SubMenu /></>)

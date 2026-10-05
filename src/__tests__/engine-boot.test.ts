@@ -467,14 +467,6 @@ describe('createEngine (rendu factice)', () => {
     expect(engine._vehicle()!.vk).toBe(1)
     engine.stopRocket()
   })
-  it('fond de carte : automatique (rien n’est chargé hors de 400 km), désactivable', () => {
-    expect(engine._map().style).toBe('clean')
-    engine._frame(performance.now() + 100)
-    expect(engine._map()).toMatchObject({ shown: false, tiles: 0 })
-    engine.setMapStyle('drawn'); engine._frame(performance.now() + 200)
-    expect(engine._map().style).toBe('drawn')
-    engine.setMapStyle('clean')
-  })
   it('vue depuis l’ISS : caméra sur la station, tête vers le haut, coupée par un changement de vue', () => {
     engine.resetTime(); engine._frame(performance.now() + 350)               // la date a pu être changée par un test précédent (l’ISS n’existe qu’à partir de 1998)
     engine.setIssView(true)
@@ -496,6 +488,26 @@ describe('createEngine (rendu factice)', () => {
     expect(engine._clouds().on).toBe(true)
     engine.setClouds(false); engine._frame(performance.now() + 300)
     expect(engine._clouds().visible).toBe(false)
+  })
+  it('vue au sol : un clic sur la boule pose la caméra sur le point, on peut l’incliner, Terre la remet', () => {
+    engine.selectView('earth'); engine._frame(performance.now() + 100)
+    expect(engine._eg()).toBeNull()
+    engine._click(innerWidth / 2, innerHeight / 2); engine._frame(performance.now() + 200)
+    const a = engine._eg()!
+    expect(a).not.toBeNull()
+    expect(Math.abs(a.lat)).toBeLessThan(90)
+    expect(a.pitch).toBe(90)
+    expect(a.tilt).toBeGreaterThan(0.99)                                       // vue de dessus : la caméra est à la verticale du point
+    engine._egSet(30, 40)
+    for (let i = 0; i < 4; i++) engine._frame(performance.now() + 300 + i * 100)
+    const b = engine._eg()!
+    expect(b.tilt).toBeCloseTo(Math.sin(30 * Math.PI / 180), 1)                // inclinée : la direction caméra → cible fait 30° avec l’horizon
+    expect(b.camAltKm).toBeLessThan(a.camAltKm + 1)
+    expect(b.camAltKm).toBeGreaterThan(0)
+    engine._egSet(1, 0); engine._frame(performance.now() + 800)
+    expect(engine._eg()!.pitch).toBeGreaterThanOrEqual(4)                      // jamais sous le sol : inclinaison limitée
+    engine.selectView('earth'); engine._frame(performance.now() + 900)
+    expect(engine._eg()).toBeNull()                                            // le bouton Terre coupe la vue au sol
   })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)

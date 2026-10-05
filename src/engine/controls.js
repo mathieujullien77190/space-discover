@@ -7,6 +7,7 @@ export function attachControls(canvas, cam, onClick) {
   const ptrs = new Map(); let pinch = 0, moved = 0; const offs = [], on = (t, ev, fn, o) => { t.addEventListener(ev, fn, o); offs.push(() => t.removeEventListener(ev, fn, o)); };
   const tanH = () => Math.tan(cam.fov * DEG / 2);
   const zoom = f => {   // f > 1 = on s'éloigne
+    if (cam.eg) { cam.eg.dist = Math.max(2 / R_KM, Math.min(40, cam.eg.dist * f)); return; }   // vue au sol : on se rapproche / s'éloigne de la cible
     if (cam.fp) { cam.fp.fov = Math.max(20, Math.min(100, (cam.fp.fov || 60) * (f > 1 ? 1.08 : 1 / 1.08))); return; }   // première personne : la molette règle l'ouverture du champ
     if (cam.mode === 'launch') { cam.zoomFit = false; cam.launchK = Math.max(1e-7, Math.min(1e7, cam.launchK * f)); }   // zoom manuel sur la caméra auto de la fusée
     else if (cam.mode === 'earth') cam.goal.dist = 1 + Math.min(EARTH_MAX_DIST, Math.max(2 / R_KM, (cam.goal.dist - 1) * f));   // on zoome sur l'altitude (min 2 km)
@@ -15,6 +16,7 @@ export function attachControls(canvas, cam, onClick) {
     
   };
   const rotate = (dx, dy) => {
+    if (cam.eg) { cam.eg.yaw -= dx * 0.3; cam.eg.pitch = Math.max(4, Math.min(90, cam.eg.pitch - dy * 0.3)); return; }   // vue au sol : glisser de côté = cap, en hauteur = inclinaison (le décor suit le doigt)
     if (cam.fp) { cam.fp.yaw -= dx * 0.3; cam.fp.pitch = Math.max(-89, Math.min(89, cam.fp.pitch + dy * 0.3)); return; }   // vue à la première personne : on tourne la tête (le décor suit le doigt)
     const alt = Math.max(1e-5, cam.mode === 'earth' ? cam.dist - 1 : 0);
     const k = cam.mode === 'earth' ? Math.min(alt, 3) * 2 * tanH() / canvas.clientHeight / DEG : 0.3;   // le sol suit le doigt à tout zoom

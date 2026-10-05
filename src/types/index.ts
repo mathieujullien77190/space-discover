@@ -28,7 +28,7 @@ export type StoryStep = {
   title: string
   text: string
   pause?: boolean
-  camera?: { follow?: string; firstPerson?: boolean; slowMotion?: boolean; issView?: boolean; mapDetail?: boolean }
+  camera?: { follow?: string; firstPerson?: boolean; slowMotion?: boolean; issView?: boolean }
   scene?: 'cabin'   // illustration 3D affichée dans l'étape
   image?: { src: string; alt: string; credit: string; license: string }
   source?: string
@@ -51,7 +51,6 @@ export type EngineState = {
 }
 
 // Correctif envoyé par le moteur : chaque tranche peut être partielle (fusion superficielle dans le store).
-export type MapStyle = 'drawn' | 'street' | 'clean' | 'ocean' | 'terrain' | 'contours'   // fond de carte : dessiné (Natural Earth), plan type Google Maps (CARTO / OpenStreetMap) ou relief (forêts, montagnes : OpenTopoMap)
 export type EnginePatch = {
   [K in keyof EngineState]?: EngineState[K] extends object ? Partial<EngineState[K]> : EngineState[K]
 } & { bigVehicles?: boolean; firstPerson?: boolean }   // le moteur peut aussi activer le mode engins géants (histoire : à 50 km d'altitude)
@@ -81,12 +80,13 @@ export type Engine = {
   setFirstPerson: (on: boolean) => void
   setIssView: (on: boolean) => void
   setIssShown: (on: boolean) => void
-  setMapStyle: (style: MapStyle) => void
   setClouds: (on: boolean) => void
   _clouds: () => { on: boolean; state: string | null; level: string | null; visible: boolean; opacity: number }
-  _map: () => { style: MapStyle; shown: boolean; tiles: number; ready: number; loading: number }
   setViewInset: (right: number, bottom: number) => void
   setStorySlowMotion: (on: boolean) => void
+  _eg: () => { lon: number; lat: number; yaw: number; pitch: number; distKm: number; camAltKm: number; tilt: number } | null
+  _click: (x: number, y: number) => void
+  _egSet: (pitch: number, yaw: number) => void
   _fp: () => { yaw: number; pitch: number; fov: number; posErr: number | null; dir: number[]; up: number[]; radial: number[] | null; flight: number[] | null } | null
   setStorySpeed: (speed: number) => void
   startRocket: (key: string, custom?: unknown) => Promise<unknown>
