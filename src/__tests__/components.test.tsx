@@ -25,7 +25,7 @@ describe('TopBar + SubMenu', () => {
   })
   it('barre du haut : Astres, Terre, ISS, Nuages ; ni Histoires, ni Fusées, ni Satellites, aucun sous-menu au départ', () => {
     render(<><TopBar /><SubMenu /></>)
-    for (const l of ['🌌 Astres', '🌍 Terre', '🛰 ISS', '🔭 Hubble', '☁ Nuages', '🌗 Jour / nuit', '🎬 Vue réaliste']) expect(screen.getByText(l)).toBeInTheDocument()
+    for (const l of ['🌌 Astres', '🌍 Terre', '🛰 ISS', '🔭 Hubble', '🌗 Jour / nuit', '🎬 Vue réaliste']) expect(screen.getByText(l)).toBeInTheDocument()
     for (const l of [/Histoires/, /Fusées/, /Satellites/, /Engins/]) expect(screen.queryByText(l)).toBeNull()
     expect(screen.queryByText(/Lune/)).toBeNull()
   })
@@ -90,12 +90,11 @@ describe('TopBar + SubMenu', () => {
     fireEvent.click(screen.getByText('🎬 Vue réaliste'))
     expect(engine.setRealistic).toHaveBeenLastCalledWith(false)
   })
-  it('bouton « Nuages » : active la couverture nuageuse avec son crédit', () => {
-    useStore.setState({ clouds: false })
+  it('plus de bouton « Nuages » : les nuages sont toujours actifs (visibles en vue dézoomée)', () => {
+    useStore.setState({ clouds: true })
     render(<><TopBar /><MapCredit /></>)
-    fireEvent.click(screen.getByText('☁ Nuages'))
-    expect(engine.setClouds).toHaveBeenLastCalledWith(true)
-    expect(screen.getByText(/matteason/)).toBeInTheDocument()
+    expect(screen.queryByText('☁ Nuages')).toBeNull()
+    expect(screen.getByText(/matteason/)).toBeInTheDocument()                  // crédit tant que les nuages sont visibles
   })
   it('bloc GÉNÉRAL « Options de carte » (bas à gauche) : infos étoiles et constellations, éteintes par défaut', () => {
     useStore.setState({ ...initialEngineState, starInfo: false, constellations: false })
@@ -126,10 +125,10 @@ describe('TopBar + SubMenu', () => {
     Object.defineProperty(document.documentElement, 'requestFullscreen', { value: request, configurable: true })
     useStore.setState({ ...initialEngineState, uiHidden: false })
     render(<HideUi />)
-    fireEvent.click(screen.getByLabelText('Cacher l’interface'))
+    fireEvent.click(screen.getByTitle('Cacher l’interface (plein écran)'))
     expect(useStore.getState().uiHidden).toBe(true)
     expect(request).toHaveBeenCalled()                                         // plein écran (comme F11)
-    fireEvent.click(screen.getByLabelText('Afficher l’interface'))
+    fireEvent.click(screen.getByTitle('Afficher l’interface'))
     expect(useStore.getState().uiHidden).toBe(false)
     act(() => useStore.setState({ uiHidden: true }))
     document.dispatchEvent(new Event('fullscreenchange'))                      // sortie du plein écran (Échap) : l’interface revient

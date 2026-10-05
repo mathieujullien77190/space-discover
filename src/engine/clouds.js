@@ -10,9 +10,9 @@ export const CLOUDS_CREDIT = 'Nuages : clouds.matteason.co.uk (images satellites
 export const CLOUDS_R = 1.0015;            // rayon de la couche (≈ 10 km d'altitude) en rayons terrestres
 export const CLOUDS_REFRESH_MS = 3 * 3600e3;   // l'image est renouvelée toutes les 3 heures
 export const CLOUDS_HIGH_ALT_KM = 4000;    // sous cette altitude on charge l'image 4096 × 2048 (1,6 Mo) au lieu de 2048 × 1024
-export const CLOUDS_FADE_KM = [15, 40];    // la couche s'efface quand la caméra descend dans les nuages (opacité nulle sous 15 km, pleine à 40 km)
+export const CLOUDS_FADE_KM = [1200, 1500];   // les nuages n'existent qu'en vue DÉZOOMÉE : retirés à partir de 1 200 km d'altitude (vue détaillée du sol), pleins à 1 500 km
 
-// opacité de la couche selon l'altitude de la caméra : on ne traverse pas les nuages à l'écran
+// opacité de la couche selon l'altitude de la caméra : nulle sous 1 200 km (vue détaillée), pleine à 1 500 km
 export const cloudsOpacity = altKm => Math.max(0, Math.min(1, (altKm - CLOUDS_FADE_KM[0]) / (CLOUDS_FADE_KM[1] - CLOUDS_FADE_KM[0]))) * 0.92;
 
 export function createClouds(parent, renderer, now = () => Date.now()) {

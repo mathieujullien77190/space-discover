@@ -23,7 +23,7 @@ export type EngineState = {
 // Correctif envoyé par le moteur : chaque tranche peut être partielle (fusion superficielle dans le store).
 export type EnginePatch = {
   [K in keyof EngineState]?: EngineState[K] extends object ? Partial<EngineState[K]> : EngineState[K]
-} & { bigVehicles?: boolean; firstPerson?: boolean}   // clés publiées par le moteur hors des tranches de EngineState
+} & { bigVehicles?: boolean; firstPerson?: boolean; clouds?: boolean; terrainDetail?: boolean }   // clés publiées par le moteur hors des tranches de EngineState
 
 export type BodyFact = { label: string; value: string }
 export type BodyCardData = { id: string; name: string; kind: string; canNorth: boolean; canOrbit: boolean; image: string; facts: BodyFact[] }   // canNorth / canOrbit : boutons « Nord en haut » / « Orbite à plat » de la fiche

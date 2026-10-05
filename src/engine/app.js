@@ -27,6 +27,7 @@ import { assetUrl, setBaseUrl } from './config.js';
 import { KM_AL, KM_UA, fmtBig } from './format.js';
 import { createOverlay } from './overlay.js';
 import { parseObj } from './obj-mini.js';
+const CONTOUR_MAX_ALT_KM = 1200;   // trait de côte (contours pays / mer) et limites de pays : seulement sous 1 200 km (en vue Terre dézoomée la carte dessinée suffit)
 const OBS_STAR_DIM = 0.5;   // vue depuis un observatoire : toutes les étoiles DEUX FOIS moins lumineuses (demande)
 const STAR_DARK_SIN = 0.12;   // sin de la hauteur du Soleil sous l'horizon (≈ −7°) où toutes les étoiles sont là (opacité 0 quand le Soleil est à moitié caché) : même seuil que le ciel qui devient transparent
 
@@ -55,7 +56,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const terrain = createTerrainLayer(earth, renderer); terrain.setLook(0, TERRAIN_DAY_GAIN); let terrainShown = false;   // Terre en RELIEF avec imagerie satellite sous 800 km d'altitude (automatique, hors ligne : la carte dessinée reste)
   const borders = buildBorders(); earth.add(borders); let bordersOn = false;   // option « Limites de pays » (éteinte par défaut)
   const atmMat = earth.getObjectByName('atmosphere').material;   // halo de l'atmosphère : tient compte du Soleil (bleu le jour, orange au crépuscule, transparent la nuit)
-  const clouds = createClouds(earth, renderer); let cloudsOn = false;   // couverture nuageuse quasi temps réel (option)
+  const clouds = createClouds(earth, renderer); let cloudsOn = true, cloudsPub = false;   // couverture nuageuse quasi temps réel : TOUJOURS active (plus de bouton), visible seulement au-dessus de 1 200 km
   // NIVEAUX DE DÉTAIL selon la taille à l'écran (en pixels de rayon) : la Terre (1 048 576 triangles !) et les ~35 sphères d'astres (9 000 triangles chacune) n'étaient pas allégées quand elles ne font que quelques pixels.
   // Les géométries sont partagées (un cache par nombre de segments) ; une hystérésis (±15 %) évite de changer de niveau à chaque image.
   const LOCAL_N = 256, lodCache = {}, sphereLod = nx => lodCache[nx] || (lodCache[nx] = earthGeometry(nx, nx / 2));
@@ -127,7 +128,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       if (o.mesh) solar.add(o.mesh);
       if (ap.tail) { const tg = new THREE.ConeGeometry(1, 1, 24, 1, true); tg.translate(0, 0.5, 0); o.tail = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ color: new THREE.Color(ap.tail.color || '#bfe3ff'), transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); o.tail.frustumCulled = false; solar.add(o.tail); }
       if (b.dot) o.dot = dotOf(new THREE.Color(b.dot.color || '#ffffff'));
-      if (b.label) o.label = overlay.label(b.label.text);
+      if (b.label) o.label = overlay.label(b.label.text, 'body');   // noms des astres : orange (classe `body`)
       const tr = b.trace;
       if (tr && tr.fullOrbit && b.around) {   // orbite complète autour du corps central (la Terre autour du Soleil : l'ellipse réelle sur un an) ; le groupe est posé sur le corps central à chaque image
         o.orbitG = new THREE.Group(); const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(BODY.orbitPoints(b.id, D0, BODY.orbitSamples(b.id)).map(p => new THREE.Vector3(p[0] * KMU, p[1] * KMU, p[2] * KMU))), new THREE.LineBasicMaterial({ color: new THREE.Color(tr.color || '#4a90e2'), transparent: true, opacity: 0.9 })); l.frustumCulled = false; o.orbitG.add(l); solar.add(o.orbitG);
@@ -534,12 +535,12 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     // couverture nuageuse ; trait de côte masqué quand on est très loin (la texture suffit)
     {
       const camAlt = (camera.position.length() - 1) * R_KM;
-      clouds.update({ on: cloudsOn, camAlt, http: isHttp() });
+      { const cv = clouds.update({ on: cloudsOn, camAlt, http: isHttp() }); if (cv !== cloudsPub) { cloudsPub = cv; publish({ clouds: cv }); } }   // le crédit des nuages ne s'affiche que quand ils sont visibles
       { const wasShown = terrainShown, L = camera.position.length(); let cl = Math.asin(camera.position.y / L) / DEG, co = Math.atan2(-camera.position.z, camera.position.x) / DEG;
         terrainShown = terrain.update({ on: true, camAlt, cl, co, fov: camera.fov, aspect: camera.aspect, http: isHttp() });
         if (terrainShown !== wasShown) publish({ terrainDetail: terrainShown }); }   // l'interface affiche les crédits seulement quand le relief est visible
-      borders.visible = bordersOn && !realistic && camAlt < 20000; borders.scale.setScalar(terrainShown ? 1.0016 : 1);   // sur le relief satellite, les limites flottent au-dessus des montagnes (1,0014 au plus)
-      for (let k = 1; k < earth.children.length; k++) if (earth.children[k].isLineSegments) earth.children[k].visible = camAlt < 20000 && !terrainShown && !realistic;   // dézoomé : plus de trait de côte ; sur le relief satellite il flotterait au-dessus
+      borders.visible = bordersOn && !realistic && camAlt < CONTOUR_MAX_ALT_KM; borders.scale.setScalar(terrainShown ? 1.0016 : 1);   // sur le relief satellite, les limites flottent au-dessus des montagnes (1,0014 au plus)
+      for (let k = 1; k < earth.children.length; k++) if (earth.children[k].isLineSegments) earth.children[k].visible = camAlt < CONTOUR_MAX_ALT_KM && !terrainShown && !realistic;   // dézoomé : plus de trait de côte ; sur le relief satellite il flotterait au-dessus
     }
     // échelle : longueur « ronde » (1, 2, 5 × 10^n) qui fait 70 à 170 px au point regardé
     {

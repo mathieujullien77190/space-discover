@@ -33,7 +33,6 @@ export type Store = EngineState &
     setBodyCategory: (category: BodyCategory) => void
     cycleNudgeStep: () => void
     setCardCollapsed: (on: boolean) => void
-    toggleClouds: () => void
     toggleBorders: () => void
     toggleCapitals: () => void
     toggleObservatories: () => void
@@ -64,7 +63,7 @@ export const useStore = create<Store>((set) => ({
   nudgeStep: 1,
   cardCollapsed: readCardCollapsed(),
   issView: false,
-  clouds: false,
+  clouds: false,   // publié par le moteur : nuages VISIBLES (toujours actifs, retirés sous 1 200 km) ; sert au crédit
   borders: false,   // options de la Terre (fiche de la Terre et d'un observatoire) : seuls les observatoires sont cochés par défaut
   capitals: false,
   observatories: true,
@@ -117,11 +116,6 @@ export const useStore = create<Store>((set) => ({
     set((s) => {
       s.engine?.setObservatories(!s.observatories)
       return { observatories: !s.observatories }
-    }),
-  toggleClouds: () =>
-    set((s) => {
-      s.engine?.setClouds(!s.clouds)
-      return { clouds: !s.clouds }
     }),
   cycleNudgeStep: () => set((s) => ({ nudgeStep: (s.nudgeStep + 1) % NUDGE_STEPS.length })),
 }))

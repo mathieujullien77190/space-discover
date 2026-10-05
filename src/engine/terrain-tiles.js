@@ -8,7 +8,7 @@ export const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/
 export const TERRAIN_CREDIT = 'Imagerie : Esri, Maxar, Earthstar Geographics, USDA, USGS… · Altitudes : AWS Terrain Tiles (SRTM, GMTED, USGS 3DEP, GEBCO)';
 export const TERRAIN_Z_MIN = 3, TERRAIN_Z_MAX = 14;   // niveaux de zoom utilisés (14 ≈ 10 m par pixel d'image)
 export const TERRAIN_RADIUS = 4;                       // grille de (2 × 4 + 1)² = 81 tuiles autour du point regardé (une couronne de plus : les côtés ne montraient que la carte floue)
-export const TERRAIN_MAX_ALT_KM = 4000;                // au-dessus : la carte dessinée de la Terre reste affichée ; le premier niveau (le plus grossier) apparaît à 4 000 km, les niveaux plus fins s'ajoutent en descendant (c'était 1 000 km)
+export const TERRAIN_MAX_ALT_KM = 1200;                // au-dessus : la carte dessinée de la Terre reste affichée ; le premier niveau (le plus grossier) apparaît à 4 000 km, les niveaux plus fins s'ajoutent en descendant (c'était 1 000 km)
 export const TERRAIN_HYSTERESIS = 1.12;                // une fois affiché, le relief ne disparaît qu'à 12 % au-dessus du seuil
 export const TERRAIN_EXAGGERATION = 1;                 // relief à l'échelle réelle ×1 (c'était ×2 : « les montagnes sont trop hautes ») (à 6 378 km de rayon, l'Everest ne fait que 0,14 % : invisible sinon)
 export const TERRAIN_GLOW = 0.3;                       // lumière propre ajoutée à l'imagerie (relève les ombres du relief : la face à l'ombre du Soleil n'est plus noire)

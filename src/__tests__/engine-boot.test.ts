@@ -398,13 +398,22 @@ describe('createEngine (rendu factice)', () => {
     engine._frame(T + 250)
     expect(engine._starInfo().ring).toBe('none')
   })
-  it('nuages : option prise en compte (rien n’est chargé tant qu’elle est éteinte)', () => {
+  it('nuages : toujours actifs (plus de bouton) ; l’option moteur reste commandable ; rien n’est chargé hors http', () => {
     engine._frame(performance.now() + 100)
-    expect(engine._clouds()).toMatchObject({ on: false, state: null, visible: false })
-    engine.setClouds(true); engine._frame(performance.now() + 200)
-    expect(engine._clouds().on).toBe(true)
+    expect(engine._clouds()).toMatchObject({ on: true, visible: false })   // actifs d’office (image pas encore arrivée : invisibles)
     engine.setClouds(false); engine._frame(performance.now() + 300)
-    expect(engine._clouds().visible).toBe(false)
+    expect(engine._clouds()).toMatchObject({ on: false, visible: false })
+    engine.setClouds(true); engine._frame(performance.now() + 400)
+    expect(engine._clouds().on).toBe(true)
+  })
+  it('contours (côte, limites de pays) : retirés en vue dézoomée, affichés sous 1 200 km', async () => {
+    await new Promise((r) => setTimeout(r, 500))
+    const T = performance.now() + 120000
+    engine.selectView('earth'); engine.setBorders(true); engine._frame(T + 100); engine._frame(T + 200)
+    expect(engine._mapOptions().borders).toBe(false)                           // vue Terre à ≈ 15 000 km
+    engine.goObservatory('pic-du-midi'); for (let i = 0; i < 3; i++) engine._frame(T + 300 + i * 100)   // 40 km d’altitude
+    expect(engine._mapOptions().borders).toBe(true)
+    engine.setBorders(false); engine.selectView('earth'); engine._frame(T + 800)
   })
   it('options de carte : observatoires cochés par défaut ; limites de pays, capitales et constellations à la demande', () => {
     engine.selectView('earth'); engine._frame(performance.now() + 100)
@@ -417,7 +426,7 @@ describe('createEngine (rendu factice)', () => {
     engine.setBorders(true); engine.setCapitals(true); engine.setConstellations(true); engine.setDayNight(true)
     engine._frame(performance.now() + 200)
     const on = engine._mapOptions()
-    expect(on.borders).toBe(true)
+    expect(on.borders).toBe(false)                                             // limites de pays retirées en vue Terre dézoomée (> 1 200 km)
     expect(on.capitals).toBeGreaterThan(5)                                     // vue de départ : l’Europe en face, plusieurs capitales visibles
     const names = [...overlay.querySelectorAll<HTMLElement>('.eng-l3d.cap')].filter((e) => e.style.display === 'block').map((e) => e.textContent)
     expect(names.some((t) => /Paris/.test(t ?? ''))).toBe(true)

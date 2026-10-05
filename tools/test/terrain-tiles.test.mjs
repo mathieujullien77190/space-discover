@@ -45,9 +45,9 @@ const sag = (b, seg) => 6378137 * (1 - Math.cos((Math.max(b[1] - b[0], b[3] - b[
 const bz5 = tileBounds(16, 11, 5), bz3 = tileBounds(4, 2, 3), bz10 = tileBounds(518, 352, 10);
 check(sag(bz5, tileSegments(bz5, 12)) < 6378137 * SEA_LEVEL_OFFSET, 'tuile lointaine z5 : ' + tileSegments(bz5, 12) + ' facettes, la corde plonge de ' + sag(bz5, tileSegments(bz5, 12)).toFixed(0) + ' m < ' + Math.round(6378137 * SEA_LEVEL_OFFSET) + ' m de marge (sinon la carte dessinée perce)');
 check(tileSegments(bz3, 12) === Math.ceil(45 / MAX_FACET_DEG) && tileSegments(bz10, 12) === 12 && tileSegments(bz10, 32) === 32 && MAX_FACET_DEG === 0.4, 'z3 : 45° / 0,4° = 113 facettes (plafond 128) ; z10 : le minimum demandé suffit');
-const high = terrainLevels(2, 48, 4000, 50, 1.8), hh = horizonKm(4000), lastH = high[high.length - 1];
-check(TERRAIN_MAX_ALT_KM === 4000, 'le fond de carte détaillé apparaît dès 4 000 km d’altitude');
-check(high.length >= 2 && high[0].z < DEM_MIN_Z && !high[0].dem, 'à 4 000 km : ' + high.length + ' niveaux (z ' + high.map(l => l.z).join(', ') + '), le plus fin sans téléchargement d’altitudes (z < ' + DEM_MIN_Z + ')');
+const high = terrainLevels(2, 48, 1200, 50, 1.8), hh = horizonKm(1200), lastH = high[high.length - 1];
+check(TERRAIN_MAX_ALT_KM === 1200, 'le fond de carte détaillé apparaît dès 1 200 km d’altitude');
+check(high.length >= 2 && high[0].z < DEM_MIN_Z && !high[0].dem, 'à 1 200 km : ' + high.length + ' niveaux (z ' + high.map(l => l.z).join(', ') + '), le plus fin sans téléchargement d’altitudes (z < ' + DEM_MIN_Z + ')');
 check((3 + 0.5) * 40075 * Math.cos(48 * Math.PI / 180) / Math.pow(2, lastH.z) >= hh * 0.9 || lastH.z === 3, 'les niveaux atteignent l’horizon (' + Math.round(hh) + ' km) ou le zoom minimal');
 if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }
 // qualité max au ras du sol (observatoire, 3 km) : tous les niveaux ont leur relief, pas de falaise contre une tuile lointaine à plat
