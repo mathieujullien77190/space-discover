@@ -379,33 +379,15 @@ describe('createEngine (rendu factice)', () => {
     expect(engine._moonBoost()).toBe(1)
     expect(engine._moonBright()).toBe(1)
   })
-  it('avion A320 : apparaît à l’entrée de la vue observatoire, continue de voler hors de la vue, disparaît d’un coup quand l’observatoire ne le voit plus', async () => {
+  it('plus d’avion A320 qui apparaît ni disparaît dans la vue observatoire', async () => {
     await new Promise((r) => setTimeout(r, 500))
     const T = performance.now() + 150000
-    engine.resetTime(); engine.setSimSpeed(1); engine.setDate(Date.UTC(2026, 9, 5, 12, 0, 0)); engine._frame(T + 100)   // midi UTC : plein jour au Pic du Midi
-    expect(engine._airliner().active).toBe(false)                              // rien avant la vue observatoire
+    engine.resetTime(); engine.setSimSpeed(1); engine.setDate(Date.UTC(2026, 9, 5, 12, 0, 0)); engine._frame(T + 100)
     engine.goObservatory('pic-du-midi'); engine.setObservatoryView(true)
-    for (let i = 0; i < 3; i++) engine._frame(T + 200 + i * 100)
-    const a = engine._airliner()
-    expect(a.active).toBe(true)                                                // un avion est apparu
-    expect(a.elevation).toBeGreaterThan(8)                                     // déjà dans le ciel de l’observatoire, mais DE LOIN (bas sur l’horizon)
-    expect(a.elevation).toBeLessThan(20)
-    expect(a.px).toBeGreaterThan(0.5)                                          // modèle 3D à la taille réelle : seul affichage possible (aucun point) ; visible seulement s’il fait ≥ 2 px
-    expect(a.model).toBe(a.px >= 2)
-    expect(a.lights).toBe(false)                                               // de jour : pas de feux
-    engine.selectView('earth'); engine._frame(T + 700); engine._frame(T + 800)
-    expect(engine._airliner().active).toBe(true)                               // on a quitté la vue : l’avion vole toujours
-    engine._airlinerSkip(2000); engine._frame(T + 900)
-    expect(engine._airliner()).toMatchObject({ active: false, count: 0, model: false, lights: false })   // disparu d’un coup
-    engine.setDate(Date.UTC(2026, 9, 5, 0, 0, 0))                              // minuit UTC : nuit
-    engine.goObservatory('pic-du-midi'); engine.setObservatoryView(true); engine._frame(T + 1000); engine._frame(T + 1100)
-    expect(engine._airliner().active).toBe(true)                               // une nouvelle entrée en vue : un nouvel avion
-    expect(engine._airliner()).toMatchObject({ night: true, lights: false, glow: false })   // de nuit mais loin (> 30 km) : pas encore de feux
-    engine._airlinerSkip(150); engine._frame(T + 1150)                         // l’avion s’est rapproché (< 30 km)
-    expect(engine._airliner()).toMatchObject({ night: true, lights: true, glow: true })   // feux de navigation fixes (+ strobes blancs clignotants) allumés
-    expect(engine._airlinerSpawnMore()).toBe(true)                             // d’autres avions peuvent arriver pendant la vue observatoire
-    expect(engine._airliner().count).toBe(2)
-    engine.selectView('earth'); engine._frame(T + 1200)
+    for (let i = 0; i < 5; i++) engine._frame(T + 200 + i * 20000)             // plusieurs dizaines de secondes dans la vue
+    expect(engine._airliner().active).toBe(false)
+    expect(engine._airliner().count).toBe(0)
+    engine.selectView('earth'); engine._frame(T + 150000)
     engine.resetTime()
   })
   it('observatoire LUNAIRE (Apollo 11) : étiquette cliquable sur la Lune, fiche, vue debout sur le sol à 1,8 m, quitter', async () => {

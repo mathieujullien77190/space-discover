@@ -351,7 +351,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       moonView = !!on; if (on) { ensureMoonGroup(obsMoon); cam.fp = { yaw: 0, pitch: 2, fov: 60 }; cam.fpUp.set(0, 0, 0); } else { cam.fp = null; for (const k in moonGroups) moonGroups[k].visible = false; }
       publish({ observatory: { id: obsId, view: moonView } }); return;
     }
-    if (on && airliners.count() === 0 && obsFrame) airliners.spawn({ frame: obsFrame, groundR: Math.hypot(...obsFrame.ground), eye: new THREE.Vector3().fromArray(obsFrame.eye) });   // un A320 apparaît au bon endroit, déjà dans le ciel de l'observatoire
+    // (plus d'avion qui apparaît à l'entrée de la vue observatoire : demande « supprime les avions qui apparaissent et disparaissent des observatoires » ; le module airliners.js reste)
     if (on) { const f = obsFrame; obsPos.set(f.eye[0], f.eye[1], f.eye[2]); obsSrc.dir.set(f.south[0], f.south[1], f.south[2]); obsSrc.radial.set(f.up[0], f.up[1], f.up[2]); cam.fp = { yaw: 0, pitch: OBS_VIEW_PITCH, fov: OBS_VIEW_FOV }; cam.fpUp.set(0, 0, 0); obsView = true; }
     else { obsView = false; cam.fp = null; }
     publish({ observatory: { id: obsId, view: obsView } });
@@ -586,7 +586,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       if (realistic || issHidden || (issView && cam.fp && focusSat === 'concorde')) { concScreen = null; concLabel.style.display = 'none'; concDot.visible = false; concModel.visible = false; }   // vue réaliste, dézoomé ou vue DEPUIS le Concorde : ni modèle, ni repère, ni nom
     } else { concModel.visible = false; concDot.visible = false; }
     // AVIONS : modèle 3D à la taille réelle (rien s'il est trop petit), traînée de condensation, feux la nuit ; disparaissent d'un coup sous 12° d'élévation vu de l'observatoire
-    airliners.update({ dt, camera, fov: camera.fov, height: innerHeight, sunDir: airSun.copy(babs[STAR]).normalize(), hide: solarMode || (camera.position.length() - 1) * R_KM > 2000, hiddenByEarth, obsActive: obsView && !!obsFrame, obsFrame, groundR: obsFrame ? Math.hypot(...obsFrame.ground) : 1, eye: obsFrame ? airEye.fromArray(obsFrame.eye) : airEye, R_KM });
+    airliners.update({ dt, camera, fov: camera.fov, height: innerHeight, sunDir: airSun.copy(babs[STAR]).normalize(), hide: solarMode || (camera.position.length() - 1) * R_KM > 2000, hiddenByEarth, obsActive: false, obsFrame, groundR: obsFrame ? Math.hypot(...obsFrame.ground) : 1, eye: obsFrame ? airEye.fromArray(obsFrame.eye) : airEye, R_KM });
     // caractéristiques 3D : mise à jour puis étiquettes projetées à l'écran
     for (const [sat, st] of [['iss', iss], ['hubble', hub], ['concorde', conc]]) for (const f of ISS_FEATURES) {   // une caractéristique « onlyIss » (cotes, hauteur) n'apparaît que sur la vue du satellite regardé
       const inst = featInst[sat === 'iss' ? f.id : sat + ':' + f.id]; if (!inst) continue;
