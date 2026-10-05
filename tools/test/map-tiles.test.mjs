@@ -1,5 +1,5 @@
 // Fond de carte « plan » : mathématiques des tuiles Web Mercator (pures) : tuile de Paris, bornes, zoom selon l'altitude, grille autour du point regardé.
-import { MAP_STYLES, mapMaxAlt, mapTiles, mapZoom, mercY, tileAt, tileBounds, tileUrl } from '../../src/engine/map-tiles.js';
+import { FRANCE_BOX, MAP_STYLES, mapMaxAlt, mapTiles, mapZoom, mercY, tileAt, tileBounds, tileInBox, tileUrl } from '../../src/engine/map-tiles.js';
 
 const fails = [], check = (c, m) => { console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if (!c) fails.push(m); };
 const p = tileAt(2.3522, 48.8566, 10);
@@ -24,4 +24,7 @@ check(tileUrl(5, 1, 2, MAP_STYLES.terrain.url) === 'https://a.tile.opentopomap.o
 check(MAP_STYLES.street.credit.includes('Esri') && MAP_STYLES.terrain.credit.includes('OpenTopoMap'), 'crédits des deux fonds présents');
 check(MAP_STYLES.clean.zMax === 8 && MAP_STYLES.clean.url.includes('World_Physical_Map') && MAP_STYLES.ocean.zMax === 10, 'fond sans noms : Esri World Physical Map (niveau 8 au plus), ancien fond Ocean Base en réserve');
 check(mapMaxAlt('clean') === 400 && mapMaxAlt('street') === 900, 'seuil de la carte détaillée sans noms : 400 km (autres : 900 km)');
+check(MAP_STYLES.contours.kind === 'elevation' && MAP_STYLES.contours.url.includes('terrarium') && MAP_STYLES.contours.zMax === 12, 'courbes de niveau : tuiles d’altitude Terrarium, niveau 12 au plus');
+const fr = tileAt(2.35, 48.85, 9), es = tileAt(-3.7, 40.4, 9), ch = tileAt(8.5, 47.4, 9);
+check(tileInBox(fr, FRANCE_BOX) && !tileInBox(es, FRANCE_BOX) && tileInBox(ch, FRANCE_BOX) === true, 'courbes de niveau : la tuile de Paris est en France, celle de Madrid non');
 if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }

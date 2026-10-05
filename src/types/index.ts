@@ -28,7 +28,7 @@ export type StoryStep = {
   title: string
   text: string
   pause?: boolean
-  camera?: { follow?: string; firstPerson?: boolean; slowMotion?: boolean; issView?: boolean }
+  camera?: { follow?: string; firstPerson?: boolean; slowMotion?: boolean; issView?: boolean; mapDetail?: boolean }
   scene?: 'cabin'   // illustration 3D affichée dans l'étape
   image?: { src: string; alt: string; credit: string; license: string }
   source?: string
@@ -51,7 +51,7 @@ export type EngineState = {
 }
 
 // Correctif envoyé par le moteur : chaque tranche peut être partielle (fusion superficielle dans le store).
-export type MapStyle = 'drawn' | 'street' | 'clean' | 'ocean' | 'terrain'   // fond de carte : dessiné (Natural Earth), plan type Google Maps (CARTO / OpenStreetMap) ou relief (forêts, montagnes : OpenTopoMap)
+export type MapStyle = 'drawn' | 'street' | 'clean' | 'ocean' | 'terrain' | 'contours'   // fond de carte : dessiné (Natural Earth), plan type Google Maps (CARTO / OpenStreetMap) ou relief (forêts, montagnes : OpenTopoMap)
 export type EnginePatch = {
   [K in keyof EngineState]?: EngineState[K] extends object ? Partial<EngineState[K]> : EngineState[K]
 } & { bigVehicles?: boolean; firstPerson?: boolean }   // le moteur peut aussi activer le mode engins géants (histoire : à 50 km d'altitude)

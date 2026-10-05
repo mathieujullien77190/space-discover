@@ -1,17 +1,18 @@
 import { CLOUDS_CREDIT } from '@/engine/clouds'
+import { TERRAIN_CREDIT } from '@/engine/contours'
 import { MAP_STYLES } from '@/engine/map-tiles'
 import { useStore } from '@/store'
 import styles from './MapCredit.module.css'
 
 // Crédit obligatoire des fonds de carte en ligne (plan, relief) : affiché tant qu'ils sont choisis.
 export const MapCredit = () => {
-  const style = useStore((s) => s.mapStyle)
+  const detail = useStore((s) => s.mapDetail)
   const clouds = useStore((s) => s.clouds)
-  if (style === 'drawn' && !clouds) return null
+  if (!detail && !clouds) return null
   return (
     <p className={styles.credit}>
-      {style !== 'drawn' && <>Fond de carte {MAP_STYLES[style].credit}</>}
-      {style !== 'drawn' && clouds && ' · '}
+      {detail && <>Carte {MAP_STYLES.clean.credit} · {TERRAIN_CREDIT}</>}
+      {detail && clouds && ' · '}
       {clouds && CLOUDS_CREDIT}
     </p>
   )

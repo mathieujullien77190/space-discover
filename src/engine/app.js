@@ -651,7 +651,9 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       const camE = launch && launch.inertial ? camera.position.clone().applyAxisAngle(Y_AXIS, -LCH.WE * launch.T) : camera.position, camAlt = (camE.length() - 1) * R_KM, cl = Math.asin(camE.y / camE.length()) / DEG, co = Math.atan2(-camE.z, camE.x) / DEG;
       let inside = false;
       clouds.update({ on: cloudsOn, camAlt, http: isHttp() });
-      mapShown = mapLayer.update({ on: mapStyle !== 'drawn', style: mapStyle, camAlt, cl, co, fov: camera.fov, aspect: camera.aspect, http: isHttp() });   // le plan remplace la carte dessinée sous 900 km quand ses tuiles sont arrivées
+      const wasShown = mapShown;
+      mapShown = mapLayer.update({ on: mapStyle !== 'drawn', camAlt, cl, co, fov: camera.fov, aspect: camera.aspect, http: isHttp() });   // le plan remplace la carte dessinée sous 900 km quand ses tuiles sont arrivées
+      if (mapShown !== wasShown) publish({ mapDetail: mapShown });   // l'interface affiche les crédits de la carte détaillée seulement quand elle est visible
       for (const p of PHOTO_PATCHES) {
         const [w, e, s, n] = p.bounds;
         if (p.kind === 'tile' && mapShown) { if (p.mesh) p.mesh.visible = false; continue; }   // le plan est affiché : les tuiles dessinées se taisent
@@ -733,7 +735,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     selectView,
     goIss, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
     setStorySpeed: v => { if (launch && Number.isFinite(v) && v > 0) launch.speed = v; },   // vitesse du temps pendant une histoire (ne relance pas une étape en pause)
-    setMapStyle: style => { mapStyle = style === 'street' || style === 'clean' || style === 'ocean' || style === 'terrain' ? style : 'drawn'; },   // 'drawn' (Natural Earth), 'street' (plan type Google Maps) ou 'terrain' (relief, forêts, montagnes)
+    setMapStyle: style => { mapStyle = style === 'drawn' ? 'drawn' : 'clean'; },   // 'clean' (défaut) = automatique : carte dessinée de loin, carte détaillée sans noms sous 400 km (+ courbes de niveau sur la France) ; 'drawn' = carte dessinée partout
     _map: () => Object.assign({ style: mapStyle, shown: mapShown }, mapLayer.stats()),
     setClouds: on => { cloudsOn = !!on; },
     _clouds: () => Object.assign({ on: cloudsOn }, clouds.stats()),

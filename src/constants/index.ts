@@ -40,7 +40,7 @@ export const NUDGE_STEPS: ReadonlyArray<number> = [0.5, 1, 5, 15]   // pas de r�
 export const NUDGE_FIRST_DELAY_MS = 350   // délai avant la répétition en maintenant le bouton
 export const NUDGE_REPEAT_MS = 70
 export const BIG_VEHICLES_LABEL = '🔭 Engins ×1000'   // mode « engins géants » (fusées, satellites, ISS)
-export const MAP_STYLE_ORDER: MapStyle[] = ['drawn', 'clean']   // ordre du bouton « fond de carte » : seulement des cartes SANS noms (« street » et « terrain » restent dans le code, hors du bouton)
-export const MAP_LABELS: Record<MapStyle, string> = { drawn: '🗺 Détail désactivé', street: '🗺 Plan', clean: '🗺 Détail < 400 km', ocean: '🗺 Détail (océan)', terrain: '⛰ Relief' }   // libellé = fond actuel
+export const MAP_STYLE_ORDER: MapStyle[] = ['drawn', 'clean', 'contours']   // ordre du bouton « fond de carte » : seulement des cartes SANS noms (« street » et « terrain » restent dans le code, hors du bouton)
+export const MAP_LABELS: Record<MapStyle, string> = { drawn: '🗺 Détail désactivé', street: '🗺 Plan', clean: '🗺 Détail < 400 km', ocean: '🗺 Détail (océan)', contours: '〰 Courbes de niveau', terrain: '⛰ Relief' }   // libellé = fond actuel
 export const ISS_VIEW_LABELS = { on: '🛰 Vue depuis l’ISS', off: '↩ Quitter la vue ISS' } as const   // bouton de la barre du haut
 export const CLOUDS_LABEL = '☁ Nuages'   // couverture nuageuse quasi temps réel

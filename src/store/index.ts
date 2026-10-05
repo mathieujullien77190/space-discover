@@ -15,6 +15,7 @@ export type UiState = {
   achievements: string[]   // hauts faits débloqués (mémorisés)
   slowMotion: boolean   // histoire : ralenti aux étapes (publié par le moteur)
   clouds: boolean   // couverture nuageuse affichée
+  mapDetail: boolean   // la carte détaillée (sous 400 km) est affichée : crédits à montrer (publié par le moteur)
   mapStyle: MapStyle   // fond de carte de la Terre
   issView: boolean   // vue depuis l'ISS (publié par le moteur)
   firstPerson: boolean   // vue à la première personne (publié par le moteur)
@@ -63,6 +64,7 @@ export const useStore = create<Store>((set) => ({
   firstPerson: false,
   issView: false,
   mapStyle: 'clean',
+  mapDetail: false,
   clouds: false,
   slowMotion: true,
   setEngine: (engine) => set({ engine }),

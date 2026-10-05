@@ -1,8 +1,10 @@
 // Fond de carte « plan » (type Google Maps / Mapbox) : tuiles Web Mercator (« slippy map » z/x/y). Fonctions PURES (sans three.js), testées dans Node.
 // CARTO « Voyager » (essayé d'abord) EXIGE maintenant une clé d'API (les tuiles affichent « API KEY REQUIRED ») : abandonné.
+import { TERRAIN_CREDIT, TERRAIN_URL } from './contours.js';
 // Styles (tuiles SANS clé, avec CORS) : « street » = Esri « World Topographic Map » (vert clair, forêts, montagnes en relief ombré, lacs et mers bleus, routes, villes : le plus proche de Google Maps), « terrain » = OpenTopoMap (CC-BY-SA : relief très contrasté, courbes de niveau ; zoom max 17).
 // Ce sont des SERVICES EN LIGNE tiers : il faut citer leurs crédits (MAP_STYLES[style].credit) et respecter leurs règles d'usage (usage raisonnable, pas de téléchargement en masse).
 export const MAP_STYLES = {
+  contours: { url: TERRAIN_URL, credit: TERRAIN_CREDIT, zMax: 12, maxAltKm: 900, kind: 'elevation' },   // courbes de niveau tous les 100 m, une couleur par courbe : tuiles d'ALTITUDE peintes dans le navigateur (contours.js)
   street: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', credit: 'Esri, HERE, Garmin, USGS, NGA, © OpenStreetMap contributors', zMax: 17 },
   clean: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', credit: 'Esri, US National Park Service', zMax: 8, maxAltKm: 400 },   // carte PHYSIQUE peinte (vert et jaune, neiges blanches, lacs bleus), SANS noms ; niveau 8 au plus (au-delà : image vide)
   ocean: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}', credit: 'Esri, GEBCO, NOAA, National Geographic, DeLorme, HERE, Geonames.org, and other contributors', zMax: 10, maxAltKm: 400 },   // ancien fond « sans noms » (plus pâle), gardé en réserve
@@ -57,4 +59,11 @@ export function mapTiles(lon, lat, z, radius = MAP_RADIUS) {
     out.push({ x, y, z, key: z + '/' + x + '/' + y, d: Math.hypot(dx, dy) });
   }
   return out.sort((a, b) => a.d - b.d);   // les plus proches du centre d'abord
+}
+
+// France métropolitaine (Corse comprise) : rectangle [lonO, lonE, latS, latN] ; les tuiles qui le touchent reçoivent les courbes de niveau
+export const FRANCE_BOX = [-5.6, 9.7, 41.2, 51.2];
+export function tileInBox(tl, box) {
+  const b = tileBounds(tl.x, tl.y, tl.z);
+  return b[1] > box[0] && b[0] < box[1] && b[3] > box[2] && b[2] < box[3];
 }

@@ -1,4 +1,4 @@
-export const MAP_STYLES: Record<'street' | 'clean' | 'ocean' | 'terrain', { url: string; credit: string; zMax: number; maxAltKm?: number }>
+export const MAP_STYLES: Record<'street' | 'clean' | 'ocean' | 'terrain' | 'contours', { url: string; credit: string; zMax: number; maxAltKm?: number; kind?: string }>
 export const MAP_URL: string
 export const MAP_CREDIT: string
 export const MAP_Z_MIN: number
@@ -16,3 +16,5 @@ export function tileAt(lon: number, lat: number, z: number): { x: number; y: num
 export function mercY(lat: number): number
 export function mapZoom(altKm: number, latDeg: number, fovDeg: number, aspect: number): number
 export function mapTiles(lon: number, lat: number, z: number, radius?: number): { x: number; y: number; z: number; key: string; d: number }[]
+export const FRANCE_BOX: [number, number, number, number]
+export function tileInBox(tl: { x: number; y: number; z: number }, box: [number, number, number, number]): boolean

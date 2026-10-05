@@ -47,16 +47,14 @@ describe('TopBar + SubMenu', () => {
     expect(engine.setClouds).toHaveBeenLastCalledWith(true)
     expect(screen.getByText(/matteason/)).toBeInTheDocument()
   })
-  it('bouton fond de carte : dessiné ↔ sans noms (aucun fond avec des noms de villes), avec crédit pour le fond en ligne', () => {
-    useStore.setState({ mapStyle: 'drawn' })
-    render(<><TopBar /><MapCredit /></>)
+  it('crédits de la carte détaillée : affichés seulement quand elle est visible', () => {
+    useStore.setState({ mapDetail: false, clouds: false })
+    const { rerender } = render(<MapCredit />)
     expect(screen.queryByText(/Esri/)).toBeNull()
-    fireEvent.click(screen.getByText('🗺 Détail désactivé'))
-    expect(engine.setMapStyle).toHaveBeenLastCalledWith('clean')
+    act(() => useStore.setState({ mapDetail: true }))
+    rerender(<MapCredit />)
     expect(screen.getByText(/Esri/)).toBeInTheDocument()
-    fireEvent.click(screen.getByText('🗺 Détail < 400 km'))
-    expect(engine.setMapStyle).toHaveBeenLastCalledWith('drawn')
-    expect(screen.queryByText(/Esri/)).toBeNull()
+    expect(screen.getByText(/AWS Terrain/)).toBeInTheDocument()
   })
   it('Astres : la Lune n’est pas une planète : elle apparaît sous la Terre, pas sous Mars', () => {
     render(<><TopBar /><SubMenu /></>)

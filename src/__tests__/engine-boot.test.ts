@@ -467,14 +467,13 @@ describe('createEngine (rendu factice)', () => {
     expect(engine._vehicle()!.vk).toBe(1)
     engine.stopRocket()
   })
-  it('fond de carte plan / relief : choix pris en compte (rien n’est chargé hors de 900 km)', () => {
-    expect(engine._map().style).toBe('clean')                                   // par défaut : carte détaillée sans noms sous 400 km
-    engine.setMapStyle('street'); engine._frame(performance.now() + 100)
-    expect(engine._map()).toMatchObject({ style: 'street', shown: false, tiles: 0 })
-    engine.setMapStyle('terrain'); engine._frame(performance.now() + 200)
-    expect(engine._map().style).toBe('terrain')
-    engine.setMapStyle('drawn'); engine._frame(performance.now() + 300)
+  it('fond de carte : automatique (rien n’est chargé hors de 400 km), désactivable', () => {
+    expect(engine._map().style).toBe('clean')
+    engine._frame(performance.now() + 100)
+    expect(engine._map()).toMatchObject({ shown: false, tiles: 0 })
+    engine.setMapStyle('drawn'); engine._frame(performance.now() + 200)
     expect(engine._map().style).toBe('drawn')
+    engine.setMapStyle('clean')
   })
   it('vue depuis l’ISS : caméra sur la station, tête vers le haut, coupée par un changement de vue', () => {
     engine.resetTime(); engine._frame(performance.now() + 350)               // la date a pu être changée par un test précédent (l’ISS n’existe qu’à partir de 1998)
