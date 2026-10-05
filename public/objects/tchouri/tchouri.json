@@ -1,0 +1,94 @@
+{
+  "kind": "body",
+  "bodyType": "comet",
+  "name": "67P/Tchourioumov-Guérassimenko (Tchouri)",
+  "radiusKm": 2,
+  "massKg": 9980000000000,
+  "around": "sun",
+  "motion": {
+    "frame": "heliocentric",
+    "model": "kepler",
+    "semiMajorAxisKm": 518057426,
+    "eccentricity": 0.641,
+    "inclinationDeg": 7.04,
+    "nodeDeg": 50.14,
+    "argPerigeeDeg": 12.78,
+    "meanAnomalyDeg": 0,
+    "epochD2000": 7976,
+    "periodDays": 2354
+  },
+  "appearance": {
+    "kind": "mesh",
+    "model": "tchouri.obj",
+    "kmPerUnit": 2.7115,
+    "color": "#7d7469",
+    "tail": {
+      "color": "#bfe3ff",
+      "lengthKmAt1AU": 4000000,
+      "widthKm": 300000
+    }
+  },
+  "rotation": {
+    "_note": "Éléments orbitaux, rotation (pôle α0 = 69,3°, δ0 = 64,1° ; période 12,4 h), masse, dimensions et faits ÉCRITS DE MÉMOIRE (à vérifier). Le maillage est le modèle de forme de l'ESA (CC BY-SA 3.0 IGO) ; son échelle est calée sur le volume 18,7 km³. L'angle du méridien origine W0 est arbitraire.",
+    "poleRaDeg": 69.3,
+    "poleDecDeg": 64.1,
+    "w0Deg": 0,
+    "rateDegPerDay": 696.774
+  },
+  "trace": {
+    "fullOrbit": true,
+    "color": "#9fd0ff"
+  },
+  "dot": {
+    "color": "#bfe3ff",
+    "minDistanceUnits": 0
+  },
+  "label": {
+    "text": "Tchouri",
+    "metricText": "Tchouri · noyau ≈ {diameterKm} km",
+    "minDistanceUnits": 0.0005
+  },
+  "menu": {
+    "order": 5.01,
+    "icon": "☄",
+    "view": {
+      "distanceUnits": 0.0035,
+      "text": "Vue de la comète 67P/Tchourioumov-Guérassimenko : modèle de forme de l’ESA (mission Rosetta), orbite de 6,4 ans, queue à l’opposé du Soleil"
+    }
+  },
+  "card": {
+    "_note": "Éléments orbitaux, rotation (pôle α0 = 69,3°, δ0 = 64,1° ; période 12,4 h), masse, dimensions et faits ÉCRITS DE MÉMOIRE (à vérifier). Le maillage est le modèle de forme de l'ESA (CC BY-SA 3.0 IGO) ; son échelle est calée sur le volume 18,7 km³. L'angle du méridien origine W0 est arbitraire.",
+    "image": "card.png",
+    "nearUnits": 0.03,
+    "facts": [
+      {
+        "label": "Forme",
+        "value": "deux lobes : « canard en plastique »"
+      },
+      {
+        "label": "Dimensions",
+        "value": "grand lobe 4,1 × 3,3 × 1,8 km, petit lobe 2,6 × 2,3 × 1,8 km"
+      },
+      {
+        "label": "Rotation",
+        "value": "12,4 heures"
+      },
+      {
+        "label": "Densité",
+        "value": "≈ 0,53 g/cm³ (très poreuse)"
+      },
+      {
+        "label": "Mission",
+        "value": "Rosetta (ESA) en orbite de 2014 à 2016"
+      },
+      {
+        "label": "Atterrisseur",
+        "value": "Philae, posé le 12 novembre 2014"
+      },
+      {
+        "label": "Dernier périhélie",
+        "value": "novembre 2021"
+      }
+    ]
+  }
+}

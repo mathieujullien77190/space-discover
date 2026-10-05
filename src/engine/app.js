@@ -18,6 +18,7 @@ import { EARTH_MAX_DIST, attachControls } from './controls.js';
 import { assetUrl, setBaseUrl } from './config.js';
 import { KM_AL, KM_UA, fmtAlt, fmtBig, fmtMass } from './format.js';
 import { createOverlay } from './overlay.js';
+import { parseObj } from './obj-mini.js';
 
 const VIEW_ISS = { yaw: -28.8, pitch: 24.9, dist: 0.393 };   // accès DIRECT à l'ISS, sans transition : vue réglée par l'utilisateur, un peu de derrière et au-dessus, à 393 m (yaw °, pitch °, distance km)
 const Y_AXIS = new THREE.Vector3(0, 1, 0), KMU = 1 / (R_KM * 1000), SITE_FALLBACK = LAUNCH_SITES[0];
@@ -77,10 +78,13 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       } else if (ap.kind === 'textured') {   // sphère habillée d'une carte équirectangulaire (longitudes −180…180 de gauche à droite) rangée dans le dossier de l'objet ; couleur unie tant qu'on est loin : la carte n'est téléchargée qu'à l'approche (voir la boucle)
         o.mesh = new THREE.Mesh(earthGeometry(96, 48), new THREE.MeshStandardMaterial({ color: new THREE.Color(ap.color || '#cccccc'), roughness: 1, metalness: 0 })); o.mesh.scale.setScalar(ru);
         o.texUrl = assetUrl((FLIGHT_OBJECT_FILES[b.id] || '').replace(/[^/]*$/, '') + ap.texture);
+      } else if (ap.kind === 'mesh') {   // noyau décrit par un modèle 3D (OBJ) rangé dans le dossier de l'objet : sphère de même rayon tant qu'on est loin, modèle téléchargé à l'approche (voir la boucle)
+        o.mesh = new THREE.Mesh(new THREE.SphereGeometry(ru, 24, 12), new THREE.MeshStandardMaterial({ color: new THREE.Color(ap.color || '#8a8178'), roughness: 1, metalness: 0 }));
+        o.meshUrl = assetUrl((FLIGHT_OBJECT_FILES[b.id] || '').replace(/[^/]*$/, '') + ap.model);
       } else if (ap.kind === 'sphere' || ap.kind === 'comet') o.mesh = new THREE.Mesh(new THREE.SphereGeometry(ru, 48, 24), new THREE.MeshStandardMaterial({ color: new THREE.Color(ap.color || '#cccccc'), roughness: 1, metalness: 0 }));
       if (o.mesh && ap.rings) o.mesh.add(ringMesh(ap.rings, b.radiusKm));   // anneaux : dans le plan équatorial de la planète (enfant du maillage : suit son orientation)
       if (o.mesh) solar.add(o.mesh);
-      if (ap.kind === 'comet' && ap.tail) { const tg = new THREE.ConeGeometry(1, 1, 24, 1, true); tg.translate(0, 0.5, 0); o.tail = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ color: new THREE.Color(ap.tail.color || '#bfe3ff'), transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); o.tail.frustumCulled = false; solar.add(o.tail); }
+      if (ap.tail) { const tg = new THREE.ConeGeometry(1, 1, 24, 1, true); tg.translate(0, 0.5, 0); o.tail = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ color: new THREE.Color(ap.tail.color || '#bfe3ff'), transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); o.tail.frustumCulled = false; solar.add(o.tail); }
       if (b.dot) o.dot = dotOf(new THREE.Color(b.dot.color || '#ffffff'));
       if (b.label) o.label = overlay.label(b.label.text);
       const tr = b.trace;
@@ -331,6 +335,10 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
         if (o.texUrl && !o.texReq && camera.position.distanceTo(ab) < 60 * ru) {   // carte de la surface : téléchargée à l'approche (moins de 60 rayons)
           o.texReq = true;
           new THREE.TextureLoader().load(o.texUrl, t => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); o.mesh.material.map = t; o.mesh.material.color.set(0xffffff); o.mesh.material.needsUpdate = true; }, undefined, e => console.warn('Texture de ' + b.name + ' indisponible :', e && e.message));
+        }
+        if (o.meshUrl && !o.meshReq && camera.position.distanceTo(ab) < 60 * ru) {   // modèle 3D : téléchargé à l'approche (moins de 60 rayons)
+          o.meshReq = true;
+          fetch(o.meshUrl).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); }).then(txt => { const old = o.mesh.geometry; o.mesh.geometry = parseObj(txt, b.appearance.kmPerUnit || 1, R_KM); old.dispose(); }).catch(e => console.warn('Modèle de ' + b.name + ' indisponible :', e && e.message));
         }
         if (o.tail) {   // queue de comète : à l'opposé de l'étoile, de plus en plus longue près d'elle, invisible au-delà de ≈ 3,5 UA
           const sv = bpos[STAR], rAU = Math.hypot(v.x - sv.x, v.y - sv.y, v.z - sv.z) / AU_U, tl = b.appearance.tail, k = Math.max(0, 1 - rAU / 3.5) / Math.pow(Math.max(0.3, rAU), 1.5), len = tl.lengthKmAt1AU / R_KM * k;

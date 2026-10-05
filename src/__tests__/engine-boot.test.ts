@@ -122,7 +122,7 @@ describe('createEngine (rendu factice)', () => {
   it('chaque astre du menu (planètes, lunes, comète, Soleil) se regarde sans erreur et affiche sa fiche de près', async () => {
     await new Promise((r) => setTimeout(r, 450))
     engine._frame(performance.now() + 500)
-    const ids = ['mercury', 'venus', 'earth', 'moon', 'sun', 'mars', 'halley', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto', 'phobos', 'deimos', 'io', 'europa', 'ganymede', 'callisto', 'amalthea', 'mimas', 'enceladus', 'tethys', 'dione', 'rhea', 'titan', 'iapetus', 'miranda', 'ariel', 'umbriel', 'titania', 'oberon', 'triton', 'proteus', 'charon']
+    const ids = ['mercury', 'venus', 'earth', 'moon', 'sun', 'mars', 'halley', 'tchouri', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto', 'phobos', 'deimos', 'io', 'europa', 'ganymede', 'callisto', 'amalthea', 'mimas', 'enceladus', 'tethys', 'dione', 'rhea', 'titan', 'iapetus', 'miranda', 'ariel', 'umbriel', 'titania', 'oberon', 'triton', 'proteus', 'charon']
     let t = 1000
     for (const id of ids) {
       engine.selectView(id)
