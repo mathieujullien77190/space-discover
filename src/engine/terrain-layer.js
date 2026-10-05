@@ -4,8 +4,8 @@ import * as THREE from 'three';
 import { ll } from './earth.js';
 import { DEM_URL, IMAGERY_URL, SEA_LEVEL_OFFSET, TERRAIN_GLOW, TERRAIN_HYSTERESIS, TERRAIN_MAX_ALT_KM, TERRAIN_Z_MAX, mercY, terrainTiles, terrainOpacity, terrainZoom, tileBounds, tileHeights, tileUrl, vertexRadius } from './terrain-tiles.js';
 
-const MAX_CACHED = 130;   // tuiles gardées en mémoire (≈ 130 × (image 350 Ko + relief) de mémoire graphique) : les plus anciennes sont libérées
-const MAX_LOADING = 10;   // images en cours de téléchargement
+const MAX_CACHED = 200;   // tuiles gardées en mémoire (≈ 200 × (image 350 Ko + relief) de mémoire graphique) : les plus anciennes sont libérées
+const MAX_LOADING = 16;   // images en cours de téléchargement
 export const TILE_SEGMENTS = 32;   // facettes par côté d'une tuile
 export const SKIRT = 6e-4;         // jupe sous les bords d'une tuile (≈ 4 km) : cache les fissures entre tuiles voisines de relief différent
 

@@ -20,7 +20,7 @@ export function attachControls(canvas, cam, onClick) {
     zoom(f);   // vue au sol comprise : la caméra monte / descend le long de l'axe
   };
   const rotate = (dx, dy) => {
-    if (cam.eg) { cam.eg.yaw -= dx * 0.3; cam.eg.tilt = Math.max(0, Math.min(85, cam.eg.tilt + dy * 0.3)); return; }   // vue au sol : glisser de côté = cap, en hauteur = inclinaison du regard par rapport à l'axe (le décor suit le doigt)
+    if (cam.eg) { cam.eg.yaw -= dx * 0.3; cam.eg.tilt = Math.max(0, Math.min(85, cam.eg.tilt - dy * 0.3)); return; }   // vue au sol : glisser de côté = cap ; glisser vers le HAUT = relever le regard vers l'horizon (inclinaison par rapport à l'axe), vers le bas = regarder de nouveau sous soi
     if (cam.fp) { cam.fp.yaw -= dx * 0.3; cam.fp.pitch = Math.max(-89, Math.min(89, cam.fp.pitch + dy * 0.3)); return; }   // vue à la première personne : on tourne la tête (le décor suit le doigt)
     const alt = Math.max(1e-5, cam.mode === 'earth' ? cam.dist - 1 : 0);
     const k = cam.mode === 'earth' ? Math.min(alt, 3) * 2 * tanH() / canvas.clientHeight / DEG : 0.3;   // le sol suit le doigt à tout zoom

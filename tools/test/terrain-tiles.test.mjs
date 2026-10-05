@@ -19,7 +19,7 @@ check(tileHeights(neg, 2, 2, 1, 1).every(v => v === 0), 'sous le niveau de la me
 const z200 = terrainZoom(200, 48, 50, 1.8), z800 = terrainZoom(1000, 48, 50, 1.8), z2 = terrainZoom(2, 48, 50, 1.8);
 check(z200 >= 8 && z200 <= 10 && z800 < z200 && z2 === 14, 'zoom : ' + z800 + ' à 1 000 km, ' + z200 + ' à 200 km, ' + z2 + ' à 2 km (14 au plus)');
 const g = terrainTiles(2.35, 48.85, 10);
-check(g.length === 49 && new Set(g.map(t => t.key)).size === 49 && g[0].d === 0, 'grille de 49 tuiles distinctes, la plus proche du centre d’abord');
+check(g.length === 81 && new Set(g.map(t => t.key)).size === 81 && g[0].d === 0, 'grille de 81 tuiles (9 × 9) distinctes, la plus proche du centre d’abord');
 const a = terrainTiles(179.9, 10, 8);
 check(a.some(t => t.x === 0) && a.some(t => t.x === 255), 'à l’antiméridien la grille boucle autour du globe');
 check(terrainTiles(10, 84, 6).every(t => t.y >= 0 && t.y < 64), 'près du pôle : lignes limitées à la projection');

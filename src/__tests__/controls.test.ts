@@ -33,8 +33,8 @@ describe('contrôles : appui sur la molette + glisser = monter / descendre', () 
     expect(onClick).not.toHaveBeenCalled()
     const p = cam.eg.tilt
     canvas.dispatchEvent(ptr('pointerdown', { button: 0, x: 10, y: 10, id: 2 }))
-    canvas.dispatchEvent(ptr('pointermove', { button: 0, x: 10, y: 60, id: 2 }))   // glisser normal : incline (autre geste)
-    expect(cam.eg.tilt).not.toBe(p)
+    canvas.dispatchEvent(ptr('pointermove', { button: 0, x: 10, y: -40, id: 2 }))   // glisser normal vers le haut : relève le regard vers l’horizon
+    expect(cam.eg.tilt).toBeGreaterThan(p)
     off()
   })
 })
