@@ -4,3 +4,4 @@
 .name { margin: 0; font-size: 16px; line-height: 1.2; }
 .kind { margin-bottom: 6px; font-size: 12px; color: #9fb0c8; }
 @media (max-width: 700px), (pointer: coarse) { .card { max-width: 52vw; } .picture { width: 64px; height: 64px; } }
+.actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; pointer-events: auto; }

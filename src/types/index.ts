@@ -40,7 +40,7 @@ export type EnginePatch = {
 }
 
 export type BodyFact = { label: string; value: string }
-export type BodyCardData = { id: string; name: string; kind: string; image: string; facts: BodyFact[] }
+export type BodyCardData = { id: string; name: string; kind: string; canNorth: boolean; canOrbit: boolean; image: string; facts: BodyFact[] }   // canNorth / canOrbit : boutons « Nord en haut » / « Orbite à plat » de la fiche
 export type MenuItem = { id: string; label: string; type: string; around: string | null }   // type : bodyType du JSON (planet, moon, comet, star…) ; around : corps central (une lune dépend de sa planète)
 export type FeatureItem = { id: string; label: string }
 export type SatelliteItem = { key: string; name: string }
@@ -50,6 +50,8 @@ export type RocketOption = { key: string; label: string }
 export type Engine = {
   selectView: (id: string) => void
   goIss: () => void
+  alignNorth: (id: string) => void
+  alignOrbit: (id: string) => void
   nudge: (kind: string, stepDeg: number) => void
   setSimSpeed: (speed: number) => void
   resetTime: () => void
@@ -65,6 +67,8 @@ export type Engine = {
   _featuresVisible: () => Record<string, boolean>
   _orbitsVisible: () => Record<string, boolean>
   _localOrbit: (id: string) => { visible: boolean; coarse: boolean; n: number; mid: number[]; pos: number[]; end: number[] } | null
+  _axisVisible: () => Record<string, boolean>
+  _view: () => { up: number[]; dir: number[]; custom: boolean }
   _lod: () => { earth: number; bodies: Record<string, number>; ratio: number }
 }
 

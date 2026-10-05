@@ -16,7 +16,7 @@ export function attachControls(canvas, cam, onClick) {
     const alt = Math.max(1e-5, cam.mode === 'earth' ? cam.dist - 1 : 0);
     const k = cam.mode === 'earth' ? Math.min(alt, 3) * 2 * tanH() / canvas.clientHeight / DEG : 0.3;   // le sol suit le doigt à tout zoom
     cam.goal.lon -= dx * k; cam.goal.lat = Math.max(-89.5, Math.min(89.5, cam.goal.lat + dy * k));
-    cam.lon = cam.goal.lon; cam.lat = cam.goal.lat; cam.fly = 0; if (cam.mode === 'launch') cam.userDir = true;   // l'utilisateur reprend la main
+    cam.lon = cam.goal.lon; cam.lat = cam.goal.lat; cam.fly = 0; cam.userUp = null; if (cam.mode === 'launch') cam.userDir = true;   // l'utilisateur reprend la main
   };
   on(canvas, 'pointerdown', e => { canvas.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]); moved = 0; canvas.classList.add('drag'); if (ptrs.size === 2) pinch = 0; });
   on(canvas, 'pointermove', e => {

@@ -24,7 +24,7 @@ const satelliteCard = (id, o) => {
   const orb = o.start && o.start.orbit, facts = [];
   if (orb) { const T = 86400 / orb.meanMotionRevDay, a = Math.cbrt(398600.4418 * T * T / (4 * Math.PI * Math.PI)); facts.push({ label: 'Altitude moyenne', value: '≈ ' + fr(a - 6378.137, 0) + ' km' }, { label: 'Vitesse', value: '≈ ' + fr(2 * Math.PI * a / T, 2) + ' km/s' }, { label: 'Période orbitale', value: fr(T / 60, 1) + ' min (' + fr(orb.meanMotionRevDay, 1) + ' tours par jour)' }, { label: 'Inclinaison', value: fr(orb.inclinationDeg, 1) + '°' }); }
   for (const f of o.card.facts || []) facts.push({ label: f.label, value: f.value });
-  return { id, name: (o.visual && o.visual.name) || o.name, kind: o.card.kind || 'Satellite', image: 'objects/' + id + '/' + (o.card.image || 'card.png'), facts };
+  return { id, name: (o.visual && o.visual.name) || o.name, kind: o.card.kind || 'Satellite', canNorth: false, canOrbit: false, image: 'objects/' + id + '/' + (o.card.image || 'card.png'), facts };
 };
 // fiche d'un astre : { id, name, kind, image (chemin relatif à la racine du site), facts [{ label, value }] } ; null si l'astre n'a pas de section « card » dans son JSON
 export const bodyCard = id => {
@@ -40,5 +40,5 @@ export const bodyCard = id => {
   if (m.periodDays && b.around === 'sun') facts.push({ label: b.bodyType === 'comet' ? 'Période orbitale' : 'Année', value: fmtDuration(m.periodDays) });
   if (m.semiMajorAxisKm && b.around === 'sun') facts.push({ label: b.bodyType === 'comet' ? 'Distance moyenne au Soleil' : 'Distance au Soleil', value: fr(m.semiMajorAxisKm / 149597870.7, 2) + ' UA' });
   for (const f of b.card.facts || []) facts.push({ label: f.label, value: f.value });
-  return { id, name: b.name, kind: KIND[b.bodyType] || '', image: 'objects/' + id + '/' + (b.card.image || 'card.png'), facts };
+  return { id, name: b.name, kind: KIND[b.bodyType] || '', canNorth: !!(b.rotation || b.sceneOrigin || b.orientation === 'tidal-lock'), canOrbit: !!b.around, image: 'objects/' + id + '/' + (b.card.image || 'card.png'), facts };
 };

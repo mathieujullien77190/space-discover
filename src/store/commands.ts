@@ -19,3 +19,5 @@ export const nudge = (kind: string): void => {
   const s = useStore.getState()
   s.engine?.nudge(kind, NUDGE_STEPS[s.nudgeStep])
 }
+export const alignNorth = (id: string): void => engine()?.alignNorth(id)
+export const alignOrbit = (id: string): void => engine()?.alignOrbit(id)

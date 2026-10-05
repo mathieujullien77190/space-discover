@@ -51,6 +51,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const LOCAL_N = 256, lodCache = {}, sphereLod = nx => lodCache[nx] || (lodCache[nx] = earthGeometry(nx, nx / 2));
   const lodLevel = (px, cur, T) => { for (let i = 0; i < T.length; i++) if (px > T[i] * (cur <= i ? 0.85 : 1.15)) return i; return T.length; };
   const EARTH_LOD = { T: [400, 100, 20, 5], seg: [0, 512, 128, 48, 24] }, BODY_LOD = { T: [150, 40, 8], seg: [0, 48, 24, 12] };   // seg 0 = géométrie d'origine (la plus fine)
+  const earthAxis = (() => { const g = new THREE.Group(); g.visible = false; return g; })();   // rempli après la création de axisMarker (voir plus bas)
   const earthGlobe = earth.children[0], earthGeoHi = earthGlobe.geometry; let earthLevel = 0, pxScale = 400;
 
   // ASTRES (objects/<astre>/<astre>.json, bodies.js) : chacun est dessiné d'après son JSON (aspect, trace d'orbite, point lointain, étiquette). La Terre est l'origine de la scène (son maillage est `earth`).
@@ -82,6 +83,18 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     for (let k = -LOCAL_N; k <= LOCAL_N; k++) { const r = k === 0 ? r0 : BODY.rel(id, Dd + T * k / LOCAL_N), i = k + LOCAL_N; at.setXYZ(i, (r[0] - r0[0]) * KMU, (r[1] - r0[1]) * KMU, (r[2] - r0[2]) * KMU); }
     at.needsUpdate = true; o.localLine.position.copy(v);
   };
+  // pôle nord d'un astre en axes inertiels de la scène : sa rotation (IAU), sinon (lune en rotation synchrone) celui de sa planète, sinon l'axe de la Lune (pôle de l'écliptique) ; null si inconnu
+  const poleOf = b => { if (b.sceneOrigin) return new THREE.Vector3(0, 1, 0); if (b.rotation) return rotationPole(b.rotation); if (b.orientation === 'tidal-lock') { const pb = b.around && BODY.get(b.around); return pb && pb.rotation ? rotationPole(pb.rotation) : ECLIPTIC_POLE.clone(); } return null; };
+  let nTex = null;
+  const axisMarker = () => {   // dans le repère du maillage (rayon 1, y = nord) : équateur en pointillé, tige rouge et lettre « N » au-dessus du pôle nord
+    const g = new THREE.Group(), pts = []; for (let i = 0; i < 160; i++) { const t = i / 160 * 2 * Math.PI; pts.push(new THREE.Vector3(1.003 * Math.cos(t), 0, 1.003 * Math.sin(t))); }
+    const ring = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 0.05, gapSize: 0.04, transparent: true, opacity: 0.75 })); ring.computeLineDistances(); ring.frustumCulled = false; g.add(ring);
+    const spike = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 1.55, 0)]), new THREE.LineBasicMaterial({ color: 0xff5a3c })); spike.frustumCulled = false; g.add(spike);
+    if (!nTex) { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.fillStyle = '#ff5a3c'; x.font = 'bold 52px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('N', 32, 36); nTex = new THREE.CanvasTexture(c); }
+    const n = new THREE.Sprite(new THREE.SpriteMaterial({ map: nTex, depthTest: false, transparent: true })); n.position.set(0, 1.78, 0); n.scale.setScalar(0.4); g.add(n);
+    g.visible = false; return g;
+  };
+  { const m = axisMarker(); earthAxis.add(...m.children); earth.add(earthAxis); }
   const buildSolar = () => {
     const D0 = astroD(new Date());
     for (const b of BODY.list()) {
@@ -99,6 +112,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
         o.meshUrl = assetUrl((FLIGHT_OBJECT_FILES[b.id] || '').replace(/[^/]*$/, '') + ap.model);
       } else if (ap.kind === 'sphere' || ap.kind === 'comet') o.mesh = new THREE.Mesh(new THREE.SphereGeometry(ru, 48, 24), new THREE.MeshStandardMaterial({ color: new THREE.Color(ap.color || '#cccccc'), roughness: 1, metalness: 0 }));
       if (o.mesh && (ap.kind === 'textured' || ap.kind === 'painted')) { o.lodHi = o.mesh.geometry; o.lod = 0; }   // sphères à niveaux de détail
+      if (o.mesh && poleOf(b)) { o.axisG = axisMarker(); solar.add(o.axisG); }   // repère nord / équateur (visible près de l'astre)
       if (o.mesh && ap.rings) o.mesh.add(ringMesh(ap.rings, b.radiusKm));   // anneaux : dans le plan équatorial de la planète (enfant du maillage : suit son orientation)
       if (o.mesh) solar.add(o.mesh);
       if (ap.tail) { const tg = new THREE.ConeGeometry(1, 1, 24, 1, true); tg.translate(0, 0.5, 0); o.tail = new THREE.Mesh(tg, new THREE.MeshBasicMaterial({ color: new THREE.Color(ap.tail.color || '#bfe3ff'), transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); o.tail.frustumCulled = false; solar.add(o.tail); }
@@ -142,7 +156,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const cam = { fov: 50, mode: 'earth', tgt: new THREE.Vector3(), lon: 2, lat: 30, dist: 3.4, fly: 0, tfly: 0, launchK: 1, userDir: false, goal: { lon: 2, lat: 30, dist: 3.4 } };
   const moonsShown = {};   // planète → distance de la caméra, pour les planètes dont les lunes sont affichées
   let poseStale = false;   // juste après un changement de vue la caméra garde l'ancienne position jusqu'à la prochaine image : on n'en déduit pas « trop loin de l'ISS »
-  let iss = null, frameF = 0, curGm = 0, launch = null, evLabels = [], tagEls = [], rocketRows = [];
+  let iss = null, frameF = 0, curGm = 0, curD = 0, launch = null, evLabels = [], tagEls = [], rocketRows = [];
   const optShared = launchOptDefault();
 
   const syncView = m => publish({ view: { mode: m, selected: m === 'iss' ? null : m === 'solar' ? solarTarget : 'earth' } });   // en vue ISS (satellite) aucun astre n'est choisi
@@ -151,7 +165,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     if ((m === 'solar') !== (cam.mode === 'solar')) {   // changement de repère (Terre fixe ↔ inertiel) : on tourne la pose de la caméra de l'angle sidéral pour que l'image ne saute pas
       const ang = m === 'solar' ? curGm : -curGm; cam.tgt.applyAxisAngle(Y_AXIS, ang); camera.position.applyAxisAngle(Y_AXIS, ang); cam.lon += ang / DEG; cam.goal.lon += ang / DEG; frameF = m === 'solar' ? 1 : 0;
     }
-    cam.mode = m; cam.fly = cam.tfly = 0; poseStale = true;   // changement de vue DIRECT : plus aucune transition
+    cam.mode = m; cam.fly = cam.tfly = 0; cam.userUp = null; poseStale = true;   // changement de vue DIRECT : plus aucune transition
     syncView(m);
     if (m === 'launch') cam.userDir = false;   // caméra auto de la fusée (réglée dans la boucle)
     if (m === 'iss' && iss) applyLocal(VIEW_ISS.yaw, VIEW_ISS.pitch, VIEW_ISS.dist, true);
@@ -182,6 +196,23 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     if (cam.mode === 'launch') return { mode: 'launch', distKm: Math.round(cam.dist * R_KM * 1000) / 1000, zoom: Math.round(cam.launchK * 1000) / 1000, auto: !cam.userDir, fov: camera.fov };
     if (cam.mode === 'solar') return { mode: 'solar', cible: solarTarget, lon: rd(cam.lon), lat: rd(cam.lat), distRayonsTerrestres: Math.round(cam.dist * 100) / 100, fov: camera.fov };   // Lune ou Soleil
     return { mode: 'earth', lon: rd(cam.lon), lat: rd(cam.lat), altKm: rd(altCam), fov: camera.fov };
+  };
+  // « NORD EN HAUT » et « ORBITE À PLAT » (boutons de la fiche d'un astre) : la caméra garde son côté mais se met en place avec un « haut » d'écran choisi.
+  // Les vecteurs inertiels sont ramenés dans le repère de la caméra (le groupe `solar` est tourné de rotS en vue Terre fixe).
+  const toCam = v => v.clone().applyAxisAngle(Y_AXIS, solar.rotation.y);
+  const aimFrom = (d, up) => { cam.goal.lat = Math.asin(Math.max(-1, Math.min(1, d.y))) / DEG; cam.goal.lon = Math.atan2(-d.z, d.x) / DEG; cam.userUp = up.clone(); snapCam(); };
+  const alignNorth = id => {   // le pôle nord de l'astre en haut de l'écran, caméra un peu au-dessus de son équateur
+    const b = BODY.get(id), pole = b && poleOf(b); if (!pole) return;
+    const up = toCam(pole).normalize(), d = camera.position.clone().sub(cam.tgt).normalize();
+    let side = d.clone().addScaledVector(up, -d.dot(up)); if (side.length() < 1e-3) side = new THREE.Vector3(1, 0, 0).cross(up); side.normalize();
+    aimFrom(side.addScaledVector(up, 0.3).normalize(), up);
+  };
+  const alignOrbit = id => {   // la trajectoire de l'astre autour de son corps central vue de côté : plan de l'orbite à l'horizontale, le corps central derrière l'astre
+    const b = BODY.get(id); if (!b || !b.around) return;
+    const r0 = BODY.rel(id, curD), r1 = BODY.rel(id, curD + 0.01), n = new THREE.Vector3(r0[1] * r1[2] - r0[2] * r1[1], r0[2] * r1[0] - r0[0] * r1[2], r0[0] * r1[1] - r0[1] * r1[0]);
+    if (n.length() < 1e-9) return;
+    const up = toCam(n.normalize()), radial = toCam(new THREE.Vector3(r0[0], r0[1], r0[2]).normalize()), el = 12 * DEG;   // radial : du corps central vers l'astre
+    aimFrom(radial.multiplyScalar(Math.cos(el)).addScaledVector(up, Math.sin(el)).normalize(), up);
   };
   // réglage fin de la vue : kind = 'y±' (cap), 'p±' (pitch), 'd±' (distance) ; stepDeg = pas
   const nudge = (kind, st) => {
@@ -313,7 +344,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     const realNow = Date.now(); simMs += (realNow - lastReal) * simSpeed; lastReal = realNow; const date = new Date(simMs);   // horloge simulée : temps réel par défaut, accélérable
     iss = issState(date);
     frameF = cam.mode === 'solar' ? 1 : 0;
-    const Dd = astroD(date), gm = curGm = gmstOf(Dd), solarMode = cam.mode === 'solar', rotS = -gm * (1 - frameF);
+    const Dd = astroD(date), gm = curGm = gmstOf(Dd), _d = curD = Dd, solarMode = cam.mode === 'solar', rotS = -gm * (1 - frameF);
     for (const id in bpos) { const g = BODY.geo(id, Dd); bpos[id].set(g[0] * KMU, g[1] * KMU, g[2] * KMU); babs[id].copy(bpos[id]).applyAxisAngle(Y_AXIS, rotS); }   // position géocentrique de chaque astre (inertielle, puis dans le repère tourné de `solar`)
 
     // trop loin pour voir l'ISS (cachée) : on passe en vue « Terre » sans bouger la caméra
@@ -339,11 +370,12 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     cam.goal.lon = ((cam.goal.lon + 540) % 360) - 180;
     ll(cam.lon, cam.lat, dirv);
     camera.position.copy(cam.tgt).addScaledVector(dirv, cam.dist);
-    camera.up.set(0, 1, 0);
+    camera.up.copy(cam.userUp || Y_AXIS);   // « haut » de l'écran : l'axe du monde, ou celui demandé (nord de l'astre, normale de son orbite) ; une rotation à la souris le remet à zéro
     camera.lookAt(cam.tgt); camera.updateMatrixWorld();
     const closest = Math.max(1e-7, Math.min(cam.dist, camera.position.length() - 1) * 0.05);
     pxScale = innerHeight / 2 / Math.tan(camera.fov * DEG / 2);   // pixels par unité de rayon vu à 1 unité de distance
     { const lv = lodLevel(pxScale / Math.max(1e-6, camera.position.length()), earthLevel, EARTH_LOD.T); if (lv !== earthLevel) { earthLevel = lv; earthGlobe.geometry = EARTH_LOD.seg[lv] ? sphereLod(EARTH_LOD.seg[lv]) : earthGeoHi; } }
+    earthAxis.visible = ((cam.mode === 'earth' && cam.dist > 1.6) || solarMode) && camera.position.length() < 40;   // équateur et pôle nord de la Terre quand on la regarde d'assez loin
     camera.near = Math.min(0.05, closest); camera.far = Math.max(1e7, 8 * (camera.position.length() + cam.dist)); camera.updateProjectionMatrix();   // plan lointain proportionnel à l'éloignement : pas de limite de zoom arrière
 
     // astres : chacun d'après son JSON (position, orientation, queue de comète, orbite, trace, point lointain, étiquette)
@@ -365,6 +397,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
           if (lv !== o.lod) { o.lod = lv; o.mesh.geometry = BODY_LOD.seg[lv] ? sphereLod(BODY_LOD.seg[lv]) : o.lodHi; }
           o.mesh.visible = px > 1;
         }
+        if (o.axisG) { const nearA = !hid && solarMode && camera.position.distanceTo(ab) < 40 * ru; o.axisG.visible = nearA; if (nearA) { o.axisG.position.copy(v); o.axisG.quaternion.copy(o.mesh.quaternion); o.axisG.scale.setScalar(ru); } }
         if (o.mesh) { o.mesh.position.copy(v); if (b.orientation === 'tidal-lock' && parent) moonQuat(v.clone().sub(parent).normalize(), (BODY.get(b.around).rotation ? rotationPole(BODY.get(b.around).rotation) : ECLIPTIC_POLE), o.mesh.quaternion); else if (b.rotation) rotationQuat(b.rotation, Dd, o.mesh.quaternion); }   // rotation synchrone : toujours la même face vers le corps central
         if (o.texUrl && !o.texReq && camera.position.distanceTo(ab) < 60 * ru) {   // carte de la surface : téléchargée à l'approche (moins de 60 rayons)
           o.texReq = true;
@@ -534,6 +567,9 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
 
   return {
     // pour les tests et l'interface : exécute une image sans requestAnimationFrame
+    alignNorth, alignOrbit,
+    _axisVisible: () => Object.assign({ earth: earthAxis.visible }, Object.fromEntries(Object.entries(bodyObjs).filter(([, o]) => o.axisG).map(([id, o]) => [id, o.axisG.visible]))),
+    _view: () => ({ up: camera.up.toArray(), dir: camera.position.clone().sub(cam.tgt).normalize().toArray(), custom: !!cam.userUp }),
     _frame: frame,
     _lod: () => ({ earth: earthLevel, bodies: Object.fromEntries(Object.entries(bodyObjs).filter(([, o]) => o.lodHi).map(([id, o]) => [id, o.mesh.visible ? o.lod : -1])), ratio }),
     _orbitsVisible: () => Object.fromEntries(Object.entries(bodyObjs).filter(([, o]) => o.orbitG).map(([id, o]) => [id, o.orbitG.visible || (!!o.localLine && o.localLine.visible)])),

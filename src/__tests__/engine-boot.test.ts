@@ -226,6 +226,39 @@ describe('createEngine (rendu factice)', () => {
     expect(far.visible).toBe(false)
     expect(far.coarse).toBe(true)
   })
+  it('nord et équateur : repère affiché près des planètes et lunes ; « Nord en haut » et « Orbite à plat » orientent la caméra', async () => {
+    await new Promise((r) => setTimeout(r, 450))
+    let t = 1000
+    const frames = (n: number) => { for (let i = 0; i < n; i++) engine._frame(performance.now() + (t += 100)) }
+    frames(4)
+    expect(engine._axisVisible().earth).toBe(true)   // vue de départ : la Terre, regardée de 3,4 rayons
+    engine.selectView('jupiter'); frames(4)
+    const vis = engine._axisVisible()
+    expect(vis.jupiter).toBe(true)
+    expect(vis.mars).toBe(false)
+    expect(vis.earth).toBe(false)
+    expect(Object.keys(vis).length).toBeGreaterThan(30)   // planètes et lunes ont leur repère (pas le Soleil ni les comètes)
+    // « Nord en haut » : le « haut » de l'écran est le pôle nord de Jupiter (α = 268,06°, δ = 64,50°) et la caméra est un peu au-dessus de l'équateur
+    engine.alignNorth('jupiter'); frames(3)
+    const a = 268.056595 * Math.PI / 180, d = 64.495303 * Math.PI / 180, eq = [Math.cos(d) * Math.cos(a), Math.cos(d) * Math.sin(a), Math.sin(d)], pole = [eq[0], eq[2], -eq[1]]
+    const v = engine._view(), dot = (x: number[], y: number[]) => x[0] * y[0] + x[1] * y[1] + x[2] * y[2]
+    expect(v.custom).toBe(true)
+    expect(dot(v.up, pole)).toBeGreaterThan(0.999999)
+    expect(dot(v.dir, v.up)).toBeCloseTo(0.3 / Math.sqrt(1.09), 3)
+    // « Orbite à plat » : le « haut » est la normale de l'orbite d'Io autour de Jupiter, la caméra 12° au-dessus du plan
+    engine.selectView('io'); frames(3)
+    expect(engine._view().custom).toBe(false)   // changer de vue remet le « haut » du monde
+    engine.alignOrbit('io'); frames(3)
+    const w = engine._view()
+    expect(w.custom).toBe(true)
+    expect(dot(w.dir, w.up)).toBeCloseTo(Math.sin(12 * Math.PI / 180), 3)
+    // la Terre : sa trajectoire autour du Soleil
+    engine.selectView('earth'); frames(3)
+    engine.alignOrbit('earth'); frames(3)
+    expect(engine._view().custom).toBe(true)
+    engine.alignNorth('earth'); frames(3)
+    expect(engine._view().up[1]).toBeGreaterThan(0.999)   // le pôle nord de la Terre est l'axe y de la scène
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)

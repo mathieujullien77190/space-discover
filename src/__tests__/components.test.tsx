@@ -9,7 +9,7 @@ import { useStore } from '@/store'
 import { initialEngineState } from '@/store/initial'
 import type { Engine } from '@/types'
 
-const fakeEngine = () => ({ nudge: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), startRocket: vi.fn(() => Promise.resolve()), stopRocket: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setRocketSpeed: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
+const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), startRocket: vi.fn(() => Promise.resolve()), stopRocket: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setRocketSpeed: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
 
 describe('TopBar + SubMenu', () => {
   let engine: ReturnType<typeof fakeEngine>
@@ -141,6 +141,20 @@ describe('ViewParams (juste au-dessus de la barre d’échelle)', () => {
 })
 
 describe('BodyCard (fiche de l’astre proche)', () => {
+  it('boutons « Nord en haut » et « Orbite à plat » : appellent le moteur avec l’astre de la fiche ; pas pour l’ISS ni le Soleil (orbite)', () => {
+    const engine = fakeEngine()
+    useStore.setState({ ...initialEngineState, focus: { id: 'jupiter' }, engine })
+    const { unmount } = render(<BodyCard />)
+    fireEvent.click(screen.getByText('🧭 Nord en haut'))
+    expect(engine.alignNorth).toHaveBeenCalledWith('jupiter')
+    fireEvent.click(screen.getByText('↔ Orbite à plat'))
+    expect(engine.alignOrbit).toHaveBeenCalledWith('jupiter')
+    unmount()
+    act(() => useStore.setState({ focus: { id: 'iss' } }))
+    render(<BodyCard />)
+    expect(screen.queryByText('🧭 Nord en haut')).toBeNull()
+    expect(screen.queryByText('↔ Orbite à plat')).toBeNull()
+  })
   it('ISS : orbite calculée (altitude, période, inclinaison) et faits du JSON', () => {
     useStore.setState({ ...initialEngineState, focus: { id: 'iss' } })
     render(<BodyCard />)
