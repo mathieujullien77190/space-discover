@@ -22,3 +22,10 @@ export const writeCardCollapsed = (on: boolean): void => {
     /* stockage indisponible : réglage non mémorisé */
   }
 }
+
+// valeur d'un <input type="datetime-local"> (heure UTC, sans secondes) ↔ millisecondes
+export const toInputValue = (ms: number): string => new Date(ms).toISOString().slice(0, 16)
+export const fromInputValue = (value: string): number | null => {
+  const ms = Date.parse(value + ':00Z')
+  return Number.isFinite(ms) ? ms : null
+}

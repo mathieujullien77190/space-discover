@@ -56,6 +56,7 @@ export type Engine = {
   nudge: (kind: string, stepDeg: number) => void
   setSimSpeed: (speed: number) => void
   resetTime: () => void
+  setDate: (ms: number) => void
   setFeature: (id: string, on: boolean) => void
   setMetric: (on: boolean) => void
   startRocket: (key: string, custom?: unknown) => Promise<unknown>

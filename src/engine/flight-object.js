@@ -70,17 +70,18 @@ export function orbitToTle(O) {
 export function foGmst(ms) { const d = ms / 86400000 + 2440587.5 - 2451545, T = d / 36525, g = 280.46061837 + 360.98564736629 * d + 0.000387933 * T * T - T * T * T / 38710000; return (((g % 360) + 360) % 360) * Math.PI / 180; }
 // Départ résolu : si « start » donne une orbite (ou un TLE), calcule où est le satellite à la date voulue et renvoie le départ équivalent { lat, lon, altitudeM, azimuthDeg, elevationDeg, speedMs, frame: 'inertial', nodeRate }
 // (le plan de Launch est celui de la verticale du lieu et de la direction de la vitesse inertielle ; la Terre tourne dessous).
+// `opt.far` : date très éloignée de l'époque du TLE (années) : jamais de SGP4 (il dériverait) ni de freinage : orbite moyenne à dérive J2 seulement, position INDICATIVE (la phase le long de l'orbite n'est plus connue).
 // Position : si la bibliothèque SGP4 (satellite.js, js/vendor) est chargée, c'est l'état SGP4 EXACT à cette date (l'ISS JSON part pile de l'ISS réelle) ; sinon éléments moyens + dérive séculaire J2 du nœud et du périgée + freinage (ndot).
 // Dans les deux cas la vitesse est recalée pour que le vol képlérien de Launch ait la cadence moyenne réelle (argument de latitude : n + ωdot + 2·ndot·t), sinon la position osculatrice (± quelques km autour de la moyenne) ferait dériver de dizaines de km par tour.
 export const FO_SATREC = {};   // cache : twoline2satrec est coûteux et issState() est appelé à chaque image
 export function objectStart(obj, opt) {
   const S = obj.start; if (!S.orbit && !S.tle) return S;
   const L = LCH, D = Math.PI / 180, O = S.orbit || tleToOrbit(S.tle), ms0 = Date.parse(O.epoch), now = opt && opt.date ? +opt.date : Date.now(), at = S.at === 'now' ? now : S.at ? Date.parse(S.at) : ms0, days = (at - ms0) / 86400000, dt = days * 86400;
-  const e = O.eccentricity, i = O.inclinationDeg * D, J2 = 1.08262668e-3, nd = O.ndotRevDay2 || 0, n0 = O.meanMotionRevDay * 2 * Math.PI / 86400, n = (O.meanMotionRevDay + 2 * nd * days) * 2 * Math.PI / 86400;   // freinage : n(t) = n + 2·ndot·t
+  const far = !!(opt && opt.far), e = O.eccentricity, i = O.inclinationDeg * D, J2 = 1.08262668e-3, nd = far ? 0 : O.ndotRevDay2 || 0, n0 = O.meanMotionRevDay * 2 * Math.PI / 86400, n = (O.meanMotionRevDay + 2 * nd * days) * 2 * Math.PI / 86400;   // freinage : n(t) = n + 2·ndot·t
   const a0 = Math.cbrt(L.MU / (n * n)), p0 = a0 * (1 - e * e), k = 1.5 * J2 * Math.pow(L.RE / p0, 2) * n, wdot = 0.5 * k * (5 * Math.cos(i) ** 2 - 1), nEff = n + wdot, aEff = Math.cbrt(L.MU / (nEff * nEff)), p = aEff * (1 - e * e);
   let P, V;   // état dans le repère de la Terre figé à l'instant `at` (m, m/s) : position et vitesse INERTIELLE
   const sat = typeof satellite !== 'undefined' ? satellite : null;
-  if (sat && sat.twoline2satrec) {
+  if (sat && sat.twoline2satrec && !far) {
     const tle = S.tle || orbitToTle(O), key = tle[0] + tle[1], rec = FO_SATREC[key] || (FO_SATREC[key] = sat.twoline2satrec(tle[0], tle[1])), pv = sat.propagate(rec, new Date(at));
     if (pv.position) { const g = sat.gstime(new Date(at)), cg = Math.cos(g), sg = Math.sin(g), fix = v => [(v.x * cg + v.y * sg) * 1000, (-v.x * sg + v.y * cg) * 1000, v.z * 1000]; P = fix(pv.position); V = fix(pv.velocity); }
   }

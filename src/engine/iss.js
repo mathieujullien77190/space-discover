@@ -10,13 +10,16 @@ export const ISS_EPOCH = Date.parse((ISS_OBJ.start.orbit || tleToOrbit(ISS_OBJ.s
 export const ISS_PERIOD_MS = objectPeriodS(ISS_OBJ) * 1000;
 
 // état de l'ISS à la date d : position (unités de rayon terrestre, repère de la scène), hauteur géodésique (km), vitesse (km/s), direction de vol, lon/lat ; null au-delà de ±60 jours de l'époque
+// Existe à partir de `exists.from` du JSON (premier module Zarya, 20 nov. 1998) : avant, pas d'ISS. Dans les 60 jours de l'époque du TLE : position SGP4 exacte ; plus loin dans le temps (passé depuis 1998 ou futur) : orbite moyenne INDICATIVE (`approx`).
+export const ISS_FROM = ISS_OBJ.exists && ISS_OBJ.exists.from ? Date.parse(ISS_OBJ.exists.from) : -Infinity;
 export function issState(d) {
-  if (Math.abs(d.getTime() - ISS_EPOCH) > 60 * 86400000) return null;
-  const s = objectStart(ISS_OBJ, { date: d }), P = s.ecef, V = s.velEcef, toScene = (e, v) => v.set(e[0], e[2], -e[1]);   // repère terrestre (x lon 0, y est, z pôle) → scène (x, z, −y)
+  const far = Math.abs(d.getTime() - ISS_EPOCH) > 60 * 86400000;
+  if (d.getTime() < ISS_FROM) return null;
+  const s = objectStart(ISS_OBJ, { date: d, far }), P = s.ecef, V = s.velEcef, toScene = (e, v) => v.set(e[0], e[2], -e[1]);   // repère terrestre (x lon 0, y est, z pôle) → scène (x, z, −y)
   const dirv = toScene(P, new THREE.Vector3()).normalize(), rr = Math.hypot(P[0], P[1], P[2]), sl = P[2] / rr, alt = (rr - 6378137 * (1 - sl * sl / 298.257223563)) / 1000;   // hauteur au-dessus de l'ellipsoïde
   return {
     pos: dirv.clone().multiplyScalar(rr / (R_KM * 1000)), up: dirv, vel: toScene(V, new THREE.Vector3()).normalize(),
-    alt, speed: s.speedMs / 1000, lon: s.lon, lat: s.lat,
+    alt, speed: s.speedMs / 1000, lon: s.lon, lat: s.lat, approx: far,
   };
 }
 

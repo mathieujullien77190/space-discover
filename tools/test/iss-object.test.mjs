@@ -24,7 +24,11 @@ const res = vm.runInContext(`(() => {
   return out;
 })()`, sandbox);
 for (const r of res) { console.log(r.txt); if (r.ground > 1 || Math.abs(r.dr) > 1 || Math.abs(r.dalt) > 0.5) fails.push('T+' + r.T + ' : écart ' + r.ground.toFixed(2) + ' km au sol, ' + r.dr.toFixed(2) + ' km de rayon, ' + r.dalt.toFixed(2) + ' km de hauteur'); }
-const far = vm.runInContext('issState(new Date(Date.parse("2027-01-01T00:00:00Z")))', sandbox); check(far === null, 'au-delà de ±60 jours de l’époque : pas d’ISS (comme avant)');
+// l'ISS existe à partir du lancement de Zarya (20 nov. 1998) : avant, pas d'ISS ; hors de la fenêtre du TLE (±60 jours) : orbite moyenne INDICATIVE (approx), jamais SGP4 loin de l'époque
+{ const at = iso => vm.runInContext('issState(new Date(Date.parse("' + iso + '")))', sandbox), pre = at('1998-11-19T00:00:00Z'), first = at('1998-11-21T00:00:00Z'), past = at('2010-06-01T12:00:00Z'), future = at('2030-01-01T00:00:00Z'), exact = at('2026-10-04T12:00:00Z');
+  check(pre === null && first !== null, 'avant le 20 novembre 1998 : pas d’ISS ; le 21 novembre 1998 : elle existe');
+  check(!exact.approx && past.approx === true && future.approx === true, 'dans la fenêtre du TLE : SGP4 exact ; en 2010 et 2030 : position indicative (approx)');
+  check([first, past, future].every(x => x.alt > 380 && x.alt < 460 && Math.abs(x.lat) <= 51.7), 'ISS approchée : altitude ' + [first, past, future].map(x => x.alt.toFixed(0)).join(' / ') + ' km, latitude jamais au-delà de ±51,6° (inclinaison)'); }
 const dir = vm.runInContext(`(() => { const s = issState(new Date(ISS_DATE)); return Math.abs(s.vel.dot(s.up)) < 0.15 && Math.abs(s.vel.length() - 1) < 1e-6; })()`, sandbox); check(dir, 'direction de vol : unitaire et presque horizontale');
 console.log('période affichée : ' + (G('ISS_PERIOD_MS') / 60000).toFixed(2) + ' min');
 if (fails.length) { console.log('ÉCHEC : ' + fails.join(' ; ')); process.exit(1); } else console.log('ok : l’ISS de la scène (JSON) suit SGP4 à moins de 1 km');

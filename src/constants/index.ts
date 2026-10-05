@@ -8,6 +8,9 @@ export const TIME_SPEEDS: ReadonlyArray<{ speed: number; label: string }> = [
   { speed: 21600, label: '6 h/s' },
   { speed: 86400, label: '1 j/s' },
   { speed: 432000, label: '5 j/s' },
+  { speed: 2592000, label: '30 j/s' },
+  { speed: 31557600, label: '1 an/s' },
+  { speed: 315576000, label: '10 ans/s' },
 ]
 export const ROCKET_SPEEDS: ReadonlyArray<{ speed: number; label: string }> = [
   { speed: 0, label: '⏸' },

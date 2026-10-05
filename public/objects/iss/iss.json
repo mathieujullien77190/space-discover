@@ -60,5 +60,9 @@
         "value": "Zarya, novembre 1998"
       }
     ]
+  },
+  "exists": {
+    "_note": "De mémoire (à vérifier) : lancement du premier module Zarya le 20 novembre 1998. Avant cette date il n'y a pas d'ISS.",
+    "from": "1998-11-20T06:40:00Z"
   }
 }

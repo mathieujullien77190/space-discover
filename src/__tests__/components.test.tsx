@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import BodyCard from '@/components/BodyCard'
+import DatePicker from '@/components/DatePicker'
 import RocketControls from '@/components/RocketControls'
 import SubMenu from '@/components/SubMenu'
 import TopBar from '@/components/TopBar'
@@ -107,6 +108,21 @@ describe('TopBar + SubMenu', () => {
     fireEvent.click(screen.getByText('🌌 Astres'))
     fireEvent.click(screen.getByText('🌌 Astres'))
     expect(screen.queryByText(/Lune/)).toBeNull()
+  })
+})
+
+describe('DatePicker (saut de date)', () => {
+  it('affiche la date UTC ; un clic ouvre le sélecteur ; choisir une date appelle le moteur', () => {
+    const engine = fakeEngine()
+    ;(engine as unknown as Record<string, unknown>).setDate = vi.fn()
+    useStore.setState({ ...initialEngineState, time: { simMs: Date.UTC(2026, 9, 5, 12, 30), speed: 1, visible: true }, engine })
+    render(<DatePicker />)
+    expect(screen.getByText(/2026.*12:30 UTC/)).toBeInTheDocument()
+    fireEvent.click(screen.getByTitle('Choisir une date (saut dans le temps)'))
+    const input = screen.getByLabelText('Date et heure (UTC)') as HTMLInputElement
+    expect(input.value).toBe('2026-10-05T12:30')
+    fireEvent.change(input, { target: { value: '1977-08-20T14:29' } })
+    expect((engine as unknown as { setDate: ReturnType<typeof vi.fn> }).setDate).toHaveBeenCalledWith(Date.UTC(1977, 7, 20, 14, 29))
   })
 })
 

@@ -318,6 +318,22 @@ describe('createEngine (rendu factice)', () => {
     engine.alignOrbit('earth'); frames(2)
     expect(state.view.align).toBe('orbit')
   })
+  it('saut de date : l’ISS n’existe qu’à partir de 1998 ; les astres suivent la date', () => {
+    engine._frame(performance.now() + 300)
+    engine.setDate(Date.UTC(1990, 5, 1, 12))
+    engine._frame(performance.now() + 400)
+    expect(state.time.simMs).toBe(Date.UTC(1990, 5, 1, 12))
+    for (let i = 0; i < 4; i++) engine._frame(performance.now() + 500 + i * 100)
+    expect(state.info).toMatch(/ISS : pas encore lancée à cette date [(]premier module : 1998[)]/)
+    engine.goIss()   // pas d'ISS : rien ne se passe, on reste en vue Terre
+    expect(state.view.mode).toBe('earth')
+    engine.setDate(Date.UTC(2005, 5, 1, 12))
+    for (let i = 0; i < 4; i++) engine._frame(performance.now() + 1000 + i * 100)
+    expect(state.info).toMatch(/ISS : [0-9]/)
+    expect(state.info).toMatch(/hors de la période du TLE : position de l'ISS indicative/)
+    engine.goIss()
+    expect(state.view.mode).toBe('iss')
+  })
   it('règle la vitesse du temps', () => {
     engine.setSimSpeed(3600)
     expect(state.time.speed).toBe(3600)

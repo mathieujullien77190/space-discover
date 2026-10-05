@@ -4,7 +4,7 @@
 // Le rendu est injectable (createRenderer) pour tester sans WebGL.
 import * as THREE from 'three';
 import { BODY } from './bodies.js';
-import { ISS_FEATURES, ISS_EPOCH, ISS_MODEL, ISS_W, issState } from './iss.js';
+import { ISS_FEATURES, ISS_EPOCH, ISS_FROM, ISS_MODEL, ISS_W, issState } from './iss.js';
 import { DEG, PHOTO_PATCHES, R_KM, buildEarth, earthGeometry, ll, loadPatch, unloadPatch } from './earth.js';
 import { loadGlb } from './gltf-mini.js';
 import { loadStackModels } from './stack-models.js';
@@ -277,7 +277,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const launchObjectWith = (obj, models) => {
     if (launch) { launch.dispose(); launch = null; }
     optShared.markers = true; optShared.names = true;
-    const date = new Date(), s0 = objectStart(obj, { date }), site = Object.assign({}, SITE_FALLBACK, { id: 'obj', name: obj.name, lat: s0.lat, lon: s0.lon });
+    const date = new Date(simMs), s0 = objectStart(obj, { date }),   // le lancement part à la date SIMULÉE (Terre, Soleil et Lune à leur place de cette date)
+          site = Object.assign({}, SITE_FALLBACK, { id: 'obj', name: obj.name, lat: s0.lat, lon: s0.lon });
     launch = new Launch(site, 0, 0, 1, { opt: optShared, object: obj, models, date, az: (s0.azimuthDeg != null ? s0.azimuthDeg : 90) * Math.PI / 180 }); world.add(launch.group);
     startVisual(site);
   };
@@ -326,6 +327,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   let simMs = Date.now(), lastReal = Date.now(), simSpeed = 1;
   const setSimSpeed = v => { simSpeed = v; publish({ time: { speed: v } }); };
   const resetTime = () => { simMs = Date.now(); setSimSpeed(1); };
+  const setDate = ms => { simMs = ms; lastReal = Date.now(); publish({ time: { simMs } }); };   // saut de date : tout (astres, Terre, ISS, Lune, missions) se replace à cette date
   let last = performance.now(), infoT = 0, raf = 0, stopped = false, lastScale = '', ready = false;
   const dirv = new THREE.Vector3(), basis = new THREE.Matrix4(), fw = new THREE.Vector3(), zz = new THREE.Vector3();
 
@@ -540,8 +542,9 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       const altCam = (camera.position.length() - 1) * R_KM, f = v => v >= 1000 ? Math.round(v).toLocaleString('fr-FR') : v.toFixed(v < 10 ? 1 : 0);
       let t = `Caméra : ${fmtBig(altCam) || f(altCam) + ' km'} d'altitude` + (cam.mode === 'iss' ? ` · ${fmtBig(cam.dist * R_KM) || f(cam.dist * R_KM) + ' km'} de l'ISS` : '');
       if (iss) t += `\nISS : ${f(iss.alt)} km · ${iss.speed.toFixed(2)} km/s (${Math.round(iss.speed * 3600).toLocaleString('fr-FR')} km/h) · ${Math.abs(iss.lat).toFixed(1)}°${iss.lat < 0 ? 'S' : 'N'} ${Math.abs(iss.lon).toFixed(1)}°${iss.lon < 0 ? 'O' : 'E'}`;
-      else t += '\nISS : hors de la période du TLE';
-      if (staleDays > 60) t += '\n(TLE ancien : position de l\'ISS imprécise)';
+      else t += '\nISS : pas encore lancée à cette date (premier module : ' + new Date(ISS_FROM).getUTCFullYear() + ')';
+      if (iss && iss.approx) t += '\n(hors de la période du TLE : position de l\'ISS indicative)';
+      else if (staleDays > 60) t += '\n(TLE ancien : position de l\'ISS imprécise)';
       if (hiState === 'loading') t += '\nChargement du modèle détaillé de l\'ISS…';
       if (cam.mode === 'iss') t += "\nÉchelle réelle : l'ISS (109 m) n'est visible qu'à moins de ~17 km.";
       t += '\n' + BODY.list().filter(b => b.info).sort((a, b) => (a.menu ? a.menu.order : 99) - (b.menu ? b.menu.order : 99)).map(b => { const d = bpos[b.id].length() * R_KM; return `${b.name} à ${fmtBig(d) || Math.round(d).toLocaleString('fr-FR') + ' km'}`; }).join(' · ');   // distances des astres marqués "info" (Lune, Soleil)
@@ -581,7 +584,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _localOrbit: id => { const o = bodyObjs[id]; if (!o || !o.localLine) return null; const at = o.localLine.geometry.attributes.position; return { visible: o.localLine.visible, coarse: o.orbitG.visible, n: at.count, mid: [at.getX(LOCAL_N), at.getY(LOCAL_N), at.getZ(LOCAL_N)], pos: o.localLine.position.toArray(), end: [at.getX(0), at.getY(0), at.getZ(0)] }; },
     _featuresVisible: () => Object.fromEntries(Object.entries(featInst).map(([id, inst]) => [id, inst.objects.some(o => o.visible)])),
     selectView,
-    goIss, nudge, setSimSpeed, resetTime, setFeature, setMetric: v => { metric = !!v; },
+    goIss, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
     startRocket, stopRocket, setRocketSpeed, followComponent, toggleComponentInfo,
     dispose() {
       stopped = true; cancelAnimationFrame(raf); clearTimeout(solarTimer); disposers.forEach(d => d()); clearLabels(); overlay.dispose();
