@@ -447,7 +447,12 @@ describe('createEngine (rendu factice)', () => {
     expect(state.time.speed).toBe(60)                                          // 1 min par seconde
     engine.setIssView(true); for (let i = 0; i < 4; i++) engine._frame(T + 600 + i * 100)
     expect(engine._fp()!.posErr!).toBeLessThan(1)                              // la caméra est SUR le Concorde
+    // le ciel depuis le Concorde se comporte comme depuis un observatoire : orange du coucher / lever actif, étoiles de nuit, jour = pas d’étoiles
+    expect(engine._skyObs()).toMatchObject({ on: true, orange: 1 })
+    const dayConc = engine._skyObs(); expect(dayConc.day).toBeGreaterThan(0.5)   // 2 juin 2003, ≈ 10 h UTC : plein jour
+    expect(dayConc.stars).toBe(false)
     engine.setIssView(false)
+    expect(engine._skyObs().on).toBe(false)                                     // hors de la vue depuis l’avion : plus de ciel d’observateur
     engine.setDate(Date.UTC(2003, 5, 2, 20, 0, 0)); engine._frame(T + 1100); engine._frame(T + 1200)   // le soir : plus de vol
     expect(engine._concorde().active).toBe(false)
     expect(state.view.mode).toBe('earth')                                      // retour à la vue Terre (le vol est fini)
