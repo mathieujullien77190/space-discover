@@ -3,10 +3,10 @@
 import * as THREE from 'three';
 import { wrapLighting } from './wrap-light.js';
 import { ll } from './earth.js';
-import { HQ_ALT_KM, DEM_URL, IMAGERY_URL, SEA_LEVEL_OFFSET, TERRAIN_EXAGGERATION, TERRAIN_GLOW, TERRAIN_HYSTERESIS, TERRAIN_MAX_ALT_KM, mercY, terrainTiles, terrainFallbacks, terrainLevels, tileBounds, tileSegments, tileHeights, tileUrl, vertexRadius } from './terrain-tiles.js';
+import { HQ_ALT_KM, DEM_URL, IMAGERY_URL, SEA_LEVEL_OFFSET, TERRAIN_EXAGGERATION, TERRAIN_GLOW, TERRAIN_HYSTERESIS, TERRAIN_MAX_ALT_KM, mercY, terrainTiles, terrainFallbacks, terrainLevels, terrainWanted, tileBounds, tileSegments, tileHeights, tileUrl, vertexRadius } from './terrain-tiles.js';
 
 const MAX_CACHED_HQ = 560;   // qualité max (au ras du sol) : plus de niveaux, tous avec relief
-const MAX_CACHED = 320;   // tuiles gardées en mémoire (≈ 320 × (image 350 Ko + relief) de mémoire graphique) : les plus anciennes sont libérées
+const MAX_CACHED = 420;   // tuiles gardées en mémoire (≈ 320 × (image 350 Ko + relief) de mémoire graphique) : les plus anciennes sont libérées
 const MAX_LOADING = 16;   // images en cours de téléchargement
 export const TILE_SEGMENTS = 32;   // facettes par côté d'une tuile
 export const FAR_SEGMENTS = 12;    // facettes par côté d'une tuile LOINTAINE (sans relief)
@@ -64,13 +64,13 @@ export function createTerrainLayer(parent, renderer, opts) {
   return {
     group, setLook,
     // à chaque image : on = couche demandée ; camAlt (km), cl / co = latitude / longitude du point regardé (°), fov (°), aspect ; renvoie vrai quand le relief est affiché
-    update({ on, camAlt, cl, co, fov, aspect, http }) {
+    // aim : { lon, lat, distKm } = le point du sol que vise le regard (rayon du centre de l'écran) et sa distance oblique : on y ajoute des niveaux de détail adaptés à CETTE distance (pas seulement sous la caméra)
+    update({ on, camAlt, cl, co, fov, aspect, http, aim }) {
       const lim = TERRAIN_MAX_ALT_KM * (enabled ? TERRAIN_HYSTERESIS : 1);   // seuil d'affichage (hystérésis : pas de clignotement)
       enabled = !!on && !!http && camAlt < lim;
       if (!enabled) { group.visible = false; if (!on || camAlt > 3000) for (const [k, t] of [...tiles]) free(k, t); return false; }
       tick++;
-      const levels = terrainLevels(co, cl, camAlt, fov, aspect), want = []; lastLevels = levels.length;
-      levels.forEach(lv => lv.tiles.forEach(tl => want.push(Object.assign({}, tl, { k: lv.k, dem: lv.dem }))));   // niveaux emboîtés jusqu'à l'horizon
+      const levels = terrainLevels(co, cl, camAlt, fov, aspect), want = terrainWanted(co, cl, camAlt, fov, aspect, aim); lastLevels = levels.length;   // niveaux emboîtés jusqu'à l'horizon, + ceux du point regardé
       for (const tl of want) { const t = tiles.get(tl.key); if (t && tl.dem && !t.demWanted) { free(tl.key, t); if (loading < MAX_LOADING) load(tl); } else if (t) t.t = tick; else if (loading < MAX_LOADING) load(tl); }   // (une tuile de secours à plat devenue tuile fine est rechargée avec son relief)
       const fb = terrainFallbacks(want, key => { const t = tiles.get(key); return !!t && t.state === 'ready'; });   // tuile pas encore arrivée : sa parente (un cran moins détaillé) la remplace en attendant
       for (const tl of fb) { const t = tiles.get(tl.key); if (t) t.t = tick; else if (loading < MAX_LOADING) load(tl); }

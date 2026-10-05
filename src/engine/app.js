@@ -347,6 +347,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
 
   // la Terre cache-t-elle le point P vu de la caméra ?
   // option « Infos étoiles » : un clic sur une étoile VISIBLE (pas masquée par la Terre, pas éteinte par le jour) la sélectionne : sa fiche (nom, constellation, descriptif) s'affiche (composant StarInfo) et un anneau jaune la repère
+  const aimDir = new THREE.Vector3(), aimHit = new THREE.Vector3();
   const precQ = new THREE.Quaternion(), meteors = createMeteors(scene); let meteorDark = false;   // étoiles filantes au hasard dans le ciel noir d'un observatoire
   let starInfoOn = false, starSel = -1; const starRing = overlay.label('', 'starring'); starRing.style.display = 'none';
   const starBins = STARS.map(s => starBin(s[2])), sv = new THREE.Vector3(), byBin = [];
@@ -538,7 +539,11 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       const camAlt = (camera.position.length() - 1) * R_KM;
       { const cv = clouds.update({ on: cloudsOn, camAlt, http: isHttp() }); if (cv !== cloudsPub) { cloudsPub = cv; publish({ clouds: cv }); } }   // le crédit des nuages ne s'affiche que quand ils sont visibles
       { const wasShown = terrainShown, L = camera.position.length(); let cl = Math.asin(camera.position.y / L) / DEG, co = Math.atan2(-camera.position.z, camera.position.x) / DEG;
-        terrainShown = terrain.update({ on: true, camAlt, cl, co, fov: camera.fov, aspect: camera.aspect, http: isHttp() });
+        let aim = null; {   // POINT REGARDÉ : le rayon du centre de l'écran contre la Terre (le relief fin se charge aussi là, pas seulement sous la caméra)
+          const d = camera.getWorldDirection(aimDir), b = camera.position.dot(d), disc = b * b - (camera.position.lengthSq() - 1);
+          if (disc > 0) { const t = -b - Math.sqrt(disc); if (t > 0) { aimHit.copy(camera.position).addScaledVector(d, t); const lh = aimHit.length(); aim = { lat: Math.asin(aimHit.y / lh) / DEG, lon: Math.atan2(-aimHit.z, aimHit.x) / DEG, distKm: t * R_KM }; } }
+        }
+        terrainShown = terrain.update({ on: true, camAlt, cl, co, fov: camera.fov, aspect: camera.aspect, http: isHttp(), aim });
         if (terrainShown !== wasShown) publish({ terrainDetail: terrainShown }); }   // l'interface affiche les crédits seulement quand le relief est visible
       borders.visible = bordersOn && !realistic && camAlt < CONTOUR_MAX_ALT_KM; borders.scale.setScalar(terrainShown ? 1.0016 : 1);   // sur le relief satellite, les limites flottent au-dessus des montagnes (1,0014 au plus)
       for (let k = 1; k < earth.children.length; k++) if (earth.children[k].isLineSegments) earth.children[k].visible = camAlt < CONTOUR_MAX_ALT_KM && !terrainShown && !realistic;   // dézoomé : plus de trait de côte ; sur le relief satellite il flotterait au-dessus

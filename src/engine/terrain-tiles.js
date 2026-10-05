@@ -99,6 +99,21 @@ export function terrainLevels(lon, lat, altKm, fovDeg, aspect) {
   return levels;
 }
 
+// Tuiles voulues : niveaux emboîtés autour du point SOUS la caméra (lon, lat, altitude) + ceux du POINT REGARDÉ (aim : { lon, lat, distKm } = le rayon du centre de l'écran contre la Terre) quand le regard est oblique
+// (distance oblique ≥ AIM_MIN_RATIO × altitude et point différent du nadir) : le zoom de ces niveaux suit la distance oblique, donc la zone qu'on regarde est nette même si elle n'est pas « pile en dessous ».
+// Sans doublon de tuile ; k = écart de zoom avec la tuile la plus fine (ordre de dessin : les plus fines par-dessus).
+export const AIM_MIN_RATIO = 1.5, AIM_LEVELS = 3;
+export function terrainWanted(lon, lat, altKm, fovDeg, aspect, aim) {
+  const want = [];
+  for (const lv of terrainLevels(lon, lat, altKm, fovDeg, aspect)) for (const tl of lv.tiles) want.push(Object.assign({}, tl, { k: lv.k, dem: lv.dem }));
+  if (aim && aim.distKm > altKm * AIM_MIN_RATIO && Math.hypot(aim.lon - lon, aim.lat - lat) > 0.002) {
+    const have = new Set(want.map(t => t.key));
+    for (const lv of terrainLevels(aim.lon, aim.lat, aim.distKm, fovDeg, aspect).slice(0, AIM_LEVELS)) for (const tl of lv.tiles) if (!have.has(tl.key)) { have.add(tl.key); want.push(Object.assign({}, tl, { k: lv.k, dem: lv.dem, aim: true })); }
+    const zTop = Math.max(...want.map(t => t.z)); for (const t of want) t.k = zTop - t.z;
+  }
+  return want;
+}
+
 // TUILES DE SECOURS : tant qu'une tuile voulue n'est pas arrivée, on affiche sa PARENTE, un niveau de zoom plus grossier (image seule, à plat), au lieu de la carte dessinée de la Terre.
 // want = tuiles voulues [{ x, y, z, key, k }] ; isReady(key) → vrai si la tuile est prête ; renvoie les parentes à charger / afficher (sans doublons, hors tuiles déjà voulues), plus proches du centre d'abord.
 export function terrainFallbacks(want, isReady) {

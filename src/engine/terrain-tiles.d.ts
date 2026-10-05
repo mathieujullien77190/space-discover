@@ -32,6 +32,9 @@ export function terrainFallbacks(want: { x: number; y: number; z: number; key: s
 export const MAX_FACET_DEG: number
 export function tileSegments(bounds: [number, number, number, number], base: number, max?: number): number
 export const DEM_MIN_Z: number
+export const AIM_MIN_RATIO: number
+export const AIM_LEVELS: number
+export function terrainWanted(lon: number, lat: number, altKm: number, fovDeg: number, aspect: number, aim?: { lon: number; lat: number; distKm: number } | null): { x: number; y: number; z: number; key: string; k: number; dem: boolean; aim?: boolean }[]
 export const HQ_ALT_KM: number
 export const HQ_FAR_RADIUS: number
 export const HQ_LEVELS: number

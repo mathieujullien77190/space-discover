@@ -7,7 +7,7 @@ export function terrainTileGeometry(b: [number, number, number, number], nx: num
 export function createTerrainLayer(parent: Group, renderer: WebGLRenderer, opts?: { exaggeration?: number }): {
   group: Group
   setLook(glow: number, gain: number): void
-  update(a: { on: boolean; camAlt: number; cl: number; co: number; fov: number; aspect: number; http: boolean }): boolean
+  update(a: { on: boolean; camAlt: number; cl: number; co: number; fov: number; aspect: number; http: boolean; aim?: { lon: number; lat: number; distKm: number } | null }): boolean
   stats(): { gain: number; glow: number; levels: number; tiles: number; ready: number; loading: number; seaOffset: number }
   dispose(): void
 }

@@ -1,5 +1,5 @@
 // Relief + imagerie satellite : maths des tuiles Web Mercator, décodage Terrarium, interpolation, niveau de zoom, grille, rayon des sommets.
-import { DEM_URL, IMAGERY_URL, SEA_LEVEL_OFFSET, TERRAIN_EXAGGERATION, horizonKm, terrainFallbacks, terrainLevels, TERRAIN_MAX_ALT_KM, DEM_MIN_Z, tileSegments, MAX_FACET_DEG, sampleDem, terrainTiles, terrainZoom, terrariumElevation, tileAt, tileBounds, tileHeights, tileUrl, vertexRadius } from '../../src/engine/terrain-tiles.js';
+import { AIM_LEVELS, AIM_MIN_RATIO, terrainWanted, DEM_URL, IMAGERY_URL, SEA_LEVEL_OFFSET, TERRAIN_EXAGGERATION, horizonKm, terrainFallbacks, terrainLevels, TERRAIN_MAX_ALT_KM, DEM_MIN_Z, tileSegments, MAX_FACET_DEG, sampleDem, terrainTiles, terrainZoom, terrariumElevation, tileAt, tileBounds, tileHeights, tileUrl, vertexRadius } from '../../src/engine/terrain-tiles.js';
 
 const fails = [], check = (c, m) => { console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if (!c) fails.push(m); };
 const p = tileAt(2.3522, 48.8566, 10);
@@ -58,3 +58,17 @@ if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }
   const ext = (4 + 0.5) * 40075 * Math.cos(42.9369 * Math.PI / 180) / Math.pow(2, hqLast.z);
   check(ext >= horizonKm(3) || hq.length === 6, 'la grille du dernier niveau atteint l’horizon (' + Math.round(ext) + ' km ≥ ' + Math.round(horizonKm(3)) + ' km) ou six niveaux');
 }
+// regard oblique : le point regardé (loin du nadir) reçoit ses propres niveaux, adaptés à la distance oblique
+{
+  const lon = 0.1426, lat = 42.9369, alt = 3, aim = { lon: 0.1426, lat: 43.1, distKm: 30 }, base = terrainWanted(lon, lat, alt, 50, 1.6, null), wide = terrainWanted(lon, lat, alt, 50, 1.6, aim);
+  check(wide.length > base.length && wide.filter(t => t.aim).length > 0, 'regard oblique : ' + (wide.length - base.length) + ' tuiles ajoutées autour du point regardé (' + base.length + ' → ' + wide.length + ')');
+  check(new Set(wide.map(t => t.key)).size === wide.length, 'aucune tuile en double');
+  const aimTiles = wide.filter(t => t.aim), zAim = Math.max(...aimTiles.map(t => t.z));
+  check(zAim < Math.max(...base.map(t => t.z)) && zAim >= 10, 'zoom du point regardé d’après la distance oblique (z ' + zAim + ' pour 30 km, contre z ' + Math.max(...base.map(t => t.z)) + ' sous la caméra à 3 km)');
+  const zTop = Math.max(...wide.map(t => t.z));
+  check(wide.every(t => t.k === zTop - t.z), 'ordre de dessin : k = écart au zoom le plus fin');
+  const near = terrainWanted(lon, lat, alt, 50, 1.6, { lon, lat, distKm: 3.2 });
+  check(near.length === base.length, 'regard vers le bas (distance ≈ altitude) : rien de plus');
+  check(AIM_MIN_RATIO > 1 && AIM_LEVELS >= 1, 'seuils : distance oblique ≥ ' + AIM_MIN_RATIO + ' × altitude, ' + AIM_LEVELS + ' niveaux');
+}
+if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }
