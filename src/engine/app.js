@@ -9,6 +9,7 @@ import { createClouds } from './clouds.js';
 import { createCapitals } from './capitals.js';
 import { createConstellations } from './constellations.js';
 import { createStars } from './stars.js';
+import { createSunGlare } from './sun-glare.js';
 import { occludedBy } from './occlusion.js';
 import { createTerrainLayer } from './terrain-layer.js';
 import { TERRAIN_DAY_GAIN, TERRAIN_GLOW } from './terrain-tiles.js';
@@ -23,7 +24,7 @@ import { createOverlay } from './overlay.js';
 import { parseObj } from './obj-mini.js';
 
 export const ISS_MIN_DIST_KM = 0.0001;   // zoom minimal autour de l'ISS : 10 cm (c'était 100 m)
-const SUN_INTENSITY = 3.6, NIGHT_AMBIENT = 0.25;   // jour / nuit : éclairage PHYSIQUE de three.js (la BRDF de Lambert divise par π) : un Soleil d'intensité 1 ne donnait que 32 % de la couleur au zénith, donc « la nuit » partout, même sur la face éclairée ; ≈ π × 1,15 au zénith, ambiance 0,25 (≈ 8 % la nuit)
+const SUN_INTENSITY = 3.6, NIGHT_AMBIENT = 0.06;   // jour / nuit : éclairage PHYSIQUE de three.js (la BRDF de Lambert divise par π) : un Soleil d'intensité 1 ne donnait que 32 % de la couleur au zénith, donc « la nuit » partout, même sur la face éclairée ; ≈ π × 1,15 au zénith, ambiance 0,06 (≈ 2 % la nuit : nuit bien sombre ; c'était 0,25)
 const VIEW_ISS = { yaw: -28.8, pitch: 24.9, dist: 0.393 };   // accès DIRECT à l'ISS, sans transition : vue réglée par l'utilisateur, un peu de derrière et au-dessus, à 393 m (yaw °, pitch °, distance km)
 const Y_AXIS = new THREE.Vector3(0, 1, 0), KMU = 1 / (R_KM * 1000);
 const defaultRenderer = canvas => new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true });
@@ -133,6 +134,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   // VRAI ciel étoilé (≈ 5 000 étoiles, vraies positions / couleurs / éclats : stars.js), sphère de rayon 1 replacée sur la caméra et grossie à chaque image, tournée avec le temps sidéral
   const tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3(), tmp3 = new THREE.Vector3(), tmp4 = new THREE.Vector3(), fpM = new THREE.Matrix4();
   const stars = createStars(scene);
+  const sunGlare = createSunGlare(scene);   // l'éclat du Soleil (cœur, halo bleuté, aigrettes) quand il est dans le champ et pas caché par la Terre
   const constellations = createConstellations(stars, overlay); let constellationsOn = false;   // option « Constellations » : traits entre les étoiles + noms
   const amb = new THREE.AmbientLight(0xffffff, 0.55), sun = new THREE.DirectionalLight(0xffffff, 1.0);
   const sunPoint = new THREE.PointLight(0xffffff, SUN_INTENSITY, 0, 0); sunPoint.visible = false; scene.add(amb, sun, sun.target, sunPoint);   // sunPoint : le VRAI Soleil (option jour / nuit)
@@ -493,6 +495,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     inertial.position.copy(world.position); solar.position.copy(world.position);
     stars.position.copy(camera.position); stars.scale.setScalar(camera.far * 0.45); stars.rotation.y = solar.rotation.y;   // les étoiles suivent le repère « solaire » : fixes en vue inertielle, elles tournent avec le temps sidéral quand la Terre est fixe
     sunPoint.position.copy(babs[STAR]); if (shift) sunPoint.position.sub(shift);   // le Soleil suit le décalage d'origine flottante
+    sunGlare.update({ camera, sunPos: sunPoint.position, earthCenter: new THREE.Vector3().setFromMatrixPosition(earth.matrixWorld), height: innerHeight });
     constellations.update({ on: constellationsOn, camera, width: innerWidth, height: innerHeight, earthCenter: new THREE.Vector3().setFromMatrixPosition(earth.matrixWorld) });
     capitals.update({ on: capitalsOn, camera, width: innerWidth, height: innerHeight, hidden: p => occludedBy(camera.position.toArray(), [p.x, p.y, p.z], lastOcc.filter(o => o.id !== 'earth'), 0, 0) !== null });   // juste avant le rendu : pose de la Terre et de la caméra à jour (rotation du temps sidéral comprise) ; cachée par la Lune / une planète = pas de nom
     renderer.render(scene, camera);
@@ -525,6 +528,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     setCapitals: on => { capitalsOn = !!on; },
     setConstellations: on => { constellationsOn = !!on; },
     setDayNight: on => { dayNight = !!on; terrain.setLook(dayNight ? 0 : TERRAIN_GLOW, dayNight ? TERRAIN_DAY_GAIN : 1); },
+    _glare: () => ({ visible: sunGlare.sprite.visible, opacity: sunGlare.sprite.material.opacity, scale: sunGlare.sprite.scale.x }),
     _sun: () => { const v = babs[STAR].clone().normalize(); return { lon: Math.atan2(-v.z, v.x) / DEG, lat: Math.asin(v.y) / DEG }; },   // point subsolaire dans le repère de la scène (vue Terre fixe)
     _mapOptions: () => ({ borders: bordersOn && borders.visible, capitals: capitals.count(), constellations: constellations.lines.visible, constellationNames: constellations.count(), dayNight, ambient: amb.intensity, sunPoint: sunPoint.visible }),
     _clouds: () => Object.assign({ on: cloudsOn }, clouds.stats()),
@@ -533,7 +537,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
 
     dispose() {
       stopped = true; cancelAnimationFrame(raf); clearTimeout(solarTimer); disposers.forEach(d => d()); overlay.dispose();
-      terrain.dispose(); clouds.dispose(); capitals.dispose(); constellations.dispose();
+      terrain.dispose(); clouds.dispose(); capitals.dispose(); constellations.dispose(); sunGlare.dispose();
       if (renderer.dispose) renderer.dispose();
     },
   };
