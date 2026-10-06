@@ -46,6 +46,7 @@ export type Engine = {
   setFeature: (id: string, on: boolean) => void
   setMetric: (on: boolean) => void
   setIssView: (on: boolean) => void
+  _skyVis: () => number
   setPhoto: (on: boolean) => void
   setMoonReal: (on: boolean) => void
   _moonScale: () => number

@@ -48,13 +48,13 @@ export function createSunGlare(scene) {
   return {
     sprite,
     // sunPos : position du Soleil dans le monde (même repère que la caméra) ; width / height : écran ; renvoie 1 (affiché) ou 0
-    update({ camera, sunPos, height, tint = 0, rise = 0 }) {   // tint : 0 (blanc) à 1 (rougi) ; rise : 0 = rouge-orangé du coucher, 1 = rose du lever
+    update({ camera, sunPos, height, tint = 0, rise = 0, vis = 1 }) {   // vis : fraction du Soleil qui n'est pas cachée par la Lune (éclipse)   // tint : 0 (blanc) à 1 (rougi) ; rise : 0 = rouge-orangé du coucher, 1 = rose du lever
       dir.copy(sunPos).sub(camera.position); const d = dir.length(), px = glarePixels(d);
       if (!(d > 0) || px === 0) { sprite.visible = false; return 0; }
       dir.divideScalar(d);
       const R = camera.far * 0.45, pxAng = 2 * Math.tan(camera.fov * Math.PI / 360) / height;   // même distance que les étoiles ; taille monde d'un pixel à cette distance = R · pxAng
       sprite.position.copy(camera.position).addScaledVector(dir, R); sprite.scale.setScalar(R * pxAng * px);
-      mat.opacity = glareOpacityFor(tint); mat.color.setRGB(1, 1 - (0.45 - 0.05 * rise) * tint, 1 - (0.75 - 0.5 * rise) * tint); sprite.visible = true; return 1;
+      mat.opacity = glareOpacityFor(tint) * Math.max(0, Math.min(1, vis)); mat.color.setRGB(1, 1 - (0.45 - 0.05 * rise) * tint, 1 - (0.75 - 0.5 * rise) * tint); sprite.visible = true; return 1;
     },
     dispose() { scene.remove(sprite); tex.dispose(); mat.dispose(); },
   };

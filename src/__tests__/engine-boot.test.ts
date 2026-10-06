@@ -382,6 +382,16 @@ describe('createEngine (rendu factice)', () => {
     expect(engine._moonBoost()).toBe(1)
     expect(engine._moonBright()).toBe(1)
   })
+  it('ÉCLIPSE du 12 août 2026 vue du Pic du Midi : le Soleil est presque entièrement caché à 18 h 28 UTC, plein soleil à midi', async () => {
+    await new Promise((r) => setTimeout(r, 500))
+    const T = performance.now() + 300000
+    engine.resetTime(); engine.goObservatory('pic-du-midi'); engine.setObservatoryView(true)
+    engine.setDate(Date.UTC(2026, 7, 12, 12, 0, 0)); for (let i = 0; i < 3; i++) engine._frame(T + 100 + i * 50)
+    expect(engine._skyVis()).toBeGreaterThan(0.99)                             // midi : aucune éclipse
+    engine.setDate(Date.UTC(2026, 7, 12, 18, 28, 0)); for (let i = 0; i < 3; i++) engine._frame(T + 400 + i * 50)
+    expect(engine._skyVis()).toBeLessThan(0.05)                                // maximum : plus de 95 % du disque caché (ciel et éclat du Soleil assombris)
+    engine.selectView('earth'); engine._frame(T + 800); engine.resetTime()
+  })
   it('plus d’avion A320 qui apparaît ni disparaît dans la vue observatoire', async () => {
     await new Promise((r) => setTimeout(r, 500))
     const T = performance.now() + 150000

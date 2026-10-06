@@ -17,6 +17,7 @@ import { pickNearest } from './star-info.js';
 import { precessionQuaternion } from './precession.js';
 import { createMeteors } from './meteors.js';
 import { createAirliners } from './airliners.js';
+import { eclipseStandard, setEclipse, sunVisibility } from './eclipse.js';
 import { elevationFrom } from './airliner.js';
 import { MOON_SITES, buildMoonSite, moonSiteById, moonSiteFrame } from './moon-sites.js';
 import { createSunGlare } from './sun-glare.js';
@@ -125,6 +126,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
         o.mesh = new THREE.Mesh(new THREE.SphereGeometry(ru, 24, 12), new THREE.MeshStandardMaterial({ color: new THREE.Color(ap.color || '#8a8178'), roughness: 1, metalness: 0 }));
         o.meshUrl = assetUrl((FLIGHT_OBJECT_FILES[b.id] || '').replace(/[^/]*$/, '') + ap.model);
       } else if (ap.kind === 'sphere' || ap.kind === 'comet') o.mesh = new THREE.Mesh(new THREE.SphereGeometry(ru, 48, 24), new THREE.MeshStandardMaterial({ color: new THREE.Color(ap.color || '#cccccc'), roughness: 1, metalness: 0 }));
+      if (o.mesh && o.mesh.material && o.mesh.material.isMeshStandardMaterial) eclipseStandard(o.mesh.material);   // reçoit l'ombre des autres astres (éclipses)
       if (o.mesh && (ap.kind === 'textured' || ap.kind === 'painted')) { o.lodHi = o.mesh.geometry; o.lod = 0; }   // sphères à niveaux de détail
       if (o.mesh && poleOf(b)) { o.axisG = axisMarker(); solar.add(o.axisG); }   // repère nord / équateur (visible près de l'astre)
       if (o.mesh && ap.rings) o.mesh.add(ringMesh(ap.rings, b.radiusKm));   // anneaux : dans le plan équatorial de la planète (enfant du maillage : suit son orientation)
@@ -305,6 +307,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const issSrc = { pos: null, dir: new THREE.Vector3(), radial: new THREE.Vector3() };   // l'ISS vue de l'intérieur : sens de la marche = vitesse, haut = à l'opposé de la Terre
   let issView = false;
   // OBSERVATOIRE (comme l'ISS : aller dessus, puis « vue depuis ») : obsId = observatoire choisi, obsView = on regarde DEPUIS lui ; obsFrame = repère local (œil, haut, sud)
+  let skyVis = 1;   // éclairement relatif du Soleil à l'observateur (1 = plein soleil, 0 = totalité)
   let obsId = null, obsView = false, obsFrame = null, skyOn = false, obsDay = 0;
   // OBSERVATOIRES LUNAIRES (sites Apollo) : on se tient debout sur la Lune (sol, drapeau, module lunaire, rover), ciel noir, la Terre dans le ciel ; obsMoon = le site choisi, moonView = on regarde DEPUIS lui
   const skyPos = new THREE.Vector3(), skyUp = new THREE.Vector3(), skyEast = new THREE.Vector3(), skyNorth = new THREE.Vector3();   // l'observateur dont on regarde le ciel : un observatoire
@@ -633,10 +636,20 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     world.rotation.y = gm * frameF;
     if (shift) { world.position.copy(shift).negate(); camera.position.sub(shift); camera.updateMatrixWorld(); } else world.position.set(0, 0, 0);
     inertial.position.copy(world.position); solar.position.copy(world.position);
+    // OMBRES DES ASTRES : les 6 astres les plus proches de la caméra (planètes, lunes, Terre) sont les occulteurs du Soleil pour tous les récepteurs (voir eclipse.js)
+    { solar.updateMatrixWorld(true); earth.updateWorldMatrix(true, false); const sm = bodyObjs[STAR] && bodyObjs[STAR].mesh;
+      if (sm) { const cands = [], wp = tmpObs2.setFromMatrixPosition(sm.matrixWorld), sunW = { x: wp.x, y: wp.y, z: wp.z, r: BODY.radiusUnits(STAR) };
+        const push = (id, m) => { const p = tmpObs.setFromMatrixPosition(m); cands.push({ x: p.x, y: p.y, z: p.z, r: BODY.radiusUnits(id), d: p.distanceToSquared(camera.position) }); };
+        push(BODY.origin(), earth.matrixWorld);
+        for (const id in bodyObjs) { const o = bodyObjs[id]; if (id === STAR || o.b.sceneOrigin || !o.mesh || (o.b.bodyType !== 'planet' && o.b.bodyType !== 'moon' && o.b.bodyType !== 'dwarf')) continue; push(id, o.mesh.matrixWorld); }
+        cands.sort((a, b) => a.d - b.d); setEclipse(sunW, cands); } }
+    // éclairement du Soleil à l'observateur (éclipse vue d'un observatoire) : assombrit le ciel et l'éclat du Soleil
+    skyVis = 1; if (skyObs && babs.moon) skyVis = sunVisibility(skyPos, { x: babs[STAR].x, y: babs[STAR].y, z: babs[STAR].z, r: BODY.radiusUnits(STAR) }, [{ x: babs.moon.x, y: babs.moon.y, z: babs.moon.z, r: BODY.radiusUnits('moon') }]);
+    atmMat.uniforms.uSkyVis.value = skyVis;
     stars.position.copy(camera.position); stars.scale.setScalar(camera.far * 0.45); stars.quaternion.setFromAxisAngle(Y_AXIS, solar.rotation.y).multiply(precessionQuaternion(Dd / 36525, precQ));   // temps sidéral, après la PRÉCESSION du catalogue (J2000 → date : ≈ 0,36° en 2026)   // les étoiles suivent le repère « solaire » : fixes en vue inertielle, elles tournent avec le temps sidéral quand la Terre est fixe
     sunPoint.position.copy(babs[STAR]); if (shift) sunPoint.position.sub(shift);   // le Soleil suit le décalage d'origine flottante
     const sunRed = skyObs ? Math.max(0, Math.min(1, 1 - tmpObs.copy(babs[STAR]).sub(skyPos).normalize().dot(skyUp) / 0.25)) : 0;   // le Soleil rougit près de l'horizon (vue depuis un observatoire) : blanc au-delà de ≈ 14° de hauteur, rouge-orangé à l'horizon
-    sunGlare.update({ camera, sunPos: sunPoint.position, height: innerHeight, tint: sunRed, rise: atmMat.uniforms.uRise.value });
+    sunGlare.update({ camera, sunPos: sunPoint.position, height: innerHeight, vis: skyVis, tint: sunRed, rise: atmMat.uniforms.uRise.value });
     { const sm = bodyObjs[STAR] && bodyObjs[STAR].mesh; if (sm && sm.material.color) { const dim = 1 - SUN_LOW_DIM * sunRed; sm.material.color.setRGB(dim, dim * (1 - (0.4 - 0.05 * atmMat.uniforms.uRise.value) * sunRed), dim * (1 - (0.7 - 0.45 * atmMat.uniforms.uRise.value) * sunRed)); } }   // son disque aussi   // l'éclat est testé en PROFONDEUR : la Terre (et le relief) le cache, il est donc DERRIÈRE la Terre au lieu de s'affaiblir avant
     constellations.update({ on: constellationsOn && !realistic, camera, width: innerWidth, height: innerHeight, earthCenter: new THREE.Vector3().setFromMatrixPosition(earth.matrixWorld) });
     if (starSel >= 0 && starInfoOn) { stars.updateMatrixWorld(true); const p = starProject(STARS[starSel]); if (p) { starRing.style.display = 'block'; starRing.style.transform = `translate(${p[0] - 13}px,${p[1] - 13}px)`; } else starRing.style.display = 'none'; } else starRing.style.display = 'none';
@@ -680,6 +693,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _lod: () => ({ earth: earthLevel, bodies: Object.fromEntries(Object.entries(bodyObjs).filter(([, o]) => o.lodHi).map(([id, o]) => [id, o.mesh.visible ? o.lod : -1])), ratio }),
     _orbitsVisible: () => Object.fromEntries(Object.entries(bodyObjs).filter(([, o]) => o.orbitG).map(([id, o]) => [id, o.orbitG.visible || (!!o.localLine && o.localLine.visible)])),
     _localOrbit: id => { const o = bodyObjs[id]; if (!o || !o.localLine) return null; const at = o.localLine.geometry.attributes.position; return { visible: o.localLine.visible, coarse: o.orbitG.visible, n: at.count, mid: [at.getX(LOCAL_N), at.getY(LOCAL_N), at.getZ(LOCAL_N)], pos: o.localLine.position.toArray(), end: [at.getX(0), at.getY(0), at.getZ(0)] }; },
+    _skyVis: () => skyVis,
     _skyObs: () => ({ on: obsView, orange: atmMat.uniforms.uOrange.value, day: obsDay, stars: stars.children.some(c => c.userData.bin !== undefined && c.visible && c.material.opacity > 0.4), moonBoost: bodyObjs.moon && bodyObjs.moon.mesh ? bodyObjs.moon.mesh.scale.x / (bodyObjs.moon.baseScale || 1) : 1 }),
     _featuresVisible: () => Object.fromEntries(Object.entries(featInst).filter(([id]) => !id.includes(':')).map(([id, inst]) => [id, inst.objects.some(o => o.visible)])),   // ISS
     _hubbleFeatures: () => Object.fromEntries(Object.entries(featInst).filter(([id]) => id.startsWith('hubble:')).map(([id, inst]) => [id.slice(7), inst.objects.some(o => o.visible)])),

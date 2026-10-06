@@ -29,6 +29,7 @@ uniform float uPower;
 uniform vec3 uColor;
 uniform vec3 uSun;      // direction du Soleil depuis le centre de la Terre (unitaire)
 uniform float uRise;    // 0 = coucher (rouge-orangé), 1 = lever (rose)
+uniform float uSkyVis;  // éclairement relatif du Soleil à l'observateur (éclipse : le ciel s'assombrit)
 uniform float uOrange;  // 1 = couleurs du coucher / lever (vue depuis un observatoire seulement), 0 = halo bleu sans orange
 uniform float uUseSun;  // 1 = tient compte du Soleil (mode jour / nuit), 0 = halo régulier
 varying vec3 vWorld;
@@ -58,12 +59,12 @@ void main() {
     col = mix(uColor, mix(vec3(0.93, 0.56, 0.36), vec3(0.93, 0.62, 0.76), uRise), orange);   // teintes adoucies (avant 1 ; 0,46 ; 0,18 et 1 ; 0,52 ; 0,74)   // coucher : rouge-orangé ; lever : ROSE
     a *= lit * mix(1.0, 0.7, orange);   // le ciel orangé est moins lumineux (avant jusqu'à × 1,15)
   }
-  gl_FragColor = vec4(col, a * 0.95);
+  gl_FragColor = vec4(col, a * 0.95 * uSkyVis);
 }`;
 
 export function buildAtmosphere() {
   const mat = new THREE.ShaderMaterial({
-    uniforms: { uR: { value: 1.0 }, uRatm: { value: ATM_R }, uPower: { value: ATM_POWER }, uColor: { value: new THREE.Vector3(...ATM_COLOR) }, uSun: { value: new THREE.Vector3(1, 0, 0) }, uUseSun: { value: 0 }, uOrange: { value: 0 }, uRise: { value: 0 } },
+    uniforms: { uR: { value: 1.0 }, uRatm: { value: ATM_R }, uPower: { value: ATM_POWER }, uColor: { value: new THREE.Vector3(...ATM_COLOR) }, uSun: { value: new THREE.Vector3(1, 0, 0) }, uUseSun: { value: 0 }, uSkyVis: { value: 1 }, uOrange: { value: 0 }, uRise: { value: 0 } },
     vertexShader: VERT, fragmentShader: FRAG, side: THREE.BackSide, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
   });
   const mesh = new THREE.Mesh(new THREE.SphereGeometry(ATM_R, 64, 32), mat);
