@@ -11,7 +11,6 @@ export type UiState = {
   bodyCategory: BodyCategory
   nudgeStep: number   // index dans NUDGE_STEPS
   cardCollapsed: boolean   // fiche d'astre réduite en mini bouton-icône (mémorisé)
-  concorde: boolean   // un Concorde vole à la date simulée (publié par le moteur) : le bouton « Concorde » n'existe qu'alors
   terrainDetail: boolean   // le relief satellite (sous 800 km) est affiché : crédits à montrer (publié par le moteur)
   borders: boolean   // option de carte : limites de pays
   capitals: boolean   // option de carte : noms des capitales
@@ -76,7 +75,6 @@ export const useStore = create<Store>((set) => ({
   constellations: false,
   realistic: false,
   terrainDetail: false,
-  concorde: false,
   setEngine: (engine) => set({ engine }),
   applyPatch: (patch) => set((s) => mergePatch(s, patch)),
   togglePanel: (panel) => set((s) => ({ panel: s.panel === panel ? null : panel })),

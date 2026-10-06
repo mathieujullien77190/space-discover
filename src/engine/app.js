@@ -16,10 +16,8 @@ import { STARS } from './data/stars.js';
 import { pickNearest } from './star-info.js';
 import { precessionQuaternion } from './precession.js';
 import { createMeteors } from './meteors.js';
-import { createAirliners, strobeFlash } from './airliners.js';
+import { createAirliners } from './airliners.js';
 import { elevationFrom } from './airliner.js';
-import { concordeAt, FLIGHTS, takeoffMs, AIRBORNE_S } from './concorde.js';
-import { CONCORDE, CONCORDE_DIMS, buildConcorde } from './concorde-model.js';
 import { MOON_SITES, buildMoonSite, moonSiteById, moonSiteFrame } from './moon-sites.js';
 import { createSunGlare } from './sun-glare.js';
 import { occludedBy } from './occlusion.js';
@@ -41,8 +39,6 @@ const STAR_DARK_SIN = 0.12;   // sin de la hauteur du Soleil sous l'horizon (≈
 
 export const ISS_MIN_DIST_KM = 0.001;   // zoom minimal autour de l'ISS : 1 m (c'était 100 m, puis 10 cm)
 const SUN_INTENSITY = 3.6, NIGHT_AMBIENT = 0.012;   // jour / nuit : éclairage PHYSIQUE de three.js (la BRDF de Lambert divise par π) : un Soleil d'intensité 1 ne donnait que 32 % de la couleur au zénith, donc « la nuit » partout, même sur la face éclairée ; ≈ π × 1,15 au zénith, ambiance 0,012 (≈ 0,4 % la nuit : on ne voit presque rien ; c'était 0,25 puis 0,06)
-const smoothstepFlame = x => { const u = Math.max(0, Math.min(1, x)); return u * u * (3 - 2 * u); };
-const VIEW_CONCORDE = { yaw: -32, pitch: 14, dist: 0.17 };   // accès direct au Concorde : de derrière et au-dessus, à 170 m (61,7 m de long)
 const VIEW_ISS = { yaw: -28.8, pitch: 24.9, dist: 0.393 };   // accès DIRECT à l'ISS, sans transition : vue réglée par l'utilisateur, un peu de derrière et au-dessus, à 393 m (yaw °, pitch °, distance km)
 const Y_AXIS = new THREE.Vector3(0, 1, 0), KMU = 1 / (R_KM * 1000);
 const defaultRenderer = canvas => new THREE.WebGLRenderer({ canvas, antialias: true, logarithmicDepthBuffer: true });
@@ -187,11 +183,6 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const hubDg = new THREE.BufferGeometry(); hubDg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
   const hubDot = new THREE.Points(hubDg, roundPointsMaterial({ color: 0x7fe3ff, size: 10, sizeAttenuation: false })); hubDot.frustumCulled = false; hubDot.visible = false; world.add(hubDot);
   const hubLabel = overlay.label('Hubble', 'iss'); let hubScreen = null;
-  // CONCORDE (Air France, AF002 Paris → New York et AF001 New York → Paris) : comme l'ISS, une position à chaque date ; modèle stylisé à la taille réelle, repère orange, nom
-  const concModel = buildConcorde(); concModel.visible = false; world.add(concModel);
-  const concDg = new THREE.BufferGeometry(); concDg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
-  const concDot = new THREE.Points(concDg, roundPointsMaterial({ color: 0xffb347, size: 10, sizeAttenuation: false })); concDot.frustumCulled = false; concDot.visible = false; world.add(concDot);
-  const concLabel = overlay.label('Concorde', 'iss'); let concScreen = null;
   // AVIONS (Airbus A320, modèle 3D + traînée de condensation) : un apparaît à l'entrée de la vue observatoire, d'autres ensuite ; ils continuent de voler hors de la vue et disparaissent d'un coup quand l'observatoire ne les voit plus
   const airliners = createAirliners(world), airSun = new THREE.Vector3(), airEye = new THREE.Vector3();
   const capitals = createCapitals(overlay, earth); let capitalsOn = false, lastOcc = [];   // éteinte par défaut
@@ -201,10 +192,9 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const cam = { fov: 50, mode: 'earth', tgt: new THREE.Vector3(), lon: 0, lat: 50, dist: 3.4, fly: 0, tfly: 0, userDir: false, fp: null, fpUp: new THREE.Vector3(), upKind: 'north', goal: { lon: 0, lat: 50, dist: 3.4 } };   // départ : la Terre vue du nord (nord en haut), le méridien de Greenwich (0°) en face de la caméra
   const moonsShown = {};   // planète → distance de la caméra, pour les planètes dont les lunes sont affichées
   let poseStale = false;   // juste après un changement de vue la caméra garde l'ancienne position jusqu'à la prochaine image : on n'en déduit pas « trop loin de l'ISS »
-  let concPub = false, concLit = false;
-  let iss = null, hub = null, conc = null, concPrefer = null, focusSat = 'iss', frameF = 0, curGm = 0, curD = 0;
-  const fsat = () => (focusSat === 'hubble' ? hub : focusSat === 'concorde' ? conc : iss);   // l'objet regardé en vue « iss » (ISS, Hubble ou Concorde)
-  const viewOf = () => (focusSat === 'concorde' ? VIEW_CONCORDE : VIEW_ISS);
+  let iss = null, hub = null, focusSat = 'iss', frameF = 0, curGm = 0, curD = 0;
+  const fsat = () => (focusSat === 'hubble' ? hub : iss);   // le satellite regardé en vue « iss » (ISS ou Hubble)
+  const viewOf = () => VIEW_ISS;
 
   const syncView = m => publish({ view: { mode: m, selected: m === 'iss' ? null : m === 'solar' ? solarTarget : 'earth', align: cam.upKind } });   // en vue ISS (satellite) aucun astre n'est choisi
   const snapCam = () => { cam.lon = cam.goal.lon; cam.lat = cam.goal.lat; cam.dist = cam.goal.dist; cam.fly = cam.tfly = 0; };   // la caméra prend la pose voulue d'un coup
@@ -242,9 +232,6 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   };
   const viewIss = () => { if (fsat()) { setMode('iss'); applyLocal(viewOf().yaw, viewOf().pitch, viewOf().dist, true); } };   // accès DIRECT à l'ISS, sans transition
   const goIss = () => { focusSat = 'iss'; viewIss(); for (const f of ISS_FEATURES) setFeature(f.id, true); };   // choisir l'ISS (menu ou clic) : vue directe + options allumées d'office (dimensions, hauteur, trajectoire)
-  const goConcorde = () => { focusSat = 'concorde'; viewIss(); for (const f of ISS_FEATURES) setFeature(f.id, true); };   // le Concorde (s'il vole à la date simulée) : vue d'accès directe + cotes, hauteur et trajectoire restante
-  // aller à un vol : on saute à la date (2 juin 2003, 2 min après le décollage), l'horloge passe à 1 min par seconde, la caméra se place sur le Concorde
-  const flyConcorde = id => { const f = FLIGHTS.find(x => x.id === id) || FLIGHTS[0]; concPrefer = f.id; setDate(takeoffMs(f, 2003, 5, 2) + 120e3); setSimSpeed(60); conc = concordeAt(simMs, concPrefer); goConcorde(); };
   const goHubble = () => { focusSat = 'hubble'; viewIss(); for (const f of ISS_FEATURES) setFeature(f.id, true); };   // Hubble : comme l'ISS, vue d'accès directe + cotes, hauteur et trajectoire allumées d'office
   const currentView = () => {
     const rd = x => Math.round(x * 10) / 10, altCam = (camera.position.length() - 1) * R_KM;
@@ -288,15 +275,13 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   const l3d = [], featOn = {}, featInst = {};
   const mkLabel = (sat, model) => text => { const l = { el: overlay.label(text), world: new THREE.Vector3(), needModel: false, sat, modelObj: model }; l3d.push(l); return l; };
   const fctx = { scene: world, model: issModel, label: mkLabel('iss', issModel) };
-  const cctx = { scene: world, model: concModel, label: mkLabel('concorde', concModel), dims: CONCORDE_DIMS, stateOf: d => concordeAt(d.getTime(), concPrefer), periodMs: () => (conc ? Math.max(1000, (AIRBORNE_S - conc.t) * 1000) : 0), orbitColor: 0xffb347 };   // mêmes caractéristiques que l'ISS (cotes, hauteur, trajectoire restante)
   const hctx = { scene: world, model: hubModel, label: mkLabel('hubble', hubModel), dims: HUBBLE_DIMS, stateOf: hubbleState, periodMs: HUBBLE_PERIOD_MS, orbitColor: 0x7fe3ff };   // mêmes caractéristiques que l'ISS (cotes, hauteur, trajectoire), propres à Hubble
   const setFeature = (id, on) => {
     const f = ISS_FEATURES.find(x => x.id === id); if (!f) return;
     featOn[id] = on; publish({ features: { ...featOn } }); if (id === 'size' && on && cam.mode !== 'iss') viewIss();   // « Dimensions » ne se voit que sur le satellite : on s'en approche
     if (on && !featInst[id]) featInst[id] = f.build(fctx);
     if (on && !featInst['hubble:' + id]) featInst['hubble:' + id] = f.build(hctx);
-    if (on && !featInst['concorde:' + id]) featInst['concorde:' + id] = f.build(cctx);
-    for (const key of [id, 'hubble:' + id, 'concorde:' + id]) { const inst = featInst[key]; if (inst) { inst.objects.forEach(o => { o.visible = on; }); inst.labels.forEach(l => { if (!on) l.el.style.display = 'none'; }); } }
+    for (const key of [id, 'hubble:' + id]) { const inst = featInst[key]; if (inst) { inst.objects.forEach(o => { o.visible = on; }); inst.labels.forEach(l => { if (!on) l.el.style.display = 'none'; }); } }
   };
 
   // ---------- fusées : plan de vol ou objet JSON, avec liste d'étapes, composants et lecture ----------
@@ -321,7 +306,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   // OBSERVATOIRE (comme l'ISS : aller dessus, puis « vue depuis ») : obsId = observatoire choisi, obsView = on regarde DEPUIS lui ; obsFrame = repère local (œil, haut, sud)
   let obsId = null, obsView = false, obsFrame = null, skyOn = false, obsDay = 0;
   // OBSERVATOIRES LUNAIRES (sites Apollo) : on se tient debout sur la Lune (sol, drapeau, module lunaire, rover), ciel noir, la Terre dans le ciel ; obsMoon = le site choisi, moonView = on regarde DEPUIS lui
-  const skyPos = new THREE.Vector3(), skyUp = new THREE.Vector3(), skyEast = new THREE.Vector3(), skyNorth = new THREE.Vector3();   // l'observateur dont on regarde le ciel : un observatoire OU le Concorde (vue depuis l'avion)
+  const skyPos = new THREE.Vector3(), skyUp = new THREE.Vector3(), skyEast = new THREE.Vector3(), skyNorth = new THREE.Vector3();   // l'observateur dont on regarde le ciel : un observatoire
   let obsMoon = null, moonView = false, moonGroup = null, moonLabels = null; const moonGroups = {}, moonObsPos = new THREE.Vector3(), moonSrc = { pos: moonObsPos, dir: new THREE.Vector3(), radial: new THREE.Vector3() };
   const obsPos = new THREE.Vector3(), obsSrc = { pos: obsPos, dir: new THREE.Vector3(), radial: new THREE.Vector3() }, skyCol = new THREE.Color(), tmpObs = new THREE.Vector3(), tmpObs2 = new THREE.Vector3();
   const obsDotG = new THREE.BufferGeometry(); obsDotG.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3));
@@ -358,7 +343,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     publish({ observatory: { id: obsId, view: obsView } });
   };
   const setIssView = on => {   // « vue depuis l'ISS » : la caméra est sur la station, on regarde autour en glissant ; couper = retour à la vue d'accès de l'ISS
-    if (on && fsat()) { setMode('iss'); cam.fp = { yaw: 0, pitch: focusSat === 'concorde' ? -6 : -35, fov: 70 }; cam.fpUp.set(0, 0, 0); issView = true; }
+    if (on && fsat()) { setMode('iss'); cam.fp = { yaw: 0, pitch: -35, fov: 70 }; cam.fpUp.set(0, 0, 0); issView = true; }
     else { const was = issView; issView = false; if (was) { cam.fp = null; if (fsat()) viewIss(); } }
     publish({ issView });
   };
@@ -366,7 +351,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   let issScreen = null;   // position écran de l'ISS si visible ; celles des astres sont dans bodyObjs[id].screen
   const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches, HIT = touch ? 42 : 26, near = (p, r, x, y) => !!p && Math.hypot(x - p[0], y - p[1]) < r;
   const bodyAt = (x, y) => { for (const id in bodyObjs) { const o = bodyObjs[id]; if (o.screen && o.b.menu && (o.b.menu.view || o.b.menu.mode === 'earth') && near(o.screen, HIT + (o.b.hitExtraPx || 0), x, y)) return id; } return null; };
-  disposers.push(attachControls(canvas, cam, (x, y) => { if (near(issScreen, HIT, x, y)) goIss(); else if (near(hubScreen, HIT, x, y)) goHubble(); else if (near(concScreen, HIT, x, y)) goConcorde(); else { const id = bodyAt(x, y); if (id) selectView(id); else if (starInfoOn) pickStarAt(x, y); } }));
+  disposers.push(attachControls(canvas, cam, (x, y) => { if (near(issScreen, HIT, x, y)) goIss(); else if (near(hubScreen, HIT, x, y)) goHubble(); else { const id = bodyAt(x, y); if (id) selectView(id); else if (starInfoOn) pickStarAt(x, y); } }));
   const onMove = e => canvas.classList.toggle('hand', near(issScreen, HIT, e.clientX, e.clientY) || !!bodyAt(e.clientX, e.clientY));
   canvas.addEventListener('pointermove', onMove); disposers.push(() => canvas.removeEventListener('pointermove', onMove));
 
@@ -402,7 +387,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   hiddenByEarth = P => { const d = P.clone().sub(camera.position), L = d.length(); d.divideScalar(L); const b = camera.position.dot(d), disc = b * b - (camera.position.lengthSq() - 1); return disc > 0 && -b - Math.sqrt(disc) > 0 && -b - Math.sqrt(disc) < L; };
 
   // résolution ADAPTATIVE : si les images prennent plus de 30 ms en moyenne, la résolution du rendu baisse (jusqu'à 0,75) ; elle remonte quand la machine suit (images < 15 ms) ; délai entre deux changements
-  // MODE PHOTO (vues « depuis » : ISS, Hubble, Concorde, observatoires) : objectif à champ étroit (PHOTO_FOV), netteté MAXIMALE derrière (résolution du rendu au maximum, jamais réduite ; tuiles satellite un niveau de zoom plus fin) ;
+  // MODE PHOTO (vues « depuis » : ISS, Hubble, observatoires) : objectif à champ étroit (PHOTO_FOV), netteté MAXIMALE derrière (résolution du rendu au maximum, jamais réduite ; tuiles satellite un niveau de zoom plus fin) ;
   // `takePhoto` enregistre l'image en PNG. Quitté dès qu'on n'est plus en vue « depuis ».
   let photo = false, photoFov = 60, snapReq = false;
   const PHOTO_FOV = 10, PHOTO_BOOST = 2, PHOTO_SLOW = 0.1,   // en mode photo le temps est RALENTI 10 fois (le temps de cadrer)
@@ -419,13 +404,10 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     const userRealistic = realistic; if (moonView) realistic = true;   // debout sur la Lune : pas de noms, d'orbites ni de points lointains (restauré en fin d'image)
     const realNow = Date.now(); simMs += (realNow - lastReal) * simSpeed * (photo ? PHOTO_SLOW : 1); lastReal = realNow; const date = new Date(simMs);   // horloge simulée : temps réel par défaut, accélérable
-    iss = issState(date); hub = hubbleState(date); conc = concordeAt(date.getTime(), concPrefer);
+    iss = issState(date); hub = hubbleState(date);
     if (cam.mode === 'iss' && !fsat()) setMode('earth');   // le vol est fini : retour à la vue Terre
-    if (!!conc !== concPub) { concPub = !!conc; publish({ concorde: concPub }); }   // l'interface n'affiche le bouton « Concorde » que s'il vole à la date simulée
-    // LE CIEL DU CONCORDE SE COMPORTE COMME CELUI D'UN OBSERVATOIRE (atmosphère bleue / orange / rose / noire selon le Soleil, étoiles qui apparaissent, scintillement, étoiles filantes, Lune agrandie)
-    const concView = issView && !!cam.fp && focusSat === 'concorde' && !!conc, skyObs = obsView || concView;
-    if (concView) { skyPos.copy(conc.pos); skyUp.copy(conc.up); skyEast.set(0, 1, 0).cross(skyUp).normalize(); skyNorth.crossVectors(skyUp, skyEast).normalize(); }
-    else if (obsView && obsFrame) { skyPos.copy(obsPos); skyUp.copy(obsSrc.radial); skyEast.fromArray(obsFrame.east); skyNorth.fromArray(obsFrame.north); }
+    const skyObs = obsView;   // le ciel d'un observateur (atmosphère selon le Soleil, étoiles, étoiles filantes, Lune agrandie) : observatoires seulement
+    if (obsView && obsFrame) { skyPos.copy(obsPos); skyUp.copy(obsSrc.radial); skyEast.fromArray(obsFrame.east); skyNorth.fromArray(obsFrame.north); }
     frameF = cam.mode === 'solar' ? 1 : 0;
     const Dd = astroD(date), gm = curGm = gmstOf(Dd), _d = curD = Dd, solarMode = cam.mode === 'solar', rotS = -gm * (1 - frameF);
     for (const id in bpos) { const g = BODY.geo(id, Dd); bpos[id].set(g[0] * KMU, g[1] * KMU, g[2] * KMU); babs[id].copy(bpos[id]).applyAxisAngle(Y_AXIS, rotS); }   // position géocentrique de chaque astre (inertielle, puis dans le repère tourné de `solar`)
@@ -579,39 +561,17 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       if (realistic) { hubScreen = null; hubLabel.style.display = 'none'; hubDot.visible = false; }   // vue réaliste : ni nom ni repère, mais le vrai modèle reste
       if (issHidden || (issView && cam.fp && focusSat === 'hubble')) { hubScreen = null; hubLabel.style.display = 'none'; hubDot.visible = false; hubModel.visible = false; }   // vue réaliste, dézoomé ou vue DEPUIS Hubble : ni modèle, ni repère, ni nom
     }
-    // CONCORDE : modèle à la taille réelle quand il fait ≥ 6 px, sinon repère orange ; nom à tout zoom
-    concScreen = null; concLabel.style.display = 'none';
-    if (conc) {
-      const dKm = camera.position.distanceTo(conc.pos) * R_KM;
-      fw.copy(conc.vel).addScaledVector(conc.up, -conc.vel.dot(conc.up)).normalize(); zz.crossVectors(fw, conc.up);
-      concModel.quaternion.setFromRotationMatrix(basis.makeBasis(fw, conc.up, zz)); concModel.position.copy(conc.pos); concModel.scale.setScalar(1e-3 / R_KM); concModel.updateMatrix();
-      const px = (CONCORDE.lengthM / 1000 / Math.max(1e-9, dKm)) / (2 * Math.tan(camera.fov * DEG / 2)) * innerHeight;
-      concModel.visible = px >= 6; concDot.visible = !concModel.visible;
-      {   // FEUX DE NUIT (Soleil sous l'horizon de l'avion) : navigation fixes (rouge gauche, vert droite, blanc arrière) + strobes blancs clignotants aux bouts d'ailes ; agrandis avec la distance pour rester visibles
-        const night = tmpObs.copy(babs[STAR]).sub(conc.pos).normalize().dot(conc.up) < -0.02, L = concModel.userData.lights, k = Math.max(1, Math.min(40, dKm * 1000 / 300)), tt = performance.now() / 1000;
-        for (const l of [L.left, L.right, L.tail]) { l.visible = night; l.scale.setScalar(k); }
-        L.strobes.forEach((l, j) => { l.visible = night && strobeFlash(tt, j * 0.31) > 0; l.scale.setScalar(k); });
-        concLit = night;
-      }
-      concModel.userData.setGear(conc.alt < 0.8); concModel.userData.setNose(12 * (1 - smoothstepFlame((conc.alt - 0.3) / 1.2)));   // train sorti sous 800 m ; nez baissé de 12° près du sol (décollage, atterrissage), relevé ensuite
-      concModel.userData.setFlames(conc.t < AIRBORNE_S / 2 ? 1 - smoothstepFlame((conc.alt - 15.5) / 0.5) : 0, performance.now() / 1000);   // flammes de réchauffe du décollage jusqu'à l'altitude de croisière (≈ 15,5 km)
-      concDg.attributes.position.setXYZ(0, conc.pos.x, conc.pos.y, conc.pos.z); concDg.attributes.position.needsUpdate = true;
-      const p = conc.pos.clone().project(camera);
-      if (!hiddenByEarth(conc.pos) && p.z < 1 && Math.abs(p.x) < 1 && Math.abs(p.y) < 1) { concScreen = [(p.x + 1) / 2 * innerWidth, (1 - p.y) / 2 * innerHeight]; concLabel.style.display = 'block'; concLabel.style.transform = `translate(${concScreen[0] + 10}px,${concScreen[1] - 8}px)`; }
-      if (realistic) { concScreen = null; concLabel.style.display = 'none'; concDot.visible = false; }   // vue réaliste : ni nom ni repère, mais le vrai modèle reste
-      if (issHidden || (issView && cam.fp && focusSat === 'concorde')) { concScreen = null; concLabel.style.display = 'none'; concDot.visible = false; concModel.visible = false; }   // vue réaliste, dézoomé ou vue DEPUIS le Concorde : ni modèle, ni repère, ni nom
-    } else { concModel.visible = false; concDot.visible = false; }
     // AVIONS : modèle 3D à la taille réelle (rien s'il est trop petit), traînée de condensation, feux la nuit ; disparaissent d'un coup sous 12° d'élévation vu de l'observatoire
     airliners.update({ dt, camera, fov: camera.fov, height: innerHeight, sunDir: airSun.copy(babs[STAR]).normalize(), hide: solarMode || (camera.position.length() - 1) * R_KM > 2000, hiddenByEarth, obsActive: false, obsFrame, groundR: obsFrame ? Math.hypot(...obsFrame.ground) : 1, eye: obsFrame ? airEye.fromArray(obsFrame.eye) : airEye, R_KM });
     // caractéristiques 3D : mise à jour puis étiquettes projetées à l'écran
-    for (const [sat, st] of [['iss', iss], ['hubble', hub], ['concorde', conc]]) for (const f of ISS_FEATURES) {   // une caractéristique « onlyIss » (cotes, hauteur) n'apparaît que sur la vue du satellite regardé
+    for (const [sat, st] of [['iss', iss], ['hubble', hub]]) for (const f of ISS_FEATURES) {   // une caractéristique « onlyIss » (cotes, hauteur) n'apparaît que sur la vue du satellite regardé
       const inst = featInst[sat === 'iss' ? f.id : sat + ':' + f.id]; if (!inst) continue;
       const act = !!featOn[f.id] && !!st && !issHidden && !realistic && !(issView && cam.fp) && (!f.onlyIss || (cam.mode === 'iss' && focusSat === sat));
       inst.objects.forEach(o => { o.visible = act; }); inst.labels.forEach(l => { l.active = act; });
       if (act && st) inst.update(st, camera, date);
     }
     for (const l of l3d) {
-      const on = (l.sat === 'hubble' ? hub : l.sat === 'concorde' ? conc : iss) && l.active && !(l.needModel && !l.modelObj.visible);
+      const on = (l.sat === 'hubble' ? hub : iss) && l.active && !(l.needModel && !l.modelObj.visible);
       if (!on) { l.el.style.display = 'none'; continue; }
       if (l.alongLine && l.line) { placeAlong(l.el, l.line[0], l.line[1]); continue; }   // texte posé sur le trait, incliné comme lui
       const p = l.world.clone().project(camera);
@@ -648,18 +608,17 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     if (infoT <= 0) {   // texte d'information, temps, paramètres de la vue, fusée : 5 fois par seconde
       infoT = 0.2;
       const altCam = (camera.position.length() - 1) * R_KM, f = v => v >= 1000 ? Math.round(v).toLocaleString('fr-FR') : v.toFixed(v < 10 ? 1 : 0);
-      let t = `Caméra : ${fmtBig(altCam) || f(altCam) + ' km'} d'altitude` + (cam.mode === 'iss' ? ` · ${fmtBig(cam.dist * R_KM) || f(cam.dist * R_KM) + ' km'} ${focusSat === 'concorde' ? 'du Concorde' : focusSat === 'hubble' ? 'de Hubble' : 'de l\'ISS'}` : '');
+      let t = `Caméra : ${fmtBig(altCam) || f(altCam) + ' km'} d'altitude` + (cam.mode === 'iss' ? ` · ${fmtBig(cam.dist * R_KM) || f(cam.dist * R_KM) + ' km'} ${focusSat === 'hubble' ? 'de Hubble' : 'de l\'ISS'}` : '');
       if (iss) t += `\nISS : ${f(iss.alt)} km · ${iss.speed.toFixed(2)} km/s (${Math.round(iss.speed * 3600).toLocaleString('fr-FR')} km/h) · ${Math.abs(iss.lat).toFixed(1)}°${iss.lat < 0 ? 'S' : 'N'} ${Math.abs(iss.lon).toFixed(1)}°${iss.lon < 0 ? 'O' : 'E'}`;
       else t += '\nISS : pas encore lancée à cette date (premier module : ' + new Date(ISS_FROM).getUTCFullYear() + ')';
       if (iss && iss.approx) t += '\n(hors de la période du TLE : position de l\'ISS indicative)';
       else if (staleDays > 60) t += '\n(TLE ancien : position de l\'ISS imprécise)';
-      if (conc) t += `\nConcorde ${conc.flight.id} : Mach ${conc.mach.toFixed(2).replace('.', ',')} · ${f(conc.alt)} km · ${Math.round(conc.speed * 3600).toLocaleString('fr-FR')} km/h · ${Math.abs(conc.lat).toFixed(1)}°${conc.lat < 0 ? 'S' : 'N'} ${Math.abs(conc.lon).toFixed(1)}°${conc.lon < 0 ? 'O' : 'E'}`;
       if (hub) t += `\nHubble : ${f(hub.alt)} km · ${hub.speed.toFixed(2)} km/s · ${Math.abs(hub.lat).toFixed(1)}°${hub.lat < 0 ? 'S' : 'N'} ${Math.abs(hub.lon).toFixed(1)}°${hub.lon < 0 ? 'O' : 'E'}${hub.approx ? ' (position indicative : hors de la période du TLE)' : ''}`;
       if (hiState === 'loading') t += '\nChargement du modèle détaillé de l\'ISS…';
-      if (cam.mode === 'iss') t += focusSat === 'concorde' ? "\nÉchelle réelle : le Concorde (61,7 m) n'est visible qu'à moins de ~9 km." : focusSat === 'hubble' ? "\nÉchelle réelle : Hubble (13 m) n'est visible qu'à moins de ~2 km." : "\nÉchelle réelle : l'ISS (109 m) n'est visible qu'à moins de ~17 km.";
+      if (cam.mode === 'iss') t += focusSat === 'hubble' ? "\nÉchelle réelle : Hubble (13 m) n'est visible qu'à moins de ~2 km." : "\nÉchelle réelle : l'ISS (109 m) n'est visible qu'à moins de ~17 km.";
       t += '\n' + BODY.list().filter(b => b.info).sort((a, b) => (a.menu ? a.menu.order : 99) - (b.menu ? b.menu.order : 99)).map(b => { const d = bpos[b.id].length() * R_KM; return `${b.name} à ${fmtBig(d) || Math.round(d).toLocaleString('fr-FR') + ' km'}`; }).join(' · ');   // distances des astres marqués "info" (Lune, Soleil)
       if (solarMode && BODY.get(solarTarget) && BODY.get(solarTarget).menu.view) t += '\n' + BODY.get(solarTarget).menu.view.text;
-      const fid = cam.mode === 'iss' ? focusSat : cam.mode === 'earth' ? 'earth' : solarMode ? solarTarget : null, fb = fid && (BODY.get(fid) || FLIGHT_OBJECTS[fid] || (fid === 'concorde' ? { card: true } : null));   // astre regardé ; « proche » = à moins de 30 de ses rayons (ou card.nearUnits) : sa fiche s'affiche
+      const fid = cam.mode === 'iss' ? focusSat : cam.mode === 'earth' ? 'earth' : solarMode ? solarTarget : null, fb = fid && (BODY.get(fid) || FLIGHT_OBJECTS[fid]);   // astre regardé ; « proche » = à moins de 30 de ses rayons (ou card.nearUnits) : sa fiche s'affiche
       const near = !!fb && !!fb.card;   // la fiche de l'astre choisi s'affiche toujours, de près comme de loin (demande de l'utilisateur)
       let cardId = near ? fid : null;
       if (!cardId && cam.mode !== 'iss') { let best = Infinity; for (const k in moonsShown) if (moonsShown[k] < best && BODY.get(k) && BODY.get(k).card) { best = moonsShown[k]; cardId = k; } }   // lunes affichées : fiche de la planète la plus proche
@@ -719,14 +678,12 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _lod: () => ({ earth: earthLevel, bodies: Object.fromEntries(Object.entries(bodyObjs).filter(([, o]) => o.lodHi).map(([id, o]) => [id, o.mesh.visible ? o.lod : -1])), ratio }),
     _orbitsVisible: () => Object.fromEntries(Object.entries(bodyObjs).filter(([, o]) => o.orbitG).map(([id, o]) => [id, o.orbitG.visible || (!!o.localLine && o.localLine.visible)])),
     _localOrbit: id => { const o = bodyObjs[id]; if (!o || !o.localLine) return null; const at = o.localLine.geometry.attributes.position; return { visible: o.localLine.visible, coarse: o.orbitG.visible, n: at.count, mid: [at.getX(LOCAL_N), at.getY(LOCAL_N), at.getZ(LOCAL_N)], pos: o.localLine.position.toArray(), end: [at.getX(0), at.getY(0), at.getZ(0)] }; },
-    _concordeFeatures: () => Object.fromEntries(Object.entries(featInst).filter(([id]) => id.startsWith('concorde:')).map(([id, inst]) => [id.slice(9), inst.objects.some(o => o.visible)])),
-    _skyObs: () => ({ on: obsView || (issView && !!cam.fp && focusSat === 'concorde' && !!conc), orange: atmMat.uniforms.uOrange.value, day: obsDay, stars: stars.children.some(c => c.userData.bin !== undefined && c.visible && c.material.opacity > 0.4), moonBoost: bodyObjs.moon && bodyObjs.moon.mesh ? bodyObjs.moon.mesh.scale.x / (bodyObjs.moon.baseScale || 1) : 1 }),
-    _concorde: () => (conc ? { active: true, flight: conc.flight.id, alt: conc.alt, mach: conc.mach, speedKmh: conc.speed * 3600, t: conc.t, model: concModel.visible, gear: concModel.userData.gear.visible, lights: concLit && concModel.userData.lights.left.visible, flames: concModel.userData.flames.some(x => x.visible), dot: concDot.visible } : { active: false, flight: null, alt: 0, mach: 0, speedKmh: 0, t: 0, model: false, gear: false, lights: false, flames: false, dot: concDot.visible }),
+    _skyObs: () => ({ on: obsView, orange: atmMat.uniforms.uOrange.value, day: obsDay, stars: stars.children.some(c => c.userData.bin !== undefined && c.visible && c.material.opacity > 0.4), moonBoost: bodyObjs.moon && bodyObjs.moon.mesh ? bodyObjs.moon.mesh.scale.x / (bodyObjs.moon.baseScale || 1) : 1 }),
     _featuresVisible: () => Object.fromEntries(Object.entries(featInst).filter(([id]) => !id.includes(':')).map(([id, inst]) => [id, inst.objects.some(o => o.visible)])),   // ISS
     _hubbleFeatures: () => Object.fromEntries(Object.entries(featInst).filter(([id]) => id.startsWith('hubble:')).map(([id, inst]) => [id.slice(7), inst.objects.some(o => o.visible)])),
     selectView,
     setPhoto, takePhoto: () => { if (photo) snapReq = true; }, _photo: () => ({ slow: photo ? PHOTO_SLOW : 1, on: photo, fov: cam.fp ? cam.fp.fov : null, ratio, snap: snapReq }),
-    goIss, goHubble, goConcorde, flyConcorde, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
+    goIss, goHubble, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
     setClouds: on => { cloudsOn = !!on; },
     _terrain: () => Object.assign({ shown: terrainShown }, terrain.stats()),
     setBorders: on => { bordersOn = !!on; },

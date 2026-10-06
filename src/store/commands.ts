@@ -8,8 +8,6 @@ const engine = () => useStore.getState().engine
 export const selectView = (id: string): void => engine()?.selectView(id)
 export const goIss = (): void => engine()?.goIss()
 export const goHubble = (): void => engine()?.goHubble()
-export const goConcorde = (): void => engine()?.goConcorde()
-export const flyConcorde = (flightId: string): void => engine()?.flyConcorde(flightId)
 export const clearStar = (): void => engine()?.clearStar()
 export const setSimSpeed = (speed: number): void => engine()?.setSimSpeed(speed)
 export const resetTime = (): void => engine()?.resetTime()

@@ -3,7 +3,7 @@ import { useStore } from '@/store'
 import { setPhoto, takePhoto } from '@/store/commands'
 import styles from './PhotoMode.module.css'
 
-// MODE PHOTO, disponible dans les vues « depuis » (ISS, Hubble, Concorde, observatoires, site lunaire) : le bouton « 📷 Photo » passe à un objectif à champ étroit (10°, la molette règle de 1° à 30°) avec une netteté maximale
+// MODE PHOTO, disponible dans les vues « depuis » (ISS, Hubble, observatoires, site lunaire) : le bouton « 📷 Photo » passe à un objectif à champ étroit (10°, la molette règle de 1° à 30°) avec une netteté maximale
 // (résolution du rendu au maximum, tuiles satellite plus fines) ; le viseur s'affiche et « 📸 Prendre la photo » enregistre l'image en PNG.
 export const PhotoMode = () => {
   const issView = useStore((s) => s.issView)

@@ -56,7 +56,7 @@ export const ISS_FEATURES = [
     const hg = new THREE.BufferGeometry(); hg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
     const hcol = 0xffa040, hl = new THREE.Line(hg, new THREE.LineBasicMaterial({ color: hcol })); hl.frustumCulled = false; hl.material.depthTest = false; hl.renderOrder = 5; ctx.scene.add(hl); objects.push(hl);
     const lh = ctx.label('Hauteur'); lh.el.style.color = '#ffa040'; lh.alongLine = true; labels.push(lh);
-    const lv = ctx.label('Vitesse'); lv.el.style.color = '#7dff9a'; labels.push(lv);   // vitesse EN DIRECT (ISS, Hubble, Concorde), posée sur l'objet
+    const lv = ctx.label('Vitesse'); lv.el.style.color = '#7dff9a'; labels.push(lv);   // vitesse EN DIRECT (ISS, Hubble), posée sur l'objet
     return {
       objects, labels,
       update(iss) {
@@ -75,7 +75,7 @@ export const ISS_FEATURES = [
   { id: 'orbit', label: '🛤 Trajectoire (1 tour)', build(ctx) {
     const N = 180, pos = new Float32Array((N + 1) * 3), g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     const line = new THREE.Line(g, new THREE.LineBasicMaterial({ color: ctx.orbitColor || 0xffe27a })); line.frustumCulled = false; ctx.scene.add(line);
-    let built = -1e12; const periodOf = () => (typeof ctx.periodMs === 'function' ? ctx.periodMs() : (ctx.periodMs || ISS_PERIOD_MS)), stateOf = ctx.stateOf || issState;   // durée tracée : une période d'orbite, ou la route restante du Concorde   // période du JSON (86400 / tours par jour)
+    let built = -1e12; const periodOf = () => (typeof ctx.periodMs === 'function' ? ctx.periodMs() : (ctx.periodMs || ISS_PERIOD_MS)), stateOf = ctx.stateOf || issState;   // durée tracée : une période d'orbite,   // période du JSON (86400 / tours par jour)
     return {
       objects: [line], labels: [],
       update(iss, camera, date) {

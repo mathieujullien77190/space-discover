@@ -23,7 +23,7 @@ export type EngineState = {
 // Correctif envoyé par le moteur : chaque tranche peut être partielle (fusion superficielle dans le store).
 export type EnginePatch = {
   [K in keyof EngineState]?: EngineState[K] extends object ? Partial<EngineState[K]> : EngineState[K]
-} & { bigVehicles?: boolean; firstPerson?: boolean; clouds?: boolean; terrainDetail?: boolean; concorde?: boolean; photo?: boolean }   // clés publiées par le moteur hors des tranches de EngineState
+} & { bigVehicles?: boolean; firstPerson?: boolean; clouds?: boolean; terrainDetail?: boolean; photo?: boolean }   // clés publiées par le moteur hors des tranches de EngineState
 
 export type BodyFact = { label: string; value: string }
 export type BodyCardData = { id: string; name: string; kind: string; canNorth: boolean; canOrbit: boolean; image: string; facts: BodyFact[] }   // canNorth / canOrbit : boutons « Nord en haut » / « Orbite à plat » de la fiche
@@ -36,8 +36,6 @@ export type Engine = {
   goIss: () => void
   goHubble: () => void
   goMoonSite: (id: string) => void
-  goConcorde: () => void
-  flyConcorde: (flightId: string) => void
   alignNorth: (id: string) => void
   alignOrbit: (id: string) => void
   resetUp: () => void
@@ -58,9 +56,7 @@ export type Engine = {
   setStarInfo: (on: boolean) => void
   clearStar: () => void
   _hubbleFeatures: () => Record<string, boolean>
-  _concordeFeatures: () => Record<string, boolean>
   _skyObs: () => { on: boolean; orange: number; day: number; stars: boolean; moonBoost: number }
-  _concorde: () => { active: boolean; flight: string | null; alt: number; mach: number; speedKmh: number; t: number; model: boolean; gear: boolean; lights: boolean; flames: boolean; dot: boolean }
   _moonSite: () => { eyeDist: number; id: string | null; view: boolean; group: boolean; eyeErrM: number | null; near: number; labels: number; realistic: boolean }
   _airliner: () => { active: boolean; count: number; t: number; elevation: number; model: boolean; lights: boolean; strobe: boolean; glow: boolean; strobeGlow: boolean; night: boolean; px: number }
   _airlinerSkip: (sec: number) => void

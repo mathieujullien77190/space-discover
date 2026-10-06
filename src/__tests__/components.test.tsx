@@ -46,25 +46,13 @@ describe('TopBar + SubMenu', () => {
     render(<IssBadge />)
     expect(screen.getByText(/Vue depuis l’ISS/)).toBeInTheDocument()
   })
-  it('bouton « Concorde » : seulement quand un Concorde vole à la date simulée', () => {
-    useStore.setState({ ...initialEngineState, panel: null, concorde: false })
-    const { unmount } = render(<TopBar />)
-    expect(screen.queryByText('✈ Concorde')).toBeNull()
-    unmount()
-    useStore.setState({ concorde: true })
-    render(<TopBar />)
-    fireEvent.click(screen.getByText('✈ Concorde'))
-    expect(engine.goConcorde).toHaveBeenCalled()
-  })
-  it('fiche du Concorde : faits et bouton « Vue depuis le Concorde »', () => {
-    useStore.setState({ ...initialEngineState, focus: { id: 'concorde' }, issView: false, cardCollapsed: false, features: { size: true, orbit: true } })
+  it('fiche de l’ISS : bloc Terre (limites, capitales, observatoires) et case « Mesures » (cotes, hauteur, vitesse)', () => {
+    useStore.setState({ ...initialEngineState, focus: { id: 'iss' }, issView: false, cardCollapsed: false, features: { size: true, orbit: true } })
     render(<BodyCard />)
-    expect(screen.getByText('Concorde (Air France)')).toBeInTheDocument()
-    expect(screen.getByText('61,66 m')).toBeInTheDocument()
-    fireEvent.click(screen.getByLabelText('Mesures (dimensions, hauteur, vitesse)'))   // case « Mesures » des satellites : cotes + hauteur + vitesse
+    fireEvent.click(screen.getByLabelText('Mesures (dimensions, hauteur, vitesse)'))
     expect(engine.setFeature).toHaveBeenLastCalledWith('size', false)
-    expect(screen.getByLabelText('Limites de pays')).toBeInTheDocument()       // le bloc « Terre » (limites, capitales, observatoires) reste dans la fiche : l'avion est sur la Terre
-    fireEvent.click(screen.getByText('👁 Vue depuis le Concorde'))
+    expect(screen.getByLabelText('Limites de pays')).toBeInTheDocument()       // le bloc « Terre » reste dans la fiche : l’ISS est en orbite autour de la Terre
+    fireEvent.click(screen.getByText('👁 Vue depuis l’ISS'))
     expect(engine.setIssView).toHaveBeenCalledWith(true)
   })
   it('plus de bandeau en vue depuis un observatoire', () => {
