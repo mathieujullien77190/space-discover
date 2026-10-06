@@ -416,7 +416,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     if (re && !re.over) { const st = re.id === 'hubble' ? hub : iss; if (st) {   // l'objet qui rentre : altitude, vitesse, chaleur et érosion mises en scène (temps réel, indépendant de l'horloge simulée)
       re.t += dt; const alt = reentryAltitude(re.alt0, re.t), spd = reentrySpeed(re.speed0, alt);
       st.alt = alt; st.speed = spd; st.pos.copy(st.up).multiplyScalar(1 + alt / R_KM);
-      if (!re.dead) { re.heat = heatIntensity(alt, spd); re.burn = burnStep(re.burn, re.heat, dt); if (re.burn >= 1) re.dead = true; } else re.heat = Math.max(0, re.heat - 0.6 * dt);
+      if (!re.dead) { re.heat = heatIntensity(alt, spd); re.burn = burnStep(re.burn, re.heat, dt); if (re.burn >= 1) { re.dead = true; re.over = true; publish({ reentry: false }); } } else re.heat = Math.max(0, re.heat - 0.6 * dt);   // plus aucun polygone : l'objet est REMIS EN ORBITE tout de suite (état normal, modèle intact), la fumée finit de s'éteindre
       re.st = st;
       if (alt <= 0.01) { re.over = true; publish({ reentry: false }); } } }   // à 0 : l'objet REPREND SON ORBITE NORMALE (l'état n'est plus modifié) ; la fumée finit de s'éteindre
     if (cam.mode === 'iss' && !fsat()) setMode('earth');   // le vol est fini : retour à la vue Terre

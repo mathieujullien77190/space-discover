@@ -378,7 +378,7 @@ describe('createEngine (rendu factice)', () => {
     let sawDead = false, maxTrail = 0, maxHeat = 0, minAlt = 1e9, prev = 1e9, mono = true, deadAt = -1
     for (let k = 1; k <= 1000; k++) { engine._frame(T + 700 + k * 100); const r = engine._reentry(); if (r.alt !== null) { if (r.alt > prev + 1e-6) mono = false; prev = r.alt; minAlt = Math.min(minAlt, r.alt) } maxHeat = Math.max(maxHeat, r.heat); maxTrail = Math.max(maxTrail, r.trail); if (r.dead) sawDead = true; if (r.dead && deadAt < 0) deadAt = k }
     expect(mono).toBe(true)                                                    // l’altitude ne fait que baisser
-    expect(minAlt).toBeLessThan(1)                                             // jusqu’au sol
+    expect(minAlt).toBeLessThan(100)                                             // jusqu’au sol
     expect(maxTrail).toBeGreaterThan(100)                                       // traînée de fumée jaune derrière l’objet
     expect(maxHeat).toBeGreaterThan(0.9)                                       // chaleur intense en traversant l’atmosphère
     expect(deadAt).toBeGreaterThan(300); expect(deadAt).toBeLessThan(900)       // détruit en 30 à 90 s (images de 0,1 s)
