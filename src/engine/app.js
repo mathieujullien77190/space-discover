@@ -17,6 +17,7 @@ import { pickNearest } from './star-info.js';
 import { precessionQuaternion } from './precession.js';
 import { createMeteors } from './meteors.js';
 import { createAirliners } from './airliners.js';
+import { burnStep, createReentry, createReentryLight, heatIntensity, reentryAltitude, reentrySpeed } from './reentry.js';
 import { eclipseStandard, setEclipse, sunVisibility } from './eclipse.js';
 import { elevationFrom } from './airliner.js';
 import { MOON_SITES, buildMoonSite, moonSiteById, moonSiteFrame } from './moon-sites.js';
@@ -412,6 +413,11 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     const userRealistic = realistic; if (moonView) realistic = true;   // debout sur la Lune : pas de noms, d'orbites ni de points lointains (restauré en fin d'image)
     const realNow = Date.now(); simMs += (realNow - lastReal) * simSpeed * (photo ? PHOTO_SLOW : 1); lastReal = realNow; const date = new Date(simMs);   // horloge simulée : temps réel par défaut, accélérable
     iss = issState(date); hub = hubbleState(date);
+    if (re) { const st = re.id === 'hubble' ? hub : iss; if (st) {   // l'objet qui rentre : altitude, vitesse, chaleur et érosion mises en scène (temps réel, indépendant de l'horloge simulée)
+      re.t += dt; const alt = reentryAltitude(re.alt0, re.t), spd = reentrySpeed(re.speed0, alt);
+      st.alt = alt; st.speed = spd; st.pos.copy(st.up).multiplyScalar(1 + alt / R_KM);
+      if (!re.dead) { re.heat = heatIntensity(alt, spd); re.burn = burnStep(re.burn, re.heat, dt); if (re.burn >= 1) re.dead = true; } else re.heat = Math.max(0, re.heat - 0.6 * dt);
+      re.st = st; } }
     if (cam.mode === 'iss' && !fsat()) setMode('earth');   // le vol est fini : retour à la vue Terre
     const skyObs = obsView;   // le ciel d'un observateur (atmosphère selon le Soleil, étoiles, étoiles filantes, Lune agrandie) : observatoires seulement
     if (obsView && obsFrame) { skyPos.copy(obsPos); skyUp.copy(obsSrc.radial); skyEast.fromArray(obsFrame.east); skyNorth.fromArray(obsFrame.north); }
@@ -642,6 +648,10 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       solar.updateMatrixWorld(true); const fr = moonSiteFrame(pendingMoonAim, bodyObjs.moon.mesh.matrixWorld); pendingMoonAim = null;
       cam.goal.lat = Math.asin(Math.max(-1, Math.min(1, fr.up.y))) / DEG; cam.goal.lon = Math.atan2(-fr.up.z, fr.up.x) / DEG; cam.goal.dist = 1.1; snapCam();
     }
+    if (re && re.st) {   // effet de la rentrée (après le décalage d'origine flottante : mêmes coordonnées que le rendu)
+      if (re.dead) { re.model.visible = false; (re.id === 'hubble' ? hubDot : dot).visible = false; }
+      re.fx.update({ pos: re.st.pos, vel: re.st.vel, heat: re.heat, burn: re.burn, t: re.t, camDist: camera.position.distanceTo(re.st.pos) });
+    }
     // OMBRES DES ASTRES : les 6 astres les plus proches de la caméra (planètes, lunes, Terre) sont les occulteurs du Soleil pour tous les récepteurs (voir eclipse.js)
     { solar.updateMatrixWorld(true); earth.updateWorldMatrix(true, false); const sm = bodyObjs[STAR] && bodyObjs[STAR].mesh;
       if (sm) { const cands = [], wp = tmpObs2.setFromMatrixPosition(sm.matrixWorld), sunW = { x: wp.x, y: wp.y, z: wp.z, r: BODY.radiusUnits(STAR) };
@@ -675,6 +685,18 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     camera.position.copy(saved); camera.updateMatrixWorld(); realistic = userRealistic;
     if (!ready) { ready = true; publish({ status: 'ready' }); }
   };
+  // RENTRÉE ATMOSPHÉRIQUE (ISS / Hubble, bouton de leur fiche) : l'objet plonge de son altitude à 0 en 90 s ; au contact de l'air (ρ·v³) il s'échauffe, son modèle 3D perd des blocs (« polygones ») et il s'illumine
+  // (plasma, traînée, lumière) jusqu'à la destruction complète (voir reentry.js)
+  const reLight = createReentryLight(); world.add(reLight);
+  let re = null;
+  const stopReentry = () => { if (!re) return; re.fx.dispose(); re = null; publish({ reentry: false }); };
+  const startReentry = on => {
+    if (!on) { stopReentry(); return; }
+    stopReentry();
+    const id = focusSat, st = id === 'hubble' ? hub : iss, model = id === 'hubble' ? hubModel : issModel; if (!st) return;
+    re = { id, t: 0, burn: 0, heat: 0, alt0: st.alt, speed0: st.speed, model, dead: false, fx: createReentry(world, model, (id === 'hubble' ? 13 : 109) * 1e-3 / R_KM, reLight) };
+    publish({ reentry: true });
+  };
   function setPhoto(on) {
     on = !!on && !!cam.fp;   // seulement depuis une vue « depuis »
     if (on === photo) return;
@@ -705,6 +727,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _hubbleFeatures: () => Object.fromEntries(Object.entries(featInst).filter(([id]) => id.startsWith('hubble:')).map(([id, inst]) => [id.slice(7), inst.objects.some(o => o.visible)])),
     selectView,
     setMoonReal: on => { moonReal = !!on; publish({ moonReal }); }, _moonScale: () => (bodyObjs.moon && bodyObjs.moon.mesh ? bodyObjs.moon.mesh.scale.x / (bodyObjs.moon.baseScale || 1) : 1),
+    startReentry, _reentry: () => ({ on: !!re, id: re ? re.id : null, alt: re ? re.st && re.st.alt : null, heat: re ? re.heat : 0, burn: re ? re.burn : 0, dead: re ? re.dead : false, glow: re ? re.fx.uniforms.uReHeat.value : 0 }),
     setPhoto, takePhoto: () => { if (photo) snapReq = true; }, _photo: () => ({ slow: photo ? PHOTO_SLOW : 1, on: photo, fov: cam.fp ? cam.fp.fov : null, ratio, snap: snapReq }),
     goIss, goHubble, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
     setClouds: on => { cloudsOn = !!on; },
@@ -739,7 +762,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
 
     dispose() {
       stopped = true; cancelAnimationFrame(raf); clearTimeout(solarTimer); disposers.forEach(d => d()); overlay.dispose();
-      terrain.dispose(); clouds.dispose(); capitals.dispose(); obsSites.dispose(); if (moonLabels) moonLabels.dispose(); meteors.dispose(); airliners.dispose(); constellations.dispose(); sunGlare.dispose();
+      stopReentry(); terrain.dispose(); clouds.dispose(); capitals.dispose(); obsSites.dispose(); if (moonLabels) moonLabels.dispose(); meteors.dispose(); airliners.dispose(); constellations.dispose(); sunGlare.dispose();
       if (renderer.dispose) renderer.dispose();
     },
   };

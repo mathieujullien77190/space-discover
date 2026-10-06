@@ -21,6 +21,7 @@ export type UiState = {
   constellations: boolean   // option de carte : constellations (traits entre les étoiles et noms)
   realistic: boolean   // vue réaliste : sans trajectoires, noms, repères ni rien de ce qui n'existe pas
   moonReal: boolean   // vue depuis un observatoire : la Lune garde sa taille réelle (publié par le moteur)
+  reentry: boolean   // rentrée atmosphérique en cours (ISS / Hubble) : publié par le moteur
   photo: boolean   // mode photo (objectif à champ étroit, netteté maximale) : publié par le moteur
   clouds: boolean   // couverture nuageuse affichée
   issView: boolean   // vue depuis l'ISS (publié par le moteur)
@@ -66,6 +67,7 @@ export const useStore = create<Store>((set) => ({
   cardCollapsed: readCardCollapsed(),
   issView: false,
   photo: false,
+  reentry: false,
   moonReal: false,
   clouds: false,   // publié par le moteur : nuages VISIBLES (toujours actifs, retirés sous 1 200 km) ; sert au crédit
   borders: false,   // options de la Terre (fiche de la Terre et d'un observatoire) : seuls les observatoires sont cochés par défaut

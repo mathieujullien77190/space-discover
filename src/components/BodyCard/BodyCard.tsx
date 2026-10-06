@@ -5,7 +5,7 @@ import Button from '@/components/ui/Button'
 import { BASE_PATH, ISS_VIEW_LABELS } from '@/constants'
 import { bodyCard } from '@/engine/catalog'
 import { useStore } from '@/store'
-import { alignNorth, alignOrbit, resetUp, setFeature, setIssView } from '@/store/commands'
+import { alignNorth, alignOrbit, resetUp, setFeature, setIssView, startReentry } from '@/store/commands'
 import styles from './BodyCard.module.css'
 
 // Fiche de l'astre choisi : illustration dessinée + caractéristiques (calculées d'après le JSON de l'astre + quelques faits écrits dedans)
@@ -15,6 +15,7 @@ export const BodyCard = () => {
   const align = useStore((s) => s.view.align)
   const issView = useStore((s) => s.issView)
   const sizeOn = useStore((s) => !!s.features.size)
+  const reentry = useStore((s) => s.reentry)
   const observatory = useStore((s) => s.observatory.id)
   const collapsed = useStore((s) => s.cardCollapsed)
   const setCollapsed = useStore((s) => s.setCardCollapsed)
@@ -36,10 +37,15 @@ export const BodyCard = () => {
         <div className={styles.kind}>{card.kind}</div>
         <BodyFacts facts={card.facts} />
         {(card.id === 'iss' || card.id === 'hubble') && (
+          <>
+          <div className={styles.actions}>
+            <Button label={reentry ? '↩ Annuler la rentrée' : '☄ Simuler la rentrée'} active={reentry} title="L'objet plonge dans l'atmosphère : il s'échauffe, se désintègre et s'illumine" onClick={() => startReentry(!reentry)} />
+          </div>
           <label className={styles.check} title="Cotes (longueur, envergure), hauteur au-dessus du sol et vitesse en direct">
             <input type="checkbox" checked={sizeOn} onChange={() => setFeature('size', !sizeOn)} />
             Mesures (dimensions, hauteur, vitesse)
           </label>
+          </>
         )}
         {(card.id === 'earth' || card.id === 'iss' || card.id === 'hubble') && <EarthOptions />}
         {(card.canNorth || card.canOrbit || card.id === 'iss' || card.id === 'hubble') && (
