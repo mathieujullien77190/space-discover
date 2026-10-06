@@ -4,7 +4,6 @@ export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
 
 export const TIME_SPEEDS: ReadonlyArray<{ speed: number; label: string }> = [
   { speed: 1, label: 'Temps réel' },
-  { speed: 10, label: '10 s/s' },
   { speed: 60, label: '1 min/s' },
   { speed: 600, label: '10 min/s' },
   { speed: 3600, label: '1 h/s' },

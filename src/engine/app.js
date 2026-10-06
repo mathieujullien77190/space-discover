@@ -405,7 +405,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   // MODE PHOTO (vues « depuis » : ISS, Hubble, Concorde, observatoires) : objectif à champ étroit (PHOTO_FOV), netteté MAXIMALE derrière (résolution du rendu au maximum, jamais réduite ; tuiles satellite un niveau de zoom plus fin) ;
   // `takePhoto` enregistre l'image en PNG. Quitté dès qu'on n'est plus en vue « depuis ».
   let photo = false, photoFov = 60, snapReq = false;
-  const PHOTO_FOV = 10, PHOTO_BOOST = 1, photoRatio = Math.min(Math.max((typeof devicePixelRatio === 'number' ? devicePixelRatio : 1) || 1, 2), 3);
+  const PHOTO_FOV = 10, PHOTO_BOOST = 1, PHOTO_SLOW = 0.1,   // en mode photo le temps est RALENTI 10 fois (le temps de cadrer)
+     photoRatio = Math.min(Math.max((typeof devicePixelRatio === 'number' ? devicePixelRatio : 1) || 1, 2), 3);
   const perf = { avg: 16, cool: 0 };
   const adaptRatio = (raw, now) => {
     if (raw > 0 && raw < 250) perf.avg = perf.avg * 0.93 + raw * 0.07;   // (images trop longues = onglet en arrière-plan : ignorées)
@@ -417,7 +418,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     adaptRatio(now - last, now);
     const dt = Math.min(0.1, (now - last) / 1000); last = now;
     const userRealistic = realistic; if (moonView) realistic = true;   // debout sur la Lune : pas de noms, d'orbites ni de points lointains (restauré en fin d'image)
-    const realNow = Date.now(); simMs += (realNow - lastReal) * simSpeed; lastReal = realNow; const date = new Date(simMs);   // horloge simulée : temps réel par défaut, accélérable
+    const realNow = Date.now(); simMs += (realNow - lastReal) * simSpeed * (photo ? PHOTO_SLOW : 1); lastReal = realNow; const date = new Date(simMs);   // horloge simulée : temps réel par défaut, accélérable
     iss = issState(date); hub = hubbleState(date); conc = concordeAt(date.getTime(), concPrefer);
     if (cam.mode === 'iss' && !fsat()) setMode('earth');   // le vol est fini : retour à la vue Terre
     if (!!conc !== concPub) { concPub = !!conc; publish({ concorde: concPub }); }   // l'interface n'affiche le bouton « Concorde » que s'il vole à la date simulée
@@ -662,7 +663,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       const near = !!fb && !!fb.card;   // la fiche de l'astre choisi s'affiche toujours, de près comme de loin (demande de l'utilisateur)
       let cardId = near ? fid : null;
       if (!cardId && cam.mode !== 'iss') { let best = Infinity; for (const k in moonsShown) if (moonsShown[k] < best && BODY.get(k) && BODY.get(k).card) { best = moonsShown[k]; cardId = k; } }   // lunes affichées : fiche de la planète la plus proche
-      publish({ info: t, viewJson: JSON.stringify(currentView()), focus: { id: cardId }, time: { simMs, speed: simSpeed, visible: true } });
+      publish({ info: t, viewJson: JSON.stringify(currentView()), focus: { id: cardId }, time: { simMs, speed: simSpeed * (photo ? PHOTO_SLOW : 1), visible: true } });
     }
     if (photo && !cam.fp) setPhoto(false);   // on n'est plus en vue « depuis » : fin du mode photo
     if (photo && cam.fp) cam.fp.fov = Math.max(1, Math.min(30, cam.fp.fov));   // objectif : de 1° à 30°
@@ -724,7 +725,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _featuresVisible: () => Object.fromEntries(Object.entries(featInst).filter(([id]) => !id.includes(':')).map(([id, inst]) => [id, inst.objects.some(o => o.visible)])),   // ISS
     _hubbleFeatures: () => Object.fromEntries(Object.entries(featInst).filter(([id]) => id.startsWith('hubble:')).map(([id, inst]) => [id.slice(7), inst.objects.some(o => o.visible)])),
     selectView,
-    setPhoto, takePhoto: () => { if (photo) snapReq = true; }, _photo: () => ({ on: photo, fov: cam.fp ? cam.fp.fov : null, ratio, snap: snapReq }),
+    setPhoto, takePhoto: () => { if (photo) snapReq = true; }, _photo: () => ({ slow: photo ? PHOTO_SLOW : 1, on: photo, fov: cam.fp ? cam.fp.fov : null, ratio, snap: snapReq }),
     goIss, goHubble, goConcorde, flyConcorde, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
     setClouds: on => { cloudsOn = !!on; },
     _terrain: () => Object.assign({ shown: terrainShown }, terrain.stats()),

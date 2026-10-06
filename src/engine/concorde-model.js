@@ -14,7 +14,7 @@ function slab(poly, lo, hi, plane) {   // dalle extrudée : polygone 2D dans un 
   for (const p of poly) pos.push(...v(p, lo)); for (const p of poly) pos.push(...v(p, hi));
   for (let i = 1; i < n - 1; i++) idx.push(0, i + 1, i, n, n + i, n + i + 1);
   for (let i = 0; i < n; i++) { const j = (i + 1) % n; idx.push(i, j, n + i, j, n + j, n + i); }
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); return g;
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); const flat = g.toNonIndexed(); flat.computeVertexNormals(); return flat;   // NORMALES PLATES (sommets non partagés) : avec des sommets partagés entre dessus, dessous et tranche les normales se compensaient et les ailes sortaient noires
 }
 
 export function buildConcorde() {
@@ -41,7 +41,7 @@ export function buildConcorde() {
   const wing = sgn => { const poly = []; for (let i = 0; i <= 12; i++) { const z = 1.4 + (11.4 * i) / 12; poly.push([le(z), sgn * z]); } poly.push([L - 49.6, sgn * 12.8], [L - 49.6, sgn * 1.4]); return sgn > 0 ? poly : poly.reverse(); };
   for (const sg of [1, -1]) { g.add(new THREE.Mesh(slab(wing(sg), -0.9, -0.3, 'xz'), white));
     // gouvernes (élevons) : bande grise sur le bord de fuite
-    g.add(new THREE.Mesh(slab([[L - 49.6, sg * 2], [L - 49.6, sg * 12.8], [L - 47.4, sg * 12.8], [L - 47.4, sg * 2]].map(p => p), -0.86, -0.28, 'xz'), grey)); }
+    g.add(new THREE.Mesh(slab([[L - 49.75, sg * 2], [L - 49.75, sg * 12.8], [L - 47.4, sg * 12.8], [L - 47.4, sg * 2]].map(p => p), -0.95, -0.22, 'xz'), grey)); }
   // dérive : tricolore (bleu, blanc, rouge) de bas en haut, légèrement inclinée vers l'arrière
   g.add(new THREE.Mesh(slab([[19.5, r * 0.9], [11.5, 12.2], [9.7, 12.2], [8.8, r * 0.9]], -0.15, 0.15, 'xy'), white));
   g.add(new THREE.Mesh(slab([[16.1, 4.9], [11.5, 12.2], [10.5, 12.2], [12.9, 8.6]], 0.14, 0.17, 'xy'), blue), new THREE.Mesh(slab([[10.3, 4.9], [10.7, 8.2], [9.7, 12.2], [9.2, 12.2]], 0.14, 0.17, 'xy'), red));

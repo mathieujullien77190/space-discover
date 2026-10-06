@@ -438,7 +438,8 @@ describe('createEngine (rendu factice)', () => {
     engine.setPhoto(true); engine._frame(T + 640)                             // MODE PHOTO : objectif étroit + netteté maximale
     expect(engine._photo()).toMatchObject({ on: true, fov: 10 }); expect(engine._photo().ratio).toBeGreaterThanOrEqual(2)
     expect((state as EngineState & { photo?: boolean }).photo).toBe(true)
-    engine.takePhoto(); expect(engine._photo().snap).toBe(true); engine._frame(T + 660); expect(engine._photo().snap).toBe(false)   // la photo est prise dans l’image suivante
+    ;(HTMLCanvasElement.prototype as { toBlob: unknown }).toBlob = () => {}; engine.takePhoto(); expect(engine._photo().snap).toBe(true); engine._frame(T + 660); expect(engine._photo().snap).toBe(false)   // la photo est prise dans l’image suivante
+    expect(engine._photo().slow).toBe(0.1)                                     // temps ralenti 10 fois en mode photo
     engine.setPhoto(false); engine._frame(T + 680); expect(engine._photo()).toMatchObject({ on: false, fov: 70 })   // champ précédent rétabli
     // le ciel depuis le Concorde se comporte comme depuis un observatoire : orange du coucher / lever actif, étoiles de nuit, jour = pas d’étoiles
     expect(engine._skyObs()).toMatchObject({ on: true, orange: 1 })
