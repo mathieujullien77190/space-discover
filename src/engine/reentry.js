@@ -62,7 +62,7 @@ const puffTexture = () => {
 };
 export const TRAIL_POOL = 320, TRAIL_LIFE_S = 10;   // bouffées de fumée jaune laissées derrière l'objet : 320 au plus, 10 à 16 s de vie
 // effet de rentrée sur un objet : `target` = groupe du modèle (matériaux patchés) ; `parent` = groupe où poser le halo et la lumière ; `sizeUnits` = taille de l'objet (unités de la scène)
-export function createReentry(parent, target, sizeUnits, light) {   // light : PointLight créée UNE FOIS au démarrage du moteur (en ajouter une à chaud ferait recompiler tous les shaders)
+export function createReentry(parent, target, sizeUnits, lights) {   // light : PointLight créée UNE FOIS au démarrage du moteur (en ajouter une à chaud ferait recompiler tous les shaders)
   const uniforms = { uReBurn: { value: 0 }, uReCell: { value: 1 }, uReHeat: { value: 0 }, uReInv: { value: new THREE.Matrix4() } };   // uReInv : monde → repère du modèle entier (les blocs restent attachés à l'objet)
   const restores = [];
   target.traverse(o => { if (o.isMesh) for (const m of (Array.isArray(o.material) ? o.material : [o.material])) if (m && !m.userData.reentryPatched) { m.userData.reentryPatched = true; restores.push(patchMaterial(m, uniforms), () => { m.userData.reentryPatched = false; }); } });
@@ -70,7 +70,7 @@ export function createReentry(parent, target, sizeUnits, light) {   // light : P
   uniforms.uReCell.value = Math.max(1e-6, cellLocal || 1);
   const tex = glowTexture();
   const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: 0xffffff, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 })); glow.frustumCulled = false; glow.visible = false; parent.add(glow);
-  light.distance = 0.03; light.decay = 1;   // SOURCE DE LUMIÈRE : éclaire tout ce qui est à moins de ≈ 190 km (la Terre en dessous, le modèle lui-même)
+  const [light, near] = lights; light.distance = 0.03; light.decay = 1; near.distance = 0.0004; near.decay = 2;   // SOURCE DE LUMIÈRE : éclaire tout ce qui est à moins de ≈ 190 km (la Terre en dessous, le modèle lui-même)
   const puff = puffTexture(), parts = [];
   for (let i = 0; i < TRAIL_POOL; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: puff, color: 0xffd23a, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 })); sp.frustumCulled = false; sp.visible = false; parent.add(sp); parts.push({ s: sp, age: 1e9, life: 1, size: 0 }); }
   let nextPart = 0, lastPos = null, carry = 0; const tmp = new THREE.Vector3();
@@ -86,6 +86,7 @@ export function createReentry(parent, target, sizeUnits, light) {   // light : P
       const gs = Math.max(sizeUnits * (3 + 14 * heat) * flick, (camDist || 0) * 0.01 * heat);
       glow.visible = heat > 0.02; glow.position.copy(pos); glow.scale.setScalar(gs); glow.material.opacity = Math.min(1, heat * 1.3) * (alive ? 1 : Math.max(0, 1 - (burn - 1) * 4));
       light.position.copy(pos); light.intensity = heat * 0.03 * flick * (alive ? 1 : 0.4);
+      near.position.copy(pos); near.intensity = heat * heat * 8e-8 * flick * (alive ? 1 : 0.4);   // lumière INTENSE tout près de l'objet (≈ 30 de luminance à 300 m)
       // TRAÎNÉE DE FUMÉE JAUNE : une bouffée tous les ≈ 3 tailles d'objet le long du chemin (le segment parcouru dans l'image est rempli), qui grossit, vire à l'orange et s'éteint
       for (const pr of parts) { if (pr.age >= pr.life) continue; pr.age += dt; const u = pr.age / pr.life; if (u >= 1) { pr.s.visible = false; continue; } pr.s.scale.setScalar(pr.size * (1 + 3 * u)); pr.s.material.opacity = 0.6 * (1 - u) * (1 - u); pr.s.material.color.setRGB(1, 0.86 - 0.34 * u, 0.22 - 0.16 * u); }
       if (emitting && heat > 0.05 && lastPos) {
@@ -98,9 +99,10 @@ export function createReentry(parent, target, sizeUnits, light) {   // light : P
     // vrai quand plus aucune bouffée n'est visible (la rentrée peut alors être libérée)
     idle() { return parts.every(p => p.age >= p.life); },
     activeParticles() { return parts.filter(p => p.age < p.life).length; },
-    dispose() { for (const r of restores) r(); glow.removeFromParent(); light.intensity = 0; glow.material.dispose(); if (tex) tex.dispose(); for (const p of parts) { p.s.removeFromParent(); p.s.material.dispose(); } if (puff) puff.dispose(); },
+    dispose() { for (const r of restores) r(); glow.removeFromParent(); light.intensity = 0; near.intensity = 0; glow.material.dispose(); if (tex) tex.dispose(); for (const p of parts) { p.s.removeFromParent(); p.s.material.dispose(); } if (puff) puff.dispose(); },
   };
 }
 
 // lumière de la rentrée : créée une fois (intensité 0) et ajoutée à la scène au démarrage
-export const createReentryLight = () => new THREE.PointLight(0xff9a50, 0, 1, 1);
+// DEUX lumières : une LOINTAINE (portée ≈ 190 km, éclaire la Terre en dessous) et une PROCHE, très intense (décroissance en 1/d², portée ≈ 2,5 km : éclaire violemment l'objet et ce qui l'entoure de près)
+export const createReentryLight = () => [new THREE.PointLight(0xff9a50, 0, 1, 1), new THREE.PointLight(0xffb060, 0, 1, 2)];

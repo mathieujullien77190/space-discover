@@ -689,14 +689,14 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   };
   // RENTRÉE ATMOSPHÉRIQUE (ISS / Hubble, bouton de leur fiche) : l'objet plonge de son altitude à 0 en 90 s ; au contact de l'air (ρ·v³) il s'échauffe, son modèle 3D perd des blocs (« polygones ») et il s'illumine
   // (plasma, traînée, lumière) jusqu'à la destruction complète (voir reentry.js)
-  const reLight = createReentryLight(); world.add(reLight);
+  const reLights = createReentryLight(); for (const l of reLights) world.add(l);
   let re = null;
   const stopReentry = () => { if (!re) return; re.fx.dispose(); re = null; publish({ reentry: false }); };
   const startReentry = on => {
     if (!on) { stopReentry(); return; }
     stopReentry();
     const id = focusSat, st = id === 'hubble' ? hub : iss, model = id === 'hubble' ? hubModel : issModel; if (!st) return;
-    re = { id, t: 0, burn: 0, heat: 0, alt0: st.alt, speed0: st.speed, model, dead: false, fx: createReentry(world, model, (id === 'hubble' ? 13 : 109) * 1e-3 / R_KM, reLight) };
+    re = { id, t: 0, burn: 0, heat: 0, alt0: st.alt, speed0: st.speed, model, dead: false, fx: createReentry(world, model, (id === 'hubble' ? 13 : 109) * 1e-3 / R_KM, reLights) };
     publish({ reentry: true });
   };
   function setPhoto(on) {
