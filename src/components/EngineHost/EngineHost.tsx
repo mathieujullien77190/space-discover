@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { BASE_PATH } from '@/constants'
+import { BASE_PATH, DEV_START, DEV_START_DELAY_MS } from '@/constants'
 import { createEngine } from '@/engine/app'
 import { useStore } from '@/store'
 import styles from './EngineHost.module.css'
@@ -16,7 +16,10 @@ export const EngineHost = () => {
     const engine = createEngine({ canvas, overlay, publish: applyPatch, baseUrl: BASE_PATH })
     if (!engine) return
     setEngine(engine)
+    const dev = DEV_START
+    const start = dev && setTimeout(() => { engine.setDate(dev.ms); engine.goObservatory(dev.observatory); engine.setObservatoryView(true) }, DEV_START_DELAY_MS)   // démarrage de test : Pic du Midi, vue depuis l'observatoire, 12 août 2026 à 17 h UTC
     return () => {
+      if (start) clearTimeout(start)
       engine.dispose()
       setEngine(null)
     }

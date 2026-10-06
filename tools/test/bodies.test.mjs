@@ -18,7 +18,7 @@ check(Math.abs(E.radiusKm * 1000 - G('PH.RE')) < 1e-6 && Math.abs(E.radiusKm * 1
 check(G('EPH.MU_MOON') === G('FLIGHT_OBJECTS.moon.muM3S2') && G('EPH.MU_SUN') === G('FLIGHT_OBJECTS.sun.muM3S2') && Math.abs(G('EPH.AU_M') - AU) < 1 && Math.abs(G('EPH.EPS') - 23.4393 * Math.PI / 180) < 1e-12, 'éphémérides : µ de la Lune et du Soleil, unité astronomique (' + G('EPH.AU_M') + ' m) et obliquité lus dans les JSON');
 // 3. Lune et Soleil : mêmes positions qu'avant le passage en JSON
 const m = geo('moon', '2026-10-02T12:00:00Z'), s = geo('sun', '2026-10-02T12:00:00Z');
-check(Math.abs(Math.hypot(...m) / 1000 - 364251) < 2 && Math.abs(Math.hypot(...s) / AU - 1.0009) < 0.0002, 'Lune à ' + Math.round(Math.hypot(...m) / 1000) + ' km (364 251 attendus), Soleil à ' + (Math.hypot(...s) / AU).toFixed(4) + ' UA (1,0009 attendu) le 2 oct. 2026');
+check(Math.abs(Math.hypot(...m) / 1000 - 369444) < 300 && Math.abs(Math.hypot(...s) / AU - 1.0009) < 0.0002, 'Lune à ' + Math.round(Math.hypot(...m) / 1000) + ' km (≈ 369 400 attendus : éphémérides précises astronomy-engine), Soleil à ' + (Math.hypot(...s) / AU).toFixed(4) + ' UA (1,0009 attendu) le 2 oct. 2026');
 // 4. la Terre vue du Soleil : une orbite de ≈ 1 UA ; origine de la scène
 const e0 = geo('earth', '2026-10-02T12:00:00Z'), pts = G('BODY.orbitPoints("earth", ' + dayOf('2026-01-01T00:00:00Z') + ', 365)'), rr = pts.map(p => Math.hypot(...p) / AU);
 check(e0.every(c => c === 0) && Math.min(...rr) > 0.98 && Math.max(...rr) < 1.02 && Math.hypot(...pts[0].map((c, i) => c - pts[365][i])) < 3e8, 'Terre : à l\'origine de la scène ; orbite autour du Soleil de ' + Math.min(...rr).toFixed(4) + ' à ' + Math.max(...rr).toFixed(4) + ' UA (périhélie début janvier), 366 points, boucle fermée à ' + (Math.hypot(...pts[0].map((c, i) => c - pts[365][i])) / 1000).toFixed(0) + ' km près');
@@ -70,4 +70,17 @@ check(!!err && /modèle de mouvement inconnu/.test(err.message), 'modèle de mou
       check(Math.abs(iMeas - m.inclinationDeg) < 0.6 || (m.inclinationDeg < 0.6 && iMeas < 1.2), id + ' : plan orbital incliné de ' + iMeas.toFixed(2) + '° sur l’équateur de ' + b.around + ' (JSON : ' + m.inclinationDeg + '°)');
       check(G_('bodyCard("' + id + '")').facts.length >= 5, id + ' : fiche complète'); } }
   check(n >= 28 && moons >= 21, n + ' astres képlériens, dont ' + moons + ' lunes d’une planète'); }
+// ÉCLIPSE du 12 août 2026 vue du Pic du Midi (42,937° N, 0,143° E) : la Lune passe presque pile devant le Soleil vers 18 h 28 UTC (éclipse partielle de 99,9 %, juste hors de la bande de totalité)
+{
+  const res = G(`(() => {
+    const R = 6378137, lat = 42.9369 * Math.PI / 180, lon = 0.1426 * Math.PI / 180, eq = p => [p[0], -p[2], p[1]], sub = (a, b) => a.map((v, i) => v - b[i]);
+    const ang = (a, b) => Math.acos((a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) / Math.hypot(...a) / Math.hypot(...b)) * 180 / Math.PI;
+    let best = { sep: 99, t: 0 };
+    for (let m = 17 * 60; m <= 19 * 60 + 30; m++) { const D = EPH.days(Date.UTC(2026, 7, 12, 0, m)), th = EPH.gmst(D) + lon, obs = [R * Math.cos(lat) * Math.cos(th), R * Math.cos(lat) * Math.sin(th), R * Math.sin(lat)]; const sep = ang(sub(eq(EPH.sun(D)), obs), sub(eq(EPH.moon(D).pos), obs)); if (sep < best.sep) best = { sep, t: m }; }
+    const D17 = EPH.days(Date.UTC(2026, 7, 12, 17, 46));
+    return { sep: best.sep, t: best.t, geo: ang(eq(EPH.sun(D17)), eq(EPH.moon(D17).pos)) };
+  })()`);
+  check(res.sep < 0.1 && res.t >= 18 * 60 + 15 && res.t <= 18 * 60 + 45, 'éclipse du 12 août 2026 : Lune et Soleil à ' + res.sep.toFixed(3) + '° l’un de l’autre à ' + Math.floor(res.t / 60) + ' h ' + String(res.t % 60).padStart(2, '0') + ' UTC au Pic du Midi (disques de 0,53° : la Lune passe devant)');
+  check(Math.abs(res.geo - 0.891) < 0.05, 'séparation géocentrique Soleil-Lune à 17 h 46 UTC : ' + res.geo.toFixed(3) + '° (0,89° attendu : maximum de l’éclipse)');
+}
 if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }

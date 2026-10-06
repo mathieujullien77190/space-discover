@@ -2,6 +2,9 @@
 export const STORAGE_KEYS = { cardCollapsed: 'cardCollapsed' } as const
 export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
 
+// DÉMARRAGE DE TEST (demande : « pour simplifier nos tests, mets-toi directement dans l'observatoire du Pic du Midi, vue depuis l'observatoire, le 12 août 2026 à 17 h, quand j'actualise la page ») : date UTC + observatoire + vue depuis. Mettre `null` pour retrouver le démarrage normal (vue Terre, date du jour).
+export const DEV_START: { ms: number; observatory: string } | null = { ms: Date.UTC(2026, 7, 12, 17, 0, 0), observatory: 'pic-du-midi' }
+export const DEV_START_DELAY_MS = 900   // les astres se construisent 400 ms après le démarrage du moteur
 export const TIME_SPEEDS: ReadonlyArray<{ speed: number; label: string }> = [
   { speed: 1, label: 'Temps réel' },
   { speed: 60, label: '1 min/s' },

@@ -7,6 +7,8 @@ export const GLARE_SIZE = 512;          // côté de l'image (pixels)
 export const GLARE_PX = 900;            // côté du sprite à l'écran à 1 UA (pixels) : le halo remplit une bonne part de l'écran
 export const AU_UNITS = 23455;          // 1 UA en unités de la scène (rayons terrestres)
 export const SUN_HIDE_UNITS = 4000;     // plus près que ça du Soleil (on est « dedans ») : pas d'éblouissement
+export const GLARE_LOW_DIM = 0.6;       // vue depuis un observatoire : à l'horizon (tint = 1) l'éclat perd 60 % de sa luminosité (le Soleil bas est filtré par l'atmosphère : bien moins éblouissant)
+export const glareOpacityFor = tint => GLARE_OPACITY * (1 - GLARE_LOW_DIM * Math.max(0, Math.min(1, tint)));
 export const GLARE_OPACITY = 0.7;       // luminosité de l'éclat (moins lumineux qu'avant, MÊME taille)
 export const GLARE_MIN_SCALE = 0.18;    // facteur de taille minimal (très loin du Soleil)
 
@@ -52,7 +54,7 @@ export function createSunGlare(scene) {
       dir.divideScalar(d);
       const R = camera.far * 0.45, pxAng = 2 * Math.tan(camera.fov * Math.PI / 360) / height;   // même distance que les étoiles ; taille monde d'un pixel à cette distance = R · pxAng
       sprite.position.copy(camera.position).addScaledVector(dir, R); sprite.scale.setScalar(R * pxAng * px);
-      mat.opacity = GLARE_OPACITY; mat.color.setRGB(1, 1 - (0.45 - 0.05 * rise) * tint, 1 - (0.75 - 0.5 * rise) * tint); sprite.visible = true; return 1;
+      mat.opacity = glareOpacityFor(tint); mat.color.setRGB(1, 1 - (0.45 - 0.05 * rise) * tint, 1 - (0.75 - 0.5 * rise) * tint); sprite.visible = true; return 1;
     },
     dispose() { scene.remove(sprite); tex.dispose(); mat.dispose(); },
   };

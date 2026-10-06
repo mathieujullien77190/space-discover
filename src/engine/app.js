@@ -34,6 +34,7 @@ import { createOverlay } from './overlay.js';
 import { parseObj } from './obj-mini.js';
 const CONTOUR_MAX_ALT_KM = 1200;   // trait de côte (contours pays / mer) et limites de pays : seulement sous 1 200 km (en vue Terre dézoomée la carte dessinée suffit)
 const OBS_STAR_DIM = 0.5;
+const SUN_LOW_DIM = 0.45;   // vue depuis un observatoire : le disque du Soleil bas (à l'horizon) est 45 % moins lumineux
 const TWINKLE_AMP = 0.55;   // scintillement LENT d'une étoile sur cinq en vue observatoire (± 30 % de luminosité)   // vue depuis un observatoire : toutes les étoiles DEUX FOIS moins lumineuses (demande)
 const STAR_DARK_SIN = 0.12;   // sin de la hauteur du Soleil sous l'horizon (≈ −7°) où toutes les étoiles sont là (opacité 0 quand le Soleil est à moitié caché) : même seuil que le ciel qui devient transparent
 
@@ -636,7 +637,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     sunPoint.position.copy(babs[STAR]); if (shift) sunPoint.position.sub(shift);   // le Soleil suit le décalage d'origine flottante
     const sunRed = skyObs ? Math.max(0, Math.min(1, 1 - tmpObs.copy(babs[STAR]).sub(skyPos).normalize().dot(skyUp) / 0.25)) : 0;   // le Soleil rougit près de l'horizon (vue depuis un observatoire) : blanc au-delà de ≈ 14° de hauteur, rouge-orangé à l'horizon
     sunGlare.update({ camera, sunPos: sunPoint.position, height: innerHeight, tint: sunRed, rise: atmMat.uniforms.uRise.value });
-    { const sm = bodyObjs[STAR] && bodyObjs[STAR].mesh; if (sm && sm.material.color) sm.material.color.setRGB(1, 1 - (0.4 - 0.05 * atmMat.uniforms.uRise.value) * sunRed, 1 - (0.7 - 0.45 * atmMat.uniforms.uRise.value) * sunRed); }   // son disque aussi   // l'éclat est testé en PROFONDEUR : la Terre (et le relief) le cache, il est donc DERRIÈRE la Terre au lieu de s'affaiblir avant
+    { const sm = bodyObjs[STAR] && bodyObjs[STAR].mesh; if (sm && sm.material.color) { const dim = 1 - SUN_LOW_DIM * sunRed; sm.material.color.setRGB(dim, dim * (1 - (0.4 - 0.05 * atmMat.uniforms.uRise.value) * sunRed), dim * (1 - (0.7 - 0.45 * atmMat.uniforms.uRise.value) * sunRed)); } }   // son disque aussi   // l'éclat est testé en PROFONDEUR : la Terre (et le relief) le cache, il est donc DERRIÈRE la Terre au lieu de s'affaiblir avant
     constellations.update({ on: constellationsOn && !realistic, camera, width: innerWidth, height: innerHeight, earthCenter: new THREE.Vector3().setFromMatrixPosition(earth.matrixWorld) });
     if (starSel >= 0 && starInfoOn) { stars.updateMatrixWorld(true); const p = starProject(STARS[starSel]); if (p) { starRing.style.display = 'block'; starRing.style.transform = `translate(${p[0] - 13}px,${p[1] - 13}px)`; } else starRing.style.display = 'none'; } else starRing.style.display = 'none';
     if (!moonLabels && bodyObjs.moon && bodyObjs.moon.mesh) moonLabels = createCapitals(overlay, bodyObjs.moon.mesh, { radius: () => bodyObjs.moon.mesh.scale.x, data: MOON_SITES.map(s => [s.short, s.lat, s.lon, s.id]), cls: 'obssite', prefix: '🔭 ', onClick: id => goMoonSite(id) });   // sites Apollo : étiquettes cliquables sur la Lune
