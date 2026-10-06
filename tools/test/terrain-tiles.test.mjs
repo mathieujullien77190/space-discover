@@ -49,6 +49,7 @@ const high = terrainLevels(2, 48, 1200, 50, 1.8), hh = horizonKm(1200), lastH = 
 check(TERRAIN_MAX_ALT_KM === 1200, 'le fond de carte détaillé apparaît dès 1 200 km d’altitude');
 check(high.length >= 2 && high[0].z < DEM_MIN_Z && !high[0].dem, 'à 1 200 km : ' + high.length + ' niveaux (z ' + high.map(l => l.z).join(', ') + '), le plus fin sans téléchargement d’altitudes (z < ' + DEM_MIN_Z + ')');
 check((3 + 0.5) * 40075 * Math.cos(48 * Math.PI / 180) / Math.pow(2, lastH.z) >= hh * 0.9 || lastH.z === 3, 'les niveaux atteignent l’horizon (' + Math.round(hh) + ' km) ou le zoom minimal');
+{ const base = terrainLevels(2.5, 49, 420, 10, 1.6)[0].z, b1 = terrainLevels(2.5, 49, 420, 10, 1.6, 1)[0].z, b2 = terrainLevels(2.5, 49, 420, 10, 1.6, 2)[0].z, deep = terrainLevels(2.5, 49, 1, 10, 1.6, 2)[0].z; check(b1 === base + 1 && b2 === base + 2 && deep <= 15, 'boost photo : niveau de zoom ' + base + ' → ' + b2 + ' (+2), plafonné à 15 (' + deep + ' à 1 km)'); }
 if (fails.length) { console.log(fails.length + ' échec(s)'); process.exit(1); }
 // qualité max au ras du sol (observatoire, 3 km) : tous les niveaux ont leur relief, pas de falaise contre une tuile lointaine à plat
 {

@@ -86,7 +86,7 @@ export const horizonKm = altKm => { const h = Math.max(0, altKm) / 6378.137; ret
 export const HQ_ALT_KM = 20, HQ_FAR_RADIUS = 4, HQ_LEVELS = 6;
 export function terrainLevels(lon, lat, altKm, fovDeg, aspect, boost = 0) {   // boost : niveaux de zoom ajoutés (mode photo : netteté maximale)
   const hq = altKm < HQ_ALT_KM;
-  const z0 = Math.min(terrainZoom(altKm, lat, fovDeg, aspect) + boost, TERRAIN_Z_MAX + boost), horizon = horizonKm(altKm), levels = [], coslat = Math.max(0.05, Math.cos(lat / R2D));
+  const z0 = Math.min(terrainZoom(altKm, lat, fovDeg, aspect) + boost, TERRAIN_Z_MAX + Math.min(1, boost)), horizon = horizonKm(altKm), levels = [], coslat = Math.max(0.05, Math.cos(lat / R2D));
   let prev = null;
   for (let k = 0; k < (hq ? HQ_LEVELS : TERRAIN_LEVELS); k++) {
     const z = z0 - k; if (z < TERRAIN_Z_MIN) break;

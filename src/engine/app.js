@@ -405,7 +405,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   // MODE PHOTO (vues « depuis » : ISS, Hubble, Concorde, observatoires) : objectif à champ étroit (PHOTO_FOV), netteté MAXIMALE derrière (résolution du rendu au maximum, jamais réduite ; tuiles satellite un niveau de zoom plus fin) ;
   // `takePhoto` enregistre l'image en PNG. Quitté dès qu'on n'est plus en vue « depuis ».
   let photo = false, photoFov = 60, snapReq = false;
-  const PHOTO_FOV = 10, PHOTO_BOOST = 1, PHOTO_SLOW = 0.1,   // en mode photo le temps est RALENTI 10 fois (le temps de cadrer)
+  const PHOTO_FOV = 10, PHOTO_BOOST = 2, PHOTO_SLOW = 0.1,   // en mode photo le temps est RALENTI 10 fois (le temps de cadrer)
      photoRatio = Math.min(Math.max((typeof devicePixelRatio === 'number' ? devicePixelRatio : 1) || 1, 2), 3);
   const perf = { avg: 16, cool: 0 };
   const adaptRatio = (raw, now) => {
