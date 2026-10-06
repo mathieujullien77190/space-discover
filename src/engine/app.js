@@ -328,12 +328,14 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     if (!moonGroups[site.id]) { const g = buildMoonSite(site); g.visible = false; solar.add(g); moonGroups[site.id] = g; }
     moonGroup = moonGroups[site.id]; for (const k in moonGroups) moonGroups[k].visible = moonGroups[k] === moonGroup && moonView; return moonGroup;
   };
+  let pendingMoonAim = null;   // site lunaire à viser une fois le repère de la Lune à jour (voir la boucle)
   const goMoonSite = id => {
     const s = moonSiteById(id), mo = bodyObjs.moon; if (!s || !mo || !mo.mesh) return;
     goSolar('moon');   // la vue de la Lune ; puis on se place au-dessus du site
     mo.mesh.updateWorldMatrix(true, false); const fr = moonSiteFrame(s, mo.mesh.matrixWorld);
     cam.goal.lat = Math.asin(Math.max(-1, Math.min(1, fr.up.y))) / DEG; cam.goal.lon = Math.atan2(-fr.up.z, fr.up.x) / DEG; cam.goal.dist = 1.1; snapCam();
     obsMoon = s; obsId = s.id; obsView = false; moonView = false; publish({ observatory: { id: s.id, view: false } });
+    pendingMoonAim = s;   // le repère de la Lune n'est pas encore celui de la vue Lune (repère inertiel, tourné de l'angle sidéral) : on vise le site à l'image suivante
   };
   const setObservatoryView = on => {   // « vue depuis l'observatoire » : la caméra est sur l'observatoire (œil à 120 m au-dessus du sol), plein sud, on regarde le ciel et l'horizon en glissant
     if (!obsId) return;
@@ -636,6 +638,10 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     world.rotation.y = gm * frameF;
     if (shift) { world.position.copy(shift).negate(); camera.position.sub(shift); camera.updateMatrixWorld(); } else world.position.set(0, 0, 0);
     inertial.position.copy(world.position); solar.position.copy(world.position);
+    if (pendingMoonAim && bodyObjs.moon && bodyObjs.moon.mesh && cam.mode === 'solar') {   // CAMÉRA AU-DESSUS DU SITE LUNAIRE, avec les matrices de CETTE image (avant : celles de la vue précédente, décalées de l'angle sidéral : le site était parfois de l'autre côté de la Lune selon l'heure)
+      solar.updateMatrixWorld(true); const fr = moonSiteFrame(pendingMoonAim, bodyObjs.moon.mesh.matrixWorld); pendingMoonAim = null;
+      cam.goal.lat = Math.asin(Math.max(-1, Math.min(1, fr.up.y))) / DEG; cam.goal.lon = Math.atan2(-fr.up.z, fr.up.x) / DEG; cam.goal.dist = 1.1; snapCam();
+    }
     // OMBRES DES ASTRES : les 6 astres les plus proches de la caméra (planètes, lunes, Terre) sont les occulteurs du Soleil pour tous les récepteurs (voir eclipse.js)
     { solar.updateMatrixWorld(true); earth.updateWorldMatrix(true, false); const sm = bodyObjs[STAR] && bodyObjs[STAR].mesh;
       if (sm) { const cands = [], wp = tmpObs2.setFromMatrixPosition(sm.matrixWorld), sunW = { x: wp.x, y: wp.y, z: wp.z, r: BODY.radiusUnits(STAR) };
