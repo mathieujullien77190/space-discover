@@ -16,7 +16,7 @@ import { useStore } from '@/store'
 import { initialEngineState } from '@/store/initial'
 import type { Engine } from '@/types'
 
-const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), goHubble: vi.fn(), goConcorde: vi.fn(), flyConcorde: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn(), setBorders: vi.fn(), setCapitals: vi.fn(), setObservatories: vi.fn(), setStarInfo: vi.fn(), clearStar: vi.fn(), setConstellations: vi.fn(), setDayNight: vi.fn(), goObservatory: vi.fn(), setObservatoryView: vi.fn(), setRealistic: vi.fn(), setMetric: vi.fn(), setPhoto: vi.fn(), takePhoto: vi.fn(), setMoonReal: vi.fn(), startReentry: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
+const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), goHubble: vi.fn(), goConcorde: vi.fn(), flyConcorde: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn(), setBorders: vi.fn(), setCapitals: vi.fn(), setObservatories: vi.fn(), setStarInfo: vi.fn(), clearStar: vi.fn(), setConstellations: vi.fn(), setDayNight: vi.fn(), goObservatory: vi.fn(), setObservatoryView: vi.fn(), setRealistic: vi.fn(), setMetric: vi.fn(), setPhoto: vi.fn(), takePhoto: vi.fn(), setMoonReal: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
 
 describe('TopBar + SubMenu', () => {
   let engine: ReturnType<typeof fakeEngine>
@@ -52,8 +52,6 @@ describe('TopBar + SubMenu', () => {
     fireEvent.click(screen.getByLabelText('Mesures (dimensions, hauteur, vitesse)'))
     expect(engine.setFeature).toHaveBeenLastCalledWith('size', false)
     expect(screen.getByLabelText('Limites de pays')).toBeInTheDocument()       // le bloc « Terre » reste dans la fiche : l’ISS est en orbite autour de la Terre
-    fireEvent.click(screen.getByText('☄ Simuler la rentrée'))   // rentrée atmosphérique : désintégration + lumière
-    expect(engine.startReentry).toHaveBeenLastCalledWith(true)
     fireEvent.click(screen.getByText('👁 Vue depuis l’ISS'))
     expect(engine.setIssView).toHaveBeenCalledWith(true)
   })
