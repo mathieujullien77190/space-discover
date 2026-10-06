@@ -36,12 +36,22 @@ export function buildConcorde() {
   for (let x = L - 14; x > 8; x -= 0.85) for (const sg of [1, -1]) if (wi < 100) { wm.makeTranslation(x, 0.65, sg * 1.36); win.setMatrixAt(wi++, wm); }
   win.count = wi; g.add(win);
   for (const sg of [1, -1]) g.add(new THREE.Mesh(slab([[L - 8, 0.2], [L - 17, 0.2], [14, 0.2], [14, 0.42], [L - 17, 0.42], [L - 8, 0.38]].map(p => [p[0], p[1]]), sg * 1.33, sg * 1.37, 'xy'), blue), new THREE.Mesh(slab([[L - 17, 0.5], [14, 0.5], [14, 0.58], [L - 17, 0.58]], sg * 1.33, sg * 1.37, 'xy'), red));
-  // aile delta OGIVALE : bord d'attaque courbe (double courbure), bord de fuite droit, épaisseur qui diminue vers le bout
+  // aile delta OGIVALE, PROFILÉE : surface lissée (bord d'attaque arrondi, bord de fuite fin, épaisseur qui diminue du pied vers le bout), normales lissées ; élevons gris par-dessus le bord de fuite
   const le = z => L - 20.5 - 24.6 * Math.pow(z / 12.8, 0.8) - 2.5 * (z / 12.8);   // x du bord d'attaque à l'abscisse z (> 0)
-  const wing = sgn => { const poly = []; for (let i = 0; i <= 12; i++) { const z = 1.4 + (11.4 * i) / 12; poly.push([le(z), sgn * z]); } poly.push([L - 49.6, sgn * 12.8], [L - 49.6, sgn * 1.4]); return sgn > 0 ? poly : poly.reverse(); };
-  for (const sg of [1, -1]) { g.add(new THREE.Mesh(slab(wing(sg), -0.9, -0.3, 'xz'), white));
-    // gouvernes (élevons) : bande grise sur le bord de fuite
-    g.add(new THREE.Mesh(slab([[L - 49.75, sg * 2], [L - 49.75, sg * 12.8], [L - 47.4, sg * 12.8], [L - 47.4, sg * 2]].map(p => p), -0.95, -0.22, 'xz'), grey)); }
+  const TE = L - 49.6;   // bord de fuite droit
+  const wingSurface = (sg, u0, u1, extra, z0 = 1.0) => {
+    const NZ = 14, NX = 14, M = 2 * NX, pos = [], idx = [], prof = u => Math.pow(u, 0.5) * (1 - u) / 0.385;
+    for (let j = 0; j <= NZ; j++) {
+      const z = z0 + (12.8 - z0) * j / NZ, xl = le(z), th = (0.62 * (1 - z / 12.8) + 0.06), y0 = -0.6 + 0.15 * (z / 12.8);
+      const at = (u, top) => { const x = xl + (TE - xl) * u, hh = th * prof(u) + (u < 1 ? extra : 0); pos.push(x, y0 + (top ? hh : -hh), sg * z); };
+      for (let i = 0; i <= NX; i++) at(u0 + (u1 - u0) * i / NX, true);
+      for (let i = NX - 1; i >= 1; i--) at(u0 + (u1 - u0) * i / NX, false);
+    }
+    for (let j = 0; j < NZ; j++) for (let i = 0; i < M; i++) { const i2 = (i + 1) % M, p = j * M + i, q = j * M + i2, r = (j + 1) * M + i, t = (j + 1) * M + i2; idx.push(p, q, r, q, t, r); }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx); geo.computeVertexNormals(); return geo;
+  };
+  const elevon = new THREE.MeshStandardMaterial({ color: 0x9a9fa8, roughness: 0.5, metalness: 0.3, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  for (const sg of [1, -1]) { g.add(new THREE.Mesh(wingSurface(sg, 0, 1, 0), white)); g.add(new THREE.Mesh(wingSurface(sg, 0.8, 1, 0.025, 2.0), elevon)); }
   // dérive : tricolore (bleu, blanc, rouge) de bas en haut, légèrement inclinée vers l'arrière
   g.add(new THREE.Mesh(slab([[19.5, r * 0.9], [11.5, 12.2], [9.7, 12.2], [8.8, r * 0.9]], -0.15, 0.15, 'xy'), white));
   g.add(new THREE.Mesh(slab([[16.1, 4.9], [11.5, 12.2], [10.5, 12.2], [12.9, 8.6]], 0.14, 0.17, 'xy'), blue), new THREE.Mesh(slab([[10.3, 4.9], [10.7, 8.2], [9.7, 12.2], [9.2, 12.2]], 0.14, 0.17, 'xy'), red));
