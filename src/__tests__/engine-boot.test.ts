@@ -375,6 +375,9 @@ describe('createEngine (rendu factice)', () => {
     for (let i = 0; i < 3; i++) engine._frame(performance.now() + 200 + i * 100)
     expect(engine._moonBoost()).toBe(4)
     expect(engine._moonBright()).toBeGreaterThan(2)                            // et plus lumineuse
+    engine.setMoonReal(true); engine._frame(performance.now() + 4000)         // bouton « Lune taille réelle » : plus d'agrandissement en vue observatoire
+    expect(engine._moonScale()).toBeCloseTo(1, 6); expect(engine._moonBright()).toBeGreaterThan(2)   // taille réelle, éclairage conservé
+    engine.setMoonReal(false); engine._frame(performance.now() + 4100); expect(engine._moonScale()).toBeCloseTo(4, 6)
     engine.selectView('earth'); engine._frame(performance.now() + 700)
     expect(engine._moonBoost()).toBe(1)
     expect(engine._moonBright()).toBe(1)

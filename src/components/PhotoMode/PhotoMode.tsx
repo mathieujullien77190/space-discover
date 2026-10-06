@@ -1,6 +1,6 @@
 import Button from '@/components/ui/Button'
 import { useStore } from '@/store'
-import { setPhoto, takePhoto } from '@/store/commands'
+import { setMoonReal, setPhoto, takePhoto } from '@/store/commands'
 import styles from './PhotoMode.module.css'
 
 // MODE PHOTO, disponible dans les vues « depuis » (ISS, Hubble, observatoires, site lunaire) : le bouton « 📷 Photo » passe à un objectif à champ étroit (10°, la molette règle de 1° à 30°) avec une netteté maximale
@@ -9,6 +9,7 @@ export const PhotoMode = () => {
   const issView = useStore((s) => s.issView)
   const observatoryView = useStore((s) => s.observatory.view)
   const photo = useStore((s) => s.photo)
+  const moonReal = useStore((s) => s.moonReal)
   if (!issView && !observatoryView) return null
   return (
     <>
@@ -20,6 +21,7 @@ export const PhotoMode = () => {
       )}
       <div className={styles.bar}>
         <Button label="📷 Photo" active={photo} title="Objectif à champ étroit, netteté maximale (molette : zoom de 1° à 30°)" onClick={() => setPhoto(!photo)} />
+        {observatoryView && <Button label="🌙 Lune taille réelle" active={moonReal} title="La Lune garde sa taille réelle (0,5°) au lieu d'être agrandie ×4 depuis un observatoire" onClick={() => setMoonReal(!moonReal)} />}
         {photo && <Button label="📸 Prendre la photo" title="Enregistre l'image en PNG" onClick={takePhoto} />}
       </div>
     </>

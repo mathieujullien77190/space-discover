@@ -389,7 +389,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   // résolution ADAPTATIVE : si les images prennent plus de 30 ms en moyenne, la résolution du rendu baisse (jusqu'à 0,75) ; elle remonte quand la machine suit (images < 15 ms) ; délai entre deux changements
   // MODE PHOTO (vues « depuis » : ISS, Hubble, observatoires) : objectif à champ étroit (PHOTO_FOV), netteté MAXIMALE derrière (résolution du rendu au maximum, jamais réduite ; tuiles satellite un niveau de zoom plus fin) ;
   // `takePhoto` enregistre l'image en PNG. Quitté dès qu'on n'est plus en vue « depuis ».
-  let photo = false, photoFov = 60, snapReq = false;
+  let photo = false, photoFov = 60, snapReq = false, moonReal = false;   // moonReal : en vue depuis un observatoire la Lune garde sa taille réelle (sinon agrandie ×4)
   const PHOTO_FOV = 10, PHOTO_BOOST = 2, DETAIL_BOOST = 1,   // tuiles satellite TOUJOURS un cran de zoom plus fines que le calcul de base (demande) ; en mode photo deux crans
     PHOTO_SLOW = 0.1,   // en mode photo le temps est RALENTI 10 fois (le temps de cadrer)
      photoRatio = Math.min(Math.max((typeof devicePixelRatio === 'number' ? devicePixelRatio : 1) || 1, 2), 3);
@@ -460,8 +460,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       const masked = id => maskedNear(id) || occludedBy(camA, babs[id].toArray(), occ.filter(o => o.id !== id), 0, BODY.radiusUnits(id)) !== null;
       for (const id in bodyObjs) {
         const o = bodyObjs[id], b = o.b, v = bpos[id], ab = babs[id], ru = BODY.radiusUnits(id), hid = masked(id) || (!!b.showWithinUnits && !!b.around && camera.position.distanceTo(babs[b.around]) > b.showWithinUnits), parent = b.around && bpos[b.around] ? bpos[b.around] : null, tr = b.trace || {};
-        const boost = skyObs && b.bodyType === 'moon' && b.around === 'earth' ? OBS_MOON_BOOST : 1;   // depuis un observatoire la Lune est agrandie (illusion lunaire)
-        if (o.mesh) { if (o.baseScale === undefined) o.baseScale = o.mesh.scale.x; o.mesh.scale.setScalar(o.baseScale * boost); if (boost > 1 && o.mesh.material.color) o.mesh.material.color.setScalar(OBS_MOON_BRIGHT); else if (o.moonLit && o.mesh.material.color) o.mesh.material.color.setScalar(1); o.moonLit = boost > 1; }   // (les sphères « peintes » ont déjà leur rayon dans l'échelle du maillage)
+        const obsMoonOn = skyObs && b.bodyType === 'moon' && b.around === 'earth', boost = obsMoonOn ? (moonReal ? 1 : OBS_MOON_BOOST) : 1;   // depuis un observatoire la Lune est agrandie (illusion lunaire)
+        if (o.mesh) { if (o.baseScale === undefined) o.baseScale = o.mesh.scale.x; o.mesh.scale.setScalar(o.baseScale * boost); if (obsMoonOn && o.mesh.material.color) o.mesh.material.color.setScalar(OBS_MOON_BRIGHT); else if (o.moonLit && o.mesh.material.color) o.mesh.material.color.setScalar(1); o.moonLit = obsMoonOn; }   // (les sphères « peintes » ont déjà leur rayon dans l'échelle du maillage)
         o.px = o.mesh ? boost * pxScale * ru * (b.appearance.rings ? 2.4 : 1) / Math.max(1e-9, camera.position.distanceTo(ab)) : 0;   // rayon apparent du maillage (pixels)
         if (o.mesh && o.lodHi) {   // niveau de détail de la sphère d'après sa taille à l'écran ; invisible sous 1 px (son point lointain la remplace)
           const px = o.px, lv = lodLevel(px, o.lod || 0, BODY_LOD.T);
@@ -683,6 +683,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _featuresVisible: () => Object.fromEntries(Object.entries(featInst).filter(([id]) => !id.includes(':')).map(([id, inst]) => [id, inst.objects.some(o => o.visible)])),   // ISS
     _hubbleFeatures: () => Object.fromEntries(Object.entries(featInst).filter(([id]) => id.startsWith('hubble:')).map(([id, inst]) => [id.slice(7), inst.objects.some(o => o.visible)])),
     selectView,
+    setMoonReal: on => { moonReal = !!on; publish({ moonReal }); }, _moonScale: () => (bodyObjs.moon && bodyObjs.moon.mesh ? bodyObjs.moon.mesh.scale.x / (bodyObjs.moon.baseScale || 1) : 1),
     setPhoto, takePhoto: () => { if (photo) snapReq = true; }, _photo: () => ({ slow: photo ? PHOTO_SLOW : 1, on: photo, fov: cam.fp ? cam.fp.fov : null, ratio, snap: snapReq }),
     goIss, goHubble, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
     setClouds: on => { cloudsOn = !!on; },

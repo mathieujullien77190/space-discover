@@ -16,7 +16,7 @@ import { useStore } from '@/store'
 import { initialEngineState } from '@/store/initial'
 import type { Engine } from '@/types'
 
-const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), goHubble: vi.fn(), goConcorde: vi.fn(), flyConcorde: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn(), setBorders: vi.fn(), setCapitals: vi.fn(), setObservatories: vi.fn(), setStarInfo: vi.fn(), clearStar: vi.fn(), setConstellations: vi.fn(), setDayNight: vi.fn(), goObservatory: vi.fn(), setObservatoryView: vi.fn(), setRealistic: vi.fn(), setMetric: vi.fn(), setPhoto: vi.fn(), takePhoto: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
+const fakeEngine = () => ({ nudge: vi.fn(), alignNorth: vi.fn(), alignOrbit: vi.fn(), resetUp: vi.fn(), selectView: vi.fn(), goIss: vi.fn(), goHubble: vi.fn(), goConcorde: vi.fn(), flyConcorde: vi.fn(), setSimSpeed: vi.fn(), setFeature: vi.fn(), setIssView: vi.fn(), setClouds: vi.fn(), setBorders: vi.fn(), setCapitals: vi.fn(), setObservatories: vi.fn(), setStarInfo: vi.fn(), clearStar: vi.fn(), setConstellations: vi.fn(), setDayNight: vi.fn(), goObservatory: vi.fn(), setObservatoryView: vi.fn(), setRealistic: vi.fn(), setMetric: vi.fn(), setPhoto: vi.fn(), takePhoto: vi.fn(), setMoonReal: vi.fn() }) as unknown as Engine & Record<string, ReturnType<typeof vi.fn>>
 
 describe('TopBar + SubMenu', () => {
   let engine: ReturnType<typeof fakeEngine>
@@ -353,5 +353,15 @@ describe('PhotoMode', () => {
     render(<PhotoMode />)
     fireEvent.click(screen.getByText('📸 Prendre la photo'))
     expect(engine.takePhoto).toHaveBeenCalled()
+  })
+  it('bouton « Lune taille réelle » : seulement en vue depuis un observatoire', () => {
+    useStore.setState({ ...initialEngineState, issView: true, observatory: { id: null, view: false }, moonReal: false, engine })
+    const a = render(<PhotoMode />)
+    expect(screen.queryByText('🌙 Lune taille réelle')).toBeNull()
+    a.unmount()
+    useStore.setState({ issView: false, observatory: { id: 'pic-du-midi', view: true } })
+    render(<PhotoMode />)
+    fireEvent.click(screen.getByText('🌙 Lune taille réelle'))
+    expect(engine.setMoonReal).toHaveBeenLastCalledWith(true)
   })
 })
