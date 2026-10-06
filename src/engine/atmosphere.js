@@ -54,9 +54,9 @@ void main() {
     vec3 rayH = ray - up * e, sunH = uSun - up * dot(uSun, up);
     float toSun = (length(rayH) > 1e-4 && length(sunH) > 1e-4) ? max(0.0, dot(normalize(rayH), normalize(sunH))) : 0.5;
     float horizon = 1.0 - smoothstep(0.0, 0.55, max(e, 0.0));   // plus fort près de l'horizon
-    float orange = clamp(tw * horizon * (0.3 + 0.7 * toSun) * 1.6, 0.0, 1.0);
-    col = mix(uColor, mix(vec3(1.0, 0.46, 0.18), vec3(1.0, 0.52, 0.74), uRise), orange);   // coucher : rouge-orangé ; lever : ROSE
-    a *= lit * mix(1.0, 0.85 + 0.3 * orange, orange);
+    float orange = clamp(tw * horizon * (0.3 + 0.7 * toSun) * 1.1, 0.0, 1.0);   // 1,6 → 1,1 : orange moins flashy
+    col = mix(uColor, mix(vec3(0.93, 0.56, 0.36), vec3(0.93, 0.62, 0.76), uRise), orange);   // teintes adoucies (avant 1 ; 0,46 ; 0,18 et 1 ; 0,52 ; 0,74)   // coucher : rouge-orangé ; lever : ROSE
+    a *= lit * mix(1.0, 0.7, orange);   // le ciel orangé est moins lumineux (avant jusqu'à × 1,15)
   }
   gl_FragColor = vec4(col, a * 0.95);
 }`;
