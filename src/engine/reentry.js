@@ -50,11 +50,11 @@ export function patchMaterial(material, uniforms) {
 const glowTexture = () => {
   if (typeof document === 'undefined') return null;
   const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); if (!g) return null;
-  const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.25, 'rgba(255,200,120,0.85)'); gr.addColorStop(0.6, 'rgba(255,110,30,0.35)'); gr.addColorStop(1, 'rgba(255,60,0,0)');
+  const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(255,110,40,0)'); gr.addColorStop(0.18, 'rgba(255,120,45,0.10)'); gr.addColorStop(0.45, 'rgba(255,105,30,0.32)'); gr.addColorStop(0.72, 'rgba(255,70,15,0.12)'); gr.addColorStop(1, 'rgba(255,50,0,0)');   // HALO : transparent au centre (pas de rond jaune), anneau diffus orangé
   g.fillStyle = gr; g.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c);
 };
 
-// effet de rentrée sur un objet : `target` = groupe du modèle (matériaux patchés) ; `parent` = groupe où poser le plasma, la traînée et la lumière ; `sizeUnits` = taille de l'objet (unités de la scène)
+// effet de rentrée sur un objet : `target` = groupe du modèle (matériaux patchés) ; `parent` = groupe où poser le halo et la lumière ; `sizeUnits` = taille de l'objet (unités de la scène)
 export function createReentry(parent, target, sizeUnits, light) {   // light : PointLight créée UNE FOIS au démarrage du moteur (en ajouter une à chaud ferait recompiler tous les shaders)
   const uniforms = { uReBurn: { value: 0 }, uReCell: { value: 1 }, uReHeat: { value: 0 }, uReInv: { value: new THREE.Matrix4() } };   // uReInv : monde → repère du modèle entier (les blocs restent attachés à l'objet)
   const restores = [];
@@ -63,25 +63,20 @@ export function createReentry(parent, target, sizeUnits, light) {   // light : P
   uniforms.uReCell.value = Math.max(1e-6, cellLocal || 1);
   const tex = glowTexture();
   const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: 0xffffff, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 })); glow.frustumCulled = false; glow.visible = false; parent.add(glow);
-  const tail = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xff8a2a, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0, side: THREE.DoubleSide }));
-  tail.geometry.translate(0, 0.5, 0); tail.frustumCulled = false; tail.visible = false; parent.add(tail);   // cône dont la pointe est à l'origine, étiré vers l'ARRIÈRE de l'objet
   light.distance = sizeUnits * 40; light.decay = 1;
-  const up = new THREE.Vector3(0, 1, 0), back = new THREE.Vector3(), q = new THREE.Quaternion();
-  return {
+    return {
     uniforms,
     // état : pos (Vector3, scène), vel (direction unitaire du mouvement), heat (0–1), burn (0–1), t (s, scintillement)
     update({ pos, vel, heat, burn, t, camDist }) {
       target.updateWorldMatrix(true, false); uniforms.uReInv.value.copy(target.matrixWorld).invert();   // à appeler APRÈS le décalage d'origine flottante de l'image (même repère que le rendu)
       uniforms.uReBurn.value = burn; uniforms.uReHeat.value = burn >= 1 ? 0 : heat;
       const alive = burn < 1, flick = 0.85 + 0.15 * Math.sin(t * 31) * Math.sin(t * 17 + 1.3);
-      // plasma : sa taille grandit avec la chaleur ; reste visible de loin (au moins 0,6 % de la distance à la caméra)
-      const gs = Math.max(sizeUnits * (2 + 10 * heat) * flick, (camDist || 0) * 0.006 * heat);
-      glow.visible = heat > 0.02; glow.position.copy(pos); glow.scale.setScalar(gs); glow.material.opacity = Math.min(1, heat * 1.6) * (alive ? 1 : Math.max(0, 1 - (burn - 1) * 4));
-      back.copy(vel).multiplyScalar(-1); q.setFromUnitVectors(up, back);
-      tail.visible = heat > 0.05; tail.position.copy(pos); tail.quaternion.copy(q); const len = sizeUnits * (10 + 80 * heat * heat) * flick; tail.scale.set(gs * 0.35, len, gs * 0.35); tail.material.opacity = Math.min(0.8, heat);
+      // halo : sa taille grandit avec la chaleur ; reste visible de loin (au moins 1 % de la distance à la caméra)
+      const gs = Math.max(sizeUnits * (3 + 14 * heat) * flick, (camDist || 0) * 0.01 * heat);
+      glow.visible = heat > 0.02; glow.position.copy(pos); glow.scale.setScalar(gs); glow.material.opacity = Math.min(1, heat * 1.3) * (alive ? 1 : Math.max(0, 1 - (burn - 1) * 4));
       light.position.copy(pos); light.intensity = heat * 4 * flick * (alive ? 1 : 0.3);
     },
-    dispose() { for (const r of restores) r(); glow.removeFromParent(); tail.removeFromParent(); light.intensity = 0; glow.material.dispose(); tail.material.dispose(); tail.geometry.dispose(); if (tex) tex.dispose(); },
+    dispose() { for (const r of restores) r(); glow.removeFromParent(); light.intensity = 0; glow.material.dispose(); if (tex) tex.dispose(); },
   };
 }
 
