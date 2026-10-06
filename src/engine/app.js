@@ -390,7 +390,8 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   // MODE PHOTO (vues « depuis » : ISS, Hubble, observatoires) : objectif à champ étroit (PHOTO_FOV), netteté MAXIMALE derrière (résolution du rendu au maximum, jamais réduite ; tuiles satellite un niveau de zoom plus fin) ;
   // `takePhoto` enregistre l'image en PNG. Quitté dès qu'on n'est plus en vue « depuis ».
   let photo = false, photoFov = 60, snapReq = false;
-  const PHOTO_FOV = 10, PHOTO_BOOST = 2, PHOTO_SLOW = 0.1,   // en mode photo le temps est RALENTI 10 fois (le temps de cadrer)
+  const PHOTO_FOV = 10, PHOTO_BOOST = 2, DETAIL_BOOST = 1,   // tuiles satellite TOUJOURS un cran de zoom plus fines que le calcul de base (demande) ; en mode photo deux crans
+    PHOTO_SLOW = 0.1,   // en mode photo le temps est RALENTI 10 fois (le temps de cadrer)
      photoRatio = Math.min(Math.max((typeof devicePixelRatio === 'number' ? devicePixelRatio : 1) || 1, 2), 3);
   const perf = { avg: 16, cool: 0 };
   const adaptRatio = (raw, now) => {
@@ -588,7 +589,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
           const d = camera.getWorldDirection(aimDir), b = camera.position.dot(d), disc = b * b - (camera.position.lengthSq() - 1);
           if (disc > 0) { const t = -b - Math.sqrt(disc); if (t > 0) { aimHit.copy(camera.position).addScaledVector(d, t); const lh = aimHit.length(); aim = { lat: Math.asin(aimHit.y / lh) / DEG, lon: Math.atan2(-aimHit.z, aimHit.x) / DEG, distKm: t * R_KM }; } }
         }
-        terrainShown = terrain.update({ on: true, camAlt, cl, co, fov: camera.fov, aspect: camera.aspect, http: isHttp(), aim, boost: photo ? PHOTO_BOOST : 0 });
+        terrainShown = terrain.update({ on: true, camAlt, cl, co, fov: camera.fov, aspect: camera.aspect, http: isHttp(), aim, boost: photo ? PHOTO_BOOST : DETAIL_BOOST });
         if (terrainShown !== wasShown) publish({ terrainDetail: terrainShown }); }   // l'interface affiche les crédits seulement quand le relief est visible
       borders.visible = bordersOn && !realistic && camAlt < CONTOUR_MAX_ALT_KM; borders.scale.setScalar(terrainShown ? 1.0016 : 1);   // sur le relief satellite, les limites flottent au-dessus des montagnes (1,0014 au plus)
       for (let k = 1; k < earth.children.length; k++) if (earth.children[k].isLineSegments) earth.children[k].visible = camAlt < CONTOUR_MAX_ALT_KM && !terrainShown && !realistic;   // dézoomé : plus de trait de côte ; sur le relief satellite il flotterait au-dessus
