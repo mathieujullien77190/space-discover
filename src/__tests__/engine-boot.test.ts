@@ -375,13 +375,17 @@ describe('createEngine (rendu factice)', () => {
     expect(engine._reentry().on).toBe(false)
     engine.startReentry(true); engine._frame(T + 700)
     expect((state as EngineState & { reentry?: boolean }).reentry).toBe(true)
-    let maxHeat = 0, minAlt = 1e9, prev = 1e9, mono = true, deadAt = -1
-    for (let k = 1; k <= 1000; k++) { engine._frame(T + 700 + k * 100); const r = engine._reentry(); if (r.alt !== null) { if (r.alt > prev + 1e-6) mono = false; prev = r.alt; minAlt = Math.min(minAlt, r.alt) } maxHeat = Math.max(maxHeat, r.heat); if (r.dead && deadAt < 0) deadAt = k }
+    let sawDead = false, maxTrail = 0, maxHeat = 0, minAlt = 1e9, prev = 1e9, mono = true, deadAt = -1
+    for (let k = 1; k <= 1000; k++) { engine._frame(T + 700 + k * 100); const r = engine._reentry(); if (r.alt !== null) { if (r.alt > prev + 1e-6) mono = false; prev = r.alt; minAlt = Math.min(minAlt, r.alt) } maxHeat = Math.max(maxHeat, r.heat); maxTrail = Math.max(maxTrail, r.trail); if (r.dead) sawDead = true; if (r.dead && deadAt < 0) deadAt = k }
     expect(mono).toBe(true)                                                    // l’altitude ne fait que baisser
     expect(minAlt).toBeLessThan(1)                                             // jusqu’au sol
+    expect(maxTrail).toBeGreaterThan(100)                                       // traînée de fumée jaune derrière l’objet
     expect(maxHeat).toBeGreaterThan(0.9)                                       // chaleur intense en traversant l’atmosphère
     expect(deadAt).toBeGreaterThan(300); expect(deadAt).toBeLessThan(900)       // détruit en 30 à 90 s (images de 0,1 s)
-    expect(engine._reentry().dead).toBe(true)
+    expect(sawDead).toBe(true)
+    expect(engine._reentry().on).toBe(false)                                   // à 0 la rentrée est terminée (plus de fumée : effet libéré)
+    expect((state as EngineState & { reentry?: boolean }).reentry).toBe(false)
+    expect(engine._reentry().satAlt!).toBeGreaterThan(300)                      // l’ISS a REPRIS SON ORBITE NORMALE (≈ 420 km)
     engine.startReentry(false); engine._frame(T + 900000)
     expect(engine._reentry().on).toBe(false)
     expect((state as EngineState & { reentry?: boolean }).reentry).toBe(false)

@@ -54,6 +54,13 @@ const glowTexture = () => {
   g.fillStyle = gr; g.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c);
 };
 
+const puffTexture = () => {
+  if (typeof document === 'undefined') return null;
+  const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); if (!g) return null;
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');   // blanc : la teinte jaune vient de la couleur du sprite
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c);
+};
+export const TRAIL_POOL = 320, TRAIL_LIFE_S = 10;   // bouffées de fumée jaune laissées derrière l'objet : 320 au plus, 10 à 16 s de vie
 // effet de rentrée sur un objet : `target` = groupe du modèle (matériaux patchés) ; `parent` = groupe où poser le halo et la lumière ; `sizeUnits` = taille de l'objet (unités de la scène)
 export function createReentry(parent, target, sizeUnits, light) {   // light : PointLight créée UNE FOIS au démarrage du moteur (en ajouter une à chaud ferait recompiler tous les shaders)
   const uniforms = { uReBurn: { value: 0 }, uReCell: { value: 1 }, uReHeat: { value: 0 }, uReInv: { value: new THREE.Matrix4() } };   // uReInv : monde → repère du modèle entier (les blocs restent attachés à l'objet)
@@ -63,20 +70,35 @@ export function createReentry(parent, target, sizeUnits, light) {   // light : P
   uniforms.uReCell.value = Math.max(1e-6, cellLocal || 1);
   const tex = glowTexture();
   const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: 0xffffff, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 })); glow.frustumCulled = false; glow.visible = false; parent.add(glow);
-  light.distance = sizeUnits * 40; light.decay = 1;
+  light.distance = 0.03; light.decay = 1;   // SOURCE DE LUMIÈRE : éclaire tout ce qui est à moins de ≈ 190 km (la Terre en dessous, le modèle lui-même)
+  const puff = puffTexture(), parts = [];
+  for (let i = 0; i < TRAIL_POOL; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: puff, color: 0xffd23a, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 })); sp.frustumCulled = false; sp.visible = false; parent.add(sp); parts.push({ s: sp, age: 1e9, life: 1, size: 0 }); }
+  let nextPart = 0, lastPos = null, carry = 0; const tmp = new THREE.Vector3();
+  const emit = (p, size, life) => { const pr = parts[nextPart]; nextPart = (nextPart + 1) % TRAIL_POOL; pr.age = 0; pr.life = life; pr.size = size; pr.s.position.copy(p); pr.s.visible = true; };
     return {
     uniforms,
     // état : pos (Vector3, scène), vel (direction unitaire du mouvement), heat (0–1), burn (0–1), t (s, scintillement)
-    update({ pos, vel, heat, burn, t, camDist }) {
+    update({ pos, vel, heat, burn, t, camDist, dt = 0, emitting = true }) {
       target.updateWorldMatrix(true, false); uniforms.uReInv.value.copy(target.matrixWorld).invert();   // à appeler APRÈS le décalage d'origine flottante de l'image (même repère que le rendu)
       uniforms.uReBurn.value = burn; uniforms.uReHeat.value = burn >= 1 ? 0 : heat;
       const alive = burn < 1, flick = 0.85 + 0.15 * Math.sin(t * 31) * Math.sin(t * 17 + 1.3);
       // halo : sa taille grandit avec la chaleur ; reste visible de loin (au moins 1 % de la distance à la caméra)
       const gs = Math.max(sizeUnits * (3 + 14 * heat) * flick, (camDist || 0) * 0.01 * heat);
       glow.visible = heat > 0.02; glow.position.copy(pos); glow.scale.setScalar(gs); glow.material.opacity = Math.min(1, heat * 1.3) * (alive ? 1 : Math.max(0, 1 - (burn - 1) * 4));
-      light.position.copy(pos); light.intensity = heat * 4 * flick * (alive ? 1 : 0.3);
+      light.position.copy(pos); light.intensity = heat * 0.03 * flick * (alive ? 1 : 0.4);
+      // TRAÎNÉE DE FUMÉE JAUNE : une bouffée tous les ≈ 3 tailles d'objet le long du chemin (le segment parcouru dans l'image est rempli), qui grossit, vire à l'orange et s'éteint
+      for (const pr of parts) { if (pr.age >= pr.life) continue; pr.age += dt; const u = pr.age / pr.life; if (u >= 1) { pr.s.visible = false; continue; } pr.s.scale.setScalar(pr.size * (1 + 3 * u)); pr.s.material.opacity = 0.6 * (1 - u) * (1 - u); pr.s.material.color.setRGB(1, 0.86 - 0.34 * u, 0.22 - 0.16 * u); }
+      if (emitting && heat > 0.05 && lastPos) {
+        const spacing = sizeUnits * 3, seg = pos.distanceTo(lastPos); carry += seg; let k = 0;
+        while (carry >= spacing && k < 40) { carry -= spacing; k++; tmp.copy(pos).addScaledVector(vel, -carry); emit(tmp, sizeUnits * (2.5 + 3 * heat), TRAIL_LIFE_S + 6 * heat); }
+        if (k === 40) carry = 0;
+      } else carry = 0;
+      if (!lastPos) lastPos = new THREE.Vector3(); lastPos.copy(pos);
     },
-    dispose() { for (const r of restores) r(); glow.removeFromParent(); light.intensity = 0; glow.material.dispose(); if (tex) tex.dispose(); },
+    // vrai quand plus aucune bouffée n'est visible (la rentrée peut alors être libérée)
+    idle() { return parts.every(p => p.age >= p.life); },
+    activeParticles() { return parts.filter(p => p.age < p.life).length; },
+    dispose() { for (const r of restores) r(); glow.removeFromParent(); light.intensity = 0; glow.material.dispose(); if (tex) tex.dispose(); for (const p of parts) { p.s.removeFromParent(); p.s.material.dispose(); } if (puff) puff.dispose(); },
   };
 }
 

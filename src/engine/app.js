@@ -413,11 +413,12 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     const userRealistic = realistic; if (moonView) realistic = true;   // debout sur la Lune : pas de noms, d'orbites ni de points lointains (restauré en fin d'image)
     const realNow = Date.now(); simMs += (realNow - lastReal) * simSpeed * (photo ? PHOTO_SLOW : 1); lastReal = realNow; const date = new Date(simMs);   // horloge simulée : temps réel par défaut, accélérable
     iss = issState(date); hub = hubbleState(date);
-    if (re) { const st = re.id === 'hubble' ? hub : iss; if (st) {   // l'objet qui rentre : altitude, vitesse, chaleur et érosion mises en scène (temps réel, indépendant de l'horloge simulée)
+    if (re && !re.over) { const st = re.id === 'hubble' ? hub : iss; if (st) {   // l'objet qui rentre : altitude, vitesse, chaleur et érosion mises en scène (temps réel, indépendant de l'horloge simulée)
       re.t += dt; const alt = reentryAltitude(re.alt0, re.t), spd = reentrySpeed(re.speed0, alt);
       st.alt = alt; st.speed = spd; st.pos.copy(st.up).multiplyScalar(1 + alt / R_KM);
       if (!re.dead) { re.heat = heatIntensity(alt, spd); re.burn = burnStep(re.burn, re.heat, dt); if (re.burn >= 1) re.dead = true; } else re.heat = Math.max(0, re.heat - 0.6 * dt);
-      re.st = st; } }
+      re.st = st;
+      if (alt <= 0.01) { re.over = true; publish({ reentry: false }); } } }   // à 0 : l'objet REPREND SON ORBITE NORMALE (l'état n'est plus modifié) ; la fumée finit de s'éteindre
     if (cam.mode === 'iss' && !fsat()) setMode('earth');   // le vol est fini : retour à la vue Terre
     const skyObs = obsView;   // le ciel d'un observateur (atmosphère selon le Soleil, étoiles, étoiles filantes, Lune agrandie) : observatoires seulement
     if (obsView && obsFrame) { skyPos.copy(obsPos); skyUp.copy(obsSrc.radial); skyEast.fromArray(obsFrame.east); skyNorth.fromArray(obsFrame.north); }
@@ -649,8 +650,9 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
       cam.goal.lat = Math.asin(Math.max(-1, Math.min(1, fr.up.y))) / DEG; cam.goal.lon = Math.atan2(-fr.up.z, fr.up.x) / DEG; cam.goal.dist = 1.1; snapCam();
     }
     if (re && re.st) {   // effet de la rentrée (après le décalage d'origine flottante : mêmes coordonnées que le rendu)
-      if (re.dead) { re.model.visible = false; (re.id === 'hubble' ? hubDot : dot).visible = false; }
-      re.fx.update({ pos: re.st.pos, vel: re.st.vel, heat: re.heat, burn: re.burn, t: re.t, camDist: camera.position.distanceTo(re.st.pos) });
+      if (re.dead && !re.over) { re.model.visible = false; (re.id === 'hubble' ? hubDot : dot).visible = false; }
+      re.fx.update({ pos: re.st.pos, vel: re.st.vel, heat: re.over ? 0 : re.heat, burn: re.over ? 0 : re.burn, t: re.t, camDist: camera.position.distanceTo(re.st.pos), dt, emitting: !re.over });
+      if (re.over && re.fx.idle()) stopReentry();   // plus de fumée : effet libéré
     }
     // OMBRES DES ASTRES : les 6 astres les plus proches de la caméra (planètes, lunes, Terre) sont les occulteurs du Soleil pour tous les récepteurs (voir eclipse.js)
     { solar.updateMatrixWorld(true); earth.updateWorldMatrix(true, false); const sm = bodyObjs[STAR] && bodyObjs[STAR].mesh;
@@ -727,7 +729,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     _hubbleFeatures: () => Object.fromEntries(Object.entries(featInst).filter(([id]) => id.startsWith('hubble:')).map(([id, inst]) => [id.slice(7), inst.objects.some(o => o.visible)])),
     selectView,
     setMoonReal: on => { moonReal = !!on; publish({ moonReal }); }, _moonScale: () => (bodyObjs.moon && bodyObjs.moon.mesh ? bodyObjs.moon.mesh.scale.x / (bodyObjs.moon.baseScale || 1) : 1),
-    startReentry, _reentry: () => ({ on: !!re, id: re ? re.id : null, alt: re ? re.st && re.st.alt : null, heat: re ? re.heat : 0, burn: re ? re.burn : 0, dead: re ? re.dead : false, glow: re ? re.fx.uniforms.uReHeat.value : 0 }),
+    startReentry, _reentry: () => ({ on: !!re, id: re ? re.id : null, alt: re ? re.st && re.st.alt : null, heat: re ? re.heat : 0, burn: re ? re.burn : 0, dead: re ? re.dead : false, over: re ? !!re.over : false, trail: re ? re.fx.activeParticles() : 0, satAlt: iss ? iss.alt : null, glow: re ? re.fx.uniforms.uReHeat.value : 0 }),
     setPhoto, takePhoto: () => { if (photo) snapReq = true; }, _photo: () => ({ slow: photo ? PHOTO_SLOW : 1, on: photo, fov: cam.fp ? cam.fp.fov : null, ratio, snap: snapReq }),
     goIss, goHubble, nudge, setSimSpeed, resetTime, setDate, setFeature, setMetric: v => { metric = !!v; },
     setClouds: on => { cloudsOn = !!on; },
