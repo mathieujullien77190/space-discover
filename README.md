@@ -15,6 +15,12 @@ Une web app 3D (**three.js**, moteur en JavaScript pur, interface React / Next.j
 - **Temps** : horloge simulée, vitesses jusqu'à 10 ans par seconde, **saut de date** (📅) ; l'ISS n'existe qu'à partir de 1998.
 - **Astres en JSON** (`public/objects/<astre>/<astre>.json`) : ajouter un astre = ajouter un dossier (guide : `public/objects/README.md`).
 
+## Architecture
+
+![Schéma d'architecture : interface React, store Zustand, moteur three.js, site statique GitHub Pages et services externes de tuiles](docs/architecture.svg)
+
+Le moteur 3D en JavaScript pur ne connaît ni React ni le store : il publie son état (`publish`) et l'interface le pilote uniquement par des commandes. Le site est un export statique Next.js hébergé sur GitHub Pages ; le moteur y relit les JSON des astres et va chercher les nuages et les tuiles satellite / relief chez des services tiers.
+
 ## Lancer en local
 
 ```bash
