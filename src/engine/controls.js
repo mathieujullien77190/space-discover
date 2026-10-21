@@ -9,7 +9,8 @@ export function attachControls(canvas, cam, onClick) {
   const ptrs = new Map(); let pinch = 0, moved = 0; const offs = [], on = (t, ev, fn, o) => { t.addEventListener(ev, fn, o); offs.push(() => t.removeEventListener(ev, fn, o)); };
   const tanH = () => Math.tan(cam.fov * DEG / 2);
   const zoom = f => {   // f > 1 = on s'éloigne
-    if (cam.fp) { cam.fp.fov = Math.max(FP_FOV_MIN, Math.min(100, (cam.fp.fov || 60) * (f > 1 ? 1.14 : 1 / 1.14))); return; }   // première personne : la molette règle l'ouverture du champ
+    if (cam.fp && cam.fp.noZoom && !cam.photo) return;   // vue depuis l'ISS / Hubble : zoom interdit sauf avec l'appareil photo
+    if (cam.fp) { cam.fp.fov =Math.max(FP_FOV_MIN, Math.min(100, (cam.fp.fov || 60) * (f > 1 ? 1.14 : 1 / 1.14))); return; }   // première personne : la molette règle l'ouverture du champ
     if (cam.mode === 'earth') cam.goal.dist = 1 + Math.min(EARTH_MAX_DIST, Math.max(2 / R_KM, (cam.goal.dist - 1) * f));   // on zoome sur l'altitude (min 2 km)
     else if (cam.mode === 'solar') cam.goal.dist = Math.min(EARTH_MAX_DIST, Math.max(cam.minDist || 1.5, cam.goal.dist * f));   // vue Soleil / Lune : de 1,5 rayon terrestre à 3·10⁵ (≈ 13 UA)
     else cam.goal.dist = Math.min(41, Math.max(ISS_MIN_KM / R_KM, cam.goal.dist * f));                                    // autour de l'ISS (min 1 m)

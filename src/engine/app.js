@@ -349,7 +349,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
     publish({ observatory: { id: obsId, view: obsView } });
   };
   const setIssView = on => {   // « vue depuis l'ISS » : la caméra est sur la station, on regarde autour en glissant ; couper = retour à la vue d'accès de l'ISS
-    if (on && fsat()) { setMode('iss'); cam.fp = { yaw: 0, pitch: -35, fov: 70 }; cam.fpUp.set(0, 0, 0); issView = true; }
+    if (on && fsat()) { setMode('iss'); cam.fp = { yaw: 0, pitch: -35, fov: 70, noZoom: true }; cam.fpUp.set(0, 0, 0); issView = true; }
     else { const was = issView; issView = false; if (was) { cam.fp = null; if (fsat()) viewIss(); } }
     publish({ issView });
   };
@@ -678,7 +678,7 @@ export function createEngine({ canvas, overlay: overlayHost, publish, baseUrl = 
   function setPhoto(on) {
     on = !!on && !!cam.fp;   // seulement depuis une vue « depuis »
     if (on === photo) return;
-    photo = on;
+    photo = on; cam.photo = on;
     if (on) { photoFov = cam.fp.fov; cam.fp.fov = PHOTO_FOV; ratio = photoRatio; } else { if (cam.fp) cam.fp.fov = photoFov; ratio = maxRatio; }
     renderer.setPixelRatio(ratio); resize(); publish({ photo });
   }
