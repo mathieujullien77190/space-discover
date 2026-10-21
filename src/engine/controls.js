@@ -17,7 +17,7 @@ export function attachControls(canvas, cam, onClick) {
     
   };
   const rotate = (dx, dy) => {
-    if (cam.fp) { cam.fp.yaw -= dx * 0.3; cam.fp.pitch = Math.max(-89, Math.min(89, cam.fp.pitch + dy * 0.3)); return; }   // vue à la première personne : on tourne la tête (le décor suit le doigt)
+    if (cam.fp) { const s = 0.3 * Math.min(1, (cam.fp.fov || 60) / 60); cam.fp.yaw -= dx * s; cam.fp.pitch = Math.max(-89, Math.min(89, cam.fp.pitch + dy * s)); return; }   // sensibilité proportionnelle au champ : très zoomé, le glisser est démultiplié (le décor suit toujours le doigt)   // vue à la première personne : on tourne la tête (le décor suit le doigt)
     const alt = Math.max(1e-5, cam.mode === 'earth' ? cam.dist - 1 : 0);
     const k = cam.mode === 'earth' ? Math.min(alt, 3) * 2 * tanH() / canvas.clientHeight / DEG : 0.3;   // le sol suit le doigt à tout zoom
     if (cam.mode === 'iss') {   // AUTOUR DE L'ISS : rotation LIBRE (« tumble ») : le haut de l'écran tourne avec la caméra, donc on peut passer par-dessus et par-dessous la station sans jamais être bloqué (avec le haut du monde fixe, la vue butait aux pôles du monde, à ±89,5° : on ne pouvait pas faire le tour)
