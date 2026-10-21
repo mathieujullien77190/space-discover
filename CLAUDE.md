@@ -51,6 +51,7 @@ _archive/      anciens travaux (fusées, histoires, système solaire) : ne pas t
 ## Dernière modification : zoom et mode photo
 
 - **Vue depuis l'ISS et Hubble : zoom à la molette INTERDIT** (`cam.fp.noZoom`, `controls.js`) ; le zoom n'existe qu'avec l'appareil photo (`cam.photo`). Les observatoires gardent le zoom (champ 1–100°).
+- **Tuiles au niveau normal** : `DETAIL_BOOST` = 0 (plus de cran de zoom en plus hors mode photo ; +2 seulement en mode photo).
 - **Rotation de la tête proportionnelle au champ** (`controls.js` : ×fov/60 sous 60°) : très zoomé, glisser est moins réactif.
 - **Mode photo : tuiles nettes centrées sur le point visé** (le rond du viseur) : `terrainWanted` avec `boost ≥ PHOTO_FOCUS_BOOST` (2) ajoute toujours les niveaux les plus fins autour du point regardé, même regard droit vers le bas ; plus on zoome avec l'objectif, plus le niveau de zoom des tuiles est élevé (plafond 15).
 
