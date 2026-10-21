@@ -49,17 +49,21 @@ export function createTerrainLayer(parent, renderer, opts) {
       t.mesh.renderOrder = -2 - (tl.k || 0); group.add(t.mesh); t.state = 'ready'; t.img = t.dem = null;
     } catch (e) { t.state = 'error'; }
   };
-  const fetchImage = (url, onload, t) => {
+  // Serveur de tuiles LOCAL (dev, port 5180 : tools/tile-server.mjs, dossier tiles/) : essayé d'abord sur le serveur de dev ; s'il ne répond pas il est abandonné et on va chez Esri / AWS
+  const localOk = typeof location !== 'undefined' && location.port === '5179';
+  const localUrl = (kind, z, a, b) => `http://${location.hostname}:5180/${kind}/${z}/${a}/${b}`;
+  const fetchImage = (url, onload, t, local) => {
     const img = new Image(); img.crossOrigin = 'anonymous'; loading++;
+    const useLocal = localOk && local; let tried = false;
     img.onload = () => { loading--; if (!t.dead) onload(img); };
-    img.onerror = () => { loading--; t.state = 'error'; };
-    img.src = url;
+    img.onerror = () => { if (useLocal && !tried) { tried = true; img.src = url; return; } loading--; t.state = 'error'; };   // local en échec : tuile distante
+    img.src = useLocal ? local : url;
   };
   const load = tl => {
     const t = { state: 'loading', t: tick, mesh: null, img: null, dem: null, demWanted: !!tl.dem }; tiles.set(tl.key, t);
     const done = () => { if (t.img && (t.dem || !tl.dem) && !t.dead && t.state === 'loading') build(tl, t); };
-    fetchImage(tileUrl(tl.z, tl.x, tl.y, IMAGERY_URL), img => { t.img = img; done(); }, t);
-    if (tl.dem) fetchImage(tileUrl(tl.z, tl.x, tl.y, DEM_URL), img => { t.dem = img; done(); }, t);   // le relief n'est chargé que pour le niveau le plus fin
+    fetchImage(tileUrl(tl.z, tl.x, tl.y, IMAGERY_URL), img => { t.img = img; done(); }, t, localOk && localUrl('imagery', tl.z, tl.y, tl.x));
+    if (tl.dem) fetchImage(tileUrl(tl.z, tl.x, tl.y, DEM_URL), img => { t.dem = img; done(); }, t, localOk && localUrl('dem', tl.z, tl.x, tl.y));   // le relief n'est chargé que pour le niveau le plus fin
   };
   return {
     group, setLook,

@@ -11,6 +11,7 @@ import ScaleBar from "@/components/ScaleBar";
 import StatusMessage from "@/components/StatusMessage";
 import StarInfo from "@/components/StarInfo";
 import SubMenu from "@/components/SubMenu";
+import TileCache from "@/components/TileCache";
 import TimeBar from "@/components/TimeBar";
 import TopBar from "@/components/TopBar";
 import { useStore } from "@/store";
@@ -39,6 +40,7 @@ export const App = () => {
           </div>
           <StatusMessage />
           <MapCredit />
+          <TileCache />
           <IssBadge />
           <PhotoMode />
         </>

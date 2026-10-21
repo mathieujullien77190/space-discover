@@ -55,6 +55,11 @@ _archive/      anciens travaux (fusées, histoires, système solaire) : ne pas t
 - **Rotation de la tête proportionnelle au champ** (`controls.js` : ×fov/60 sous 60°) : très zoomé, glisser est moins réactif.
 - **Mode photo : tuiles nettes centrées sur le point visé** (le rond du viseur) : `terrainWanted` avec `boost ≥ PHOTO_FOCUS_BOOST` (2) ajoute toujours les niveaux les plus fins autour du point regardé, même regard droit vers le bas ; plus on zoome avec l'objectif, plus le niveau de zoom des tuiles est élevé (plafond 15).
 
+## Tuiles en local (dev)
+
+- `npm run dev` lance `tools/dev.mjs` = `tools/tile-server.mjs` (port 5180) + Next. Le moteur demande d'abord les tuiles (imagerie Esri, altitudes AWS) à ce serveur, qui les range dans **`tiles/`** (ignoré par git) et ne les télécharge qu'une fois ; si le serveur ne répond pas, retour direct chez Esri / AWS.
+- **Plafond 1 Go** (`TILES_MAX_MB`) : au-delà les plus anciennes sont supprimées. Barre « Tuiles : N Mo / 1024 Mo » en haut (`TileCache`, interroge `/stats`).
+
 ## Réglages utiles
 
 - `DEV_START` (`src/constants`) : démarrage de test (Pic du Midi, 12 août 2026) ; `null` = démarrage normal (Terre, 50° N 0° E, heure réelle).

@@ -14,3 +14,6 @@ data/photo-kourou-hi.jpg
 *.tmp.jpg
 tools/.cache/
 model_file.binz
+
+# tuiles satellite mises en cache en local par tools/tile-server.mjs (non publiees)
+tiles/
