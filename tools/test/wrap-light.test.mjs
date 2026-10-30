@@ -5,10 +5,11 @@ import { LAMBERT_LINE, WRAP, wrapLighting, wrappedChunk } from '../../src/engine
 const fails = [], check = (c, m) => { console.log((c ? 'ok   ' : 'ÉCHEC ') + m); if (!c) fails.push(m); };
 check(THREE.ShaderChunk.lights_lambert_pars_fragment.includes(LAMBERT_LINE), 'la ligne Lambert de three.js existe encore (mise à jour de three à surveiller)');
 const chunk = wrappedChunk();
-check(chunk !== THREE.ShaderChunk.lights_lambert_pars_fragment && !chunk.includes(LAMBERT_LINE) && chunk.includes('), ' + WRAP.toFixed(3) + ' )'), 'le chunk est modifié (exposant p = ' + WRAP + ')');
-const irr = (d, p = WRAP) => Math.pow(Math.max(0, Math.min(1, d)), p);
+check(chunk !== THREE.ShaderChunk.lights_lambert_pars_fragment && !chunk.includes(LAMBERT_LINE) && chunk.includes('smoothstep( -' + WRAP.toFixed(3)), 'le chunk est modifié (fondu ±w, w = ' + WRAP + ')');
+const ss = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+const irr = (d, w = WRAP) => ss(-w, w, d) * (0.5 + 0.5 * Math.max(0, Math.min(1, d)));
 check(irr(1) === 1, 'Soleil au zénith : éclairage plein (inchangé)');
-check(irr(0) === 0 && irr(-0.2) === 0 && irr(0.1) > 0.3 && irr(0.1) < irr(0.5), 'au terminateur : exactement moitié-moitié (zéro à N·L = 0), montée rapide ensuite');
+check(irr(-WRAP) === 0 && irr(WRAP * 0.5) > irr(0) && irr(0) > irr(-WRAP * 0.5) && irr(-WRAP * 0.5) > 0, 'fondu doux et symétrique autour du terminateur (éteint à N·L = −w, Soleil ≈ ' + (Math.asin(WRAP) * 180 / Math.PI).toFixed(0) + '° sous l’horizon)');
 const m = wrapLighting(new THREE.MeshLambertMaterial()), sh = { uniforms: {}, vertexShader: 'void main() {\n#include <project_vertex>\n}', fragmentShader: '#include <lights_lambert_pars_fragment>' };
 m.onBeforeCompile(sh);
 check(sh.fragmentShader.includes(chunk.replace('vec3 irradiance = dotNL * directLight.color;', 'vec3 irradiance = dotNL * directLight.color * eclVis(vEclW);')) && sh.fragmentShader.includes('eclVis') && sh.vertexShader.includes('vEclW = ') && 'uEclSun' in sh.uniforms && m.customProgramCacheKey().startsWith('wrap'), 'matériau modifié au premier rendu (enveloppe + ombre des astres), avec sa propre clé de cache');
