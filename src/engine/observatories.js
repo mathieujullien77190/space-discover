@@ -224,6 +224,22 @@ export const OBSERVATORIES = [
     ],
     note: 'Position et faits écrits de mémoire : à vérifier.',
   },
+  {
+    id: 'chez-matou',
+    name: 'Chez Matou',
+    short: 'Chez Matou',
+    kind: 'Site d’observation du ciel',
+    lat: 48.52192, lon: 2.65048, altM: 90, eyeM: 120,
+    scene: 'forest',
+    image: 'data/observatories/greenwich.png',
+    facts: [
+      { label: 'Lieu', value: 'Seine-et-Marne, près de Melun (France)' },
+      { label: 'Latitude', value: '48°31′19″ N' },
+      { label: 'Longitude', value: '2°39′02″ E' },
+      { label: 'Altitude', value: 'vers 90 m' },
+    ],
+    note: 'Altitude écrite de mémoire : à vérifier.',
+  },
 ];
 
 export const observatoryById = id => OBSERVATORIES.find(o => o.id === id) || moonSiteById(id);   // les sites lunaires (Apollo) partagent la fiche d'observatoire
