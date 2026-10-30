@@ -50,7 +50,7 @@ _archive/      anciens travaux (fusées, histoires, système solaire) : ne pas t
 
 ## Dernière modification : zoom et mode photo
 
-- **Terminateur flou mais moitié-moitié** : `wrap-light.js` = smoothstep(−0,25, +0,25, N·L) × (0,5 + 0,5·N·L), fondu symétrique centré sur le terminateur (l’ancien décalage rallongeait le jour).
+- **Terminateur flou, décalé vers le jour** : `wrap-light.js` = smoothstep(SHIFT−WRAP, SHIFT+WRAP, N·L) × (0,5 + 0,5·N·L), WRAP 0,25, SHIFT 0,25 : la nuit arrive plus tôt, le flou est gardé.
 
 - **Vue depuis l'ISS et Hubble : zoom à la molette INTERDIT** (`cam.fp.noZoom`, `controls.js`) ; le zoom n'existe qu'avec l'appareil photo (`cam.photo`). Les observatoires gardent le zoom (champ 1–100°).
 - **Tuiles au niveau normal** : `DETAIL_BOOST` = 0 (plus de cran de zoom en plus hors mode photo ; +2 seulement en mode photo).
